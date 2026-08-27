@@ -13,6 +13,7 @@ This report turns the Alpha 1 planning conversation into durable, actionable pla
 2. `sources/planning/local-agent-notes.md`
 3. VennueSign's proposed Maestro design: `docs/design/proposed/maestro-dev-lead-agent-framework.md`
 4. The existing Atlas repository: `jmiedreich-ux/Atlas`
+5. `sources/planning/maestro-alpha-1-source-inventory.md`
 
 This is a capture and handoff document. It is not permission to build the coordinator yet.
 
@@ -57,6 +58,23 @@ The AI box hosts Maestro, SQLite, the local Atlas reporting UI, local models, wo
 | Final acceptance, merge, and deployment | Owner |
 
 The database must not become a second unrelated source of truth for product requirements. Maestro synchronizes repository/GitHub facts into operational state; Atlas reads the operational state.
+
+## Operational data model
+
+SQLite is the initial durable execution store. The first schema must cover:
+
+| Record | Purpose |
+|---|---|
+| Projects | Repository identity, checkout, profile, process version, policies, and adapter configuration |
+| Milestone runs | Approved milestone, branch, PR, current state, owner gate, lease, and recovery position |
+| Packets | Dependencies, allowed paths, assigned route, reviewer, status, acceptance contract, and time budget |
+| Attempts | Exact agent/model/runtime, external response ID, start/end, result, infrastructure outcome, and retry count |
+| Evidence | Commands, verbatim output, commit SHA, changed files, diff, model digest, resource samples, and review outcome |
+| Events | Poll, webhook, worker completion, CI, review, merge, timeout, reboot, and recovery observations |
+| Notifications | Destination, message type, sent time, delivery/acknowledgment, and related waiting state |
+| Questions and gates | Blocking question, required approver, decision link, and release condition |
+
+SQLite remains local while Maestro uses one AI box and one coordinator. A future Postgres migration is allowed only when distributed runners, concurrent coordinators, or a remote dashboard create a real need.
 
 ## Planning rules to preserve
 
@@ -117,6 +135,25 @@ At natural checkpoints, Maestro must record:
 - Conflicts or items needing owner confirmation
 
 Before implementation begins, an independent planning auditor compares every source item with the actual plan. Each source item must point to a requirement, decision, task, question, or explicit deferral.
+
+## Project creation and registration
+
+Maestro provides two different flows:
+
+- `maestro project create` establishes a new project using Maestro's shared process.
+- `maestro project register` inventories an existing project and binds its existing rules without overwriting them.
+
+The create flow must:
+
+1. Register repository identity, default branch, local checkout, and GitHub installation.
+2. Create the project and initial ledger records in SQLite.
+3. Select a profile such as library, web application, API, or deployed Azure application.
+4. Record process version, project exceptions, required checks, environments, secret references, branch rules, and approval/merge policy.
+5. Generate the thin project manifest, process binding, planning templates, issue/PR templates, and Atlas project view.
+6. Open one bootstrap PR containing only repository-facing files; Maestro's machine-local configuration stays in Maestro.
+7. Run a dry-run proving it can read the repository, create a branch and PR, execute one declared check, persist the result, and display it in Atlas.
+
+Every project then passes a Project Foundation gate before feature work. The foundation records purpose, non-goals, users, architecture and technology boundaries, environments, deployment model, release policy, quality baseline, roles, ownership boundaries, security/external-service rules, and which choices require design approval.
 
 ## Development execution lifecycle
 
@@ -206,6 +243,36 @@ It needs:
 
 The first worker version is a one-box service using SQLite and a dedicated non-root user. It must not have production Azure credentials, customer data, automatic deployment permission, repository-administration permission, or sudo.
 
+### Event and recovery behavior
+
+For every dispatched cloud or local job, Maestro stores the external job/response ID and the exact expected completion result. Polling is sufficient for the first implementation; signed webhooks for GitHub and supported cloud-job events are a later optimization.
+
+When an event or poll is received, Maestro must:
+
+1. Record the observation.
+2. Re-read GitHub and project-controlled facts.
+3. Verify the lease, current state, and expected prior transition.
+4. Run the next permitted action exactly once.
+5. Persist the new state and evidence before starting another action.
+6. Update Atlas and send any required notification.
+
+Duplicate polls, duplicate webhooks, stale completions, timeouts, and reboots must not duplicate claims, branches, PRs, review requests, merges, or notifications.
+
+### Visible waiting state
+
+Waiting is an explicit state, not silence. Atlas must show:
+
+- The exact worker, reviewer, CI check, approval, or environment being awaited.
+- Start time and last heartbeat/event.
+- Expected result.
+- Next permitted action.
+- Timeout and retry policy.
+- Whether other dependency-ready work may continue.
+
+### Operational limits
+
+Every job contract includes time, retry/revision, network, cost/token, and resource budgets. Branch protection, signed webhooks when introduced, audit logs, scoped credentials, and append-only evidence are mandatory hardening controls.
+
 ## Atlas integration and repository merge
 
 Atlas is an existing public repository:
@@ -246,88 +313,184 @@ Initial policy:
 
 M0 must not contact Azure, use credentials, or change Murphy's current policy.
 
-## Required M0 planning milestone
+## Roadmap terminology and layering
 
-### M0-01 · Create Maestro project foundation
+The previous report blurred milestones and versions. They are different:
 
-Register Maestro itself, establish controlled records, and document the repository structure.
+- A **source item** is an atomic requirement, decision, constraint, question, task candidate, or deferral.
+- A **planning record** is the durable feature, question, decision, milestone, packet, or coverage record created from source items.
+- A **milestone (`M`)** is a bounded body of work with an exit gate.
+- A **release (`V`)** is a usable Maestro capability made from several completed milestones.
 
-**Planned route:** Cloud coordinator  
+`M0` is not an early version of Maestro. It is the planning-and-approval milestone that produces the build contract. No runner, database service, or Atlas migration is implemented during M0.
+
+```mermaid
+flowchart TD
+    Sources[Source inventory] --> M0[M0 approved foundation plan]
+    M0 --> M1[M1 core and project registration]
+    M1 --> M2[M2 database and Atlas reporting]
+    M2 --> M3[M3 packet and wrapper execution]
+    M3 --> M4[M4 end-to-end coordinator]
+    M4 --> V1[V1 one-milestone proof]
+    V1 --> V2[V2 controlled delegation]
+    V2 --> V3[V3 mature operations]
+```
+
+## M0 — Approve the foundation plan
+
+M0 is the current stage. The repository exists, the transcript and working notes are stored, and the first handoff exists. M0 is **in progress**, because the source inventory has not yet received owner review, the full planning records have not been produced, and no independent completeness audit has passed.
+
+### M0-01 · Establish Maestro planning records
+
+Define the controlled repository structure and create the charter, source register, decision register, question register, and handoff pattern.
+
+**Route:** Cloud coordinator  
 **Reviewer:** Independent cloud planning reviewer  
-**Validation:** Repository structure and planning-record checks
+**Exit:** Repository structure and controlled-record checks pass
 
-### M0-02 · Capture planning sources and traceability
+### M0-02 · Inventory every planning source
 
-Inventory the Alpha 1 conversation, local-agent notes, VennueSign design, Atlas repository, and Murphy references. Number every meaningful source item and map it to the plan.
+Number the Alpha 1 conversation, local-agent findings, VennueSign design, Atlas repository, and Murphy contract. Trace every item to a planning record or explicit deferral.
 
-**Planned route:** Cloud planning lead  
+**Route:** Cloud planning lead; local agent may mechanically index sources  
 **Reviewer:** Independent cloud planning auditor  
-**Validation:** 100% source coverage or explicit deferral
+**Exit:** 100% source coverage with no unexplained omission
 
-### M0-03 · Define shared process and planning contract
+### M0-03 · Define the shared process
 
-Define schemas/templates for projects, foundation records, features, questions, decisions, milestones, tasks, packets, coverage, reviews, and handoffs.
+Create the project foundation, feature, question, decision, milestone, packet, coverage, routing, review, handoff, and process-binding schemas. Define the plan validator and conversation checkpoint workflow.
 
-**Planned route:** Cloud architecture/planning lead  
+**Route:** Cloud architecture/planning lead  
 **Reviewer:** Independent cloud planning auditor  
-**Validation:** Template/schema completeness and example records
+**Exit:** Schemas, validators, examples, and lifecycle gates are complete
 
-### M0-04 · Define Maestro architecture and integrations
+### M0-04 · Define the system architecture
 
-Define the coordinator, SQLite model, local Atlas reporting boundary, GitHub adapter, worker adapter, project bootstrap/register flow, and Murphy adapter.
+Specify coordinator transitions, SQLite entities, leases, recovery, GitHub synchronization, worker contracts, wrapper checks, notifications, project create/register, Atlas migration, Murphy adapter, security, budgets, and resource locks.
 
-**Planned route:** Cloud architecture/planning lead  
+**Route:** Cloud architecture lead  
 **Reviewer:** Independent cloud architecture reviewer  
-**Validation:** Architecture review, data ownership table, and failure-path review
+**Exit:** Architecture, data ownership, failure paths, security boundaries, and V1 acceptance contract are approved
 
-### M0-05 · Audit plan completeness and obtain owner acceptance
+### M0-05 · Design the Atlas migration
 
-Check that every source item, decision, diagram, qualifier, and required action is represented and that no implementation begins without acceptance.
+Inventory Atlas's source, API, theme, fixtures, tests, GitHub Action, and GitHub/Markdown assumptions. Define what moves, what changes to database-backed reads, how history is retained, and what happens to the standalone repository.
 
-**Planned route:** Independent cloud planning auditor  
-**Reviewer:** Owner  
-**Validation:** Traceability report and owner acceptance
-
-### M0-06 · Inventory and merge Atlas into Maestro reporting
-
-Perform the Atlas repository inventory and produce the migration design and first bounded merge packet. This is planning and inventory first; code migration follows owner approval.
-
-**Planned route:** Cloud architecture lead for migration design; local developer worker for bounded mechanical migration after approval  
+**Route:** Cloud architecture lead; local agent may produce the mechanical file/dependency inventory  
 **Reviewer:** Independent cloud reviewer  
-**Validation:** Atlas inventory, dependency map, database boundary, fixture coverage, and migration decision
+**Exit:** Approved migration map and bounded M2 packets
 
-## Later implementation sequence
+### M0-06 · Audit and accept the plan
 
-### v1 — Prove the control loop
+Compare every numbered source item with the charter, architecture, schemas, decisions, milestones, packets, diagrams, and explicit deferrals.
 
-- One hosted/cloud coordinator.
-- One registered project.
-- One owner-approved bounded milestone.
-- Durable SQLite run state.
-- One worker assignment.
-- One draft PR.
-- Verification and evidence.
-- Cloud review.
-- Owner acceptance and merge unchanged.
+**Route:** Independent cloud planning auditor  
+**Reviewer:** Owner  
+**Exit:** Completeness audit passes and owner authorizes V1 implementation
 
-### v2 — Controlled delegation
+## V1 — Prove one complete controlled run
 
-- Local worker polling and leases.
-- Isolated worktrees.
-- Packet ownership enforcement.
-- Model-routing configuration.
-- Local implementation and test work.
-- Atlas reads the live local Maestro database.
+V1 is the first usable release, built through M1–M4. It proves one registered project and one owner-approved milestone can travel from ready to owner acceptance without depending on an open chat turn.
 
-### v3 — Mature execution support
+V1 includes one explicitly configured local worker route because the owner requires suitable work to reach local models. Dynamic multi-model routing remains V2.
 
-- Independent review and bounded revision.
-- Reboot/crash recovery.
-- Murphy integration.
-- QA hooks and retrospective issues.
-- Disposable SQL Server container gate.
-- Linux-native verification.
-- Stronger authentication and resource controls.
+### M1 · Build the core and register projects
+
+- Implement SQLite migrations and the operational entities.
+- Implement `maestro project create` and `maestro project register`.
+- Add project profiles, manifests, process bindings, policies, and dry-run validation.
+- Add leases, idempotent transition primitives, audit events, and restart recovery foundations.
+
+**Exit:** One existing repository registers successfully, survives restart, and completes its dry run.
+
+### M2 · Merge Atlas into Maestro reporting
+
+- Move the approved Atlas components into Maestro while preserving useful history and tests.
+- Replace live GitHub/Markdown operational reads with the Maestro database projection.
+- Show projects, milestones, packets, assignments, waiting states, evidence, retries, heartbeats, and owner gates.
+- Keep repository links for plans, code, PRs, reviews, and CI.
+
+**Exit:** Local Atlas displays one registered project and persisted run state from SQLite without reconstructing operational state from GitHub.
+
+### M3 · Build packet dispatch and enforcement
+
+- Implement the packet/job contract and planned routing fields.
+- Implement one fixed local developer route and the enforcement wrapper.
+- Add clean worktrees, allowed-path enforcement, build/type checks, invariants, commit verification, evidence capture, time/resource budgets, and one rework cycle.
+- Add packet linting and clear escalation to cloud takeover.
+
+**Exit:** One bounded local packet produces a verified commit and retained evidence; deliberate scope and invariant failures are rejected.
+
+### M4 · Complete the persistent control loop
+
+- Poll for one approved milestone and atomically claim it.
+- Create the feature branch and draft PR.
+- Dispatch the packet, observe completion, re-read authoritative facts, and advance exactly once.
+- Request independent cloud review, handle one revision or takeover, run the declared verification, update Atlas, notify the owner, and stop at owner acceptance.
+- Prove reboot, duplicate poll, stale completion, and timeout recovery.
+
+**Exit:** One real milestone completes end to end and stops at the owner gate with an accurate completed/blocked ledger.
+
+## V2 — Add controlled multi-packet delegation
+
+V2 expands a proven V1 loop; it does not weaken the owner gate.
+
+### M5 · Add dependency-aware packet scheduling
+
+- Decompose approved milestones into dependency-linked packets.
+- Enforce file ownership and Maestro-owned integration files.
+- Run only dependency-ready work and preserve blocked reasons.
+
+### M6 · Add measured model routing
+
+- Route by execution class using current qualification evidence.
+- Complete the Glimmer comparison and reconcile model tags.
+- Add fallback rules without silently downgrading developer work.
+- Keep local inference serialized until capacity testing approves concurrency.
+
+### M7 · Add independent review and evidence operations
+
+- Standardize cloud review, one local revision, cloud takeover, and owner escalation.
+- Add append-only evidence records, metrics, cost/token budgets, heartbeat views, and retrospective reporting.
+- Add optional completion notifications outside Atlas.
+
+**V2 exit:** A multi-packet milestone uses planned local/cloud routes, dependency scheduling, independent review, bounded correction, and complete evidence.
+
+## V3 — Mature operations and integrations
+
+### M8 · Integrate Murphy QA
+
+- Register Murphy as a remote Azure QA capability.
+- Preserve per-project manual/owner-approved triggers.
+- Persist target environment, deployed version, run result, report, and linked findings.
+
+### M9 · Build Linux-native verification
+
+- Add disposable SQL Server 2022 containers.
+- Add Linux-native build, Playwright/Chromium, and integration-test setup.
+- Serialize verification against model inference until resource data permits overlap.
+
+### M10 · Harden and scale the coordinator
+
+- Introduce a dedicated GitHub App and signed webhooks where they improve latency.
+- Add cloud background-job webhook support while retaining polling recovery.
+- Harden secret detection, stale-job recovery, backups, resource limits, and multiple-repository operation.
+- Evaluate SQLite-to-Postgres migration only if distribution requires it.
+- Present multi-milestone autonomous mode as a separate owner decision; do not enable it implicitly.
+
+**V3 exit:** Maestro operates reliably across registered projects with hardened credentials, local-native gates, Murphy integration, recovery, and mature reporting.
+
+## Deferred research after V3 baseline
+
+- Grammar-constrained tool calls.
+- Sampler-level path masking.
+- KV-cache prefix snapshots.
+- Best-of-N worker selection.
+- Repository-specific fine-tuning from labeled wrapper outcomes.
+- Second-model semantic judge.
+- Model behavior debugger and replay.
+
+These are valuable research directions but are not prerequisites for V1.
 
 ## Open decisions
 
@@ -343,14 +506,13 @@ Perform the Atlas repository inventory and produce the migration design and firs
 
 ## Handoff — exact next action
 
-Do not build the runner yet.
+Do not build the runner yet. M0 is in progress.
 
-Create the numbered source inventory and traceability map first, covering:
+The numbered source inventory now exists. The next actions are:
 
-- The full `maestro-alpha-1-session.txt`.
-- `local-agent-notes.md`.
-- VennueSign's Maestro design.
-- The Atlas repository and its current structure.
-- Murphy's project-specific QA contract and current manual-trigger constraint.
-
-Present that inventory for owner review. After approval, produce the M0-03/M0-04 planning records, then prepare the Atlas migration inventory as M0-06.
+1. Owner reviews the source inventory for missing or incorrectly interpreted agreements.
+2. Locate and register the exact Murphy contract source files.
+3. Complete the deeper Atlas file/dependency inventory.
+4. Produce the M0-03 shared-process schemas and M0-04 architecture records from the approved inventory.
+5. Run an independent source-to-plan completeness audit.
+6. Request owner authorization before beginning M1 and V1 implementation.
