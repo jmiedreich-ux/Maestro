@@ -15,6 +15,7 @@ This report turns the Alpha 1 planning conversation into durable, actionable pla
 4. The existing Atlas repository: `jmiedreich-ux/Atlas`
 5. `sources/planning/maestro-alpha-1-source-inventory.md`
 6. `sources/planning/packet-lifecycle-example.md`
+7. `sources/planning/current-handoff.md`
 
 This is a capture and handoff document. It is not permission to build the coordinator yet.
 
