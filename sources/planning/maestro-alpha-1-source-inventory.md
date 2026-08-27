@@ -76,6 +76,7 @@
 | `C-057` | Process | Diagrams are retained as versioned source plus a one-sentence statement of meaning. | Documentation contract | Restored requirement |
 | `C-058` | Boundary | M0 is planning-only: inventory first, then process/architecture design, completeness audit, and owner acceptance. | Roadmap | Captured; terminology was unclear |
 | `C-059` | V1 outcome | After M0, first implementation proves project registration, SQLite persistence, local Atlas reporting, one bounded worker, draft PR, review, and owner stop. | V1 roadmap | Captured; milestone layering required |
+| `C-060` | Owner decision | Maestro is Linux-native from the first implementation milestone. Coordinator, SQLite, Atlas, workers, wrapper, builds, tests, and verification run on the Linux AI box; V1 must not depend on a Windows development box or Windows SSH gate. | Architecture, V1 acceptance, operations | Approved direction; supersedes the earlier Windows-verification option |
 
 ## Local-agent and wrapper findings
 
@@ -120,7 +121,7 @@
 | `V-010` | Failure | Infrastructure failures may get bounded clean retry; model/test failures are outcomes, not infrastructure retries. | Failure policy | Restored requirement |
 | `V-011` | Security | Dedicated non-root account and scoped GitHub credential; no production credentials, customer data, deploy authority, admin rights, or sudo. | Security model | Captured |
 | `V-012` | Health | Heartbeat exposes worker identity, state, current job, model/GPU health, and last seen without private prompts. | Operations/Atlas | Restored requirement |
-| `V-013` | Gate | Long-term Linux verification uses disposable SQL Server 2022 containers and serialized resources. | V3 roadmap | Captured |
+| `V-013` | Gate | Verification is Linux-native from V1. Disposable SQL Server 2022 containers may expand the Linux gate later, and shared resources remain serialized until capacity is proven. | V1 baseline and later gate hardening | Updated by owner decision `C-060` |
 | `V-014` | Metrics | Record model, cost/tokens, elapsed time, review rounds, rework, gates, untested count, and post-merge QA escapes. | Reporting schema | Restored requirement |
 
 ## Atlas migration items
