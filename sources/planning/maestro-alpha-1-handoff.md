@@ -46,6 +46,16 @@ flowchart TD
 
 The AI box hosts Maestro, SQLite, the local Atlas reporting UI, local models, worktrees, build tools, and verification tools. No public dashboard or inbound internet endpoint is required for the initial system.
 
+## Linux-first platform boundary
+
+Maestro is Linux-native from the first implementation milestone. This is an owner decision, not a later optimization.
+
+- The coordinator, SQLite database, Atlas reporting application, local workers, enforcement wrapper, worktrees, build tools, browser tooling, and verification gates run on the Linux AI box.
+- V1 must install, start, execute, recover, and verify on Linux.
+- V1 must not depend on a Windows development machine, Windows-only scripts, Remote Desktop, or SSH execution on Windows.
+- Project adapters may coordinate repositories whose products target other operating systems, but Maestro's own control plane remains Linux.
+- Any project check that is genuinely platform-specific must be declared in that project's manifest and routed explicitly; it cannot silently turn Windows into a Maestro infrastructure dependency.
+
 ## Authority boundaries
 
 | Area | Authority |
@@ -396,12 +406,13 @@ V1 includes one explicitly configured local worker route because the owner requi
 
 ### M1 · Build the core and register projects
 
+- Establish the Linux-native runtime, service layout, configuration, directories, and startup/recovery behavior.
 - Implement SQLite migrations and the operational entities.
 - Implement `maestro project create` and `maestro project register`.
 - Add project profiles, manifests, process bindings, policies, and dry-run validation.
 - Add leases, idempotent transition primitives, audit events, and restart recovery foundations.
 
-**Exit:** One existing repository registers successfully, survives restart, and completes its dry run.
+**Exit:** On the Linux AI box, one existing repository registers successfully, survives service and machine restart, and completes its dry run without a Windows dependency.
 
 ### M2 · Merge Atlas into Maestro reporting
 
@@ -418,6 +429,7 @@ V1 includes one explicitly configured local worker route because the owner requi
 - Implement one fixed local developer route and the enforcement wrapper.
 - Add clean worktrees, allowed-path enforcement, build/type checks, invariants, commit verification, evidence capture, time/resource budgets, and one rework cycle.
 - Add packet linting and clear escalation to cloud takeover.
+- Run all worker and wrapper processes under the dedicated Linux service account with closed stdin and explicit resource controls.
 
 **Exit:** One bounded local packet produces a verified commit and retained evidence; deliberate scope and invariant failures are rejected.
 
@@ -428,6 +440,7 @@ V1 includes one explicitly configured local worker route because the owner requi
 - Dispatch the packet, observe completion, re-read authoritative facts, and advance exactly once.
 - Request independent cloud review, handle one revision or takeover, run the declared verification, update Atlas, notify the owner, and stop at owner acceptance.
 - Prove reboot, duplicate poll, stale completion, and timeout recovery.
+- Run the complete V1 acceptance path on Linux, including the declared project build and test commands.
 
 **Exit:** One real milestone completes end to end and stops at the owner gate with an accurate completed/blocked ledger.
 
@@ -464,10 +477,10 @@ V2 expands a proven V1 loop; it does not weaken the owner gate.
 - Preserve per-project manual/owner-approved triggers.
 - Persist target environment, deployed version, run result, report, and linked findings.
 
-### M9 · Build Linux-native verification
+### M9 · Expand hermetic Linux verification
 
-- Add disposable SQL Server 2022 containers.
-- Add Linux-native build, Playwright/Chromium, and integration-test setup.
+- Expand the Linux verification baseline with disposable SQL Server 2022 containers.
+- Harden Playwright/Chromium, integration-test isolation, and repeatable environment provisioning.
 - Serialize verification against model inference until resource data permits overlap.
 
 ### M10 · Harden and scale the coordinator
@@ -501,8 +514,7 @@ These are valuable research directions but are not prerequisites for V1.
 5. Decide how Atlas history and the standalone repository are handled after migration.
 6. Decide the SQLite backup and restore policy.
 7. Decide the maximum review/revision count before cloud or owner escalation.
-8. Decide whether the first verification gate uses the Windows development box or begins directly with Linux-native tooling.
-9. Decide the resource policy for local inference versus builds, browsers, and database containers.
+8. Decide the resource policy for local inference versus builds, browsers, and database containers.
 
 ## Handoff — exact next action
 
