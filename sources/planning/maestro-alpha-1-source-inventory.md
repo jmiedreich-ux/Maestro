@@ -12,6 +12,7 @@
 | `S3` | VennueSign `docs/design/proposed/maestro-dev-lead-agent-framework.md` |
 | `S4` | Existing `jmiedreich-ux/Atlas` repository |
 | `S5` | Murphy contract and VennueSign policy references; exact source-file inventory still required |
+| `S6` | `sources/planning/packet-lifecycle-example.md` — worked CG-M1-03.5 packet lifecycle |
 
 ## Conversation agreements
 
@@ -124,6 +125,22 @@
 | `V-013` | Gate | Verification is Linux-native from V1. Disposable SQL Server 2022 containers may expand the Linux gate later, and shared resources remain serialized until capacity is proven. | V1 baseline and later gate hardening | Updated by owner decision `C-060` |
 | `V-014` | Metrics | Record model, cost/tokens, elapsed time, review rounds, rework, gates, untested count, and post-merge QA escapes. | Reporting schema | Restored requirement |
 
+## Packet lifecycle example
+
+| ID | Type | Agreement or requirement | Required destination | Status |
+|---|---|---|---|---|
+| `P-001` | Process | Packet lifecycle has seven phases: author, compile, dispatch, grade, one rework, record, and update the invariant library. | M3 architecture and packet contract | Captured from worked example |
+| `P-002` | Ownership | The cloud coordinator authors the human packet once from approved milestone acceptance criteria. | Planning/dispatch boundary | Captured |
+| `P-003` | Compiler | Packet compilation derives allowed paths, write-permission configuration, and executable checks from one approved packet source. | Packet compiler | Captured |
+| `P-004` | Dispatch | Wrapper creates a fresh worktree at the pinned base, verifies model context, performs a tool-capable preflight, launches the selected local model, and starts the timer. | Worker/wrapper contract | Captured |
+| `P-005` | Grade | Wrapper grades scope, build, explicit type-check, commit existence, and packet-specific invariants as separate results. | Wrapper verdict schema | Captured |
+| `P-006` | Rework | The single rework message contains exactly the failed check and prohibits unrelated changes. | Revision contract | Captured |
+| `P-007` | Evidence | Record packet text, model behavior, whether the failure was mechanically catchable, elapsed time, context, and outcome. | Evidence schema and Atlas | Captured |
+| `P-008` | Metric | Self-correction and coordinator-issued rework are separate measurements. | Performance schema | Captured |
+| `P-009` | Learning loop | After the milestone, mechanically catchable failures become permanent project invariant checks automatically included in future packet compilation. | Invariant library and packet compiler | Captured |
+| `P-010` | Judgment boundary | Semantic/judgment rules that cannot be enforced mechanically remain assigned to cloud review. | Routing and review policy | Captured |
+| `P-011` | Principle | The invariant feedback loop makes a repeatable mistake cost the system once rather than every milestone. | V1 acceptance and reporting | Captured |
+
 ## Atlas migration items
 
 | ID | Type | Agreement or requirement | Required destination | Status |
@@ -137,6 +154,6 @@
 
 ## Coverage conclusion
 
-The previous handoff captured the system's broad direction but was not a complete source-to-plan conversion. Items marked “Restored requirement,” “Partially captured,” “Needs design decision,” or “Needs explicit deferral” must be represented in the revised architecture, schemas, or roadmap before M0 can pass completeness review.
+The previous handoff captured the system's broad direction but was not a complete source-to-plan conversion. Items marked “Restored requirement,” “Partially captured,” “Needs design decision,” or “Needs explicit deferral” must be represented in the revised architecture, schemas, or roadmap before M0 can pass completeness review. The packet lifecycle example is now a first-class source and must be used when specifying M3.
 
 The next gate is owner review of this inventory, followed by an independent comparison against all five sources. M0 is not complete and V1 implementation is not yet authorized.
