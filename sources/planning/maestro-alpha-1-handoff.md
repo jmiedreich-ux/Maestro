@@ -14,6 +14,7 @@ This report turns the Alpha 1 planning conversation into durable, actionable pla
 3. VennueSign's proposed Maestro design: `docs/design/proposed/maestro-dev-lead-agent-framework.md`
 4. The existing Atlas repository: `jmiedreich-ux/Atlas`
 5. `sources/planning/maestro-alpha-1-source-inventory.md`
+6. `sources/planning/packet-lifecycle-example.md`
 
 This is a capture and handoff document. It is not permission to build the coordinator yet.
 
@@ -232,6 +233,32 @@ Planned helper capabilities are:
 
 The wrapper enforces format, scope, and repeatable checks. It cannot replace cloud judgment about architecture or whether the requirement itself is correct.
 
+### Seven-phase packet lifecycle
+
+The worked CG-M1-03.5 example is the normative V1 lifecycle for one bounded local packet:
+
+```mermaid
+flowchart TD
+    Author[1. Author packet] --> Compile[2. Compile controls]
+    Compile --> Dispatch[3. Dispatch in fresh worktree]
+    Dispatch --> Grade[4. Grade separate checks]
+    Grade -->|one failed check| Rework[5. One exact rework]
+    Rework --> Grade
+    Grade -->|pass| Record[6. Record evidence]
+    Record --> Learn[7. Update invariant library]
+    Learn --> Compile
+```
+
+1. **Author:** Cloud coordination turns approved milestone acceptance criteria into one human-readable packet with plain outcome, exact files, prohibitions, commands, and commit expectation.
+2. **Compile:** Maestro derives allowed paths, write permissions, and executable invariant checks from that single packet source.
+3. **Dispatch:** Wrapper creates a fresh worktree at the pinned base, enforces the Linux/model/context preflight, launches the selected local worker, and starts its timer.
+4. **Grade:** Scope, build, explicit type-check, commit existence, and invariants receive separate verdicts.
+5. **Rework:** One failed check is returned exactly once with no widened instructions. A second failure escalates to cloud takeover.
+6. **Record:** Evidence distinguishes what the packet said, what the model did, whether the failure was rule-catchable, self-correction versus coordinator correction, elapsed time, model/context, and final outcome.
+7. **Learn:** After the milestone, mechanically catchable failures become permanent project invariant checks automatically included in future packet compilation. Judgment-only rules stay with cloud review.
+
+This creates a closed learning loop: a repeatable, mechanically detectable mistake should cost one correction, then become an automatic check for future packets.
+
 ## Durable coordinator requirements
 
 The coordinator must not depend on an open chat turn.
@@ -430,8 +457,10 @@ V1 includes one explicitly configured local worker route because the owner requi
 - Add clean worktrees, allowed-path enforcement, build/type checks, invariants, commit verification, evidence capture, time/resource budgets, and one rework cycle.
 - Add packet linting and clear escalation to cloud takeover.
 - Run all worker and wrapper processes under the dedicated Linux service account with closed stdin and explicit resource controls.
+- Implement the complete seven-phase packet lifecycle and the project invariant library that feeds future packet compilation.
+- Record self-correction separately from coordinator-issued rework and retain the packet-versus-model comparison used to improve future checks.
 
-**Exit:** One bounded local packet produces a verified commit and retained evidence; deliberate scope and invariant failures are rejected.
+**Exit:** The CG-M1-03.5-style worked flow runs end to end on Linux: one bounded local packet is compiled, dispatched, graded, corrected at most once, recorded, and contributes a reusable invariant; deliberate scope and invariant failures are rejected.
 
 ### M4 · Complete the persistent control loop
 
@@ -526,5 +555,6 @@ The numbered source inventory now exists. The next actions are:
 2. Locate and register the exact Murphy contract source files.
 3. Complete the deeper Atlas file/dependency inventory.
 4. Produce the M0-03 shared-process schemas and M0-04 architecture records from the approved inventory.
-5. Run an independent source-to-plan completeness audit.
-6. Request owner authorization before beginning M1 and V1 implementation.
+5. Use `packet-lifecycle-example.md` as the normative worked example for the M3 packet/wrapper specification.
+6. Run an independent source-to-plan completeness audit.
+7. Request owner authorization before beginning M1 and V1 implementation.
