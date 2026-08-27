@@ -157,6 +157,34 @@ The current evidence says Qwen 3.6 27B is the proven local implementation model 
 
 Only one local inference job runs at a time until capacity evidence supports concurrency.
 
+## Worker enforcement wrapper
+
+The local model must not be trusted to self-report that a packet is complete. Maestro needs an enforcement wrapper around every local execution. The wrapper runs the worker, then mechanically checks the result against the packet contract:
+
+- **Scope:** `git diff --name-only` contains only allowed paths.
+- **Build:** run `npm run build` and `npm exec tsc -- --noEmit` where applicable. The type-check closes the gap where an unintegrated file can avoid the normal build.
+- **Commit:** verify that a real commit exists; do not trust the model's completion message.
+- **Invariants:** run packet-specific checks such as required providers being rendered, no duplicate `#root`, valid markup, and required focus styles.
+- **Evidence:** retain commands, outputs, changed files, commit SHA, model/runtime fingerprint, and disposition.
+
+The wrapper allows one bounded rework cycle. On failure, it sends the worker the exact failed check. If the second attempt fails, Maestro escalates to cloud review or takeover. It does not start an endless repair loop.
+
+Planned helper capabilities are:
+
+- Preflight ping before spending a real attempt.
+- Permission lock restricting writes to allowed paths.
+- Runaway timeout and safe termination.
+- Automatic performance-ledger entry.
+- Model/context/quant fingerprinting.
+- Fake-completion detection from the agent event stream.
+- Packet linter that checks prompts for explicit paths, prohibitions, and existing-context references.
+- Fresh worktree per attempt.
+- Context-length hard gate.
+- Unattended execution lock with closed stdin.
+- Session export beside the evidence record.
+
+The wrapper enforces format, scope, and repeatable checks. It cannot replace cloud judgment about architecture or whether the requirement itself is correct.
+
 ## Durable coordinator requirements
 
 The coordinator must not depend on an open chat turn.
