@@ -8,6 +8,8 @@ Its job is to make AI-assisted engineering work visible, structured, recoverable
 
 Maestro does not replace a project's architecture, product decisions, or engineering rules. A project joins Maestro through an adapter and declares its own repository, environments, commands, exceptions, and authority policy.
 
+The detailed agent-workforce, specialist-queue, Atlas control-plane, SOP, and parallel-scheduling design is [Agent Workforce Control Plane](agent-workforce-control-plane.md). Its source coverage is recorded in [M0 Source Inventory and Capture Register](m0-source-inventory.md). These are M0 planning expansions and are authoritative for those concepts where they do not conflict with this master plan.
+
 ## 2. Operating principles
 
 1. Project plans and code remain versioned in their own repositories.
@@ -18,16 +20,22 @@ Maestro does not replace a project's architecture, product decisions, or enginee
 6. Conversation is valid planning input, but never the only record. Every source item must be captured and traced.
 7. Local models do bounded, well-specified work. Cloud models do planning, contracts, integration, high-judgment work, and independent review.
 8. Maestro begins Linux-first on the AI box. Windows is used only where a target or tool genuinely requires it.
+9. Parallelism is designed, not assumed: independent work may run together; dependencies, shared boundaries, and finite resources are explicitly serialized.
+10. Every coding agent follows the joined project's SOP plus the Maestro Coding Agent SOP. Specialist roles may add rules but cannot weaken either.
+11. Planned queue order and structural dependencies come from an approved project graph; Maestro derives operational eligibility and may never rewrite that backlog by itself.
+12. Any future auto-merge or autonomous next-work authority is explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
 
 ## 3. System shape
 
 ```mermaid
 flowchart TD
   Repo["Project repository and GitHub"] -->|"plans, PRs, reviews, CI"| Sync["Project adapter"]
+  Architecture["Project Architecture Agent"] -->|"approved work graph"| Repo
   Workers["Local and cloud workers"] -->|"attempts and evidence"| Core["Maestro coordinator"]
   Sync --> Core
   Core <--> DB[("Operational database")]
-  DB --> Atlas["Local Atlas reporting UI"]
+  DB --> Atlas["Local Atlas control and reporting UI"]
+  Atlas -->|"audited commands"| Core
   Core --> Murphy["Murphy Azure QA adapter"]
 ```
 
@@ -37,8 +45,8 @@ flowchart TD
 |---|---|
 | Project repository / GitHub | Product and engineering records, code, PRs, reviews, CI, approved plan artifacts |
 | Maestro coordinator | State transitions, locks, dispatch, recovery, evidence collection, notifications, gate enforcement |
-| Operational database | Runs, tasks, packets, attempts, events, evidence, waits, retries, notifications, projected GitHub facts |
-| Local Atlas | Read-only operational reporting for the AI box; clear task subjects, routing, status, evidence, and blockers |
+| Operational database | Initial SQLite on the Linux AI box; runs, task/graph projections, packets, attempts, events, evidence, waits, retries, notifications, projected GitHub facts |
+| Local Atlas | Operational reporting and audited command surface for the AI box; queues, routing, status, evidence, blockers, and project-policy-constrained controls. It is not a second plan/code editor. |
 | Project adapter | Project-specific branch policy, commands, environments, credentials references, records, and exceptions |
 | Murphy adapter | Manual, owner-approved remote QA against deployed Azure environments |
 
@@ -101,6 +109,8 @@ Its supporting record must already state:
 
 When work begins, Maestro records the factual run instance, model/runtime, timestamps, evidence, retries, and outcome. This does not delay routing; it preserves an honest audit trail if the assigned route changes.
 
+Approved project work is projected into ordered specialist queues. A queue contains planned, waiting, blocked, ready, running, integration, review, and completed work. Maestro dispatches the highest-ranked eligible item, not merely the first item in a strict FIFO list. See the control-plane design for dependency, lock, and integration rules.
+
 ## 7. Worker wrapper
 
 A local-worker packet follows the same controlled loop:
@@ -128,6 +138,7 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Create the private Maestro repository and controlled records.
 - Capture and trace all source material.
 - Define the project-neutral process, planning schema, bootstrap/register contract, and architecture.
+- Capture the current agent-workforce conversation and preserve traceability to every source agreement.
 - Assess Atlas for migration into local operational reporting.
 - Independently audit completeness and obtain owner acceptance.
 
@@ -143,24 +154,28 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 - Enforce work-packet ownership and routing.
 - Dispatch suitable bounded tasks to local models.
-- Add formal role definitions and routing configuration.
+- Add formal role definitions, specialist planned queues, Integration routing, and model-routing configuration.
+- Allow limited parallel dispatch only for explicitly independent packets with non-conflicting locks and project-adapter approval.
+- Add Atlas operational queue/routing controls through audited Maestro commands.
 
 ### V3 — mature automation support
 
 - Independent review policy with owner escalation cap.
 - QA hooks, process metrics, and retrospective records.
 - Linux-native disposable-container verification when individual project adapters require it.
+- Resource-aware scheduling, measured concurrency policies, queue-aging/unblocking metrics, and mature Atlas control-plane views.
 
 ## 10. Open decisions
 
 1. Initial database shape and precise SQLite backup/recovery procedure.
-2. Local Atlas UI technology and database access boundary.
+2. Local Atlas UI technology, command API, authentication, and database access boundary.
 3. Notification channel and acknowledgement model.
 4. Review-round cap and escalation policy.
 5. Project-manifest format and versioning policy for the shared process.
-6. Exact migration boundary between current Atlas records and Maestro's operational projection.
+6. Exact migration boundary between current Atlas records and Maestro's operational projection/command surface.
 7. Credential-storage and permission model for repository, worker, and Murphy adapters.
+8. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
 
 ## 11. M0 acceptance
 
-M0 is complete only when the source inventory has full traceability, this plan reflects every accepted item or an explicit deferral, the Atlas transition is assessed, the open-decision register is visible, and an independent planning audit has been reviewed by the owner.
+M0 is complete only when the source inventory has full traceability, this plan reflects every accepted item or an explicit deferral, the Atlas transition is assessed, the agent-workforce control-plane/role/SOP design is captured, the open-decision register is visible, a current handoff is committed, and an independent planning audit has been reviewed by the owner.
