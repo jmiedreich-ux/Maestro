@@ -2,7 +2,7 @@
 
 **Status:** M0 planning expansion captured on 2026-08-29. No Maestro runtime, worker, queue database, Atlas migration, VennueSign code change, or product-code merge is authorized by this handoff.
 
-**Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-directed synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
+**Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
 ## What is now established
 
@@ -38,7 +38,7 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-Obtain owner acceptance of the resolved Alpha decision-fidelity review and its deliberately small layout. Then record final Decision Fidelity Reviewer sign-off before issuing a separate Alpha build packet. Do not create application code before those gates pass.
+The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. Obtain final sign-off from a fresh, separate Decision Fidelity Reviewer before issuing a separate Alpha build packet. Do not create application code before that sign-off passes.
 
 ## Open implementation decisions
 
