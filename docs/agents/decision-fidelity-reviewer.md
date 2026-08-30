@@ -48,8 +48,13 @@ packet, the reviewer must challenge the packet before approving it:
 
 - identify every public command, constructor, callable, configuration object,
   and integration entry path that could bypass the boundary;
-- require validation before any mutation or external side effect on each path;
-- require a negative test for each meaningful bypass path;
+- require validation at the actual mutation boundary on each path, not only
+  a prior lexical or resolved-path check;
+- for filesystem/data-location boundaries on Linux, identify symlink traversal
+  and validation-to-mutation substitution/race paths; require a rule that
+  rejects traversal and evidence that safe mutation cannot escape the physical
+  boundary;
+- require a negative no-mutation test for each meaningful bypass or race path;
 - require an independently derived test oracle for boundary locations, limits,
   or policy values rather than a comparison to the implementation constant
   under test; and
