@@ -11,6 +11,10 @@ DEFAULT_RUNTIME_DIR = REPOSITORY_ROOT / "var"
 DATABASE_NAME = "maestro.sqlite3"
 
 
+class RuntimePathError(ValueError):
+    """Raised before any mutation when a runtime path is outside repository var/."""
+
+
 @dataclass(frozen=True)
 class RuntimeConfig:
     """Paths owned by Maestro's local runtime, never by a joined project."""
@@ -20,7 +24,13 @@ class RuntimeConfig:
     @classmethod
     def from_runtime_dir(cls, runtime_dir: str | Path | None = None) -> "RuntimeConfig":
         chosen = DEFAULT_RUNTIME_DIR if runtime_dir is None else Path(runtime_dir)
-        return cls(chosen.expanduser().resolve())
+        resolved = chosen.expanduser().resolve()
+        runtime_root = DEFAULT_RUNTIME_DIR.resolve()
+        try:
+            resolved.relative_to(runtime_root)
+        except ValueError as error:
+            raise RuntimePathError(f"Runtime directory must be inside {runtime_root}") from error
+        return cls(resolved)
 
     @property
     def database_path(self) -> Path:
