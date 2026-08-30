@@ -144,4 +144,4 @@ The correction edge is permitted only for committed, in-scope work that fails a 
 - [x] M0-D07 physical USB provisioning is explicitly deferred with a recovery-acceptance gate.
 - [x] Owner approved the Alpha layout and wrapper boundary on 2026-08-30.
 - [x] A fresh Decision Fidelity Reviewer approved the current `master` review after fast-forwarding to `5fc4b61`; every row is `included` or an explicit approved deferral.
-- [ ] Only then may a separate build packet create Alpha application code.
+- [x] [Alpha-01 — Establish Local Foundation](packets/alpha-01-local-foundation.md) is authored. It remains non-executable until a fresh Decision Fidelity Reviewer approves that packet.
