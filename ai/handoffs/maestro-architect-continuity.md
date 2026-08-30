@@ -71,7 +71,7 @@ included choices and 20 approved deferrals, with no unresolved blocking row.
 
 The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
-review at `5fc4b61`. Alpha-01 completed its permitted worker run and one targeted correction, but renewed review found a remaining direct-construction runtime-boundary bypass. Under M0-D05 it is escalated to coordinator ownership; no further worker correction is authorized. The coordinator must make one bounded repair and obtain renewed independent implementation review.
+review at `5fc4b61`. Alpha-01 completed its worker run and a targeted CLI correction, but renewed review found a remaining direct-construction runtime-boundary bypass. The original packet and test contract did not explicitly require validation through every public construction/call path or independently anchored path assertions. This is a packet-contract defect, not a worker/model delivery failure or hard escalation. Amend the packet, renew Decision Fidelity Review, then issue a new bounded repair packet and obtain renewed implementation review.
 
 ## Model-routing reminder
 
