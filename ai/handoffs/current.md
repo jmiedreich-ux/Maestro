@@ -38,7 +38,7 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) is escalated to coordinator ownership. Its permitted worker correction did not fully enforce the runtime-boundary contract through public construction paths. Do not issue another worker correction; a bounded coordinator repair and renewed independent implementation review are required.
+The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) is paused for packet-contract amendment. Renewed review found a public-construction-path boundary requirement that the original packet and its tests did not make explicit. This is not a worker/model delivery failure or hard escalation. Amend the packet, obtain fresh Decision Fidelity Review, then issue a new bounded repair packet and renewed implementation review.
 
 ## Open implementation decisions
 
