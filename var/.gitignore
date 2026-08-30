@@ -1,0 +1,3 @@
+# Maestro local runtime data must never enter Git.
+*
+!.gitignore
