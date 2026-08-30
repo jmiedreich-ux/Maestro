@@ -163,9 +163,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 ## 10. Open decisions
 
-1. Initial database shape and precise SQLite backup/recovery procedure.
-2. Local Atlas UI technology, live-update transport, and read-only database-service boundary.
-3. Notification channel and acknowledgement model.
+1. Local Atlas UI technology, live-update transport, and read-only database-service boundary.
+2. Notification channel and acknowledgement model.
 5. Exact migration boundary between current Atlas records and Maestro's operational reporting projection.
 6. Credential-storage and permission model for repository, worker, and Murphy adapters.
 7. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
