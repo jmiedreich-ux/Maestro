@@ -58,6 +58,7 @@ work, or advance a milestone without the required approval.
   Decision Fidelity Review.
 - The tested escalation rule in M0-D05 remains authoritative.
 - [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material quality requirement. Architecture must define the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
+- Independent review is full once. After correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full scope reopens only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
 - Every plan, milestone, packet, and build instruction must pass independent
   Decision Fidelity Review before execution. The review records every accepted
   choice as `included`, `missing`, `changed`, `new assumption`, or
@@ -94,8 +95,11 @@ a general lesson, not only a security or Alpha-01 exception. The accepted
 [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md)
 now requires bounded expectations for every material quality attribute and
 returns materially incomplete contracts to Architecture and the Owner rather
-than repeated implementation corrections. Alpha-01 remains paused until M0-D11
-is reconciled with M0-D12.
+than repeated implementation corrections. M0-D05 now also requires targeted
+correction follow-ups instead of restarting full review without a recorded
+scope-change reason. Complete job roles carry these duties for Architecture,
+Decision Fidelity Review, and Independent Implementation Review. Alpha-01
+remains paused until M0-D11 is reconciled with M0-D12.
 ## Model-routing reminder
 
 Before assigning or recommending a Maestro Architect or review run, explicitly
