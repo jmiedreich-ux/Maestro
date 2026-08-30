@@ -71,7 +71,7 @@ included choices and 20 approved deferrals, with no unresolved blocking row.
 
 The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
-review at `5fc4b61`. Alpha-01 passed fresh GPT-5.6 Sol Decision Fidelity Review. Maestro Implementor may execute one scoped run in a clean isolated worktree; no work outside that approved packet is authorized.
+review at `5fc4b61`. Alpha-01 completed its permitted worker run and one targeted correction, but renewed review found a remaining direct-construction runtime-boundary bypass. Under M0-D05 it is escalated to coordinator ownership; no further worker correction is authorized. The coordinator must make one bounded repair and obtain renewed independent implementation review.
 
 ## Model-routing reminder
 
