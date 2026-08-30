@@ -16,7 +16,8 @@ This SOP applies to every implementation agent. Project policy comes first; this
 1. Change only authorized paths and do not broaden a packet to solve adjacent work.
 2. Preserve the project architecture, conventions, and accepted behavior.
 3. Use real project validation rather than tests that merely duplicate implementation logic.
-4. Do not merge, deploy, force-push, alter protected project policy, use production credentials, or silently resolve conflicts/ambiguity.
+4. When a packet establishes a safety or ownership boundary, enforce it at every public construction, callable, and command entry path. Tests must exercise bypass paths and independently derive their expected boundary; they may not prove behavior only by comparing against the implementation constant under test.
+5. Do not merge, deploy, force-push, alter protected project policy, use production credentials, or silently resolve conflicts/ambiguity.
 
 ## 3. Verify and hand off
 
