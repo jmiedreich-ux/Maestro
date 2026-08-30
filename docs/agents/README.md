@@ -18,6 +18,7 @@ A lower layer may add constraints. It may never weaken a higher layer.
 |---|---|
 | Project Architecture Agent | [architecture-agent.md](architecture-agent.md) |
 | Maestro Development Manager | [maestro-development-manager.md](maestro-development-manager.md) |
+| Maestro Decision Fidelity Reviewer | [decision-fidelity-reviewer.md](decision-fidelity-reviewer.md) |
 | Integration Agent | [integration-agent.md](integration-agent.md) |
 | Independent Review Agent | [independent-review-agent.md](independent-review-agent.md) |
 | QA Agent | [qa-agent.md](qa-agent.md) |
