@@ -11,7 +11,7 @@ The design has four deliberate separations:
 1. **Architecture meaning** belongs to the project's Architecture Agent and approved project records.
 2. **Operational coordination** belongs to Maestro.
 3. **Versioned engineering truth** belongs to the joined project's repository and GitHub.
-4. **Operational control and visibility** belong to Atlas, acting through audited Maestro commands rather than becoming another plan or code editor.
+4. **Operational visibility** belongs to Atlas. Maestro performs orchestration under approved project policy; Atlas never becomes a controller, plan editor, or code editor.
 
 This design is project-neutral. A project supplies specialist overlays, architecture sources, its SOP binding, and its work graph through its Maestro adapter.
 
@@ -27,7 +27,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-05 | Maestro derives dispatchable work from specialist queues. It selects the highest-ranked eligible item; it does not require strict FIFO idling when a later item is independent. |
 | AW-06 | Parallelism is designed in from the beginning: run independent work in parallel and serialize only declared dependencies, shared boundaries, or finite resources. |
 | AW-07 | Integration is a specialist queue. Integration work is deliberately prioritized when it unblocks downstream capacity. |
-| AW-08 | Atlas is the live control-plane interface for queues, runs, routing, concurrency, evidence, and approvals. Its commands become auditable Maestro events. |
+| AW-08 | Atlas is the live reporting interface for queues, runs, routing, capacity, evidence, and approvals/status. It has no orchestration commands. |
 | AW-09 | Every coding agent follows one project-bound Coding Agent SOP. A specialist overlay may add rules but may never weaken the SOP. |
 | AW-10 | Independent review occurs at meaningful merge boundaries and before a high-risk shared boundary becomes a dependency; it is not required after every microscopic internal step. Every mergeable PR remains independently reviewed by someone other than its author. |
 | AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control owner acceptance, merge, and next-milestone authority. |
@@ -40,7 +40,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | Actual task, PR, review, CI, merge, and acceptance records | Joined project's GitHub records under its policy | Link to and observe; do not duplicate them as a hand-maintained Maestro or Atlas task tracker. |
 | Agent role contracts and common workflow policy | Maestro repository | Versioned and released with the control-plane process. |
 | Operational projection of an approved graph, derived queue eligibility/state, claims, leases, agent runs, attempts, locks, resource reservations, evidence copies, retries, health, notifications, and command history | Maestro operational database | Durable, idempotent state controlled by Maestro. It may not independently rewrite the planned specialist backlog. |
-| Atlas controls | Audited command/event records in Maestro | A command requests a safe state transition; it does not directly mutate code or project architecture. |
+| Atlas live reporting | Maestro operational database | Atlas receives current snapshots and events. It does not issue state-transition commands. |
 
 There must never be two independent writable truths for one fact. For example, a project's approved work graph is stored in that project; Maestro stores the projection it last read and the operational consequences of acting on it.
 
@@ -52,8 +52,7 @@ flowchart TD
     Architecture["Project Architecture Agent"] -->|"approved graph updates"| Project
     Adapter --> Coordinator["Maestro coordinator and scheduler"]
     Coordinator <--> State[("Maestro operational database")]
-    State --> Atlas["Atlas control plane"]
-    Atlas -->|"audited commands"| Coordinator
+    State --> Atlas["Atlas live reporting"]
     Coordinator --> Queues["Specialist queues"]
     Queues --> Workers["Cloud and local specialist agents"]
     Workers --> Integration["Integration queue"]
@@ -176,7 +175,7 @@ It may elevate an Integration Agent item because it unblocks several specialists
 
 ### 7.4 Eligibility, leases, and recovery
 
-Maestro recomputes the projection on an approved graph revision, a poll/reconciliation observation, a worker/CI/review event, a lock or lease expiry, and an authorized Atlas command. A packet is Dispatchable only when its graph and linked task are active, every hard/review gate is passed, its base and required interface are compatible, no hold/budget policy blocks it, its route is allowed, and its WIP/resource/path/shared-boundary claims are available.
+Maestro recomputes the projection on an approved graph revision, a poll/reconciliation observation, a worker/CI/review event, or a lock or lease expiry. A packet is Dispatchable only when its graph and linked task are active, every hard/review gate is passed, its base and required interface are compatible, no hold/budget policy blocks it, its route is allowed, and its WIP/resource/path/shared-boundary claims are available.
 
 Lease creation reserves the packet's lease and all required locks atomically and idempotently. A lease records its base commit, run fingerprint, worktree, TTL, and heartbeat. On restart, timeout, duplicate event, or stale completion, Maestro rereads repository and operational facts before making another transition; an expired lease never blindly creates a duplicate run.
 
@@ -193,7 +192,7 @@ M0 defines the record boundaries, not their database implementation. The operati
 | Lease and resource reservation | Atomic claim, worktree, TTL/heartbeat, path/shared-boundary/resource locks, and recovery history |
 | Dispatch decision | Scheduler inputs, selected work, skipped higher-ranked work, and transparent reason |
 | Integration batch / review unit | Compatible inputs, integration branch, verification, reviewer route, gate result, and findings |
-| Command audit event | Authenticated actor, request, policy check, before/after state, scope, expiry, result, and reason |
+| Coordinator event audit | Observed or coordinator-performed transition, idempotency key, before/after state, scope, result, and reason |
 
 `project create` bootstraps a new project against a versioned central-process binding. `project register` is non-destructive: it binds an existing project to that process, records its declared exceptions, and proves repository/branch/PR/check/report behavior with a dry run before any real dispatch.
 
@@ -299,9 +298,9 @@ Workers self-check internal steps. Independent review is required:
 
 Small scaffolding work may fold into the next substantive review unit. The system must never claim independent review happened when only the author or integrator checked it.
 
-## 10. Atlas control plane
+## 10. Atlas live reporting
 
-Atlas becomes the live owner and operator interface over Maestro state. It remains a projection and command surface, not a second source of project design or code truth.
+Atlas becomes the live owner-facing reporting interface over Maestro state. It remains a projection only, not a controller or a second source of project design or code truth.
 
 ### 10.1 Required views
 
@@ -315,21 +314,11 @@ Atlas becomes the live owner and operator interface over Maestro state. It remai
 | Decisions | Owner-facing genuine questions with known facts, options, recommendation, impact, and linked authority |
 | Evidence and metrics | Tests, reviews, retries, time-to-ready, time blocked, first-pass acceptance, cost/model facts, and history |
 
-### 10.2 Commands
+### 10.2 Read-only boundary
 
-Atlas may issue audited requests to Maestro to:
+Atlas does not start, pause, resume, cancel, retry, reassign, reprioritize, route, approve, merge, or otherwise control Maestro work. It shows the latest recorded state, including the factual agent/model route, capacity, waiting reason, expected next action, evidence, and project/owner gate.
 
-- request a project-policy-permitted start, hold, or release of a previously approved operational lane;
-- reprioritize work within an owner-approved boundary;
-- pause, resume, cancel, retry, or reassign a run;
-- change an allowed model-routing or concurrency policy;
-- release a stale lease only through recovery rules;
-- request integration, review, or owner acceptance;
-- acknowledge a decision or blocker.
-
-Commands are not direct database edits. Maestro validates the command against authority, locks, project policy, and current state; records an event; and performs one safe idempotent transition or reports why it cannot. Every command is authenticated, authorized by action class, idempotent, attributable, and intentionally bounded. It cannot bypass a dependency, SOP, review, resource, or branch-protection gate; Atlas must not expose agent prompts, traces, credentials, or secrets in a static state file.
-
-Temporary operational overrides (for example, pausing one lane, retrying one run, or a one-run allowed route override) are Maestro events with scope, expiry, and audit evidence. A persistent priority, dependency, allowed route, model policy, or concurrency-policy change is a reviewed, versioned project graph, adapter, or Maestro-process change—not a dashboard edit.
+Maestro performs coordination only under approved project policy. The owner gives product, architecture, policy, and approval direction outside Atlas. Atlas must not expose agent prompts, traces, credentials, or secrets.
 
 ## 11. Model routing and capacity
 
@@ -342,7 +331,7 @@ Initial VennueSign-oriented routing remains compatible with the current qualific
 - one heavy local inference job at a time until measured capacity shows that concurrent inference and verification are safe;
 - default WIP of one active packet per specialist role, raised only by explicit project/role policy and observed safe capacity.
 
-Atlas may expose model and concurrency policy, but any change is audited and subject to the project's allowed routes and budget/security policy.
+Atlas shows model and concurrency facts. Routing and concurrency policy changes occur through the approved Maestro/project planning process, not Atlas.
 
 ### 11.1 Agent executor adapter and service-account boundary
 
@@ -377,7 +366,7 @@ Before specialist queues become executable for a joined project, its Architectur
 
 ### M0 — design and consolidation only
 
-M0 records this control-plane design, role-contract structure, queue/scheduler semantics, Atlas transition implications, SOP hierarchy, adapter requirements, traceability, and independent planning review. It does **not** build the coordinator, queue database, Atlas controls, or workers.
+M0 records this control-plane design, role-contract structure, queue/scheduler semantics, Atlas live-reporting implications, SOP hierarchy, adapter requirements, traceability, and independent planning review. It does **not** build the coordinator, queue database, Atlas live reporting, or workers.
 
 ### V1 — one visible controlled loop
 
@@ -385,11 +374,11 @@ V1 remains intentionally narrow: one registered project, one approved milestone,
 
 ### V2 — controlled agent workforce
 
-V2 adds formal role contracts, specialist planned queues, packet ownership/path enforcement, model routing, an Integration Agent, and limited parallel dispatch for explicitly independent work. Atlas gains operational queue and routing controls backed by audited Maestro events.
+V2 adds formal role contracts, specialist planned queues, packet ownership/path enforcement, model routing, an Integration Agent, and limited parallel dispatch for explicitly independent work. Atlas gains live queue, routing, capacity, and evidence views backed by Maestro state.
 
 ### V3 — mature parallel operations
 
-V3 adds measured concurrency policies, resource-aware scheduling, full control-plane views, review/escalation limits, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters.
+V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, review/escalation limits, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters.
 
 ### Later explicit authority decision — continuous operation
 
@@ -403,7 +392,7 @@ This expansion is complete when:
 - generic roles and specialist-overlay templates are versioned;
 - the planned-versus-dispatchable queue distinction is explicit;
 - dependency, lock, integration, review, and restart behavior are defined;
-- Atlas's command-surface boundary is explicit and does not create duplicate truth;
+- Atlas's read-only reporting boundary is explicit and does not create duplicate truth;
 - Coding Agent SOP enforcement and proportionate independent review are defined;
 - VennueSign Architecture Renewal integration is described without authorizing VennueSign changes;
 - independent reviewers confirm that the captured conversation decisions and existing Maestro sources are represented or explicitly deferred.
