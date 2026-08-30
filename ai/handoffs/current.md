@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 planning is active on `architecture/alpha-02-run-packet` at planning commit `00098af898f162a221086fb71510817fed63c02b`. Its proposed packet is review-only: no Alpha-02 implementation, worker, packet-wrapper execution, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery work is authorized.
+**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 planning is approved on `architecture/alpha-02-run-packet`; Decision Fidelity Review has complete coverage through `c54f5bb66315137f0b8bc9fe44ca168cf18cfcc3`. Its packet becomes executable for one isolated implementation run only after this exact planning package merges to `master`; no worker, packet-wrapper execution, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery work is authorized before that merge.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -61,9 +61,9 @@ makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
 Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment. The Architecture
 Agent has proposed [Alpha-02 — Establish Synthetic `maestro run-packet` Lifecycle Wrapper](../../docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md)
 on branch `architecture/alpha-02-run-packet` at planning commit
-`00098af898f162a221086fb71510817fed63c02b`. It is proposed only and requires
-Owner approval plus fresh Decision Fidelity Review before it can become
-executable. Project registration remains explicitly deferred until after Alpha.
+`00098af898f162a221086fb71510817fed63c02b`. It is approved by the Owner and Decision Fidelity Review. It becomes executable
+for one isolated implementation run only when this exact planning package merges
+to `master`. Project registration remains explicitly deferred until after Alpha.
 Do not start implementation, wrapper execution, worker dispatch, Atlas/API/UI,
 project registration or integration, GitHub automation, or USB recovery work.
 
