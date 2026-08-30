@@ -28,6 +28,7 @@ The current M0 expansion is captured in:
 6. Every coding agent follows the project-bound Maestro SOP. Independent review is proportional to risk but required for every mergeable PR and high-risk shared boundaries before downstream use.
 7. V1 remains one approved milestone, one hosted worker, one draft PR, and owner acceptance/merge. Agent-workforce queues and limited parallel dispatch begin no earlier than V2.
 8. Before Maestro executes a plan, milestone, packet, or build instruction, a separate Maestro Decision Fidelity Reviewer must trace every accepted governing choice into that proposal. Missing, changed, assumed, conflicting, or unapproved-deferred choices block execution. This review occurs before plan approval, before build instructions, and before milestone acceptance; it does not replace independent code review.
+9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): operating/threat model, exclusions, assurance level, sufficient proof, implementation/proportionality ceiling, and a stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
 
 ## VennueSign adapter guardrails
 
@@ -38,8 +39,27 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) remains paused. Its first packet-contract amendment exposed a second missing Linux-first rule: a runtime path that passed validation could be symlink-swapped before SQLite mutation. [M0-D11 — Linux Runtime Filesystem Boundary](../../docs/planning/decisions/m0-d11-linux-runtime-filesystem-boundary.md) is owner-approved and now controls: Maestro writes only under the repository's real physical `var/` tree, rejects symlink traversal, and must prevent validation-to-mutation escape. This is not a worker/model delivery failure or hard escalation. A fresh GPT-5.6 Sol Decision Fidelity Reviewer approved the amended Alpha-01 contract and the separately authored [Alpha-01-R1 M0-D11 repair packet](../../docs/planning/packets/alpha-01-r1-linux-runtime-boundary-repair.md) on 2026-08-30. The Implementor reports Alpha-01-R1 completed on branch `alpha-01-r1-runtime-boundary` at `e2c8a08`, with its nine focused tests and repeated valid health checks passing. This is unreviewed implementation evidence, not acceptance. The exact next action is fresh Independent Implementation Review of the complete branch against Alpha-01-R1 and M0-D11. No merge or Alpha-02 action is authorized.
+Alpha-01-R1 completed its single authorized run on branch
+`alpha-01-r1-runtime-boundary` at `e2c8a08`. Fresh Independent Implementation
+Review returned `REQUEST_CHANGES`: after the runtime directory file descriptor
+was acquired, the directory could be moved outside `var/` before
+`sqlite3.connect()`, and SQLite then created database, WAL, and SHM artifacts
+outside the boundary. The review also reported incomplete outside-path test
+coverage for CLI/direct-constructor paths.
 
+The owner classified the prolonged Alpha-01 cycle as an Architecture Agent
+failure, not an implementor or reviewer failure. The architecture used absolute
+security language without defining the expected threat model, sufficient proof,
+feasible implementation boundary, proportionality limit, or when agents must
+stop and move on. The accepted
+[M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md)
+makes this a general rule for every quality attribute, not an Alpha-01-only
+exception.
+
+The exact next action is independent Decision Fidelity Review of M0-D12 and its
+carriers, followed by an explicit Architecture/Owner reconciliation of M0-D11
+against that rule. Alpha-01 is paused. No implementation correction, merge, or
+Alpha-02 action is authorized.
 ## Open implementation decisions
 
 - SQLite schema, backup, recovery, retention, and project registration/bootstrap mechanics.
