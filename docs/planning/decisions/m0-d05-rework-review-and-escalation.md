@@ -53,6 +53,22 @@ Card. The newer small examples are 3 of 3 accepted by local Qwen: Dialog,
 Drawer, and Popover. Current packet sizing is intended to keep escalations
 below the earlier M2 and M4 large-packet results.
 
+## Forecast for remaining M4 browser-spec packets
+
+This is a planning forecast, not a completed-work metric. For the four remaining
+local-Qwen browser-spec packets, M4-18 through M4-21:
+
+| Estimate | Basis |
+|---|---|
+| About 1 hard escalation | Comparable M3 browser packets had 2 hard escalations in 10 packets (20%). |
+| Likely range: 0–2 hard escalations | The sample is small; one packet may need coordinator completion. |
+| About 1 review/correction per packet | Local work is usually close, but source review commonly finds a bounded omission. |
+| 3–4 local-Qwen accepted outcomes | The expected case is that most of the four finish locally under the existing gates. |
+
+Across M1–M3, hard escalation was 8 of 37 local-origin assignments (22%), or
+roughly one in every four to five assignments. For these tightly bounded browser
+tests, the comparable evidence supports an approximately 20% forecast.
+
 ## Operating consequences
 
 - A diff and commit are delivery prerequisites, not review feedback items.
