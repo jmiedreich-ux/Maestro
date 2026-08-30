@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 planning is approved on `architecture/alpha-02-run-packet`; Decision Fidelity Review has complete coverage through `c54f5bb66315137f0b8bc9fe44ca168cf18cfcc3`. Its packet becomes executable for one isolated implementation run only after this exact planning package merges to `master`; no worker, packet-wrapper execution, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery work is authorized before that merge.
+**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. No Alpha-03, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -39,7 +39,7 @@ The current M0 expansion is captured in:
 - Current policy permits parallelism only among independent packets within one active milestone. Shared contracts, DI, migrations, fixtures, workflows, tracker/status, and handoff retain their declared ownership/locks.
 - An AI-friendly source-affordance refactor may be proposed as planning work first. M0 does not change VennueSign source to make it agent-friendly.
 
-## Alpha-01 completion and exact next action
+## Alpha-01 and Alpha-02 completion
 
 [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md)
 is complete and merged to `master` at
@@ -58,14 +58,26 @@ The [Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md
 preserves the acceptance evidence and bounded exclusions. In particular, Alpha
 makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
 
-Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment. The Architecture
-Agent has proposed [Alpha-02 — Establish Synthetic `maestro run-packet` Lifecycle Wrapper](../../docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md)
-on branch `architecture/alpha-02-run-packet` at planning commit
-`00098af898f162a221086fb71510817fed63c02b`. It is approved by the Owner and Decision Fidelity Review. It becomes executable
-for one isolated implementation run only when this exact planning package merges
-to `master`. Project registration remains explicitly deferred until after Alpha.
-Do not start implementation, wrapper execution, worker dispatch, Atlas/API/UI,
-project registration or integration, GitHub automation, or USB recovery work.
+[Alpha-02 — Establish Synthetic `maestro run-packet` Lifecycle Wrapper](../../docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md)
+is complete and merged through exact implementation head
+`4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base
+`06c81b8030140cca6001bc1514aabb8152c77dca`. Fresh Independent
+Implementation Review returned **APPROVE** for that complete exact range and
+confirmed all 16 changed paths were packet-owned. All 11 Alpha-01 tests, all 7
+Alpha-02 tests, and the required successful `maestro run-packet` command
+passed. Review artifacts were cleaned inside the isolated implementation
+worktree and the branch remained clean.
+
+The [Alpha-02 Done Record](../../docs/planning/done/alpha-02-run-packet-lifecycle-wrapper.md)
+preserves the exact review, scope, check, and exclusion evidence. The wrapper
+records its independent-review handoff and stops; it does not perform review,
+merge, automatic correction, or successor selection.
+
+There is no executable successor packet. Alpha-03 and all other implementation
+increments require their own Architecture, Owner, Decision Fidelity, and
+implementation authority. Do not start Alpha-03, real worker dispatch,
+Atlas/API/UI, project registration or integration, GitHub automation, or USB
+recovery work from this handoff.
 
 ## Open implementation decisions
 

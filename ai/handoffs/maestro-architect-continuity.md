@@ -6,11 +6,11 @@
 ## Current authoritative milestone state
 
 - **Alpha-01 — Establish Local Foundation:** complete and merged to `master` at `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`.
-- **Alpha-02 — Synthetic `maestro run-packet` Lifecycle Wrapper:** proposed on branch `architecture/alpha-02-run-packet`.
+- **Alpha-02 — Synthetic `maestro run-packet` Lifecycle Wrapper:** complete and merged through exact independently approved implementation head `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`.
   - Packet: `docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md`
-  - Initial planning commit: `00098af898f162a221086fb71510817fed63c02b`
-  - Initial full-review head: `a3bb7d2324f1f2d6e53db01ffb0ab13b0fca8e0f`
-  - Status: Owner-approved and Decision-Fidelity-approved. It becomes executable for one isolated implementation run only after the exact planning package merges to `master`.
+  - Done Record: `docs/planning/done/alpha-02-run-packet-lifecycle-wrapper.md`
+  - Review: **APPROVE** for the complete exact base-to-head range; all 16 changed paths were packet-owned.
+  - Checks: 11 Alpha-01 tests, 7 Alpha-02 tests, and the required successful `maestro run-packet` command passed; review artifacts were cleaned and the branch remained clean.
 
 ## Alpha-02 architecture boundary
 
@@ -35,11 +35,16 @@ The Alpha-02 packet carries bounded quality contracts for:
 
 Each contract specifies its protected outcome, operating model, exclusions, assurance level, sufficient proof, permitted implementation boundary, proportionality ceiling, and stop/escalation rule under M0-D12.
 
-## Required next gate
+## Completion boundary and next gate
 
-A fresh Independent Decision Fidelity Reviewer must review the full exact Alpha-02 planning range against the current authoritative Alpha review, M0-D01, M0-D05, M0-D12, the Alpha-01 completion record, and the current handoff.
+Alpha-02's exact implementation range received fresh Independent Implementation
+Review **APPROVE** and is complete. The wrapper stops after recording its
+independent-review handoff; it does not review, merge, correct, or select
+successor work.
 
-The review must report `APPROVE`, `REQUEST_CHANGES`, or `COMMENT`. It is planning review only. No implementation, merge, or Alpha successor work follows automatically from approval.
+There is no authorized Alpha-03 packet or implementation. Any successor
+increment must return through Architecture, Owner approval, and fresh Decision
+Fidelity Review before implementation authority exists.
 
 ## Guardrails
 
