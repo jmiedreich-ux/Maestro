@@ -38,7 +38,7 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) is paused for packet-contract amendment. Renewed review found a public-construction-path boundary requirement that the original packet and its tests did not make explicit. This is not a worker/model delivery failure or hard escalation. Amend the packet, obtain fresh Decision Fidelity Review, then issue a new bounded repair packet and renewed implementation review.
+The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) remains paused. Its first packet-contract amendment exposed a second missing Linux-first rule: a runtime path that passed validation could be symlink-swapped before SQLite mutation. [M0-D08 — Linux Runtime Filesystem Boundary](../../docs/planning/decisions/m0-d08-linux-runtime-filesystem-boundary.md) is owner-approved and now controls: Maestro writes only under the repository's real physical `var/` tree, rejects symlink traversal, and must prevent validation-to-mutation escape. This is not a worker/model delivery failure or hard escalation. Run fresh Decision Fidelity Review on the amended packet; only an APPROVE authorizes a new bounded repair packet and then renewed independent implementation review.
 
 ## Open implementation decisions
 
