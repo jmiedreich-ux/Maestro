@@ -22,7 +22,7 @@
 | C-01 | Maestro is a separate, project-neutral development-operations system, not part of Foundry or Vennue. | Master Plan §1 |
 | C-02 | Maestro starts on the Linux AI box. | Master Plan §2 / Control Plane §4 |
 | C-03 | Initial durable operational state is SQLite on the AI box. | Master Plan §3; exact schema/backup remains open |
-| C-04 | Atlas moves from a live GitHub-polled dashboard to a local operational surface over Maestro state. | Amended by C-30: reporting plus audited command requests, never direct write-back |
+| C-04 | Atlas moves from a live GitHub-polled dashboard to a local operational surface over Maestro state. | Amended by owner decision: live reporting only, never direct write-back or orchestration commands |
 | C-05 | Repository plans, code, PRs, reviews, and CI remain versioned engineering authority. | Master Plan §2 / Control Plane §3 |
 | C-06 | Maestro's database holds observed execution state, ownership, attempts, evidence, retries, notifications, and waits. | Master Plan §3–4 / Control Plane §3 |
 | C-07 | No two independently writable truths exist for one fact; repository/GitHub facts are projected, not copied as authority. | Control Plane §3 |
@@ -53,14 +53,14 @@
 | C-27 | A project Architecture Agent reads its handoff and approved authority, resolves/plans a stated subject, and updates versioned project planning records only after required approval. | Control Plane §§5–6 / Architecture Agent contract |
 | C-28 | Maestro is the development manager: a cloud-reasoning-capable coordinator paired with a local service-account runtime, polling first and later able to observe webhooks. | Control Plane §§4, 7.4, 11 / Manager contract |
 | C-29 | Specialist roles are tied to architectural boundaries; generic contracts live in Maestro and project overlays name their specific authority, paths, invariants, and gates. | Control Plane §5 / `docs/agents/` |
-| C-30 | Atlas is the operational control-plane interface. It projects Maestro state and submits authenticated, audited, policy-checked command requests; it does not directly edit the DB, architecture, GitHub, code, or branch state. | Control Plane §§3, 10 / Atlas assessment |
+| C-30 | Atlas is the live operational reporting interface. It projects Maestro state immediately but does not control orchestration, edit the DB, architecture, GitHub, code, branch state, routing, or policy. | Control Plane §§3, 10 / Atlas assessment |
 | C-31 | A specialist queue is an owner-visible planned ordered workload, including future, blocked, and waiting work. Its dispatchable queue is a calculated subset, not a blind FIFO. | Control Plane §7 |
 | C-32 | Later independent work may bypass a blocked earlier item only when the approved graph explicitly proves it has no hard/serial dependency and no conflicting lock. | Control Plane §§6–8 |
 | C-33 | Parallelism is the default for independent packets; declared dependencies, shared boundaries, integration, and finite resources serialize work. | Control Plane §8 |
 | C-34 | Integration is a first-class queue. It validates/assembles worker results, is promoted when it safely unlocks downstream capacity, and routes changed integration work to a different independent reviewer. | Control Plane §8 / Integration contract |
 | C-35 | Every coding agent follows a common SOP bound to the joined project's stricter engineering rules. Specialist overlays can add requirements, never weaken them. | Control Plane §9 / Coding Agent SOP |
 | C-36 | Independent review is proportionate: no full review for every internal micro-step, but every mergeable PR is independently reviewed and high-risk shared outputs are reviewed before downstream consumption. | Control Plane §9 / Review contract |
-| C-37 | Atlas may show and request an allowed actual agent/model route, capacity, and temporary override. Durable policy remains versioned and actual run selection stays an operational fact. | Control Plane §§10–11 |
+| C-37 | Atlas shows the actual agent/model route and capacity as live facts. Routing and policy are set through approved Maestro/project processes, not Atlas. | Control Plane §§10–11 |
 | C-38 | Before specialist execution, an Architecture Agent may propose an AI-friendly source-affordance refactor: clear module boundaries, smaller cohesive units, accurate area maps, stable contracts, and explicit ownership. | Control Plane §12; M0 plans only |
 | C-39 | VennueSign must supply a versioned renewal-authority bundle before renewal implementation nodes are dispatchable; a handoff summary or Library-only record is not enough. | Control Plane §12 |
 | C-40 | Current VennueSign policy permits only one active milestone. Parallelism is limited to independent packets inside that milestone until its project policy changes. | Control Plane §12 |
@@ -72,7 +72,7 @@
 | Source concept | Current representation |
 |---|---|
 | Coordinator loop: observation → durable coordinator → queue/ledger → worker → verify/review → Atlas | Master Plan §3 and Control Plane §4 |
-| Authority flow: project/GitHub facts → operational projection ← worker execution state; Atlas reads/control-requests | Control Plane §§3–4 and §10 |
+| Authority flow: project/GitHub facts → operational projection ← worker execution state; Atlas reads live state | Control Plane §§3–4 and §10 |
 | Planning gate: foundation → feature discovery/design → approved milestone/packet → implementation | Master Plan §5 |
 | Wrapper loop: author → compile constraints → dispatch → grade → one targeted rework → evidence → invariant improvement | Master Plan §7 / Coding Agent SOP |
 | Planned specialist queue versus dispatchable subset and integration unblocking | Control Plane §7 |
@@ -86,7 +86,7 @@
 | Maestro assigns specialists, tracks completion, routes Integration → Review → merge policy | `docs/agents/maestro-development-manager.md`; Control Plane §§5, 8 |
 | Per-specialist queues reveal four Theme Studio jobs, one Screens job, and Integration backlog even while some are blocked | Control Plane §7 |
 | Independent later queue work may run while a prior item awaits Integration | Control Plane §§7.2–7.4 |
-| Atlas provides top-level routing/model/control visibility without becoming an authority fork | Control Plane §10; Atlas Transition Assessment |
+| Atlas provides top-level routing/model visibility without becoming an authority fork | Control Plane §10; Atlas Transition Assessment |
 | SOP and proportionate independent review govern every coding packet | Control Plane §9; `docs/agents/coding-agent-sop.md`; `docs/agents/independent-review-agent.md` |
 | M0 remains design-only and V1 remains a deliberately narrow, owner-gated loop | Master Plan §9; Control Plane §13 |
 
