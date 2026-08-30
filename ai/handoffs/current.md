@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 local foundation complete on 2026-08-30 at independently approved head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. No Alpha-02, worker, packet-wrapper, API/UI, Foundry, VennueSign, project-adapter, GitHub-automation, or USB-recovery work is authorized by this handoff.
+**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 is eligible for Architecture planning only; no Alpha-02 implementation, worker, packet-wrapper, API/UI, Foundry, VennueSign, project-adapter, GitHub-automation, or USB-recovery work is authorized by this handoff.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -42,7 +42,8 @@ The current M0 expansion is captured in:
 ## Alpha-01 completion and exact next action
 
 [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md)
-is complete. The accepted result is branch
+is complete and merged to `master` at
+`4cc8e6fa899574e27515f225be1976c9f9f1a6ff`. The accepted implementation is branch
 `alpha-01-r2-complete-foundation` at exact head
 `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`, based on verified R1 commit
 `e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. Its R2 diff changed only
@@ -57,10 +58,12 @@ The [Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md
 preserves the acceptance evidence and bounded exclusions. In particular, Alpha
 makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
 
-There is no executable next packet. Alpha-02 remains unauthorized until its own
-planning, owner approval, and Decision Fidelity gate are complete. Do not start
-the wrapper, worker dispatch, Atlas/API/UI, project integration, GitHub
-automation, or USB recovery work from this handoff.
+Alpha-02 is now eligible for Architecture planning. That planning may propose
+the next bounded packet and its complete quality contracts for Owner approval
+and Decision Fidelity Review. There is no executable Alpha-02 packet and no
+Alpha-02 implementation is authorized. Do not start the wrapper, worker
+dispatch, Atlas/API/UI, project integration, GitHub automation, or USB recovery
+work from this handoff.
 
 ## Open implementation decisions
 

@@ -73,7 +73,8 @@ merged to `master` at `ac6471484268d8d6b11fb302dd1190ef85cbdae2`.
 Default-branch merge candidates now require complete, current review coverage
 without redundant rereview of unchanged material.
 
-Alpha-01 is complete at exact independently approved implementation head
+Alpha-01 is complete and merged to `master` at
+`4cc8e6fa899574e27515f225be1976c9f9f1a6ff`. Its exact independently approved implementation head is
 `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f` on
 `alpha-01-r2-complete-foundation`, with verified R1 base
 `e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. R2 changed only
@@ -89,9 +90,11 @@ trusted local Linux process against incorrect, outside, source-tree, and
 pre-acquisition symlinked paths. It does not claim containment against a
 malicious concurrent same-UID/root process moving an already-open directory.
 
-No Alpha-02 work is authorized. The next packet must receive its own complete
-planning, owner approval, and Decision Fidelity Review before execution. The
-mandatory `maestro run-packet` wrapper remains deferred to that later packet.
+Alpha-02 is eligible for Architecture planning only. The Architect may prepare
+its proposed bounded packet and complete quality contracts, but implementation
+remains unauthorized until the Owner approves the plan and a fresh Decision
+Fidelity Review approves the exact executable packet. The mandatory
+`maestro run-packet` wrapper remains deferred to that later packet.
 
 ## Model-routing reminder
 
