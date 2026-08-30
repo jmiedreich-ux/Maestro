@@ -41,12 +41,31 @@ one of these outcomes:
 The review must also identify conflicting source records and state which
 accepted record controls.
 
+## Boundary and testability challenge
+
+For every safety, ownership, security, or data-location boundary in a proposed
+packet, the reviewer must challenge the packet before approving it:
+
+- identify every public command, constructor, callable, configuration object,
+  and integration entry path that could bypass the boundary;
+- require validation before any mutation or external side effect on each path;
+- require a negative test for each meaningful bypass path;
+- require an independently derived test oracle for boundary locations, limits,
+  or policy values rather than a comparison to the implementation constant
+  under test; and
+- block a packet whose acceptance criteria test only the happy-path command
+  while a lower-level public path remains available.
+
+This is part of decision fidelity: an accepted safety intent is not faithfully
+carried forward if the packet makes it testable only through one convenient
+entry path.
+
 ## Gate rule
 
 Maestro may not execute the proposed work while a `missing`, `changed`,
-`new assumption`, unresolved conflict, or unapproved deferral remains. The
-review result and its resolved traceability table are durable evidence for the
-run.
+`new assumption`, unresolved conflict, unapproved deferral, or unresolved
+boundary/testability challenge remains. The review result and its resolved
+traceability table are durable evidence for the run.
 
 ## Review points
 
