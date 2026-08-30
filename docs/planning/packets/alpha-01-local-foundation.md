@@ -1,6 +1,6 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Escalated to coordinator ownership after the permitted worker correction did not fully satisfy the runtime-boundary contract. No additional worker correction is authorized.  
+**Status:** Paused for packet-contract amendment and renewed Decision Fidelity Review. The review finding is not counted as a worker/model delivery failure.  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md)  
 **Base:** Current `master` at execution time  
@@ -9,7 +9,7 @@
 **Reviewer route:** Independent implementation reviewer; cloud GPT-5.6 Sol with high reasoning is the preferred route  
 **Timeout:** Stop and report if the packet cannot complete within one focused implementation run.
 
-## Escalation record
+## Packet-contract defect record
 
 The first implementation review found that a caller-supplied runtime path could
 create SQLite state outside the repository runtime boundary. The permitted
@@ -18,11 +18,14 @@ review found that direct `RuntimeConfig(...)` construction and
 `SQLiteFoundation(...).health()` still bypass that validation; it also found
 a tautological default-path test.
 
-Under M0-D05, this is not eligible for another worker correction. Alpha-01 is
-escalated to coordinator ownership for one bounded repair, followed by renewed
-independent implementation review. Before another similarly shaped packet is
-issued, the shared packet guidance must require public-construction-path
-invariant tests and independently anchored path assertions.
+The original packet required the CLI boundary but did not explicitly require
+validation at every public construction/call path or independently anchored
+boundary tests. Treat this as an R3/R4 packet-contract defect, not a
+worker/model failure or hard escalation. The packet must be amended, receive
+fresh Decision Fidelity Review, and then issue a new bounded repair packet.
+Before another similarly shaped packet is issued, the shared packet guidance
+must require public-construction-path invariant tests and independently
+anchored path assertions.
 
 ## Decision Fidelity approval
 
