@@ -1,6 +1,6 @@
 # Maestro Alpha — Decision-Fidelity Review
 
-**Status:** Owner-approved pre-build review; independent Decision Fidelity Reviewer sign-off remains required before any application code.
+**Status:** Approved for issuance of one bounded Alpha-01 build packet; no work outside that packet is authorized.
 **Reviewer:** Maestro Decision Fidelity Reviewer
 **Proposal reviewed:** owner-directed Alpha boundary, 2026-08-29
 **Scope:** planning and traceability only. This record creates no runtime, worker, project adapter, project registration, GitHub automation, or external agent dispatch.
@@ -133,14 +133,15 @@ The correction edge is permitted only for committed, in-scope work that fails a 
    approved but unattached/unconfigured. Backup-health support may be built,
    but Alpha recovery acceptance remains blocked until the documented mount,
    real backup, and isolated restore test pass.
-3. **No build authority yet.** The owner approved the Alpha layout on
-   2026-08-30. A final, fresh Decision Fidelity Reviewer sign-off remains
-   required before a build packet is issued.
+3. **Limited build authority.** The owner approved the Alpha layout on
+   2026-08-30 and a fresh Decision Fidelity Reviewer approved this review at
+   `5fc4b61`. One separately authored Alpha-01 build packet may now be issued;
+   no work outside that packet is authorized.
 
 ## Pre-build acceptance checklist
 
 - [x] M0-D01 `command_requests` is removed; Atlas is read-only.
 - [x] M0-D07 physical USB provisioning is explicitly deferred with a recovery-acceptance gate.
 - [x] Owner approved the Alpha layout and wrapper boundary on 2026-08-30.
-- [ ] A final Decision Fidelity Reviewer records all rows as `included` or `approved deferral`.
+- [x] A fresh Decision Fidelity Reviewer approved the current `master` review after fast-forwarding to `5fc4b61`; every row is `included` or an explicit approved deferral.
 - [ ] Only then may a separate build packet create Alpha application code.
