@@ -2,7 +2,7 @@
 
 **Status:** Paused for packet-contract amendment and renewed Decision Fidelity Review. The review finding is not counted as a worker/model delivery failure.  
 **Owner:** Jeremy Miedreich  
-**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md)  
+**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D08 — Linux Runtime Filesystem Boundary](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)  
 **Base:** Current `master` at execution time  
 **Execution class:** Bootstrap implementation in a clean isolated worktree  
 **Worker route:** Maestro Implementor bootstrap route  
@@ -18,14 +18,16 @@ review found that direct `RuntimeConfig(...)` construction and
 `SQLiteFoundation(...).health()` still bypass that validation; it also found
 a tautological default-path test.
 
-The original packet required the CLI boundary but did not explicitly require
-validation at every public construction/call path or independently anchored
-boundary tests. Treat this as an R3/R4 packet-contract defect, not a
-worker/model failure or hard escalation. The packet must be amended, receive
-fresh Decision Fidelity Review, and then issue a new bounded repair packet.
-Before another similarly shaped packet is issued, the shared packet guidance
-must require public-construction-path invariant tests and independently
-anchored path assertions.
+The original packet also did not define Linux symlink traversal or a
+validation-to-mutation race. The later coordinator repair correctly covered
+public construction/call paths, but its renewed review found that a valid
+runtime path could be replaced by a symlink before SQLite mutated it.
+
+[M0-D08 — Linux Runtime Filesystem Boundary](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)
+is now the controlling owner-approved rule. Treat both findings as
+packet-contract defects, not worker/model failures or hard escalations. This
+packet must receive fresh Decision Fidelity Review before a new bounded repair
+packet may be issued.
 
 ## Decision Fidelity approval
 
@@ -66,9 +68,13 @@ No other path is authorized.
 
 1. The service is a Python package rooted at `services/maestro/` and uses the
    standard library for its runtime database behavior.
-2. It has an explicit configuration boundary for the local runtime directory.
-   Its default local database path is under `var/`; it must not write inside
-   source, project, or external-repository directories.
+2. It enforces [M0-D08](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)
+   at every public command, configuration, constructor, and storage callable.
+   Its default local database path is independently derived as
+   `<worktree-root>/var`. Runtime artifacts may exist only inside the
+   repository's real physical `var/` tree: every component must be
+   non-symlinked, and Linux-safe mutation operations must prevent a
+   validation-to-mutation symlink substitution from escaping that tree.
 3. It opens SQLite with foreign keys enabled and WAL mode requested/verified
    where supported.
 4. It provides an idempotent migration mechanism with durable schema-version
@@ -95,8 +101,14 @@ python -m maestro.cli health --runtime-dir ../../var/alpha-01-check
 
 The health check must demonstrate that:
 
-- the database is created only beneath the supplied runtime directory;
-- rerunning it is safe and preserves the recorded schema version; and
+- every valid runtime artifact is created only beneath the repository's real
+  physical `var/` tree;
+- command, configuration, constructor, and storage paths reject outside,
+  source-tree, and symlinked paths before mutation;
+- a symlink-swap/race attempt cannot redirect a database, WAL/SHM file, log,
+  socket, or directory outside `var/`; rejected attempts leave no artifact;
+- rerunning a valid health check is safe and preserves the recorded schema
+  version; and
 - no external repository, network, credential, project adapter, worker, or
   Atlas UI is accessed.
 
@@ -141,7 +153,7 @@ reviewer. It does not merge or trigger Alpha-02.
 | --- | --- |
 | Linux-first local operation | Python package, local runtime path, Linux commands |
 | SQLite is Maestro's operational store | SQLite connection and idempotent migration metadata |
-| Runtime data stays out of Git | `var/.gitignore` and runtime-path tests |
+| Runtime data stays out of Git and within the physical runtime boundary | `var/.gitignore`, M0-D08 enforcement, public-path no-mutation tests, and symlink-race test |
 | Project-neutral / synthetic-only Alpha | No adapter, project repository, worker, or external input |
 | Atlas read-only and service-mediated | Atlas/API work explicitly excluded |
 | Packet wrapper remains mandatory | Explicitly deferred to Alpha-02; no partial/fake wrapper |
