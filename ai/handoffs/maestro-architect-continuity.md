@@ -57,7 +57,7 @@ work, or advance a milestone without the required approval.
 - The wrapper does not decide design, merge, begin the next packet, or bypass
   Decision Fidelity Review.
 - The tested escalation rule in M0-D05 remains authoritative.
-- [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material non-functional requirement. Architecture must define the operating/threat model, exclusions, assurance level, sufficient proof, proportionality ceiling, and stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
+- [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material quality requirement. Architecture must define the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
 - Every plan, milestone, packet, and build instruction must pass independent
   Decision Fidelity Review before execution. The review records every accepted
   choice as `included`, `missing`, `changed`, `new assumption`, or
