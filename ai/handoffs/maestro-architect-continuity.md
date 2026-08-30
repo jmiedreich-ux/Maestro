@@ -10,7 +10,7 @@
   - Packet: `docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md`
   - Initial planning commit: `00098af898f162a221086fb71510817fed63c02b`
   - Initial full-review head: `a3bb7d2324f1f2d6e53db01ffb0ab13b0fca8e0f`
-  - Status: planning only; no implementation is authorized until Owner approval and fresh Decision Fidelity Review of the exact packet branch.
+  - Status: Owner-approved and Decision-Fidelity-approved. It becomes executable for one isolated implementation run only after the exact planning package merges to `master`.
 
 ## Alpha-02 architecture boundary
 
