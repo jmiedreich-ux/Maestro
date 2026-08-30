@@ -1,6 +1,6 @@
 # M0-D01 — Maestro Operational Database
 
-**Status:** Proposed baseline for M0 acceptance  
+**Status:** Accepted  
 **Decision owner:** Maestro project owner  
 **Scope:** V1 operating foundation only; no runtime implementation is authorized by this record.
 
@@ -40,7 +40,7 @@ Examples of immediately visible operational facts are:
 
 GitHub/CI observations are also ingested into the database when they arrive. They refine the live state—for example, `CI passed` or `merge observed`—but their arrival never prevents Atlas from showing all newer Maestro-known facts.
 
-The service exposes a local read API for Atlas. Atlas refreshes through that API on load and receives low-latency state updates while open; the initial transport may be short polling, with a local event stream added when the runtime is built. Neither approach relies on GitHub Actions or a static-site deployment.
+The service exposes a local read API for Atlas. Atlas loads a current snapshot through that API and receives live state updates through a local event stream while open. If the event connection drops, Atlas reconnects and requests a fresh snapshot. This design does not rely on GitHub Actions, CI completion, or a static-site deployment.
 
 ## V1 logical records
 
@@ -83,6 +83,6 @@ The service exposes a local read API for Atlas. Atlas refreshes through that API
 - No direct Atlas database connection.
 - No automatic data deletion outside the defined retention process.
 
-## Decision to confirm for M0 acceptance
+## Remaining M0 confirmation
 
-Confirm the proposed **90-day** local backup and structured-history retention, or replace it with a different retention period before M0 is accepted.
+The **90-day** local backup and structured-history retention remains the proposed default to confirm or replace before M0 is accepted.
