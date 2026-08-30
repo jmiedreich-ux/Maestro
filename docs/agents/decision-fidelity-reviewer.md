@@ -175,6 +175,18 @@ present, a shared contract is materially redesigned, prior evidence becomes
 unreliable, or independence is lost. The report must name the specific
 reopening reason.
 
+## Review freshness and merge coverage
+
+Every review pins its exact base and head. Before a reviewed planning result is
+merged, verify that the final head is the union of the full reviewed range and
+every targeted-reviewed correction-only diff.
+
+An uncovered commit, unrelated change, invalidated evidence, or materially
+impactful base change makes the affected approval stale. Reopen only the scope
+needed by M0-D05, but do not permit merge until complete coverage reaches the
+exact final head. Record the coverage chain and any conclusion that a base
+change has no relevant effect.
+
 ## Required output and evidence
 
 Every review report must contain:
