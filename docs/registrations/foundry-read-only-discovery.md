@@ -1,6 +1,6 @@
 # Foundry — Read-Only Registration Discovery
 
-**Status:** Discovery complete; binding and dry run blocked on current-work reconciliation.  
+**Status:** Discovery complete; Foundry binding and dry run are deferred until Maestro Alpha is accepted.  
 **Repository:** `jmiedreich-ux/Foundry`  
 **Default branch:** `main`  
 **Discovery mode:** Read-only; no Foundry files, issue bodies, assignments, or worktrees were changed.
@@ -25,7 +25,7 @@ The current records disagree about CG-M4-18:
 | `tracker/assignments.json` | `in_progress` |
 | `PROJECT_STATUS.md` and `ai/handoffs/current.md` | Owner-paused; an uncommitted Popover draft/worktree is preserved as unaccepted evidence |
 
-Maestro treats this as a reconciliation blocker. It will not claim, reroute, or use CG-M4-18 as the first proof packet until the coordinator inspects the preserved worktree and updates Foundry's authoritative records.
+M4-18 is now being completed under Foundry's existing process. This historical discrepancy does not block Maestro Alpha: Maestro will not claim, reroute, or use M4-18. Before Foundry onboarding begins after Alpha, discovery is refreshed against the then-current Foundry records.
 
 ## Proposed binding
 
@@ -33,6 +33,6 @@ The eventual `maestro.project.yaml` will bind Foundry to repository `jmiedreich-
 
 Foundry's existing `atlas.config.json` is observed project material only. It does not grant Atlas authority over Maestro and is not changed by registration.
 
-## Exact next action
+## Sequencing
 
-Coordinator inspection of the preserved CG-M4-18 worktree: establish whether its diff and gate state qualify for the one permitted targeted correction or require immediate escalation. Then synchronize Foundry's status, tracker, handoff, and issue facts before Maestro produces the binding and dry run.
+Maestro Alpha is completed and accepted first, without changing Foundry. M4-18 completes through Foundry's existing process. After Alpha, Maestro refreshes this read-only discovery and registers Foundry only against the next explicitly released, unclaimed packet. That packet becomes the first Maestro-controlled Foundry proof.
