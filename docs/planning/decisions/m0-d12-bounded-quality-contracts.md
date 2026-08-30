@@ -13,9 +13,9 @@ Architecture Agent must turn every material quality requirement into a bounded
 quality contract that tells every agent what is required, what is not required,
 what proof is sufficient, and when to stop.
 
-This rule applies to security, privacy, correctness, data integrity, concurrency,
-performance, availability, recovery, compatibility, accessibility,
-observability, maintainability, and every other non-functional quality.
+This rule applies to every material quality requirement, including security,
+privacy, correctness, data integrity, concurrency, performance, availability,
+recovery, compatibility, accessibility, observability, and maintainability.
 
 ## Required quality contract
 
@@ -38,8 +38,10 @@ Each material quality requirement must state:
    work and returns a missing assumption, infeasible guarantee, or newly
    discovered risk to Architecture and the Owner.
 
-A packet missing any applicable element is not ready for Decision Fidelity
-Review or implementation.
+All eight elements are required. If an element is genuinely inapplicable, the
+contract must state the reason and carry an explicit owner-approved
+not-applicable disposition. An unstated or unjustified omission makes the
+packet unready for Decision Fidelity Review or implementation.
 
 ## Definition of enough
 
