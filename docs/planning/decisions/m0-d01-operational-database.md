@@ -1,6 +1,6 @@
 # M0-D01 — Maestro Operational Database
 
-**Status:** Accepted  
+**Status:** Accepted — amended for the Atlas read-only boundary
 **Decision owner:** Maestro project owner  
 **Scope:** V1 operating foundation only; no runtime implementation is authorized by this record.
 
@@ -9,6 +9,14 @@
 Maestro V1 will use one local SQLite database on the Linux AI box as its durable operational memory **and immediate operational source for local Atlas**.
 
 Maestro's local service is the only database writer. Atlas reads current operational state from that service; Atlas never opens or edits the database directly, submits orchestration commands, or changes routing/policy. Project repositories and GitHub remain authoritative for approved plans, code, PRs, reviews, and CI, but they are **not** Atlas's refresh mechanism.
+
+### Atlas command amendment
+
+Atlas is strictly read-only and is never a command caller. The former
+`command_requests` logical-record entry is removed by this amendment; no Atlas
+control API exists in Alpha or V1. The synthetic Alpha packet wrapper is
+invoked locally through `maestro run-packet`, under the approved packet and
+Decision Fidelity Reviewer gates—not through Atlas.
 
 ## Why this fits V1
 
@@ -57,7 +65,6 @@ The service exposes a local read API for Atlas. Atlas loads a current snapshot t
 | `waits` | Expected completion, timeout, next permitted action, and current blocking gate |
 | `resource_locks` | Serialized use of local-model inference, verification, browser, and database-container capacity |
 | `notifications` | Sent/acknowledged status messages and failures |
-| `command_requests` | Atlas-initiated, policy-checked, authenticated, idempotent operational commands |
 
 ## Operating rules
 

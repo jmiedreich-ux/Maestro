@@ -3,6 +3,25 @@
 **Status:** Accepted  
 **Scope:** Maestro's local SQLite operational database on the Linux AI box.
 
+## Alpha provisioning deferral
+
+The dedicated USB recovery drive is approved, but it is not yet attached or
+configured. Alpha may implement backup-health support that records the
+availability, copy, hash, free-space, and restore-test status of the declared
+drive. It must not pretend that a missing drive is healthy or use an unrelated
+path as a substitute.
+
+Alpha recovery acceptance remains blocked until all of the following are true:
+
+1. the drive is mounted using a documented Linux mountpoint and ownership
+   convention;
+2. Maestro can write and verify a real backup there; and
+3. a real backup is restored to an isolated database and its required records
+   are read successfully.
+
+This is an approved physical-provisioning deferral only. It does not relax the
+backup-health, retention, safe-snapshot, or recovery requirements below.
+
 ## Decision
 
 A dedicated 32GB USB flash drive is Maestro's initial recovery-copy target.

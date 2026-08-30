@@ -1,6 +1,6 @@
 # Maestro Alpha — Decision-Fidelity Review
 
-**Status:** Pre-build review complete; execution is blocked pending the owner resolutions in [Blocking gaps](#blocking-gaps).
+**Status:** Pre-build review updated with owner-directed resolutions; no application code is authorized by this record.
 **Reviewer:** Maestro Decision Fidelity Reviewer
 **Proposal reviewed:** owner-directed Alpha boundary, 2026-08-29
 **Scope:** planning and traceability only. This record creates no runtime, worker, project adapter, project registration, GitHub automation, or external agent dispatch.
@@ -108,13 +108,13 @@ The correction edge is permitted only for committed, in-scope work that fails a 
 | C-41 VennueSign GitHub task authority | No GitHub sync or VennueSign connection | approved deferral | Preserve in any future adapter. |
 | C-42 explicit merge/next-work policy | `maestro run-packet` has no merge/successor-dispatch action | included | — |
 | M0-D01 SQLite, service-only writer, read API/SSE | `storage.py`, `api.py`, Atlas API-only test, loopback operations | included | — |
-| M0-D01 `command_requests` says Atlas-initiated | Alpha is read-only; master plan/control plane prohibit Atlas commands | changed | Owner must amend/supersede the D01 row, or define a non-Atlas caller. No command API/table is built. |
+| M0-D01 Atlas command boundary | M0-D01 amendment removes `command_requests`; Atlas has no command API and local wrapper entry is `maestro run-packet` | included | — |
 | M0-D02 read-only discovery and binding PR | No discovery, manifest, or binding command | approved deferral | Keep onboarding outside Alpha. |
 | M0-D03 least privilege/no secret retention | No credentials/integrations/secret fixture fields; secret-rejection test | included | — |
 | M0-D04 durable Slack notifications for V1 | No unattended external operation or Slack connection | approved deferral | Implement with V1 unattended operation. |
 | M0-D05 tested escalation/routing rule | Mandatory `maestro run-packet`; scope/commit/gate/one-correction tests | included | — |
 | M0-D06 thin project binding | No project manifest or adapter | approved deferral | Add only in registration milestone. |
-| M0-D07 USB backup/retention/restore | Planned backup/restore scripts and test lack an approved device mount/configuration | missing | Owner must name Linux USB mount/ownership convention, or explicitly defer physical provisioning while retaining a tested local snapshot contract. |
+| M0-D07 USB backup/retention/restore | Backup-health support, safe snapshot, and restore-test contract; accepted physical-provisioning deferral | approved deferral | Recovery acceptance stays blocked until documented mount/ownership plus real backup/restore evidence. |
 | M0-D08 VennueSign archive boundary | VennueSign is not accessed | approved deferral | No Alpha action. |
 | M0-D09 VennueSign fresh reporting | Generic Atlas UI is not a VennueSign view | approved deferral | No reuse/migration without a later decision. |
 | M0-D10 Foundry V1 proof | Foundry is not inspected, registered, or changed | approved deferral | Refresh discovery only after Alpha acceptance and explicit release. |
@@ -124,16 +124,23 @@ The correction edge is permitted only for committed, in-scope work that fails a 
 | Owner-selected synthetic-only Alpha | `fixtures/alpha/` provenance requirement; rejection test | included | — |
 | Owner-selected ignored `var/` scope | Ignore rule permits DB, logs, evidence, sockets only; hygiene test | included | — |
 
-## Blocking gaps
+## Resolved conditions and remaining gate
 
-1. **D01 source conflict — Atlas commands.** M0-D01 names `command_requests` as Atlas-initiated, but the Master Plan, Control Plane, current handoff, and owner Alpha scope make Atlas reporting-only. The later/more-specific reporting boundary controls this proposal. The owner must amend or supersede D01 to close the accepted-record conflict.
-2. **D07 operational detail — recovery drive.** The accepted backup decision requires a USB recovery drive, but no approved Linux mountpoint, owner/group, or availability rule exists. The owner must supply that convention or approve a bounded deferral before a backup implementation is built.
-3. **Final gate evidence.** After the two dispositions, an independent Decision Fidelity Reviewer must record the resolved result before any Alpha build packet is issued. This record is planning evidence, not build authority.
+1. **D01 resolved.** M0-D01 now expressly removes the obsolete
+   `command_requests` row. Atlas is strictly read-only and never calls a
+   command API; the Alpha synthetic wrapper is local `maestro run-packet`.
+2. **D07 deferred with a hard acceptance gate.** The physical USB drive is
+   approved but unattached/unconfigured. Backup-health support may be built,
+   but Alpha recovery acceptance remains blocked until the documented mount,
+   real backup, and isolated restore test pass.
+3. **No build authority yet.** This resolved traceability record still needs
+   the owner's Alpha-layout acceptance and the final Decision Fidelity Reviewer
+   sign-off before a build packet is issued.
 
 ## Pre-build acceptance checklist
 
-- [ ] Owner resolves the M0-D01 `command_requests` conflict.
-- [ ] Owner resolves or explicitly defers M0-D07 physical recovery-drive setup.
+- [x] M0-D01 `command_requests` is removed; Atlas is read-only.
+- [x] M0-D07 physical USB provisioning is explicitly deferred with a recovery-acceptance gate.
 - [ ] Owner approves the Alpha layout and wrapper boundary above.
 - [ ] A final Decision Fidelity Reviewer records all rows as `included` or `approved deferral`.
 - [ ] Only then may a separate build packet create Alpha application code.
