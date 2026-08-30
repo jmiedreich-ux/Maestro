@@ -2,7 +2,7 @@
 
 **Status:** Paused for packet-contract amendment and renewed Decision Fidelity Review. The review finding is not counted as a worker/model delivery failure.  
 **Owner:** Jeremy Miedreich  
-**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D08 — Linux Runtime Filesystem Boundary](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)  
+**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)  
 **Base:** Current `master` at execution time  
 **Execution class:** Bootstrap implementation in a clean isolated worktree  
 **Worker route:** Maestro Implementor bootstrap route  
@@ -23,7 +23,7 @@ validation-to-mutation race. The later coordinator repair correctly covered
 public construction/call paths, but its renewed review found that a valid
 runtime path could be replaced by a symlink before SQLite mutated it.
 
-[M0-D08 — Linux Runtime Filesystem Boundary](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)
+[M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
 is now the controlling owner-approved rule. Treat both findings as
 packet-contract defects, not worker/model failures or hard escalations. This
 packet must receive fresh Decision Fidelity Review before a new bounded repair
@@ -68,7 +68,7 @@ No other path is authorized.
 
 1. The service is a Python package rooted at `services/maestro/` and uses the
    standard library for its runtime database behavior.
-2. It enforces [M0-D08](../decisions/m0-d08-linux-runtime-filesystem-boundary.md)
+2. It enforces [M0-D08](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
    at every public command, configuration, constructor, and storage callable.
    Its default local database path is independently derived as
    `<worktree-root>/var`. Runtime artifacts may exist only inside the
