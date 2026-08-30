@@ -1,6 +1,6 @@
 # M0-D03 — Access, Service Accounts, and Secrets
 
-**Status:** Proposed baseline for M0 acceptance  
+**Status:** Accepted  
 **Decision owner:** Maestro project owner  
 **Scope:** Access design only; this record authorizes no credentials, GitHub App, Azure action, webhook, or runtime implementation.
 
