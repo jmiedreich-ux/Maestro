@@ -2,6 +2,8 @@
 
 **Status:** M0 planning expansion captured on 2026-08-29. No Maestro runtime, worker, queue database, Atlas migration, VennueSign code change, or product-code merge is authorized by this handoff.
 
+**Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-directed synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. It identifies two owner resolutions required before an Alpha build packet: the M0-D01 Atlas-command-record conflict and the M0-D07 USB recovery-drive convention. The review itself authorizes no application code.
+
 ## What is now established
 
 Maestro remains a standalone, project-neutral development-operations system. It will coordinate an agent-driven specialist workforce from project-approved architecture/work graphs, while keeping repository/GitHub as the project’s design/code/task authority and Maestro’s database as operational state.
