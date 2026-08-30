@@ -1,7 +1,6 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Authored; not executable until a fresh Decision Fidelity Reviewer
-approves this packet.  
+**Status:** Approved for one scoped implementation run; no work outside this packet is authorized.  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md)  
 **Base:** Current `master` at execution time  
@@ -9,6 +8,14 @@ approves this packet.
 **Worker route:** Maestro Implementor bootstrap route  
 **Reviewer route:** Independent implementation reviewer; cloud GPT-5.6 Sol with high reasoning is the preferred route  
 **Timeout:** Stop and report if the packet cannot complete within one focused implementation run.
+
+## Decision Fidelity approval
+
+A fresh GPT-5.6 Sol Decision Fidelity Reviewer approved this packet after a
+clean tracked-state check and fast-forward. The review confirmed the precise
+owned paths, synthetic-only/project-neutral boundary, explicit Alpha-02 wrapper
+deferral, exclusions, checks, and isolated-worktree/non-default-branch
+requirements.
 
 ## Outcome
 
