@@ -31,9 +31,11 @@ become new gates.
 
 ## Independence and routing
 
-The reviewer must be a fresh agent that did not author or correct the proposal
-under review. It must identify the exact repository, base revision, head
-revision, changed paths, and accepted authority used.
+The initial reviewer must be a fresh agent that did not author or correct the
+proposal under review. A targeted correction follow-up may and normally should
+use the same reviewer because it owns the findings and did not author the
+correction. Every review must identify the exact repository, base revision,
+head revision, changed paths, and accepted authority used.
 
 Decision Fidelity Review and serious renewed reviews route to GPT-5.6 Sol at
 high reasoning unless an accepted routing decision supersedes that choice.
@@ -153,6 +155,25 @@ the risk into a stronger implementation gate or repeated worker correction.
 - Permit repeated corrections beyond M0-D05's one targeted correction.
 - Merge, dispatch work, start a successor packet, or imply that its review
   outcome grants those authorities.
+
+## Targeted correction follow-up
+
+After the initial full review, a correction follow-up verifies only:
+
+1. each named finding received its exact required correction;
+2. the diff since the reviewed head contains no unrelated change;
+3. immediately affected carriers remain consistent; and
+4. every original finding is resolved.
+
+The reviewer stops when those facts are proven. It does not reopen source
+discovery or search the unchanged proposal for new findings. An unrelated
+observation is non-blocking unless the correction introduced it or it proves a
+direct material violation of the approved contract.
+
+Full review scope may reopen only when the base/range changes, unrelated work is
+present, a shared contract is materially redesigned, prior evidence becomes
+unreliable, or independence is lost. The report must name the specific
+reopening reason.
 
 ## Required output and evidence
 
