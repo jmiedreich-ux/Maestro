@@ -60,7 +60,7 @@ stateDiagram-v2
   Executing --> Verified
   Verified --> AwaitingReview
   AwaitingReview --> MergeReady
-  AwaitingReview --> Executing: "one targeted rework"
+  AwaitingReview --> Executing: "targeted rework only when M0-D05 permits"
   MergeReady --> OwnerAccepted
   OwnerAccepted --> Merged
   Claimed --> Blocked
@@ -112,15 +112,12 @@ Approved project work is projected into ordered specialist queues. A queue conta
 
 ## 7. Worker wrapper
 
-A local-worker packet follows the same controlled loop:
-
-1. Author a bounded packet.
-2. Compile its allowed paths, permission configuration, and machine-checkable invariants.
-3. Dispatch in a fresh worktree after preflight and context checks.
-4. Grade scope, commit, build, types, and packet invariants mechanically.
-5. On one failure, send only the failing check as targeted rework.
-6. Escalate after a second failure.
-7. Record the packet, run, failure, evidence, and reusable invariant.
+A local-worker packet follows the tested escalation and routing rule in
+[M0-D05](decisions/m0-d05-rework-review-and-escalation.md). A missing scoped
+diff or required commit is an immediate rejection, not rework. Only committed,
+in-scope work that fails a named gate receives one targeted correction. Further
+non-delivery, missed commit, or scope breach escalates immediately. Dependency,
+configuration, and placeholder violations are rejected before review.
 
 Packet enforcement should include path locks, a real-commit check, timeout policy, minimum context gate, per-run model fingerprint, session archive, and serialized resource use against verification gates.
 
@@ -169,7 +166,6 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 1. Initial database shape and precise SQLite backup/recovery procedure.
 2. Local Atlas UI technology, live-update transport, and read-only database-service boundary.
 3. Notification channel and acknowledgement model.
-4. Review-round cap and escalation policy.
 5. Project-manifest format and versioning policy for the shared process.
 6. Exact migration boundary between current Atlas records and Maestro's operational reporting projection.
 7. Credential-storage and permission model for repository, worker, and Murphy adapters.
