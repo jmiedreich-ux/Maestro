@@ -68,7 +68,7 @@ No other path is authorized.
 
 1. The service is a Python package rooted at `services/maestro/` and uses the
    standard library for its runtime database behavior.
-2. It enforces [M0-D08](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
+2. It enforces [M0-D11](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
    at every public command, configuration, constructor, and storage callable.
    Its default local database path is independently derived as
    `<worktree-root>/var`. Runtime artifacts may exist only inside the
