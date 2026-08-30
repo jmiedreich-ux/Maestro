@@ -9,7 +9,7 @@
 - **Alpha-02 — Synthetic `maestro run-packet` Lifecycle Wrapper:** proposed on branch `architecture/alpha-02-run-packet`.
   - Packet: `docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md`
   - Initial planning commit: `00098af898f162a221086fb71510817fed63c02b`
-  - Current planning head: `a3bb7d2324f1f2d6e53db01ffb0ab13b0fca8e0f`
+  - Initial full-review head: `a3bb7d2324f1f2d6e53db01ffb0ab13b0fca8e0f`
   - Status: planning only; no implementation is authorized until Owner approval and fresh Decision Fidelity Review of the exact packet branch.
 
 ## Alpha-02 architecture boundary
