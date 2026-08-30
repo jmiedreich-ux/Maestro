@@ -28,9 +28,11 @@ The reviewer issues one final outcome:
 
 ## Independence and routing
 
-The reviewer must not be the implementation author, packet author, or an
-Integration Agent that changed the reviewed code. A different model or vendor
-is preferred when routing policy permits.
+The initial reviewer must not be the implementation author, packet author, or
+an Integration Agent that changed the reviewed code. A different model or
+vendor is preferred when routing policy permits. The same independent reviewer
+may and normally should verify its own named findings after an authorized
+correction because it did not author that correction.
 
 Routine bounded implementation review routes to GPT-5.6 Terra at high
 reasoning. Serious renewed review, high-risk shared-boundary review, or review
@@ -46,8 +48,9 @@ the packet, create commits, merge, deploy, or start successor work.
 - complete changed-path list and diff;
 - approved packet and its governing decisions;
 - project engineering policy and Maestro Coding Agent SOP;
-- the applicable
-  [M0-D12 bounded quality contracts](../planning/decisions/m0-d12-bounded-quality-contracts.md);
+- the complete
+  [M0-D12 bounded quality contract](../planning/decisions/m0-d12-bounded-quality-contracts.md)
+  for every material quality requirement;
 - worker commands, output, evidence, and completion record;
 - prior review findings and the one permitted targeted correction, if any; and
 - current handoff and explicit exclusions.
@@ -129,10 +132,13 @@ in-scope work that fails a named gate.
 
 ### Architecture-contract defect
 
-Use when a material quality expectation lacks a complete threat/failure model,
-exclusions, assurance level, sufficient proof, feasible implementation
-boundary, proportionality ceiling, or stop rule—or when satisfying it requires
-a new owner choice.
+Use when a material quality expectation lacks any of M0-D12's eight fields:
+protected outcome; operating/threat/failure model; explicit exclusions;
+practical assurance level; sufficient acceptance proof; permitted
+implementation boundary and complexity; proportionality ceiling; or exact
+stop/escalation rule—or when satisfying it requires a new owner choice. A field
+is genuinely inapplicable only when its rationale and explicit owner approval
+are recorded.
 
 Freeze the implementation result and return the defect to the Architecture
 Agent and Owner. Do not direct the implementor to solve missing architecture,
@@ -157,6 +163,20 @@ a merge blocker.
 - Approve a partial range, unverified base, scope breach, fabricated evidence,
   secret exposure, or unresolved in-contract failure.
 - Merge, deploy, update operational state, or begin later work.
+
+## Targeted correction follow-up
+
+After an initial full review, verify only the named implementation findings,
+the correction-only diff, the evidence rerun required by those corrections, and
+directly affected consistency. Stop when those findings are resolved.
+
+Do not re-review unchanged code or reopen general defect discovery. A new
+unrelated observation is non-blocking unless the correction introduced it or it
+proves a direct material violation of the approved contract.
+
+Full review scope may reopen only when the base/range changes, unrelated work is
+present, a shared contract is materially redesigned, prior evidence becomes
+unreliable, or independence is lost. The report must identify the exact reason.
 
 ## Required output and evidence
 
