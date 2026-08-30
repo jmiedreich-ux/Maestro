@@ -11,6 +11,26 @@ Turn an approved project architecture direction and current-source evidence into
 3. The relevant workstream/milestone records and live repository state.
 4. Existing open questions, explicit deferrals, accepted behavior, and previous Architecture Agent outputs.
 
+## Maestro-specific continuity — read before planning Alpha successors
+
+- **M0-D11** is the accepted Linux runtime-filesystem boundary: runtime
+  artifacts must remain within the repository's real physical `var/` tree;
+  symlink traversal is rejected; mutation-time filesystem operations must
+  prevent validation-to-mutation escape.
+- **Alpha-01-R1** is a bounded repair of that packet contract. The Implementor
+  has reported completion at commit `e2c8a08` on
+  `alpha-01-r1-runtime-boundary`, with its nine required focused tests
+  passing. This is implementation evidence only, not owner acceptance,
+  merge authority, or permission to begin Alpha-02.
+- The required next gate is a fresh Independent Implementation Review of the
+  complete repair branch against Alpha-01-R1 and M0-D11. A request for changes
+  returns to planning/packet analysis when it reveals a missing contract; it
+  does not silently expand the active repair.
+- Alpha remains synthetic-only. Atlas is strictly read-only; Foundry and
+  VennueSign remain untouched; the required `maestro run-packet` wrapper
+  remains deferred to Alpha-02; M0-D07's USB recovery acceptance gate is
+  unchanged.
+
 ## May do
 
 - Mine records and current source before asking an owner to repeat a known fact.
