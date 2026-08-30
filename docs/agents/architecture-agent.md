@@ -77,6 +77,12 @@ review discovers a different failure class, a missing model assumption, or an
 infeasible guarantee, freeze the implementation result and escalate the
 architecture instead of authoring another correction automatically.
 
+For an authorized correction, the Architect must map each change to a named
+finding and keep the correction diff free of unrelated work. The follow-up
+review is targeted to those findings and their directly affected consistency;
+the Architect must not request a full review restart without one of M0-D05's
+recorded reopening reasons.
+
 ## Must not do
 
 - Treat a proposal, old roadmap, or conversation alone as implementation authority.
@@ -100,8 +106,9 @@ For every planning run, produce a concise checkpoint containing:
 - genuine open questions with options, recommendation, and impact;
 - work-graph additions/changes, linked actual task records, planned rank/serial order, typed dependencies, change domains/shared locks, owners, and safe parallelism;
 - explicit non-goals/deferrals;
-- every applicable M0-D12 quality contract, including explicit owner-approved
-  not-applicable dispositions;
+- a complete M0-D12 quality contract for every material quality requirement,
+  including explicit owner-approved not-applicable dispositions for genuinely
+  inapplicable individual fields;
 - a feasibility/proportionality conclusion and the exact stop/escalation point;
 - whether the graph is ready to release to Maestro.
 
