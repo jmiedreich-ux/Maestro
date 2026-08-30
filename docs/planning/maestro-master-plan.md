@@ -8,7 +8,7 @@ Its job is to make AI-assisted engineering work visible, structured, recoverable
 
 Maestro does not replace a project's architecture, product decisions, or engineering rules. A project joins Maestro through an adapter and declares its own repository, environments, commands, exceptions, and authority policy.
 
-The detailed agent-workforce, specialist-queue, Atlas control-plane, SOP, and parallel-scheduling design is [Agent Workforce Control Plane](agent-workforce-control-plane.md). Its source coverage is recorded in [M0 Source Inventory and Capture Register](m0-source-inventory.md). These are M0 planning expansions and are authoritative for those concepts where they do not conflict with this master plan.
+The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and parallel-scheduling design is [Agent Workforce Control Plane](agent-workforce-control-plane.md). Its source coverage is recorded in [M0 Source Inventory and Capture Register](m0-source-inventory.md). These are M0 planning expansions and are authoritative for those concepts where they do not conflict with this master plan.
 
 ## 2. Operating principles
 
@@ -34,8 +34,7 @@ flowchart TD
   Workers["Local and cloud workers"] -->|"attempts and evidence"| Core["Maestro coordinator"]
   Sync --> Core
   Core <--> DB[("Operational database")]
-  DB --> Atlas["Local Atlas control and reporting UI"]
-  Atlas -->|"audited commands"| Core
+  DB --> Atlas["Local Atlas live reporting UI"]
   Core --> Murphy["Murphy Azure QA adapter"]
 ```
 
@@ -46,7 +45,7 @@ flowchart TD
 | Project repository / GitHub | Product and engineering records, code, PRs, reviews, CI, approved plan artifacts |
 | Maestro coordinator | State transitions, locks, dispatch, recovery, evidence collection, notifications, gate enforcement |
 | Operational database | Initial SQLite on the Linux AI box; runs, task/graph projections, packets, attempts, events, evidence, waits, retries, notifications, projected GitHub facts |
-| Local Atlas | Operational reporting and audited command surface for the AI box; queues, routing, status, evidence, blockers, and project-policy-constrained controls. It is not a second plan/code editor. |
+| Local Atlas | Live operational reporting for the AI box: queues, routing, status, evidence, blockers, waits, and capacity. It is not a controller, plan/code editor, or direct database client. |
 | Project adapter | Project-specific branch policy, commands, environments, credentials references, records, and exceptions |
 | Murphy adapter | Manual, owner-approved remote QA against deployed Azure environments |
 
@@ -156,7 +155,7 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Dispatch suitable bounded tasks to local models.
 - Add formal role definitions, specialist planned queues, Integration routing, and model-routing configuration.
 - Allow limited parallel dispatch only for explicitly independent packets with non-conflicting locks and project-adapter approval.
-- Add Atlas operational queue/routing controls through audited Maestro commands.
+- Add live Atlas queue, routing, capacity, and evidence views from Maestro state.
 
 ### V3 — mature automation support
 
@@ -168,11 +167,11 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 ## 10. Open decisions
 
 1. Initial database shape and precise SQLite backup/recovery procedure.
-2. Local Atlas UI technology, command API, authentication, and database access boundary.
+2. Local Atlas UI technology, live-update transport, and read-only database-service boundary.
 3. Notification channel and acknowledgement model.
 4. Review-round cap and escalation policy.
 5. Project-manifest format and versioning policy for the shared process.
-6. Exact migration boundary between current Atlas records and Maestro's operational projection/command surface.
+6. Exact migration boundary between current Atlas records and Maestro's operational reporting projection.
 7. Credential-storage and permission model for repository, worker, and Murphy adapters.
 8. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
 
