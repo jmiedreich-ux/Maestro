@@ -1,69 +1,51 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Amended contract approved by fresh Decision Fidelity Review on 2026-08-30; authorized to receive one new bounded M0-D11 repair packet. The findings are not counted as worker/model delivery failures.  
+**Status:** Paused pending Decision Fidelity Review of the bounded M0-D11 reconciliation and final Alpha-01 repair packet  
 **Owner:** Jeremy Miedreich  
-**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)  
-**Base:** Current `master` at execution time  
+**Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md); [M0-D12 — Bounded Quality Contracts and Proportionality](../decisions/m0-d12-bounded-quality-contracts.md)  
 **Execution class:** Bootstrap implementation in a clean isolated worktree  
 **Worker route:** Maestro Implementor bootstrap route  
-**Reviewer route:** Independent implementation reviewer; cloud GPT-5.6 Sol with high reasoning is the preferred route  
+**Reviewer route:** Independent implementation reviewer under the bounded packet contract  
 **Timeout:** Stop and report if the packet cannot complete within one focused implementation run.
-
-## Packet-contract defect record
-
-The first implementation review found that a caller-supplied runtime path could
-create SQLite state outside the repository runtime boundary. The permitted
-targeted correction at `2a3f7b9` protected the CLI path, but the renewed
-review found that direct `RuntimeConfig(...)` construction and
-`SQLiteFoundation(...).health()` still bypass that validation; it also found
-a tautological default-path test.
-
-The original packet also did not define Linux symlink traversal or a
-validation-to-mutation race. The later coordinator repair correctly covered
-public construction/call paths, but its renewed review found that a valid
-runtime path could be replaced by a symlink before SQLite mutated it.
-
-[M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
-is now the controlling owner-approved rule. Treat both findings as
-packet-contract defects, not worker/model failures or hard escalations. This
-packet must receive fresh Decision Fidelity Review before a new bounded repair
-packet may be issued.
-
-## Decision Fidelity approval
-
-The original packet received a fresh GPT-5.6 Sol Decision Fidelity Review before
-its initial worker run. After the public-path and Linux symlink/race
-packet-contract amendments, a new fresh GPT-5.6 Sol reviewer approved this
-amended packet. The review confirmed M0-D11 is unique; M0-D08 remains the
-VennueSign Archive Boundary; M0-D11's physical `var/` containment, symlink
-rejection, mutation-boundary race protection, independent path oracle, and
-no-mutation evidence are faithfully carried. This approval authorizes a new
-bounded repair packet only; it does not authorize use of the prior branch,
-implementation, merge, or Alpha-02.
-
-A fresh GPT-5.6 Sol Decision Fidelity Reviewer approved this packet after a
-clean tracked-state check and fast-forward. The review confirmed the precise
-owned paths, synthetic-only/project-neutral boundary, explicit Alpha-02 wrapper
-deferral, exclusions, checks, and isolated-worktree/non-default-branch
-requirements.
 
 ## Outcome
 
 Create the smallest runnable, Linux-first Python foundation for Maestro's local
 service and SQLite operational store. It must be installable and testable, but
-it must not yet create the packet wrapper, Atlas UI, or any project integration.
+it must not create the packet wrapper, Atlas UI, project integration, or a
+production host-security subsystem.
+
+## Architecture lesson and current boundary
+
+Earlier Alpha-01 contracts required absolute validation-to-mutation filesystem
+protection without fully defining the threat model, sufficient proof, feasible
+implementation boundary, proportionality ceiling, or stop rule. Repeated
+implementation and review cycles resulted. The Owner classified that delay as
+an Architecture Agent failure, not an implementor or reviewer failure.
+
+[M0-D11](../decisions/m0-d11-linux-runtime-filesystem-boundary.md) now contains
+the complete M0-D12 bounded quality contract for Alpha. It protects a trusted
+local Linux process from incorrect, outside, source-tree, and pre-acquisition
+symlinked paths. It explicitly excludes a malicious concurrent same-UID or root
+process moving an already-open directory after directory-FD acquisition during
+SQLite's internal opens. Alpha uses Python's standard library and built-in
+`sqlite3`; stronger host-isolation assurance is later architecture work.
+
+The R1 implementation at `e2c8a08` remains unaccepted. Its fresh independent
+review returned `REQUEST_CHANGES` after proving the excluded post-FD move and
+noting incomplete outside-path coverage for CLI/direct-constructor paths. The
+post-FD move is no longer an Alpha gate; the in-scope coverage gap remains.
 
 ## Why this is bounded
 
 Alpha requires one Python service, local SQLite, a safe ignored runtime area,
 and a testable base before the wrapper can persist lifecycle state. This packet
-establishes only that foundation. The `maestro run-packet` wrapper is required
-by Alpha but belongs to Alpha-02, where it can be implemented and tested as one
-cohesive lifecycle boundary.
+establishes only that foundation. The `maestro run-packet` wrapper belongs to
+Alpha-02.
 
-## Owned paths
+## Original owned paths
 
-The worker may create or change only:
+Alpha-01 implementation work is restricted to:
 
 - `services/maestro/pyproject.toml`
 - `services/maestro/maestro/**`
@@ -72,19 +54,17 @@ The worker may create or change only:
 - `docs/operations/alpha-01-local-run.md`
 - `var/.gitignore`
 
-No other path is authorized.
+A repair packet may narrow this list and may never expand it without new
+Architecture/Owner approval.
 
 ## Required behavior
 
 1. The service is a Python package rooted at `services/maestro/` and uses the
-   standard library for its runtime database behavior.
-2. It enforces [M0-D11](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)
-   at every public command, configuration, constructor, and storage callable.
-   Its default local database path is independently derived as
-   `<worktree-root>/var`. Runtime artifacts may exist only inside the
-   repository's real physical `var/` tree: every component must be
-   non-symlinked, and Linux-safe mutation operations must prevent a
-   validation-to-mutation symlink substitution from escaping that tree.
+   standard library for runtime database behavior.
+2. It enforces the bounded M0-D11 contract at every public command,
+   configuration, constructor, and storage entry path before mutation.
+   Outside-repository, source-tree, and pre-acquisition symlinked paths are
+   rejected under the trusted local operating model.
 3. It opens SQLite with foreign keys enabled and WAL mode requested/verified
    where supported.
 4. It provides an idempotent migration mechanism with durable schema-version
@@ -95,78 +75,85 @@ No other path is authorized.
    worker, dispatching a task, or reading another repository.
 6. `var/.gitignore` keeps runtime database files, logs, evidence, and sockets
    out of Git while allowing its own ignore rule to remain tracked.
-7. The architecture and operations notes explain the local-only boundary, run
-   command, test command, database location, and how to remove only disposable
-   Alpha runtime data.
+7. Architecture and operations notes explain the local-only boundary, run
+   command, test command, database location, disposable-data removal, and the
+   trusted-local Alpha assurance level without claiming excluded same-UID/root
+   containment.
 
-## Required checks and evidence
+## Required checks and sufficient proof
 
-Run and record all of the following:
+Run and record:
 
 ```bash
 cd services/maestro
 python -m unittest discover -s ../../tests/alpha_01 -v
 python -m maestro.cli health --runtime-dir ../../var/alpha-01-check
+python -m maestro.cli health --runtime-dir ../../var/alpha-01-check
 ```
 
-The health check must demonstrate that:
+The named proof is sufficient when it demonstrates:
 
-- every valid runtime artifact is created only beneath the repository's real
-  physical `var/` tree;
-- command, configuration, constructor, and storage paths reject outside,
-  source-tree, and symlinked paths before mutation;
-- a symlink-swap/race attempt cannot redirect a database, WAL/SHM file, log,
-  socket, or directory outside `var/`; rejected attempts leave no artifact;
-- rerunning a valid health check is safe and preserves the recorded schema
-  version; and
-- no external repository, network, credential, project adapter, worker, or
-  Atlas UI is accessed.
+- command, direct configuration, direct constructor, and storage health paths
+  reject outside-repository and source-tree runtime paths before mutation;
+- pre-existing symlinked components and components changed before final safe
+  acquisition are rejected without outside artifacts;
+- each rejected test independently proves no database, journal, WAL/SHM, log,
+  socket, or other artifact exists in its outside destination;
+- the default path is independently derived as `<worktree-root>/var`;
+- repeated health checks preserve foreign keys, requested/verified WAL, and
+  durable schema version `1`; and
+- no external repository, network, credential, adapter, worker, or Atlas UI is
+  accessed.
 
-Evidence must include the exact commands, exit status, changed-file list, and
-the resulting schema version. Do not commit generated database files or logs.
+No additional adversarial filesystem proof is required after these checks pass.
 
 ## Explicit exclusions
 
 This packet must not:
 
+- claim or implement protection from a malicious concurrent same-UID or root
+  process moving an already-open runtime directory during SQLite internal opens;
+- add dependencies, native extensions, a custom SQLite VFS, mount isolation,
+  privileged helpers, or service-account provisioning;
 - create `maestro run-packet`, worker dispatch, model invocation, worktree
   claiming, packet/lifecycle/evidence schemas, review routing, or escalation
   execution;
-- create `apps/atlas/`, a browser/UI project, API/SSE endpoints, Slack,
-  GitHub automation, webhooks, credentials, secrets, project registration, or
-  any Foundry/VennueSign adapter;
-- modify root `.gitignore`, `.env`, `var/` runtime contents, RunPod
-  artifacts, `README.md`, or `setup_env.sh`;
-- merge, deploy, push to `master`, or start a later Alpha packet.
+- create `apps/atlas/`, APIs/SSE, Slack/GitHub automation, webhooks,
+  credentials, secrets, project registration, or Foundry/VennueSign adapters;
+- modify `.env`, root `.gitignore`, `README.md`, `setup_env.sh`, or
+  user-owned existing runtime data; or
+- merge, deploy, push to `master`, or begin Alpha-02.
 
-## Stop and escalate
+## Proportionality and stop rule
 
-Stop without improvising if:
+Use the smallest focused change needed to pass the named checks. One isolated
+run and M0-D05's one targeted correction maximum apply.
 
-- the isolated worktree is not clean or the base cannot be established;
-- a required path outside the owned-path list is needed;
-- a dependency beyond the Python standard library appears necessary;
-- the local runtime path conflicts with user-owned `var/` data;
-- a secret, external project, or network access would be needed; or
-- the packet would need to define wrapper/lifecycle behavior beyond this
-  foundation.
+Stop and return to Architecture/Owner if work would require an excluded
+same-UID/root threat model, new dependency, native/custom VFS, OS isolation,
+privileged operation, path outside the owned list, external system, secret, or
+new filesystem policy. Do not begin another repair cycle for excluded
+hardening.
 
 ## Completion and handoff
 
-A valid result has one scoped commit on a non-default branch, all required
-checks passing, and complete evidence. It goes to an independent implementation
-reviewer. It does not merge or trigger Alpha-02.
+A valid final result has one scoped commit on a non-default branch, all named
+checks passing, complete no-mutation evidence for in-scope rejected paths, and
+no unsupported security claim. It receives independent implementation review
+against the bounded contract. Approval still does not merge or trigger
+Alpha-02.
 
 ## Decision-fidelity carrier map
 
 | Governing choice | Alpha-01 carrier |
 | --- | --- |
 | Linux-first local operation | Python package, local runtime path, Linux commands |
-| SQLite is Maestro's operational store | SQLite connection and idempotent migration metadata |
-| Runtime data stays out of Git and within the physical runtime boundary | `var/.gitignore`, M0-D11 enforcement, public-path no-mutation tests, and symlink-race test |
-| Project-neutral / synthetic-only Alpha | No adapter, project repository, worker, or external input |
+| SQLite operational store | SQLite connection and idempotent migration metadata |
+| Bounded runtime containment | M0-D11 trusted-local model, eight-field quality contract, named sufficient proof |
+| Proportional work | Standard library only, focused owned paths, one run, one targeted correction maximum |
+| Project-neutral synthetic Alpha | No adapter, project repository, worker, or external input |
 | Atlas read-only and service-mediated | Atlas/API work explicitly excluded |
-| Packet wrapper remains mandatory | Explicitly deferred to Alpha-02; no partial/fake wrapper |
-| M0-D05 escalation boundary | No worker execution in this packet; it is preserved for Alpha-02 |
-| USB recovery gate | Backup implementation and physical provisioning excluded; later Alpha packet |
+| Packet wrapper mandatory but later | Explicitly deferred to Alpha-02 |
+| M0-D05 escalation boundary | One targeted correction; contract defects return to Architecture/Owner |
+| USB recovery gate | Backup implementation and physical provisioning excluded |
 | No secret inspection | `.env`, credentials, and external access explicitly forbidden |
