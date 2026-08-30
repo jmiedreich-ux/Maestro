@@ -29,6 +29,7 @@ The current M0 expansion is captured in:
 7. V1 remains one approved milestone, one hosted worker, one draft PR, and owner acceptance/merge. Agent-workforce queues and limited parallel dispatch begin no earlier than V2.
 8. Before Maestro executes a plan, milestone, packet, or build instruction, a separate Maestro Decision Fidelity Reviewer must trace every accepted governing choice into that proposal. Missing, changed, assumed, conflicting, or unapproved-deferred choices block execution. This review occurs before plan approval, before build instructions, and before milestone acceptance; it does not replace independent code review.
 9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
+10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
 
 ## VennueSign adapter guardrails
 
@@ -56,9 +57,13 @@ stop and move on. The accepted
 makes this a general rule for every quality attribute, not an Alpha-01-only
 exception.
 
-The exact next action is independent Decision Fidelity Review of M0-D12 and its
-carriers, followed by an explicit Architecture/Owner reconciliation of M0-D11
-against that rule. Alpha-01 is paused. No implementation correction, merge, or
+The initial Decision Fidelity Review of M0-D12 returned exact planning
+corrections. Those corrections now include complete job roles for the
+Architecture Agent, Independent Decision Fidelity Reviewer, and Independent
+Implementation Reviewer, plus M0-D05's targeted-follow-up rule. The exact next
+action is a targeted follow-up limited to the named findings and new role-rule
+carriers, followed by explicit Architecture/Owner reconciliation of M0-D11
+against M0-D12. Alpha-01 is paused. No implementation correction, merge, or
 Alpha-02 action is authorized.
 ## Open implementation decisions
 
