@@ -71,8 +71,7 @@ included choices and 20 approved deferrals, with no unresolved blocking row.
 
 The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
-review at `5fc4b61`. The next step is to author one bounded Alpha-01 build
-packet; no work outside that approved packet is authorized.
+review at `5fc4b61`. Alpha-01 is authored at `docs/planning/packets/alpha-01-local-foundation.md`. The next step is a fresh Decision Fidelity Reviewer approval of that packet; no work outside that approved packet is authorized.
 
 ## Security handling
 
