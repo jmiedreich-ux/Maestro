@@ -90,11 +90,12 @@ trusted local Linux process against incorrect, outside, source-tree, and
 pre-acquisition symlinked paths. It does not claim containment against a
 malicious concurrent same-UID/root process moving an already-open directory.
 
-Alpha-02 is eligible for Architecture planning only. The Architect may prepare
-its proposed bounded packet and complete quality contracts, but implementation
-remains unauthorized until the Owner approves the plan and a fresh Decision
-Fidelity Review approves the exact executable packet. The mandatory
-`maestro run-packet` wrapper remains deferred to that later packet.
+Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment and is eligible
+for Architecture planning only. The Architect may prepare its proposed bounded
+wrapper packet and complete quality contracts, but implementation remains
+unauthorized until the Owner approves the plan and a fresh Decision Fidelity
+Review approves the exact executable packet. Project registration is explicitly
+deferred until after Alpha and is not part of Alpha-02.
 
 ## Model-routing reminder
 

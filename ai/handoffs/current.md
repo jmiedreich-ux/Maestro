@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 is eligible for Architecture planning only; no Alpha-02 implementation, worker, packet-wrapper, API/UI, Foundry, VennueSign, project-adapter, GitHub-automation, or USB-recovery work is authorized by this handoff.
+**Status:** Alpha-01 local foundation completed and merged on 2026-08-30 at master merge `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment and is eligible for Architecture planning only; no Alpha-02 implementation, worker, packet-wrapper, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub-automation, or USB-recovery work is authorized by this handoff.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -58,16 +58,19 @@ The [Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md
 preserves the acceptance evidence and bounded exclusions. In particular, Alpha
 makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
 
-Alpha-02 is now eligible for Architecture planning. That planning may propose
-the next bounded packet and its complete quality contracts for Owner approval
-and Decision Fidelity Review. There is no executable Alpha-02 packet and no
-Alpha-02 implementation is authorized. Do not start the wrapper, worker
-dispatch, Atlas/API/UI, project integration, GitHub automation, or USB recovery
-work from this handoff.
+Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment and is now
+eligible for Architecture planning. That planning may propose the bounded
+wrapper packet and its complete quality contracts for Owner approval and
+Decision Fidelity Review. Project registration is explicitly deferred until
+after Alpha and is not part of Alpha-02. There is no executable Alpha-02 packet
+and no Alpha-02 implementation is authorized. Do not start the wrapper, worker
+dispatch, Atlas/API/UI, project registration or integration, GitHub automation,
+or USB recovery work from this handoff.
 
 ## Open implementation decisions
 
-- SQLite schema, backup, recovery, retention, and project registration/bootstrap mechanics.
+- SQLite schema, backup, recovery, and retention mechanics.
+- Post-Alpha project registration/bootstrap mechanics.
 - Atlas read-only presentation and service-mediated API implementation.
 - Least-privilege service-account/GitHub App/cloud-provider credential and webhook-security policy.
 - Notification/acknowledgement model and measurable concurrency/cost thresholds.
