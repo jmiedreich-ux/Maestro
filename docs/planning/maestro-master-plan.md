@@ -25,6 +25,7 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 11. Planned queue order and structural dependencies come from an approved project graph; Maestro derives operational eligibility and may never rewrite that backlog by itself.
 12. Any future auto-merge or autonomous next-work authority is explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
 13. Every material quality requirement uses a bounded quality contract defining the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Vague quality language is not executable.
+14. Every default-branch merge has complete, current review coverage: one exact full reviewed range plus targeted-reviewed correction-only diffs covering the exact final head. Uncovered or materially stale changes block merge.
 
 ## 3. System shape
 
@@ -135,6 +136,10 @@ After an initial full review, M0-D05 requires correction follow-ups to verify
 only the named findings, the correction-only diff, and directly affected
 consistency. Full review restarts only for a recorded range, scope, contract,
 evidence, or independence change.
+
+The merge gate verifies that the exact final head is completely covered by the
+full reviewed range plus every targeted-reviewed correction diff. Uncovered
+commits or materially stale base/evidence block merge.
 
 Packet enforcement should include path locks, a real-commit check, timeout policy, minimum context gate, per-run model fingerprint, session archive, and serialized resource use against verification gates.
 
