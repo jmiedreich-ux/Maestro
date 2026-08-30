@@ -161,13 +161,10 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Linux-native disposable-container verification when individual project adapters require it.
 - Resource-aware scheduling, measured concurrency policies, queue-aging/unblocking metrics, and mature Atlas control-plane views.
 
-## 10. Open decisions
+## 10. Remaining decisions
 
-1. Local Atlas UI technology, live-update transport, and read-only database-service boundary.
-2. Notification channel and acknowledgement model.
-5. Exact migration boundary between current Atlas records and Maestro's operational reporting projection.
-6. Credential-storage and permission model for repository, worker, and Murphy adapters.
-7. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
+1. Fresh reporting-view implementation technology for V1. Its read-only local-service, event-stream, and snapshot-reconnect contract is already decided.
+2. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
 
 ## 11. M0 acceptance
 
