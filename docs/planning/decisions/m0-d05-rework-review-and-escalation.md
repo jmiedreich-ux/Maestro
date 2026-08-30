@@ -23,6 +23,35 @@ or a packet that is invalid before review.
 5. **Dependency, configuration, or placeholder violation:** reject before
    review. It is never accepted as a normal correction.
 
+## Review renewal scope
+
+The first independent review of a proposal or implementation examines the full
+approved range. A follow-up after correction is a **targeted verification**, not
+a new full review.
+
+The same independent reviewer may and normally should perform the follow-up
+because it already owns the findings and did not author the correction. The
+follow-up verifies only:
+
+1. every named finding received the exact required correction;
+2. the correction diff contains no unrelated change;
+3. the correction creates no direct contradiction in the immediately affected
+   records, code, tests, or evidence; and
+4. the original findings are resolved.
+
+The reviewer must use the smallest review scope that can prove those facts and
+stop when they are proven. A new out-of-scope observation is non-blocking and is
+recorded separately unless the correction itself introduced it or it proves a
+direct material violation of the approved contract.
+
+A full renewed review is required only when the base or reviewed range changes,
+the correction includes unrelated work, the correction materially redesigns a
+shared contract, prior evidence becomes unreliable, or reviewer independence is
+lost. The reason for reopening full scope must be recorded.
+
+This targeted-follow-up rule preserves quality while preventing every
+correction from restarting discovery from zero.
+
 ## Worker routing
 
 The remote model returned no work twice. Both cases fall under rule 1, so the
