@@ -1,0 +1,10 @@
+{
+  "packet_id": "alpha-02-gate-failure",
+  "title": "Record one synthetic named gate failure",
+  "authority": {"approval_reference": "Alpha-02 approved packet", "fidelity_reference": "Decision Fidelity Review c54f5bb"},
+  "owned_paths": ["synthetic-output"],
+  "gates": [{"name": "synthetic-check", "command": "synthetic:fail"}],
+  "executor": {"kind": "synthetic-local", "scenario": "gate-failure"},
+  "independent_review_route": "Independent Implementation Reviewer",
+  "owner_stop_boundary": "Stop after the exact targeted-correction handoff."
+}
