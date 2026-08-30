@@ -6,9 +6,9 @@
 
 ## Decision
 
-Maestro V1 will use one local SQLite database on the Linux AI box as its durable operational memory.
+Maestro V1 will use one local SQLite database on the Linux AI box as its durable operational memory **and immediate operational source for local Atlas**.
 
-Maestro's local service is the only database writer. Atlas reads operational state and submits allowed commands through that service; Atlas never opens or edits the database directly. Project repositories and GitHub remain authoritative for approved plans, code, PRs, reviews, and CI.
+Maestro's local service is the only database writer. Atlas reads current operational state from that service and submits allowed commands through it; Atlas never opens or edits the database directly. Project repositories and GitHub remain authoritative for approved plans, code, PRs, reviews, and CI, but they are **not** Atlas's refresh mechanism.
 
 ## Why this fits V1
 
@@ -24,6 +24,23 @@ Maestro's local service is the only database writer. Atlas reads operational sta
 | Project repository / GitHub | Product decisions, feature records, approved work graph, code, PRs, reviews, CI |
 | Maestro database | Project registration, observed repository facts, graph projection, runs, packet leases, attempts, worker events, evidence, waits, retries, notifications, resource locks, command audit trail |
 | Atlas | Read projection and audited requests only; no independent durable truth |
+
+## Immediate operational visibility
+
+Atlas must show the most recent Maestro state as soon as the coordinator records it. It does not wait for a GitHub write, a CI result, a scheduled build, or a static-site refresh.
+
+Examples of immediately visible operational facts are:
+
+- a packet being assigned or starting;
+- the selected local/cloud agent and model;
+- known waiting state, expected completion, timeout, and next permitted action;
+- worker output/evidence arrival;
+- a verification or review gate beginning, passing, failing, or requesting rework;
+- a retry, resource lock, blocker, coordinator recovery, or notification.
+
+GitHub/CI observations are also ingested into the database when they arrive. They refine the live state—for example, `CI passed` or `merge observed`—but their arrival never prevents Atlas from showing all newer Maestro-known facts.
+
+The service exposes a local read API for Atlas. Atlas refreshes through that API on load and receives low-latency state updates while open; the initial transport may be short polling, with a local event stream added when the runtime is built. Neither approach relies on GitHub Actions or a static-site deployment.
 
 ## V1 logical records
 
