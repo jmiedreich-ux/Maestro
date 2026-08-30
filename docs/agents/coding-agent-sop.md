@@ -16,7 +16,7 @@ This SOP applies to every implementation agent. Project policy comes first; this
 1. Change only authorized paths and do not broaden a packet to solve adjacent work.
 2. Preserve the project architecture, conventions, and accepted behavior.
 3. Use real project validation rather than tests that merely duplicate implementation logic.
-4. When a packet establishes a safety, ownership, or filesystem boundary, enforce it at every public construction, callable, configuration, and command entry path. Tests must exercise bypass paths and independently derive their expected boundary; they may not prove behavior only by comparing against the implementation constant under test. For Linux filesystem boundaries, prohibit unapproved symlink traversal and defend against validation-to-mutation substitution at the actual mutation operation; a prior resolved-path check alone is insufficient. Rejected paths and race attempts must leave no artifact outside the approved physical boundary.
+4. When a packet establishes a material quality boundary, implement only its complete owner-approved M0-D12 contract: protected outcome, operating/threat/failure model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality ceiling, and stop rule. Exercise every public path and negative/race condition that contract places in scope, using independent test oracles where required. Do not silently strengthen the threat model or pursue excluded edge cases after the named proof passes. For Linux runtime paths, the current M0-D11 quality contract controls the exact symlink, mutation, artifact, and actor boundary.
 5. Do not merge, deploy, force-push, alter protected project policy, use production credentials, or silently resolve conflicts/ambiguity.
 
 ## 3. Verify and hand off
@@ -28,4 +28,4 @@ This SOP applies to every implementation agent. Project policy comes first; this
 
 ## 4. Rework and escalation
 
-One targeted, reviewer-requested rework cycle is allowed unless project policy says otherwise. A second failure, stale base, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.
+One targeted, reviewer-requested rework cycle is allowed unless project policy says otherwise. Its follow-up review is limited to the named finding, correction-only diff/evidence, and directly affected consistency. A different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.

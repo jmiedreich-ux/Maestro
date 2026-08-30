@@ -13,24 +13,21 @@ Turn an approved project architecture direction and current-source evidence into
 
 ## Maestro-specific continuity — read before planning Alpha successors
 
-- **M0-D11** remains the accepted Linux runtime-filesystem boundary until its
-  explicit Architecture/Owner reconciliation with M0-D12.
-- **Alpha-01-R1** completed its single run at `e2c8a08` on
-  `alpha-01-r1-runtime-boundary`. Fresh Independent Implementation Review
-  returned `REQUEST_CHANGES`: after runtime-directory FD acquisition, the
-  directory could be moved outside `var/` before SQLite mutation; outside-path
-  CLI/direct-constructor coverage was also incomplete.
-- The owner classified the repeated Alpha-01 cycle as an Architecture Agent
-  failure. The architecture used absolute security language without a complete
-  threat model, sufficient proof, feasible implementation boundary,
-  proportionality ceiling, or stop rule.
-- **M0-D12** requires bounded quality contracts for every material quality
-  requirement. Alpha-01 is paused while M0-D11 is reconciled with it. No
-  correction, merge, or Alpha-02 action is authorized.
-- Alpha remains synthetic-only. Atlas is strictly read-only; Foundry and
-  VennueSign remain untouched; the required `maestro run-packet` wrapper
-  remains deferred to Alpha-02; M0-D07's USB recovery acceptance gate is
-  unchanged.
+- **M0-D11** now carries the Owner-approved M0-D12 bounded Alpha assurance
+  profile: trusted local Linux identity; reject invalid, outside, source-tree,
+  and pre-acquisition symlinked paths; exclude malicious concurrent same-UID/root
+  movement of an already-open directory during SQLite internal opens.
+- **Alpha-01-R1** completed at `e2c8a08` and received `REQUEST_CHANGES`.
+  The excluded post-directory-FD move remains historical evidence; incomplete
+  outside-path CLI/direct-constructor coverage is the sole in-scope defect.
+- The repeated earlier cycle is recorded as an Architecture Agent failure.
+  Architecture must not reintroduce absolute or unbounded assurance language.
+- **Alpha-01-R2** is the proposed final focused repair and is not executable
+  until its exact planning branch passes complete Decision Fidelity Review and
+  merges with current review coverage.
+- No Alpha-01 code merge or Alpha-02 action is authorized. Alpha remains
+  synthetic-only; Atlas is read-only; Foundry/VennueSign stay untouched;
+  M0-D07's USB gate remains unchanged.
 
 ## May do
 
@@ -82,6 +79,19 @@ finding and keep the correction diff free of unrelated work. The follow-up
 review is targeted to those findings and their directly affected consistency;
 the Architect must not request a full review restart without one of M0-D05's
 recorded reopening reasons.
+
+## Review-coverage duty
+
+Before requesting merge, the Architecture Agent must prove that the exact final
+head has complete, current independent review coverage under M0-D05: one full
+reviewed range plus every targeted-reviewed correction-only diff. The Architect
+records the covered base/head chain and verifies that no unrelated or uncovered
+commit entered it.
+
+If the head changes, route the new diff to targeted review only when it is an
+authorized correction. If the base or evidence changes materially, or unrelated
+work appears, reopen the affected/full scope and record why. Never rely on a
+stale approval for merge.
 
 ## Must not do
 

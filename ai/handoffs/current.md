@@ -30,6 +30,7 @@ The current M0 expansion is captured in:
 8. Before Maestro executes a plan, milestone, packet, or build instruction, a separate Maestro Decision Fidelity Reviewer must trace every accepted governing choice into that proposal. Missing, changed, assumed, conflicting, or unapproved-deferred choices block execution. This review occurs before plan approval, before build instructions, and before milestone acceptance; it does not replace independent code review.
 9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
 10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
+11. Every default-branch merge must have complete current review coverage: one exact full reviewed range plus every targeted-reviewed correction-only diff covering the exact final head. Uncovered or materially stale changes block merge.
 
 ## VennueSign adapter guardrails
 
@@ -40,31 +41,31 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-Alpha-01-R1 completed its single authorized run on branch
-`alpha-01-r1-runtime-boundary` at `e2c8a08`. Fresh Independent Implementation
-Review returned `REQUEST_CHANGES`: after the runtime directory file descriptor
-was acquired, the directory could be moved outside `var/` before
-`sqlite3.connect()`, and SQLite then created database, WAL, and SHM artifacts
-outside the boundary. The review also reported incomplete outside-path test
-coverage for CLI/direct-constructor paths.
+The owner-approved M0-D12 process package and complete Architecture,
+Decision-Fidelity, and Implementation-Review job roles merged to `master` at
+`ac6471484268d8d6b11fb302dd1190ef85cbdae2`. M0-D05 now requires targeted
+correction follow-ups and complete, current review coverage for the exact final
+merge head.
 
-The owner classified the prolonged Alpha-01 cycle as an Architecture Agent
-failure, not an implementor or reviewer failure. The architecture used absolute
-security language without defining the expected threat model, sufficient proof,
-feasible implementation boundary, proportionality limit, or when agents must
-stop and move on. The accepted
-[M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md)
-makes this a general rule for every quality attribute, not an Alpha-01-only
-exception.
+The Owner reconciled M0-D11 with M0-D12 for Alpha-01. Alpha uses a trusted local
+Linux identity and protects against invalid, outside, source-tree, and
+pre-acquisition symlinked paths. It does not claim adversarial containment
+against a malicious concurrent same-UID or root process moving an already-open
+directory during SQLite's internal opens. The implementation remains bounded to
+Python's standard library and built-in `sqlite3`.
 
-The initial Decision Fidelity Review of M0-D12 returned exact planning
-corrections. Those corrections now include complete job roles for the
-Architecture Agent, Independent Decision Fidelity Reviewer, and Independent
-Implementation Reviewer, plus M0-D05's targeted-follow-up rule. The exact next
-action is a targeted follow-up limited to the named findings and new role-rule
-carriers, followed by explicit Architecture/Owner reconciliation of M0-D11
-against M0-D12. Alpha-01 is paused. No implementation correction, merge, or
-Alpha-02 action is authorized.
+R1 at `e2c8a08` remains historically `REQUEST_CHANGES`. Its post-directory-FD
+same-UID move is now an explicit Alpha exclusion; its incomplete
+outside-repository CLI/direct-constructor coverage remains the sole in-scope
+implementation defect.
+
+[Alpha-01-R2 — Complete Bounded Local Foundation](../../docs/planning/packets/alpha-01-r2-complete-bounded-foundation.md)
+is proposed as the final focused repair. The exact next gate is one complete
+fresh Decision Fidelity Review of the M0-D11 reconciliation, amended Alpha-01
+contract, historical R1 status, R2 packet, review-freshness carriers, and these
+handoffs. If approved and merged unchanged, R2 may receive one isolated
+implementation run. No Alpha-01 code merge or Alpha-02 action is authorized.
+
 ## Open implementation decisions
 
 - SQLite schema, backup, recovery, retention, and project registration/bootstrap mechanics.

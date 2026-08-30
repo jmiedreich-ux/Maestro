@@ -1,6 +1,6 @@
 # Alpha-01-R1 — Enforce Linux Runtime Filesystem Boundary
 
-**Status:** Approved by fresh Decision Fidelity Review on 2026-08-30 for one isolated implementation run  
+**Status:** Historical completed run; independent implementation review returned `REQUEST_CHANGES`; not executable again  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Alpha-01 — Establish Local Foundation](alpha-01-local-foundation.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)  
 **Base:** The complete Alpha-01 coordinator-repair result at `b476cdc`, after verifying its provenance and establishing a clean isolated worktree. Stop if that base is unavailable or has a different full diff.  
@@ -8,6 +8,22 @@
 **Worker route:** Normal bounded Maestro Implementor route  
 **Review route:** Fresh independent implementation review; GPT-5.6 Sol at high reasoning  
 **Timeout:** Stop and report if one focused repair cannot meet this packet without expanding scope.
+
+## Historical outcome
+
+The single authorized R1 run completed on branch
+`alpha-01-r1-runtime-boundary` at `e2c8a08`. Fresh Independent
+Implementation Review returned `REQUEST_CHANGES`: a same-UID reviewer could
+move the already-open runtime directory outside `var/` after directory-FD
+acquisition but before `sqlite3.connect()`, and SQLite then created database,
+WAL, and SHM artifacts in that moved directory. The reviewer also found
+incomplete outside-path coverage for CLI/direct-constructor paths.
+
+The Owner later approved the bounded M0-D11 Alpha assurance profile under
+M0-D12. The post-FD same-UID move is explicitly outside that Alpha model; the
+in-scope coverage gap moves to the separately reviewed final repair packet.
+This record preserves the R1 contract and outcome historically. It does not
+authorize correction on the R1 branch, merge, or Alpha-02.
 
 ## Purpose
 

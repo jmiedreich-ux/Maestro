@@ -178,6 +178,18 @@ Full review scope may reopen only when the base/range changes, unrelated work is
 present, a shared contract is materially redesigned, prior evidence becomes
 unreliable, or independence is lost. The report must identify the exact reason.
 
+## Review freshness and merge coverage
+
+Pin every full review to an exact base/head range. After targeted corrections,
+verify that the exact final implementation head is completely covered by the
+full reviewed range plus every correction-only diff that received targeted
+verification.
+
+Any uncovered commit, unrelated change, invalidated evidence, or materially
+impactful base change makes affected approval stale and blocks merge. Reopen
+only the necessary scope under M0-D05 and record the reason and reviewed
+coverage chain.
+
 ## Required output and evidence
 
 Every report must contain:

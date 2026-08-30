@@ -59,6 +59,7 @@ work, or advance a milestone without the required approval.
 - The tested escalation rule in M0-D05 remains authoritative.
 - [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material quality requirement. Architecture must define the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
 - Independent review is full once. After correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full scope reopens only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
+- Every default-branch merge has complete current review coverage: one exact full reviewed range plus all targeted-reviewed correction-only diffs covering the final head. Uncovered or materially stale changes block merge.
 - Every plan, milestone, packet, and build instruction must pass independent
   Decision Fidelity Review before execution. The review records every accepted
   choice as `included`, `missing`, `changed`, `new assumption`, or
@@ -66,40 +67,34 @@ work, or advance a milestone without the required approval.
 
 ## Current checkpoint
 
-Maestro Implementor completed and pushed the planning-only Alpha
-decision-fidelity review. It resolved the obsolete Atlas-command language and
-recorded the approved USB physical-provisioning deferral. The review has 31
-included choices and 20 approved deferrals, with no unresolved blocking row.
+The owner-approved M0-D12 process package, M0-D05 targeted-review rule, and
+complete Architecture, Decision-Fidelity, and Implementation-Review job roles
+merged to `master` at `ac6471484268d8d6b11fb302dd1190ef85cbdae2`.
+Default-branch merge candidates now require complete, current review coverage
+without redundant rereview of unchanged material.
 
-The owner approved the resolved Alpha layout and mandatory wrapper boundary on
-2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
-review at `5fc4b61`. Alpha-01 completed its worker run and targeted correction,
-then two packet-contract gaps produced coordinator repair `b476cdc` and the
-owner-approved M0-D11 repair packet. Alpha-01-R1 ran once on
-`alpha-01-r1-runtime-boundary` at `e2c8a08`; nine focused tests and repeated
-health checks passed.
+Alpha-01-R1 ran once at `e2c8a08`; its nine tests and repeated health checks
+passed. Fresh Independent Implementation Review returned `REQUEST_CHANGES`
+after demonstrating a same-UID post-directory-FD move outside `var/` and
+finding incomplete outside-path CLI/direct-constructor coverage.
 
-Fresh Independent Implementation Review returned `REQUEST_CHANGES`. The
-reviewer proved that after the implementation acquired the runtime directory
-file descriptor, that directory could be moved outside `var/` before
-`sqlite3.connect()`; SQLite then created the database, WAL, and SHM files in
-the moved outside directory. The review also found incomplete outside-path
-coverage for CLI/direct-constructor paths. No merge or Alpha-02 action is
-authorized.
+The Owner reconciled M0-D11 with M0-D12 for Alpha. The bounded model uses a
+trusted local Linux identity and protects incorrect, outside, source-tree, and
+pre-acquisition symlinked paths. It explicitly excludes a malicious concurrent
+same-UID/root actor moving an already-open directory during SQLite's internal
+opens. Alpha remains standard-library/`sqlite3` only. Stronger host assurance
+is deferred to a separately approved future quality contract.
 
-The owner determined that the repeated Alpha-01 cycle is an Architecture Agent
-failure: the architecture supplied absolute security wording without fully
-defining the expected threat model, sufficient proof, feasible implementation
-boundary, proportionality limit, or when agents must stop and move on. This is
-a general lesson, not only a security or Alpha-01 exception. The accepted
-[M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md)
-now requires bounded expectations for every material quality attribute and
-returns materially incomplete contracts to Architecture and the Owner rather
-than repeated implementation corrections. M0-D05 now also requires targeted
-correction follow-ups instead of restarting full review without a recorded
-scope-change reason. Complete job roles carry these duties for Architecture,
-Decision Fidelity Review, and Independent Implementation Review. Alpha-01
-remains paused until M0-D11 is reconciled with M0-D12.
+The prolonged earlier cycle remains recorded as an Architecture Agent failure.
+The excluded post-FD move is not another Alpha gate. The coverage omission is
+the only in-scope implementation defect.
+
+[Alpha-01-R2 — Complete Bounded Local Foundation](../../docs/planning/packets/alpha-01-r2-complete-bounded-foundation.md)
+is the proposed final repair. Its exact next gate is one fresh complete Decision
+Fidelity Review of the planning branch. If approved and merged with complete
+review coverage, it authorizes one isolated implementation run only. No
+Alpha-01 code merge or Alpha-02 action is authorized.
+
 ## Model-routing reminder
 
 Before assigning or recommending a Maestro Architect or review run, explicitly
