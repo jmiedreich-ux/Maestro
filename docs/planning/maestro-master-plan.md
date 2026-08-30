@@ -84,7 +84,7 @@ Every feature then uses the same constrained records:
 | Question | ID, exact question, owner, status, resolution/evidence |
 | Decision | Context, options, choice, reason, consequences |
 | Milestone | Plain subject, outcome, exit condition, dependencies, risks |
-| Packet / task | Plain subject, outcome, owned paths, interfaces, invariants, behavior paths, checks, executor route, reviewer route, and every applicable bounded quality contract |
+| Packet / task | Plain subject, outcome, owned paths, interfaces, invariants, behavior paths, checks, executor route, reviewer route, and a complete bounded quality contract for every material quality requirement |
 | Coverage | Every required path mapped to a check or `UNTESTED` with a reason |
 
 The planning intake process is mandatory:
@@ -130,6 +130,11 @@ proof, permitted implementation boundary and complexity, proportionality
 ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough. A newly
 discovered material gap in that contract returns to Architecture and the Owner;
 it does not create an unlimited worker/review loop.
+
+After an initial full review, M0-D05 requires correction follow-ups to verify
+only the named findings, the correction-only diff, and directly affected
+consistency. Full review restarts only for a recorded range, scope, contract,
+evidence, or independence change.
 
 Packet enforcement should include path locks, a real-commit check, timeout policy, minimum context gate, per-run model fingerprint, session archive, and serialized resource use against verification gates.
 
