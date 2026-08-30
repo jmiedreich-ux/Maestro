@@ -52,6 +52,7 @@ its bootstrap PR.
 
 ## First application
 
-VennueSign is an existing repository and will receive a proposed
-`maestro.project.yaml` only after its read-only registration discovery is
-reviewed.
+Foundry is the first existing repository to receive a proposed
+`maestro.project.yaml`, after its read-only registration discovery is reviewed.
+VennueSign follows later, after its registration discovery identifies the work
+needed to make it safe for Maestro dispatch.
