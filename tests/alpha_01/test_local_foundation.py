@@ -87,6 +87,24 @@ class LocalFoundationTests(unittest.TestCase):
             self.assertFalse(rejected_path.exists())
             self.assert_no_runtime_artifacts(rejected_path)
 
+    def test_health_cli_rejects_outside_repository_path_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            outside_directory = Path(temporary_directory)
+            rejected_path = outside_directory / "outside-cli-runtime"
+
+            result = subprocess.run(
+                [sys.executable, "-m", "maestro.cli", "health", "--runtime-dir", str(rejected_path)],
+                cwd=REPOSITORY_ROOT / "services" / "maestro",
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Runtime directory must be inside", result.stderr)
+            self.assertFalse(rejected_path.exists())
+            self.assert_no_runtime_artifacts(outside_directory)
+
     def test_direct_foundation_construction_rejects_unvalidated_source_path(self) -> None:
         rejected_path = REPOSITORY_ROOT / "services" / "maestro" / "maestro" / "runtime-foundation-check"
         unsafe_config = object.__new__(RuntimeConfig)
@@ -97,6 +115,18 @@ class LocalFoundationTests(unittest.TestCase):
             SQLiteFoundation(unsafe_config)
         self.assertFalse(rejected_path.exists())
         self.assert_no_runtime_artifacts(rejected_path)
+
+    def test_direct_foundation_construction_rejects_unvalidated_outside_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            outside_directory = Path(temporary_directory)
+            rejected_path = outside_directory / "outside-foundation-runtime"
+            unsafe_config = object.__new__(RuntimeConfig)
+            object.__setattr__(unsafe_config, "runtime_dir", rejected_path)
+
+            with self.assertRaises(RuntimePathError):
+                SQLiteFoundation(unsafe_config)
+            self.assertFalse(rejected_path.exists())
+            self.assert_no_runtime_artifacts(outside_directory)
 
     def test_symlinked_runtime_component_is_rejected_without_outside_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

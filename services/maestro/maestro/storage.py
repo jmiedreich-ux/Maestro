@@ -31,9 +31,10 @@ class SQLiteFoundation:
         self.config = RuntimeConfig(config.runtime_dir)
 
     def health(self) -> DatabaseHealth:
-        # Hold an O_NOFOLLOW directory descriptor through SQLite's entire
-        # mutation window. /proc/self/fd retains that physical directory even
-        # if its pathname is swapped for a symlink after validation.
+        # Hold an O_NOFOLLOW directory descriptor through SQLite's mutation
+        # window. This enforces the trusted-local, pre-acquisition symlink
+        # boundary; post-acquisition same-UID/root directory moves are outside
+        # Alpha-01's declared assurance model.
         self.config = RuntimeConfig(self.config.runtime_dir)
         with self.config.open_runtime_dir_fd() as runtime_fd:
             connection = self._connect(runtime_fd)
