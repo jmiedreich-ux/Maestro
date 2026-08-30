@@ -24,7 +24,7 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 10. Every coding agent follows the joined project's SOP plus the Maestro Coding Agent SOP. Specialist roles may add rules but cannot weaken either.
 11. Planned queue order and structural dependencies come from an approved project graph; Maestro derives operational eligibility and may never rewrite that backlog by itself.
 12. Any future auto-merge or autonomous next-work authority is explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
-13. Every material quality requirement uses a bounded quality contract: defined operating/threat model, exclusions, assurance level, sufficient proof, proportionality ceiling, and stop/escalation rule. Vague quality language is not executable.
+13. Every material quality requirement uses a bounded quality contract defining the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Vague quality language is not executable.
 
 ## 3. System shape
 
@@ -124,9 +124,10 @@ configuration, and placeholder violations are rejected before review.
 
 [M0-D12](decisions/m0-d12-bounded-quality-contracts.md) governs every material
 quality requirement. Security, reliability, performance, concurrency, recovery,
-and similar language must define its operating/threat model, exclusions,
-assurance level, sufficient proof, proportionality ceiling, and exact stop rule
-before dispatch. Passing the named proof is the definition of enough. A newly
+and similar language must define its protected outcome, operating/threat/failure
+model, explicit exclusions, practical assurance level, sufficient acceptance
+proof, permitted implementation boundary and complexity, proportionality
+ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough. A newly
 discovered material gap in that contract returns to Architecture and the Owner;
 it does not create an unlimited worker/review loop.
 
