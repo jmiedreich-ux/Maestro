@@ -70,9 +70,9 @@ recorded the approved USB physical-provisioning deferral. The review has 31
 included choices and 20 approved deferrals, with no unresolved blocking row.
 
 The owner approved the resolved Alpha layout and mandatory wrapper boundary on
-2026-08-30. The sole remaining pre-build gate is a fresh, separate Decision
-Fidelity Reviewer sign-off on the already-pushed review. No Alpha application
-code is authorized until that sign-off passes.
+2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
+review at `5fc4b61`. The next step is to author one bounded Alpha-01 build
+packet; no work outside that approved packet is authorized.
 
 ## Security handling
 
