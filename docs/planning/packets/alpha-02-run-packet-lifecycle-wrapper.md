@@ -29,7 +29,7 @@ This is a local proof of Maestro's control boundary. It does not join, inspect, 
 3. A valid packet creates one durable run/packet attempt, acquires one idempotent local claim, creates one isolated temporary worktree for the synthetic fixture, and records start facts.
 4. The wrapper invokes only the approved synthetic local executor declared by the fixture. It must capture its exit result, commit fact, scoped-diff fact, gate results, and bounded logs/evidence metadata.
 5. A valid committed, in-scope result that passes every named gate becomes `AwaitingReview`; the wrapper records the independent-review handoff and stops. It does not perform independent review, merge, select a successor packet, or dispatch another packet.
-6. A missing scoped diff, missing required commit, dependency/configuration/placeholder violation, or out-of-scope result is rejected immediately and recorded. It does not receive a correction round.
+6. A missing scoped diff, missing required commit, dependency/configuration/placeholder violation, or out-of-scope result is rejected immediately. The wrapper records a durable rejection/escalation handoff for coordinator ownership and stops; it does not receive a correction round or autonomously reassign work.
 7. Only a committed, in-scope result that fails one named gate is eligible for one exact targeted-correction handoff under M0-D05. The wrapper records that eligibility and stops; it does not autonomously re-run a worker or invent the correction.
 8. Duplicate invocation, replayed completion, restart after a recorded transition, and contention for the same packet claim do not launch a second worker, duplicate terminal evidence, or overwrite prior facts.
 9. All lifecycle changes and evidence facts are persisted through the existing service-owned SQLite storage boundary. Atlas remains absent and has no command or database-write path.
@@ -80,7 +80,7 @@ The implementation may make the smallest necessary test-support adjustment insid
 - **Operating model:** the approved synthetic executor returns controlled fixture outputs for success, named-gate failure, missing commit/diff, and out-of-scope cases.
 - **Explicit exclusions:** validating a real GitHub PR, executing real CI, parsing untrusted model prose, automatic correction, independent review execution, and merge authority.
 - **Assurance level:** durable, inspectable evidence records tied to one packet attempt and a deterministic M0-D05 outcome.
-- **Sufficient proof:** tests cover successful `AwaitingReview` handoff, immediate rejection classes, one eligible targeted-correction handoff, preservation of captured evidence, and wrapper stop after each outcome.
+- **Sufficient proof:** tests cover successful `AwaitingReview` handoff, immediate non-delivery rejection with durable coordinator-escalation handoff, dependency/configuration/placeholder and out-of-scope rejection, one eligible targeted-correction handoff, preservation of captured evidence, and wrapper stop after each outcome.
 - **Implementation boundary:** synthetic fixture repository/worktree and local command output only; no external network, credentials, or real repository.
 - **Proportionality ceiling:** evidence remains local structured metadata plus bounded captured output; no artifact store, notification system, or Atlas presentation.
 - **Stop and escalation:** stop if required evidence needs a real project, external CI/provider, secret, or a second correction cycle.
