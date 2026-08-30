@@ -1,6 +1,6 @@
 # Alpha-01-R1 — Enforce Linux Runtime Filesystem Boundary
 
-**Status:** Draft; requires fresh Decision Fidelity Review before implementation  
+**Status:** Approved by fresh Decision Fidelity Review on 2026-08-30 for one isolated implementation run  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Alpha-01 — Establish Local Foundation](alpha-01-local-foundation.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)  
 **Base:** The complete Alpha-01 coordinator-repair result at `b476cdc`, after verifying its provenance and establishing a clean isolated worktree. Stop if that base is unavailable or has a different full diff.  
