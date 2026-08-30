@@ -1,6 +1,6 @@
 # Maestro Alpha — Decision-Fidelity Review
 
-**Status:** Pre-build review updated with owner-directed resolutions; no application code is authorized by this record.
+**Status:** Owner-approved pre-build review; independent Decision Fidelity Reviewer sign-off remains required before any application code.
 **Reviewer:** Maestro Decision Fidelity Reviewer
 **Proposal reviewed:** owner-directed Alpha boundary, 2026-08-29
 **Scope:** planning and traceability only. This record creates no runtime, worker, project adapter, project registration, GitHub automation, or external agent dispatch.
@@ -141,6 +141,6 @@ The correction edge is permitted only for committed, in-scope work that fails a 
 
 - [x] M0-D01 `command_requests` is removed; Atlas is read-only.
 - [x] M0-D07 physical USB provisioning is explicitly deferred with a recovery-acceptance gate.
-- [ ] Owner approves the Alpha layout and wrapper boundary above.
+- [x] Owner approved the Alpha layout and wrapper boundary on 2026-08-30.
 - [ ] A final Decision Fidelity Reviewer records all rows as `included` or `approved deferral`.
 - [ ] Only then may a separate build packet create Alpha application code.
