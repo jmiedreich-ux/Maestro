@@ -69,10 +69,10 @@ decision-fidelity review. It resolved the obsolete Atlas-command language and
 recorded the approved USB physical-provisioning deferral. The review has 31
 included choices and 20 approved deferrals, with no unresolved blocking row.
 
-The next gate is not implementation. The owner must approve the resolved Alpha
-layout and mandatory wrapper boundary, then a fresh, separate Decision Fidelity
-Reviewer must independently sign off on the already-pushed review. No Alpha
-application code is authorized until both gates pass.
+The owner approved the resolved Alpha layout and mandatory wrapper boundary on
+2026-08-30. The sole remaining pre-build gate is a fresh, separate Decision
+Fidelity Reviewer sign-off on the already-pushed review. No Alpha application
+code is authorized until that sign-off passes.
 
 ## Update rule
 
