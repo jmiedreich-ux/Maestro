@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from dataclasses import dataclass
 
@@ -30,15 +31,23 @@ class SQLiteFoundation:
         self.config = RuntimeConfig(config.runtime_dir)
 
     def health(self) -> DatabaseHealth:
-        self.config.ensure_runtime_dir()
-        with self._connect() as connection:
-            journal_mode = str(connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
-            foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys=ON").fetchone())
-            foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys").fetchone()[0])
-            if journal_mode != "wal":
-                raise RuntimeError(f"SQLite WAL mode is unavailable: {journal_mode}")
-            self._apply_migrations(connection)
-            version = int(connection.execute("SELECT MAX(version) FROM schema_versions").fetchone()[0])
+        # Hold an O_NOFOLLOW directory descriptor through SQLite's entire
+        # mutation window. /proc/self/fd retains that physical directory even
+        # if its pathname is swapped for a symlink after validation.
+        self.config = RuntimeConfig(self.config.runtime_dir)
+        with self.config.open_runtime_dir_fd() as runtime_fd:
+            connection = self._connect(runtime_fd)
+            try:
+                journal_mode = str(connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
+                foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys=ON").fetchone())
+                foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys").fetchone()[0])
+                if journal_mode != "wal":
+                    raise RuntimeError(f"SQLite WAL mode is unavailable: {journal_mode}")
+                self._apply_migrations(connection)
+                version = int(connection.execute("SELECT MAX(version) FROM schema_versions").fetchone()[0])
+                connection.commit()
+            finally:
+                connection.close()
 
         return DatabaseHealth(
             database_path=str(self.config.database_path),
@@ -47,8 +56,9 @@ class SQLiteFoundation:
             foreign_keys_enabled=foreign_keys_enabled,
         )
 
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.config.database_path)
+    @staticmethod
+    def _connect(runtime_fd: int) -> sqlite3.Connection:
+        return sqlite3.connect(f"/proc/self/fd/{runtime_fd}/maestro.sqlite3")
 
     @staticmethod
     def _apply_migrations(connection: sqlite3.Connection) -> None:
