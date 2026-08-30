@@ -1,6 +1,6 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Paused pending Decision Fidelity Review of the bounded M0-D11 reconciliation and final Alpha-01 repair packet  
+**Status:** Complete at independently approved Alpha-01-R2 head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`; see the [Done Record](../done/alpha-01-local-foundation.md)
 **Owner:** Jeremy Miedreich  
 **Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md); [M0-D12 — Bounded Quality Contracts and Proportionality](../decisions/m0-d12-bounded-quality-contracts.md)  
 **Execution class:** Bootstrap implementation in a clean isolated worktree  

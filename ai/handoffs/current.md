@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** M0 planning expansion captured on 2026-08-29. No Maestro runtime, worker, queue database, Atlas migration, VennueSign code change, or product-code merge is authorized by this handoff.
+**Status:** Alpha-01 local foundation complete on 2026-08-30 at independently approved head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`. No Alpha-02, worker, packet-wrapper, API/UI, Foundry, VennueSign, project-adapter, GitHub-automation, or USB-recovery work is authorized by this handoff.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -39,37 +39,28 @@ The current M0 expansion is captured in:
 - Current policy permits parallelism only among independent packets within one active milestone. Shared contracts, DI, migrations, fixtures, workflows, tracker/status, and handoff retain their declared ownership/locks.
 - An AI-friendly source-affordance refactor may be proposed as planning work first. M0 does not change VennueSign source to make it agent-friendly.
 
-## Exact next action
+## Alpha-01 completion and exact next action
 
-The owner-approved M0-D12 process package and complete Architecture,
-Decision-Fidelity, and Implementation-Review job roles merged to `master` at
-`ac6471484268d8d6b11fb302dd1190ef85cbdae2`. M0-D05 now requires targeted
-correction follow-ups and complete, current review coverage for the exact final
-merge head.
+[Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md)
+is complete. The accepted result is branch
+`alpha-01-r2-complete-foundation` at exact head
+`3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`, based on verified R1 commit
+`e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. Its R2 diff changed only
+`services/maestro/maestro/storage.py` and
+`tests/alpha_01/test_local_foundation.py`. Fresh Independent Implementation
+Review returned **APPROVE** for that exact head. All 11 tests and both repeated
+health checks passed with foreign keys enabled, WAL active, and schema version
+`1`. Generated runtime/test artifacts were cleaned only inside the isolated R2
+worktree afterward.
 
-The Owner reconciled M0-D11 with M0-D12 for Alpha-01. Alpha uses a trusted local
-Linux identity and protects against invalid, outside, source-tree, and
-pre-acquisition symlinked paths. It does not claim adversarial containment
-against a malicious concurrent same-UID or root process moving an already-open
-directory during SQLite's internal opens. The implementation remains bounded to
-Python's standard library and built-in `sqlite3`.
+The [Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md)
+preserves the acceptance evidence and bounded exclusions. In particular, Alpha
+makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
 
-R1 at `e2c8a08` remains historically `REQUEST_CHANGES`. Its post-directory-FD
-same-UID move is now an explicit Alpha exclusion; its incomplete
-outside-repository CLI/direct-constructor coverage remains the sole in-scope
-implementation defect.
-
-[Alpha-01-R2 — Complete Bounded Local Foundation](../../docs/planning/packets/alpha-01-r2-complete-bounded-foundation.md)
-is approved for one isolated implementation run. Full Decision Fidelity Review
-approved exact planning head `65b6c7745c75f935430012cf49fef528120a6d5a`; its
-only finding—remote R1 provenance—received targeted independent approval after
-the R1 branch and commits became remotely verifiable. The approval-status
-record does not change R2 instructions or scope.
-
-The exact next action is one R2 implementation run in a new clean isolated
-worktree and non-default branch, followed by one fresh full Independent
-Implementation Review of its exact result. No Alpha-01 code merge or Alpha-02
-action is authorized.
+There is no executable next packet. Alpha-02 remains unauthorized until its own
+planning, owner approval, and Decision Fidelity gate are complete. Do not start
+the wrapper, worker dispatch, Atlas/API/UI, project integration, GitHub
+automation, or USB recovery work from this handoff.
 
 ## Open implementation decisions
 

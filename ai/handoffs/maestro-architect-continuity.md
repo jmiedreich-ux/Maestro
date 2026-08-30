@@ -73,27 +73,25 @@ merged to `master` at `ac6471484268d8d6b11fb302dd1190ef85cbdae2`.
 Default-branch merge candidates now require complete, current review coverage
 without redundant rereview of unchanged material.
 
-Alpha-01-R1 ran once at `e2c8a08`; its nine tests and repeated health checks
-passed. Fresh Independent Implementation Review returned `REQUEST_CHANGES`
-after demonstrating a same-UID post-directory-FD move outside `var/` and
-finding incomplete outside-path CLI/direct-constructor coverage.
+Alpha-01 is complete at exact independently approved implementation head
+`3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f` on
+`alpha-01-r2-complete-foundation`, with verified R1 base
+`e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. R2 changed only
+`services/maestro/maestro/storage.py` and
+`tests/alpha_01/test_local_foundation.py`. Fresh Independent Implementation
+Review returned **APPROVE** for that exact head; 11 tests and both health checks
+passed. Generated check artifacts were cleaned only inside the isolated
+worktree. The durable evidence is in the
+[Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md).
 
-The Owner reconciled M0-D11 with M0-D12 for Alpha. The bounded model uses a
-trusted local Linux identity and protects incorrect, outside, source-tree, and
-pre-acquisition symlinked paths. It explicitly excludes a malicious concurrent
-same-UID/root actor moving an already-open directory during SQLite's internal
-opens. Alpha remains standard-library/`sqlite3` only. Stronger host assurance
-is deferred to a separately approved future quality contract.
+The accepted M0-D11/M0-D12 boundary remains unchanged: Alpha protects the
+trusted local Linux process against incorrect, outside, source-tree, and
+pre-acquisition symlinked paths. It does not claim containment against a
+malicious concurrent same-UID/root process moving an already-open directory.
 
-The prolonged earlier cycle remains recorded as an Architecture Agent failure.
-The excluded post-FD move is not another Alpha gate. The coverage omission is
-the only in-scope implementation defect.
-
-[Alpha-01-R2 — Complete Bounded Local Foundation](../../docs/planning/packets/alpha-01-r2-complete-bounded-foundation.md)
-is the proposed final repair. Its exact next gate is one fresh complete Decision
-Fidelity Review of the planning branch. If approved and merged with complete
-review coverage, it authorizes one isolated implementation run only. No
-Alpha-01 code merge or Alpha-02 action is authorized.
+No Alpha-02 work is authorized. The next packet must receive its own complete
+planning, owner approval, and Decision Fidelity Review before execution. The
+mandatory `maestro run-packet` wrapper remains deferred to that later packet.
 
 ## Model-routing reminder
 
