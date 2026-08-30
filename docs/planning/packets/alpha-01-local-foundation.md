@@ -153,7 +153,7 @@ reviewer. It does not merge or trigger Alpha-02.
 | --- | --- |
 | Linux-first local operation | Python package, local runtime path, Linux commands |
 | SQLite is Maestro's operational store | SQLite connection and idempotent migration metadata |
-| Runtime data stays out of Git and within the physical runtime boundary | `var/.gitignore`, M0-D08 enforcement, public-path no-mutation tests, and symlink-race test |
+| Runtime data stays out of Git and within the physical runtime boundary | `var/.gitignore`, M0-D11 enforcement, public-path no-mutation tests, and symlink-race test |
 | Project-neutral / synthetic-only Alpha | No adapter, project repository, worker, or external input |
 | Atlas read-only and service-mediated | Atlas/API work explicitly excluded |
 | Packet wrapper remains mandatory | Explicitly deferred to Alpha-02; no partial/fake wrapper |
