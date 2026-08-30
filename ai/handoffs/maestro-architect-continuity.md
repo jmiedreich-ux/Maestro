@@ -64,17 +64,15 @@ work, or advance a milestone without the required approval.
 
 ## Current checkpoint
 
-Maestro Implementor has prepared a planning-only Alpha decision-fidelity
-review locally. Before Alpha code starts, it must:
+Maestro Implementor completed and pushed the planning-only Alpha
+decision-fidelity review. It resolved the obsolete Atlas-command language and
+recorded the approved USB physical-provisioning deferral. The review has 31
+included choices and 20 approved deferrals, with no unresolved blocking row.
 
-1. push that planning commit to GitHub and verify it is visible;
-2. amend/supersede obsolete M0-D01 language that implies Atlas can initiate
-   commands; Alpha has no Atlas command API;
-3. record the approved USB physical-provisioning deferral;
-4. update and push the traceability table and handoff; and
-5. stop for independent Decision Fidelity Reviewer review and owner approval.
-
-No Alpha application code is authorized before that independent review passes.
+The next gate is not implementation. The owner must approve the resolved Alpha
+layout and mandatory wrapper boundary, then a fresh, separate Decision Fidelity
+Reviewer must independently sign off on the already-pushed review. No Alpha
+application code is authorized until both gates pass.
 
 ## Update rule
 
