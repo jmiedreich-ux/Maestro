@@ -73,6 +73,22 @@ The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
 review at `5fc4b61`. Alpha-01 passed fresh GPT-5.6 Sol Decision Fidelity Review. Maestro Implementor may execute one scoped run in a clean isolated worktree; no work outside that approved packet is authorized.
 
+## Model-routing reminder
+
+Before assigning or recommending a Maestro Architect or review run, explicitly
+remind the owner of the appropriate model tier:
+
+- **Maestro Architect:** GPT-5.6 Terra at medium by default; Terra high for
+  major architecture reconciliation, conflicting sources, or high-stakes final
+  plans.
+- **Decision Fidelity Reviewer and serious renewed reviews:** GPT-5.6 Sol at
+  high reasoning.
+- **Routine bounded implementation review:** GPT-5.6 Terra at high reasoning.
+- **Bounded implementation after the wrapper is active:** local Qwen.
+
+Do not increase a model tier merely from habit; state the concrete reason when
+a higher tier is warranted.
+
 ## Security handling
 
 A local provenance review on 2026-08-30 inadvertently included an ignored
