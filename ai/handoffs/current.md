@@ -38,7 +38,7 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. Obtain final sign-off from a fresh, separate Decision Fidelity Reviewer before issuing a separate Alpha build packet. Do not create application code before that sign-off passes.
+The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. Issue one separately authored Alpha-01 build packet only; no code outside that packet is authorized.
 
 ## Open implementation decisions
 
