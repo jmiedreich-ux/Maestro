@@ -43,8 +43,16 @@ accepted record controls.
 
 ## Boundary and testability challenge
 
-For every safety, ownership, security, or data-location boundary in a proposed
-packet, the reviewer must challenge the packet before approving it:
+Every challenge operates within the owner-approved bounded quality contract
+defined by [M0-D12](../planning/decisions/m0-d12-bounded-quality-contracts.md).
+The reviewer must not silently strengthen the assurance level, add a new threat
+or failure model, expand the implementation boundary, or impose proof beyond
+that contract. An existing binding decision such as M0-D11 continues to control
+until Architecture and the Owner explicitly reconcile it.
+
+For every safety, ownership, security, or data-location boundary that the
+approved contract places in scope, the reviewer must challenge the packet
+before approving it:
 
 - identify every public command, constructor, callable, configuration object,
   and integration entry path that could bypass the boundary;
@@ -65,11 +73,18 @@ This is part of decision fidelity: an accepted safety intent is not faithfully
 carried forward if the packet makes it testable only through one convenient
 entry path.
 
+An out-of-contract risk may be recorded as a non-blocking observation or
+architecture follow-up. If it proves that the approved contract is materially
+incomplete, classify an architecture-contract defect and return it to
+Architecture and the Owner. Do not convert it into repeated worker correction
+or silently make it a stronger implementation gate.
+
 ## Gate rule
 
 Maestro may not execute the proposed work while a `missing`, `changed`,
-`new assumption`, unresolved conflict, unapproved deferral, or unresolved
-boundary/testability challenge remains. The review result and its resolved
+`new assumption`, unresolved conflict, unapproved deferral, unresolved
+in-contract boundary/testability challenge, or architecture-contract defect
+remains. The review result and its resolved
 traceability table are durable evidence for the run.
 
 ## Review points
