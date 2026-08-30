@@ -33,15 +33,16 @@ class LocalFoundationTests(unittest.TestCase):
                 versions = connection.execute("SELECT version FROM schema_versions ORDER BY version").fetchall()
             self.assertEqual(versions, [(SCHEMA_VERSION,)])
 
-    def test_default_runtime_directory_is_the_repository_var_path(self) -> None:
-        self.assertEqual(RuntimeConfig.from_runtime_dir().runtime_dir, DEFAULT_RUNTIME_DIR.resolve())
+    def test_default_runtime_directory_is_the_worktree_var_path(self) -> None:
+        expected_runtime_dir = Path(__file__).resolve().parents[2] / "var"
+        self.assertEqual(RuntimeConfig.from_runtime_dir().runtime_dir, expected_runtime_dir.resolve())
 
     def test_source_tree_runtime_path_is_rejected_without_mutation(self) -> None:
         rejected_path = REPOSITORY_ROOT / "services" / "maestro" / "maestro" / "runtime-check"
 
         self.assertFalse(rejected_path.exists())
         with self.assertRaises(RuntimePathError):
-            RuntimeConfig.from_runtime_dir(rejected_path)
+            RuntimeConfig(rejected_path)
         self.assertFalse(rejected_path.exists())
         self.assertFalse((rejected_path / "maestro.sqlite3").exists())
 
@@ -67,9 +68,20 @@ class LocalFoundationTests(unittest.TestCase):
 
             self.assertFalse(rejected_path.exists())
             with self.assertRaises(RuntimePathError):
-                RuntimeConfig.from_runtime_dir(rejected_path)
+                RuntimeConfig(rejected_path)
             self.assertFalse(rejected_path.exists())
             self.assertFalse((rejected_path / "maestro.sqlite3").exists())
+
+    def test_direct_foundation_construction_rejects_unvalidated_source_path(self) -> None:
+        rejected_path = REPOSITORY_ROOT / "services" / "maestro" / "maestro" / "runtime-foundation-check"
+        unsafe_config = object.__new__(RuntimeConfig)
+        object.__setattr__(unsafe_config, "runtime_dir", rejected_path)
+
+        self.assertFalse(rejected_path.exists())
+        with self.assertRaises(RuntimePathError):
+            SQLiteFoundation(unsafe_config)
+        self.assertFalse(rejected_path.exists())
+        self.assertFalse((rejected_path / "maestro.sqlite3").exists())
 
 
 if __name__ == "__main__":

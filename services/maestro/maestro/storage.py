@@ -25,7 +25,9 @@ class SQLiteFoundation:
     """Owns only Alpha-01 migration metadata, not operational packet state."""
 
     def __init__(self, config: RuntimeConfig) -> None:
-        self.config = config
+        # Reconstruct through RuntimeConfig so direct service construction also
+        # validates before health() can create a directory or open SQLite.
+        self.config = RuntimeConfig(config.runtime_dir)
 
     def health(self) -> DatabaseHealth:
         self.config.ensure_runtime_dir()
