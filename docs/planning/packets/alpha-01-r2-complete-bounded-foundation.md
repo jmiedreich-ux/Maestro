@@ -1,6 +1,7 @@
 # Alpha-01-R2 — Complete Bounded Local Foundation
 
-**Status:** Proposed; not executable until fresh Decision Fidelity Review approves this exact packet  
+**Status:** Approved for one isolated implementation run on 2026-08-30  
+**Approval record:** Full Decision Fidelity Review approved the exact planning head `65b6c7745c75f935430012cf49fef528120a6d5a`; its only provenance finding received targeted independent approval after `alpha-01-r1-runtime-boundary`, `b476cdc`, and `e2c8a08` became remotely verifiable. This status record changes no execution instruction or scope.  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Alpha-01 — Establish Local Foundation](alpha-01-local-foundation.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md); [M0-D12 — Bounded Quality Contracts and Proportionality](../decisions/m0-d12-bounded-quality-contracts.md)  
 **Base:** The complete R1 implementation result at `e2c8a08` on `alpha-01-r1-runtime-boundary`, after verifying its provenance and exact diff from `b476cdc` in a clean isolated worktree  

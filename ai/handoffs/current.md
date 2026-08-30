@@ -60,11 +60,16 @@ outside-repository CLI/direct-constructor coverage remains the sole in-scope
 implementation defect.
 
 [Alpha-01-R2 — Complete Bounded Local Foundation](../../docs/planning/packets/alpha-01-r2-complete-bounded-foundation.md)
-is proposed as the final focused repair. The exact next gate is one complete
-fresh Decision Fidelity Review of the M0-D11 reconciliation, amended Alpha-01
-contract, historical R1 status, R2 packet, review-freshness carriers, and these
-handoffs. If approved and merged unchanged, R2 may receive one isolated
-implementation run. No Alpha-01 code merge or Alpha-02 action is authorized.
+is approved for one isolated implementation run. Full Decision Fidelity Review
+approved exact planning head `65b6c7745c75f935430012cf49fef528120a6d5a`; its
+only finding—remote R1 provenance—received targeted independent approval after
+the R1 branch and commits became remotely verifiable. The approval-status
+record does not change R2 instructions or scope.
+
+The exact next action is one R2 implementation run in a new clean isolated
+worktree and non-default branch, followed by one fresh full Independent
+Implementation Review of its exact result. No Alpha-01 code merge or Alpha-02
+action is authorized.
 
 ## Open implementation decisions
 
