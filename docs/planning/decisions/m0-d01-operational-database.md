@@ -8,7 +8,7 @@
 
 Maestro V1 will use one local SQLite database on the Linux AI box as its durable operational memory **and immediate operational source for local Atlas**.
 
-Maestro's local service is the only database writer. Atlas reads current operational state from that service and submits allowed commands through it; Atlas never opens or edits the database directly. Project repositories and GitHub remain authoritative for approved plans, code, PRs, reviews, and CI, but they are **not** Atlas's refresh mechanism.
+Maestro's local service is the only database writer. Atlas reads current operational state from that service; Atlas never opens or edits the database directly, submits orchestration commands, or changes routing/policy. Project repositories and GitHub remain authoritative for approved plans, code, PRs, reviews, and CI, but they are **not** Atlas's refresh mechanism.
 
 ## Why this fits V1
 
@@ -22,8 +22,8 @@ Maestro's local service is the only database writer. Atlas reads current operati
 | Authority | Lives here |
 |---|---|
 | Project repository / GitHub | Product decisions, feature records, approved work graph, code, PRs, reviews, CI |
-| Maestro database | Project registration, observed repository facts, graph projection, runs, packet leases, attempts, worker events, evidence, waits, retries, notifications, resource locks, command audit trail |
-| Atlas | Read projection and audited requests only; no independent durable truth |
+| Maestro database | Project registration, observed repository facts, graph projection, runs, packet leases, attempts, worker events, evidence, waits, retries, notifications, and resource locks |
+| Atlas | Live read projection only; no independent durable truth or orchestration authority |
 
 ## Immediate operational visibility
 
@@ -66,7 +66,7 @@ The service exposes a local read API for Atlas. Atlas loads a current snapshot t
 3. The coordinator rereads authoritative repository and database facts before retrying a stale or failed action.
 4. The database file stays on encrypted local storage with owner-only permissions; no direct network listener is introduced for V1.
 5. Secrets are never stored as command/event/evidence text. Records may store only a secret reference name and provider.
-6. Atlas command requests are authenticated, authorized by project policy, audited, and executed by the coordinator—not by browser/database write-back.
+6. Atlas is read-only. Maestro alone performs coordination under approved project policy; the owner gives approvals and direction outside Atlas.
 
 ## Backup and recovery baseline
 
