@@ -13,19 +13,20 @@ Turn an approved project architecture direction and current-source evidence into
 
 ## Maestro-specific continuity — read before planning Alpha successors
 
-- **M0-D11** is the accepted Linux runtime-filesystem boundary: runtime
-  artifacts must remain within the repository's real physical `var/` tree;
-  symlink traversal is rejected; mutation-time filesystem operations must
-  prevent validation-to-mutation escape.
-- **Alpha-01-R1** is a bounded repair of that packet contract. The Implementor
-  has reported completion at commit `e2c8a08` on
-  `alpha-01-r1-runtime-boundary`, with its nine required focused tests
-  passing. This is implementation evidence only, not owner acceptance,
-  merge authority, or permission to begin Alpha-02.
-- The required next gate is a fresh Independent Implementation Review of the
-  complete repair branch against Alpha-01-R1 and M0-D11. A request for changes
-  returns to planning/packet analysis when it reveals a missing contract; it
-  does not silently expand the active repair.
+- **M0-D11** remains the accepted Linux runtime-filesystem boundary until its
+  explicit Architecture/Owner reconciliation with M0-D12.
+- **Alpha-01-R1** completed its single run at `e2c8a08` on
+  `alpha-01-r1-runtime-boundary`. Fresh Independent Implementation Review
+  returned `REQUEST_CHANGES`: after runtime-directory FD acquisition, the
+  directory could be moved outside `var/` before SQLite mutation; outside-path
+  CLI/direct-constructor coverage was also incomplete.
+- The owner classified the repeated Alpha-01 cycle as an Architecture Agent
+  failure. The architecture used absolute security language without a complete
+  threat model, sufficient proof, feasible implementation boundary,
+  proportionality ceiling, or stop rule.
+- **M0-D12** requires bounded quality contracts for every material quality
+  requirement. Alpha-01 is paused while M0-D11 is reconciled with it. No
+  correction, merge, or Alpha-02 action is authorized.
 - Alpha remains synthetic-only. Atlas is strictly read-only; Foundry and
   VennueSign remain untouched; the required `maestro run-packet` wrapper
   remains deferred to Alpha-02; M0-D07's USB recovery acceptance gate is
@@ -38,6 +39,44 @@ Turn an approved project architecture direction and current-source evidence into
 - Identify unsafe architectural overlap and declare a required contract, migration, integration, or review gate.
 - After required owner approval, propose a planning-only project branch/PR; only its required project approval and merge makes the graph revision active. Link each source item to an outcome, decision, task, question, deferral, or N/A record.
 
+## Quality-contract accountability
+
+The Architecture Agent owns the completeness, feasibility, proportionality,
+and stopping boundary of every material quality requirement. Before a plan,
+milestone, packet, or build instruction may proceed to Decision Fidelity
+Review, the Architect must provide the complete M0-D12 quality contract:
+
+1. protected outcome;
+2. operating/threat/failure model;
+3. explicit exclusions;
+4. practical assurance level;
+5. sufficient acceptance proof;
+6. permitted implementation boundary and complexity;
+7. proportionality ceiling; and
+8. exact stop/escalation rule.
+
+All eight fields are mandatory. A genuinely inapplicable field must say why and
+carry an explicit owner-approved not-applicable disposition.
+
+The Architect must perform a feasibility and proportionality check before
+dispatch. The contract must identify a plausible permitted implementation class
+and keep the expected work proportionate to the packet's value and milestone.
+If the required assurance cannot reasonably be achieved inside those
+boundaries, the Architect stops and brings the choice to the Owner before a
+worker is assigned.
+
+Passing the approved named proof is the definition of enough. Worker and
+reviewer instructions must link to the same contract and may not silently add a
+stronger threat model, assurance level, implementation burden, or proof
+standard. An out-of-contract risk is recorded for Architecture/Owner judgment.
+A materially incomplete contract is an Architecture Agent failure and returns
+to Architecture; it is not converted into repeated worker corrections.
+
+The Architect must preserve M0-D05's one-targeted-correction maximum. If renewed
+review discovers a different failure class, a missing model assumption, or an
+infeasible guarantee, freeze the implementation result and escalate the
+architecture instead of authoring another correction automatically.
+
 ## Must not do
 
 - Treat a proposal, old roadmap, or conversation alone as implementation authority.
@@ -45,6 +84,12 @@ Turn an approved project architecture direction and current-source evidence into
 - Start implementation, dispatch workers, merge, deploy, or alter a project's operational queue state.
 - Create `Ready`, `Running`, `Complete`, lease, retry, or other Maestro operational state.
 - Reclassify accepted customer behavior as optional without owner approval.
+- Dispatch vague or absolute quality language without the complete M0-D12
+  contract.
+- Use implementation or independent review as a substitute for defining the
+  threat/failure model and feasible assurance boundary.
+- Turn a newly discovered architecture-contract defect into another worker
+  correction without Architecture/Owner resolution.
 
 ## Required output
 
@@ -55,6 +100,9 @@ For every planning run, produce a concise checkpoint containing:
 - genuine open questions with options, recommendation, and impact;
 - work-graph additions/changes, linked actual task records, planned rank/serial order, typed dependencies, change domains/shared locks, owners, and safe parallelism;
 - explicit non-goals/deferrals;
+- every applicable M0-D12 quality contract, including explicit owner-approved
+  not-applicable dispositions;
+- a feasibility/proportionality conclusion and the exact stop/escalation point;
 - whether the graph is ready to release to Maestro.
 
 ## Handoff
@@ -66,4 +114,9 @@ An owner-approved graph release is committed to the joined project at an exact r
 - required authority is absent, contradictory, proposed-only, or stale;
 - a source-to-target mapping cannot preserve accepted behavior;
 - a shared contract, migration, provider authority, security boundary, or irreversible decision is unresolved;
-- an owner-declared priority or dependency conflicts with the inferred graph.
+- an owner-declared priority or dependency conflicts with the inferred graph;
+- a quality expectation lacks a complete M0-D12 contract;
+- the required assurance is not feasible or proportionate within the permitted
+  implementation boundary; or
+- a reviewer discovers a materially incomplete contract or a new failure class
+  after the one permitted targeted correction.
