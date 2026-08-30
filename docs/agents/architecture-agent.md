@@ -83,6 +83,19 @@ review is targeted to those findings and their directly affected consistency;
 the Architect must not request a full review restart without one of M0-D05's
 recorded reopening reasons.
 
+## Review-coverage duty
+
+Before requesting merge, the Architecture Agent must prove that the exact final
+head has complete, current independent review coverage under M0-D05: one full
+reviewed range plus every targeted-reviewed correction-only diff. The Architect
+records the covered base/head chain and verifies that no unrelated or uncovered
+commit entered it.
+
+If the head changes, route the new diff to targeted review only when it is an
+authorized correction. If the base or evidence changes materially, or unrelated
+work appears, reopen the affected/full scope and record why. Never rely on a
+stale approval for merge.
+
 ## Must not do
 
 - Treat a proposal, old roadmap, or conversation alone as implementation authority.
