@@ -52,6 +52,32 @@ lost. The reason for reopening full scope must be recorded.
 This targeted-follow-up rule preserves quality while preventing every
 correction from restarting discovery from zero.
 
+## Complete review coverage and freshness
+
+Anything merged to a default branch must have complete independent review
+coverage.
+
+Complete coverage means:
+
+- one full review covers an exact base/head range;
+- every later correction-only diff receives targeted verification;
+- the union of the full reviewed range and all targeted-reviewed correction
+  diffs equals the exact final merge candidate; and
+- no unrelated or unreviewed change exists between the covered head and merge.
+
+The merge gate records the covered base, each reviewed head/diff, and the exact
+final head. Approval becomes stale when an uncovered commit appears, the final
+head differs from the covered chain, prior evidence is invalidated, or the base
+changes in a way that materially affects the reviewed result.
+
+A correction-only change receives targeted review. A new unrelated change
+reopens affected or full scope. A materially changed base requires rebase and
+review of the impacted areas; a base change with no relevant effect may retain
+coverage only when the reviewer records that conclusion.
+
+This rule guarantees that every merged change has been reviewed while avoiding
+a redundant full reread of unchanged material.
+
 ## Worker routing
 
 The remote model returned no work twice. Both cases fall under rule 1, so the
