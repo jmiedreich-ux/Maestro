@@ -38,7 +38,7 @@ The current M0 expansion is captured in:
 
 ## Exact next action
 
-The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) passed fresh GPT-5.6 Sol Decision Fidelity Review. Maestro Implementor may execute one scoped run in a clean isolated worktree; no code outside that packet is authorized.
+The owner approved the resolved Alpha decision-fidelity review and deliberately small layout on 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current review at `5fc4b61`. [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md) is escalated to coordinator ownership. Its permitted worker correction did not fully enforce the runtime-boundary contract through public construction paths. Do not issue another worker correction; a bounded coordinator repair and renewed independent implementation review are required.
 
 ## Open implementation decisions
 
