@@ -94,6 +94,8 @@ The planning intake process is mandatory:
 4. Run an independent completeness audit before the plan is ready.
 5. Require every source item to link to a requirement, decision, task, question, explicit deferral, or not-applicable record.
 
+Before any approved plan, milestone, packet, or build instruction becomes executable, an independent [Decision Fidelity Reviewer](../agents/decision-fidelity-reviewer.md) must compare it against the accepted choices that govern it. The reviewer produces a durable traceability table marking each choice `included`, `missing`, `changed`, `new assumption`, or `approved deferral`. Maestro may not execute while a missing/changed choice, new assumption, unresolved source conflict, or unapproved deferral remains. The same review occurs before plan approval, before conversion to build instructions, and before milestone acceptance. This is separate from independent implementation/PR review.
+
 ## 6. Task presentation and routing
 
 Every task has a plain action-oriented title suitable for an owner to scan, for example: `M1-02 · Establish control base and default skin`.
@@ -168,4 +170,4 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 ## 11. M0 acceptance
 
-M0 is complete only when the source inventory has full traceability, this plan reflects every accepted item or an explicit deferral, the Atlas transition is assessed, the agent-workforce control-plane/role/SOP design is captured, the open-decision register is visible, a current handoff is committed, and an independent planning audit has been reviewed by the owner.
+M0 is complete only when the source inventory has full traceability, this plan reflects every accepted item or an explicit deferral, the Atlas transition is assessed, the agent-workforce control-plane/role/SOP design is captured, the Decision Fidelity Reviewer gate is defined, the open-decision register is visible, a current handoff is committed, and an independent planning audit has been reviewed by the owner.
