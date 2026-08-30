@@ -1,0 +1,10 @@
+{
+  "packet_id": "alpha-02-missing-diff",
+  "title": "Reject missing synthetic diff",
+  "authority": {"approval_reference": "Alpha-02 approved packet", "fidelity_reference": "Decision Fidelity Review c54f5bb"},
+  "owned_paths": ["synthetic-output"],
+  "gates": [{"name": "synthetic-check", "command": "synthetic:pass"}],
+  "executor": {"kind": "synthetic-local", "scenario": "missing-diff"},
+  "independent_review_route": "Independent Implementation Reviewer",
+  "owner_stop_boundary": "Stop after coordinator escalation."
+}
