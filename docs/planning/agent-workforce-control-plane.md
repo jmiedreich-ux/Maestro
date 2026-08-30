@@ -31,6 +31,8 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-09 | Every coding agent follows one project-bound Coding Agent SOP. A specialist overlay may add rules but may never weaken the SOP. |
 | AW-10 | Independent review occurs at meaningful merge boundaries and before a high-risk shared boundary becomes a dependency; it is not required after every microscopic internal step. Every mergeable PR remains independently reviewed by someone other than its author. |
 | AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control owner acceptance, merge, and next-milestone authority. |
+| AW-12 | Substantial repository-related architecture and planning conversations default to Codex CLI when practicable so the work can be tied to repository context and measured usage. ChatGPT Work/web remains appropriate when owner interaction, visual work, connected apps, or mobile access provides material value. |
+| AW-13 | Architecture, coordination, implementation, review, correction, integration, and QA usage are first-class operational facts. Maestro records measured usage and provenance per controlled run, reconciles it to account-level usage, and reports any remainder as unattributed rather than silently omitting it. |
 
 ## 3. Authority and source-of-truth model
 
@@ -39,7 +41,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | Product intent, architecture decisions, approved work graph (including planned rank and structural dependencies), project SOP | Joined project repository | Read, validate, project, and link. Atlas never edits these facts directly. |
 | Actual task, PR, review, CI, merge, and acceptance records | Joined project's GitHub records under its policy | Link to and observe; do not duplicate them as a hand-maintained Maestro or Atlas task tracker. |
 | Agent role contracts and common workflow policy | Maestro repository | Versioned and released with the control-plane process. |
-| Operational projection of an approved graph, derived queue eligibility/state, claims, leases, agent runs, attempts, locks, resource reservations, evidence copies, retries, health, notifications, and command history | Maestro operational database | Durable, idempotent state controlled by Maestro. It may not independently rewrite the planned specialist backlog. |
+| Operational projection of an approved graph, derived queue eligibility/state, claims, leases, agent runs, attempts, locks, resource reservations, evidence copies, retries, health, notifications, command history, and usage observations | Maestro operational database | Durable, idempotent state controlled by Maestro. It may not independently rewrite the planned specialist backlog or present estimated usage as exact. |
 | Atlas live reporting | Maestro operational database | Atlas receives current snapshots and events. It does not issue state-transition commands. |
 
 There must never be two independent writable truths for one fact. For example, a project's approved work graph is stored in that project; Maestro stores the projection it last read and the operational consequences of acting on it.
@@ -339,6 +341,127 @@ Each local or cloud executor is reached through an executor adapter with a versi
 
 The service-account baseline is least privilege: protected branches remain protected; workers receive only scoped repository and environment access; production credentials are unavailable by default; credentials are referenced rather than embedded in packets or Atlas; webhook signatures, source, replay, and expiry are verified. Polling/reconciliation remains the recovery authority even when a webhook is available.
 
+## 11.2 Agent usage observability and architecture work surfaces
+
+### Operating rule
+
+Substantial repository-related architecture and planning conversations default to
+Codex CLI when practicable. The default exists because local Codex clients can
+associate the session with the repository and expose structured token telemetry,
+allowing Maestro to attribute consumption to the architecture work that caused it.
+
+ChatGPT Work/web remains an intentional work surface when it provides a material
+advantage, including rapid owner discussion, visual work, connected apps, or mobile
+access. Those conversations still consume the shared ChatGPT Work/Codex allowance
+and must be registered as architecture, planning, coordination, or another honest
+work category. They are not free or excluded merely because exact per-conversation
+telemetry is unavailable.
+
+Do not repeat an entire conversation on both surfaces merely to manufacture
+measurement. Preserve the accepted result in the versioned planning record and
+record the measurement provenance honestly.
+
+### Required usage record
+
+Every controlled agent or architecture run receives a stable Maestro job ID. A run
+may also link to a parent job, graph node, packet, review finding, correction, or
+integration batch. Its usage record contains:
+
+- role and work category: architecture/planning, coordination/packet preparation,
+  implementation, Decision Fidelity Review, Independent Implementation Review,
+  correction/follow-up review, integration, QA, or general/unattributed work;
+- execution surface and location: Codex CLI, local Codex client, ChatGPT Work/web,
+  Codex cloud, API-key worker, or other approved adapter;
+- project, repository, branch/worktree where applicable, job ID, parent ID, thread
+  or conversation identifier, start/end time, and outcome;
+- factual model, reasoning level, speed/service tier, authentication/billing mode,
+  agent role, and subagent/child-run relationship;
+- input tokens, cached-input tokens, output tokens, and separately reported
+  reasoning-token detail when the execution surface exposes them;
+- calculated credit estimate, rate-card identifier/effective date, calculation
+  version, and whether the value is measured, estimated, account-delta-only, or
+  unavailable;
+- retry, stalled-run, correction, review-renewal, and first-pass-acceptance facts;
+  and
+- the applicable account-usage observation used for weekly reconciliation.
+
+Prompt and source contents are redacted from telemetry by default. Maestro stores
+the minimum identifiers and aggregates needed for attribution; Atlas must never
+display secrets, raw prompts, private reasoning traces, or source-code snippets
+from telemetry.
+
+### Capture sources and provenance
+
+- Non-interactive Codex runs should use `codex exec --json`; the final
+  `turn.completed.usage` object provides input, cached-input, output, and reasoning
+  token facts.
+- Interactive local Codex clients should export OpenTelemetry events; token counts
+  are captured from `response.completed` events and correlated to the Maestro job
+  through the conversation/thread identifier.
+- Account-level `/usage weekly`, `/status`, or the ChatGPT usage dashboard provides
+  the reconciliation observation supported by the active account and surface.
+- A ChatGPT Work/web conversation without supported per-conversation telemetry is
+  still registered with its role, model/reasoning choice when known, timing,
+  purpose, and outcome. Its usage provenance is `account-delta-only` or
+  `unavailable`; Maestro must not scrape an unsupported interface or invent exact
+  token counts.
+
+OpenAI's current reference points are [Codex non-interactive JSON output](https://learn.chatgpt.com/docs/non-interactive-mode),
+[Codex observability](https://learn.chatgpt.com/docs/config-file/config-advanced),
+[usage commands](https://learn.chatgpt.com/docs/developer-commands), and the
+[ChatGPT Work/Codex rate card](https://learn.chatgpt.com/docs/pricing). The
+implementation must version the rate card instead of treating today's rates as
+permanent.
+
+### Weekly reconciliation
+
+For each account and allowance window, Maestro preserves the raw account observation
+and calculates:
+
+`tracked controlled usage + tracked web/task usage + unattributed usage = observed account usage change`
+
+If the account surface reports only remaining percentage or another coarse value,
+Maestro stores that exact observation and its precision rather than converting it
+into false token accuracy. Concurrent work may make an account-level delta
+impossible to assign to one conversation; the remainder stays visibly unattributed.
+
+### Atlas reporting
+
+Atlas adds read-only views for:
+
+- weekly allowance pace and remaining account observation;
+- usage by project, work category, agent role, model, reasoning level, and surface;
+- architecture/planning versus implementation, review, correction, integration,
+  and QA consumption;
+- parent runs and subagent/child-run consumption;
+- first-pass accepted work, failed/stalled work, corrections, targeted follow-ups,
+  and renewed full reviews;
+- cached-input share, context growth, and measured versus estimated provenance;
+- usage per accepted packet or completed planning outcome; and
+- the unattributed reconciliation remainder.
+
+These metrics diagnose where capacity is going. They do not weaken Decision Fidelity
+Review, Independent Implementation Review, evidence gates, owner acceptance, or
+model-quality requirements. Maestro may recommend a smaller model, narrower context,
+or tighter packet, but cost data alone never authorizes rerouting or reduced
+assurance.
+
+### Phased implementation boundary
+
+- **V1:** capture measured usage and provenance for the one controlled loop whenever
+  its execution surface exposes them; prove that one run is tied to its Maestro job.
+- **V2:** make usage a durable per-run operational record, include architecture and
+  review categories, link parent/child runs, reconcile the weekly observation, and
+  expose the first read-only Atlas usage views.
+- **V3:** add baselines, trends, budget/pace warnings, efficiency retrospectives, and
+  evidence-based routing recommendations. Numeric thresholds require separate
+  owner-approved policy.
+
+Implementation is not authorized by this planning section. Exact personal-plan
+usage ingestion remains limited by the reporting interfaces OpenAI exposes; the
+design must preserve an honest unattributed bucket rather than depend on unsupported
+scraping.
+
 ## 12. Project adapter requirements
 
 Every joined project adapter must provide:
@@ -370,15 +493,15 @@ M0 records this control-plane design, role-contract structure, queue/scheduler s
 
 ### V1 — one visible controlled loop
 
-V1 remains intentionally narrow: one registered project, one approved milestone, one hosted worker, one draft PR, verification, independent review, evidence, and an owner acceptance/merge point. It proves the authority and recovery loop, not agent-workforce parallelism.
+V1 remains intentionally narrow: one registered project, one approved milestone, one hosted worker, one draft PR, verification, independent review, evidence, and an owner acceptance/merge point. It proves the authority and recovery loop, not agent-workforce parallelism. When the execution surface exposes it, V1 also captures that controlled run's token usage and measurement provenance against its Maestro job ID.
 
 ### V2 — controlled agent workforce
 
-V2 adds formal role contracts, specialist planned queues, packet ownership/path enforcement, model routing, an Integration Agent, and limited parallel dispatch for explicitly independent work. Atlas gains live queue, routing, capacity, and evidence views backed by Maestro state.
+V2 adds formal role contracts, specialist planned queues, packet ownership/path enforcement, model routing, an Integration Agent, and limited parallel dispatch for explicitly independent work. It makes usage a durable per-run record, includes architecture and review categories, links parent/child runs, and reconciles account-level observations. Atlas gains live queue, routing, capacity, evidence, and usage views backed by Maestro state.
 
 ### V3 — mature parallel operations
 
-V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, review/escalation limits, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters.
+V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, review/escalation limits, QA hooks, usage baselines and pace warnings, metrics/retrospectives, evidence-based routing recommendations, and Linux-native disposable verification required by project adapters.
 
 ### Later explicit authority decision — continuous operation
 
@@ -393,6 +516,7 @@ This expansion is complete when:
 - the planned-versus-dispatchable queue distinction is explicit;
 - dependency, lock, integration, review, and restart behavior are defined;
 - Atlas's read-only reporting boundary is explicit and does not create duplicate truth;
+- architecture and agent usage are first-class operational facts with measurement provenance, weekly reconciliation, and a visible unattributed remainder;
 - Coding Agent SOP enforcement and proportionate independent review are defined;
 - VennueSign Architecture Renewal integration is described without authorizing VennueSign changes;
 - independent reviewers confirm that the captured conversation decisions and existing Maestro sources are represented or explicitly deferred.
@@ -405,8 +529,9 @@ The following remain implementation design questions for later approved stages:
 - exact Atlas UI technology and authentication boundary;
 - webhook transport, because polling remains the initial completion/recovery mechanism;
 - exact GitHub App/service-account scopes and cloud-agent invocation provider API;
-- numeric concurrency, cost, and queue-aging policy thresholds;
-- project-specific specialist-role set and model mapping beyond their versioned adapters.
+- numeric concurrency, cost, usage-pace, and queue-aging policy thresholds;
+- exact supported ingestion path for personal ChatGPT account-level usage and retention of raw usage telemetry;
+- project-specific specialist-role set and model mapping beyond their versioned adapters;
 - review-round cap/escalation policy and the future auto-merge/autonomous-next-work delegation boundary.
 
 These deferrals do not weaken the behavioral contract above.
