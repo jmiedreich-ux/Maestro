@@ -1,132 +1,51 @@
-# Maestro Architect — Continuity Record
+# Maestro Architecture Agent — Continuity Record
 
-## Purpose
+**Last updated:** 2026-08-30  
+**Role boundary:** The Architecture Agent creates traceable, bounded plans and packets. It does not implement, independently approve, dispatch, merge, or advance milestone operational state.
 
-This is the durable working memory for the Maestro Architect role. It preserves
-owner-approved decisions, role boundaries, and the current checkpoint when a
-chat or agent context is cleared.
+## Current authoritative milestone state
 
-It is a continuity aid, not a substitute for the master plan, accepted decision
-records, or current handoff. Where records conflict, the accepted decision and
-current handoff control; the conflict must be surfaced rather than guessed.
+- **Alpha-01 — Establish Local Foundation:** complete and merged to `master` at `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`, carrying independently approved implementation head `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`.
+- **Alpha-02 — Synthetic `maestro run-packet` Lifecycle Wrapper:** proposed on branch `architecture/alpha-02-run-packet`.
+  - Packet: `docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md`
+  - Initial planning commit: `00098af898f162a221086fb71510817fed63c02b`
+  - Current planning head: `b9c3c436d899d10d27160a5c82390617f0454e69`
+  - Status: planning only; no implementation is authorized until Owner approval and fresh Decision Fidelity Review of the exact packet branch.
 
-## Role identity
+## Alpha-02 architecture boundary
 
-**Role:** Maestro Architect
+Alpha-02 is the first complete, synthetic-only `maestro run-packet` wrapper lifecycle:
 
-The Maestro Architect translates the owner's decisions into Maestro's
-architecture, plans, milestones, boundaries, and clear build packets. It keeps
-those records coherent and identifies when a proposed plan introduces an
-unapproved choice or loses an accepted one.
+1. validate one already-approved synthetic packet and its required authority fields;
+2. acquire one durable local claim and isolated synthetic worktree;
+3. invoke one declared synthetic local executor;
+4. persist lifecycle, attempt, claim, gate, and evidence facts through the service-owned SQLite boundary;
+5. classify results under M0-D05 as immediate rejection, one eligible targeted-correction handoff, or independent-review handoff;
+6. record the outcome and stop.
 
-The owner makes product, process, and acceptance decisions.
+It does **not** register a project, inspect a real repository, invoke a real worker/model, perform review, merge, select successor work, build Atlas/API/UI, use GitHub/CI/webhooks/credentials, create a queue/scheduler, or implement backup/USB recovery.
 
-## Separation of responsibilities
+## Quality-contract obligations
 
-| Role | Responsibility |
-| --- | --- |
-| Owner | Makes choices, approves plans, accepts milestones. |
-| Maestro Architect | Designs the architecture and planning records; prepares bounded build instructions. |
-| Decision Fidelity Reviewer | Independently checks that the Architect's accepted choices appear faithfully in a proposed plan or packet. |
-| Maestro Implementor | Builds only the approved bounded packet. |
-| Independent Code Reviewer | Reviews implementation and evidence against the approved packet. |
-| Maestro Coordinator | The future Maestro software/service that operates packet lifecycles; it is not the Architect. |
-| Atlas | Read-only live reporting UI; never a controller or direct database client. |
+The Alpha-02 packet carries bounded quality contracts for:
 
-The Architect does not approve its own planning work as decision-fidelity
-review, implement by default, independently change owner decisions, merge
-work, or advance a milestone without the required approval.
+- packet authority and permission validation;
+- single local execution and idempotent durable lifecycle;
+- evidence, grading, and review-handoff integrity.
 
-## Current accepted direction
+Each contract specifies its protected outcome, operating model, exclusions, assurance level, sufficient proof, permitted implementation boundary, proportionality ceiling, and stop/escalation rule under M0-D12.
 
-- Maestro is Linux-first and project-neutral.
-- Alpha is built before Foundry or VennueSign integration. It uses synthetic
-  fixtures only.
-- Foundry stays untouched until Alpha is accepted; VennueSign follows later
-  through read-only registration and readiness work.
-- Maestro uses local SQLite as live operational memory. Atlas reads Maestro's
-  local service, not SQLite directly; Atlas is strictly read-only.
-- A dedicated USB recovery drive is the accepted recovery target. Physical USB
-  provisioning is an approved Alpha deferral; final recovery acceptance needs a
-  documented mount convention and real backup/restore proof.
-- The local packet wrapper is a required Alpha component and clear
-  `maestro run-packet` entry point. It validates an approved packet, claims
-  isolation/locks, launches the worker, captures evidence, grades named gates,
-  permits only the tested M0-D05 correction route, hands valid work to
-  independent review, records the result, and stops.
-- The wrapper does not decide design, merge, begin the next packet, or bypass
-  Decision Fidelity Review.
-- The tested escalation rule in M0-D05 remains authoritative.
-- [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material quality requirement. Architecture must define the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
-- Independent review is full once. After correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full scope reopens only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
-- Every default-branch merge has complete current review coverage: one exact full reviewed range plus all targeted-reviewed correction-only diffs covering the final head. Uncovered or materially stale changes block merge.
-- Every plan, milestone, packet, and build instruction must pass independent
-  Decision Fidelity Review before execution. The review records every accepted
-  choice as `included`, `missing`, `changed`, `new assumption`, or
-  `approved deferral`. Any unresolved non-included result blocks execution.
+## Required next gate
 
-## Current checkpoint
+A fresh Independent Decision Fidelity Reviewer must review the full exact Alpha-02 planning range against the current authoritative Alpha review, M0-D01, M0-D05, M0-D12, the Alpha-01 completion record, and the current handoff.
 
-The owner-approved M0-D12 process package, M0-D05 targeted-review rule, and
-complete Architecture, Decision-Fidelity, and Implementation-Review job roles
-merged to `master` at `ac6471484268d8d6b11fb302dd1190ef85cbdae2`.
-Default-branch merge candidates now require complete, current review coverage
-without redundant rereview of unchanged material.
+The review must report `APPROVE`, `REQUEST_CHANGES`, or `COMMENT`. It is planning review only. No implementation, merge, or Alpha successor work follows automatically from approval.
 
-Alpha-01 is complete and merged to `master` at
-`4cc8e6fa899574e27515f225be1976c9f9f1a6ff`. Its exact independently approved implementation head is
-`3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f` on
-`alpha-01-r2-complete-foundation`, with verified R1 base
-`e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. R2 changed only
-`services/maestro/maestro/storage.py` and
-`tests/alpha_01/test_local_foundation.py`. Fresh Independent Implementation
-Review returned **APPROVE** for that exact head; 11 tests and both health checks
-passed. Generated check artifacts were cleaned only inside the isolated
-worktree. The durable evidence is in the
-[Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md).
+## Guardrails
 
-The accepted M0-D11/M0-D12 boundary remains unchanged: Alpha protects the
-trusted local Linux process against incorrect, outside, source-tree, and
-pre-acquisition symlinked paths. It does not claim containment against a
-malicious concurrent same-UID/root process moving an already-open directory.
-
-Alpha-02 is the `maestro run-packet` lifecycle-wrapper increment and is eligible
-for Architecture planning only. The Architect may prepare its proposed bounded
-wrapper packet and complete quality contracts, but implementation remains
-unauthorized until the Owner approves the plan and a fresh Decision Fidelity
-Review approves the exact executable packet. Project registration is explicitly
-deferred until after Alpha and is not part of Alpha-02.
-
-## Model-routing reminder
-
-Before assigning or recommending a Maestro Architect or review run, explicitly
-remind the owner of the appropriate model tier:
-
-- **Maestro Architect:** GPT-5.6 Terra at medium by default; Terra high for
-  major architecture reconciliation, conflicting sources, or high-stakes final
-  plans.
-- **Decision Fidelity Reviewer and serious renewed reviews:** GPT-5.6 Sol at
-  high reasoning.
-- **Routine bounded implementation review:** GPT-5.6 Terra at high reasoning.
-- **Bounded implementation after the wrapper is active:** local Qwen.
-
-Do not increase a model tier merely from habit; state the concrete reason when
-a higher tier is warranted.
-
-## Security handling
-
-A local provenance review on 2026-08-30 inadvertently included an ignored
-`.env` file in an agent-readable loop. The credential was rotated immediately.
-No secret value is recorded in Maestro.
-
-Future inventories, reviews, and packet workflows must exclude `.env`, ignored
-files, key/certificate files, credential directories, and local secret stores
-from content reads. They may report explicitly approved runtime paths as
-metadata only when necessary.
-
-## Update rule
-
-Update this record whenever the owner accepts or changes a material Maestro
-decision, role boundary, milestone checkpoint, or explicit deferral. Keep facts
-concise, link to the controlling decision record where available, and never
-replace an accepted source with an unmarked summary.
+- Preserve Alpha-01's bounded M0-D11 assurance; do not re-open excluded post-directory-FD same-UID/root containment.
+- Keep Alpha synthetic-only. Foundry and VennueSign remain untouched.
+- Project registration is explicitly post-Alpha work.
+- Atlas remains strictly read-only and absent from this increment.
+- M0-D05 allows one targeted correction only; a missing quality model or new failure class returns to Architecture/Owner, not another worker loop.
+- Follow-up review is targeted to named findings and directly affected consistency unless a documented reopening reason applies.
