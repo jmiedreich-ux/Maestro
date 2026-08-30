@@ -133,9 +133,9 @@ The correction edge is permitted only for committed, in-scope work that fails a 
    approved but unattached/unconfigured. Backup-health support may be built,
    but Alpha recovery acceptance remains blocked until the documented mount,
    real backup, and isolated restore test pass.
-3. **No build authority yet.** This resolved traceability record still needs
-   the owner's Alpha-layout acceptance and the final Decision Fidelity Reviewer
-   sign-off before a build packet is issued.
+3. **No build authority yet.** The owner approved the Alpha layout on
+   2026-08-30. A final, fresh Decision Fidelity Reviewer sign-off remains
+   required before a build packet is issued.
 
 ## Pre-build acceptance checklist
 
