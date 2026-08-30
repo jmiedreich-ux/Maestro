@@ -1,6 +1,6 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Paused for packet-contract amendment and renewed Decision Fidelity Review. The review finding is not counted as a worker/model delivery failure.  
+**Status:** Amended contract approved by fresh Decision Fidelity Review on 2026-08-30; authorized to receive one new bounded M0-D11 repair packet. The findings are not counted as worker/model delivery failures.  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md); [M0-D11 — Linux Runtime Filesystem Boundary](../decisions/m0-d11-linux-runtime-filesystem-boundary.md)  
 **Base:** Current `master` at execution time  
@@ -30,6 +30,16 @@ packet must receive fresh Decision Fidelity Review before a new bounded repair
 packet may be issued.
 
 ## Decision Fidelity approval
+
+The original packet received a fresh GPT-5.6 Sol Decision Fidelity Review before
+its initial worker run. After the public-path and Linux symlink/race
+packet-contract amendments, a new fresh GPT-5.6 Sol reviewer approved this
+amended packet. The review confirmed M0-D11 is unique; M0-D08 remains the
+VennueSign Archive Boundary; M0-D11's physical `var/` containment, symlink
+rejection, mutation-boundary race protection, independent path oracle, and
+no-mutation evidence are faithfully carried. This approval authorizes a new
+bounded repair packet only; it does not authorize use of the prior branch,
+implementation, merge, or Alpha-02.
 
 A fresh GPT-5.6 Sol Decision Fidelity Reviewer approved this packet after a
 clean tracked-state check and fast-forward. The review confirmed the precise
