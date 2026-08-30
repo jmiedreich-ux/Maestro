@@ -140,11 +140,11 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 ### V1 — prove one control loop
 
-- Register one project.
-- Persist one run in the operational database.
-- Show the run in local Atlas.
-- Coordinate one bounded worker through a draft PR, verification, and review.
-- Stop for owner acceptance and merge.
+- Register Foundry through read-only discovery, a proposed binding, and a dry run.
+- Persist one Foundry run in the operational database.
+- Show the run in the fresh local reporting view.
+- Coordinate one explicitly released, unclaimed Foundry packet through a draft PR, verification, and review.
+- Stop for owner acceptance; no automatic merge.
 
 ### V2 — controlled delegation
 
