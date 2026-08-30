@@ -1,6 +1,6 @@
 # Alpha-01 — Establish Local Foundation
 
-**Status:** Approved for one scoped implementation run; no work outside this packet is authorized.  
+**Status:** Escalated to coordinator ownership after the permitted worker correction did not fully satisfy the runtime-boundary contract. No additional worker correction is authorized.  
 **Owner:** Jeremy Miedreich  
 **Authority:** [Maestro Alpha Decision-Fidelity Review](../maestro-alpha-decision-fidelity-review.md)  
 **Base:** Current `master` at execution time  
@@ -8,6 +8,21 @@
 **Worker route:** Maestro Implementor bootstrap route  
 **Reviewer route:** Independent implementation reviewer; cloud GPT-5.6 Sol with high reasoning is the preferred route  
 **Timeout:** Stop and report if the packet cannot complete within one focused implementation run.
+
+## Escalation record
+
+The first implementation review found that a caller-supplied runtime path could
+create SQLite state outside the repository runtime boundary. The permitted
+targeted correction at `2a3f7b9` protected the CLI path, but the renewed
+review found that direct `RuntimeConfig(...)` construction and
+`SQLiteFoundation(...).health()` still bypass that validation; it also found
+a tautological default-path test.
+
+Under M0-D05, this is not eligible for another worker correction. Alpha-01 is
+escalated to coordinator ownership for one bounded repair, followed by renewed
+independent implementation review. Before another similarly shaped packet is
+issued, the shared packet guidance must require public-construction-path
+invariant tests and independently anchored path assertions.
 
 ## Decision Fidelity approval
 
