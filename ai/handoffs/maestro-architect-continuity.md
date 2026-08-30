@@ -74,6 +74,17 @@ The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 Fidelity Reviewer sign-off on the already-pushed review. No Alpha application
 code is authorized until that sign-off passes.
 
+## Security handling
+
+A local provenance review on 2026-08-30 inadvertently included an ignored
+`.env` file in an agent-readable loop. The credential was rotated immediately.
+No secret value is recorded in Maestro.
+
+Future inventories, reviews, and packet workflows must exclude `.env`, ignored
+files, key/certificate files, credential directories, and local secret stores
+from content reads. They may report explicitly approved runtime paths as
+metadata only when necessary.
+
 ## Update rule
 
 Update this record whenever the owner accepts or changes a material Maestro
