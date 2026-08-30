@@ -57,6 +57,7 @@ work, or advance a milestone without the required approval.
 - The wrapper does not decide design, merge, begin the next packet, or bypass
   Decision Fidelity Review.
 - The tested escalation rule in M0-D05 remains authoritative.
+- [M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md) applies to every material non-functional requirement. Architecture must define the operating/threat model, exclusions, assurance level, sufficient proof, proportionality ceiling, and stop/escalation rule before dispatch. Passing the named proof is the definition of enough; a materially incomplete contract returns to Architecture and the Owner instead of creating repeated worker corrections.
 - Every plan, milestone, packet, and build instruction must pass independent
   Decision Fidelity Review before execution. The review records every accepted
   choice as `included`, `missing`, `changed`, `new assumption`, or
@@ -71,8 +72,30 @@ included choices and 20 approved deferrals, with no unresolved blocking row.
 
 The owner approved the resolved Alpha layout and mandatory wrapper boundary on
 2026-08-30. A fresh, separate Decision Fidelity Reviewer approved the current
-review at `5fc4b61`. Alpha-01 completed its worker run and targeted correction, but renewed review exposed two packet-contract gaps: first, public construction/call paths were not explicitly covered; then the coordinator repair showed a Linux symlink-swap race between validation and SQLite mutation. The owner accepted [M0-D11 — Linux Runtime Filesystem Boundary](../../docs/planning/decisions/m0-d11-linux-runtime-filesystem-boundary.md) on 2026-08-30: runtime artifacts stay only below the repository's real physical `var/` tree; symlink traversal is rejected; safe operations must prevent validation-to-mutation escape. These are packet-contract defects, not worker/model delivery failures or hard escalations. A fresh GPT-5.6 Sol Decision Fidelity Reviewer approved the amended Alpha-01 contract and the separately authored Alpha-01-R1 M0-D11 repair packet on 2026-08-30. The Implementor reports Alpha-01-R1 completed on `alpha-01-r1-runtime-boundary` at `e2c8a08`, with nine focused tests and repeated valid health checks passing. This remains unreviewed implementation evidence only. The next gate is fresh Independent Implementation Review against Alpha-01-R1 and M0-D11; no merge or Alpha-02 action is authorized.
+review at `5fc4b61`. Alpha-01 completed its worker run and targeted correction,
+then two packet-contract gaps produced coordinator repair `b476cdc` and the
+owner-approved M0-D11 repair packet. Alpha-01-R1 ran once on
+`alpha-01-r1-runtime-boundary` at `e2c8a08`; nine focused tests and repeated
+health checks passed.
 
+Fresh Independent Implementation Review returned `REQUEST_CHANGES`. The
+reviewer proved that after the implementation acquired the runtime directory
+file descriptor, that directory could be moved outside `var/` before
+`sqlite3.connect()`; SQLite then created the database, WAL, and SHM files in
+the moved outside directory. The review also found incomplete outside-path
+coverage for CLI/direct-constructor paths. No merge or Alpha-02 action is
+authorized.
+
+The owner determined that the repeated Alpha-01 cycle is an Architecture Agent
+failure: the architecture supplied absolute security wording without fully
+defining the expected threat model, sufficient proof, feasible implementation
+boundary, proportionality limit, or when agents must stop and move on. This is
+a general lesson, not only a security or Alpha-01 exception. The accepted
+[M0-D12 — Bounded Quality Contracts and Proportionality](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md)
+now requires bounded expectations for every material quality attribute and
+returns materially incomplete contracts to Architecture and the Owner rather
+than repeated implementation corrections. Alpha-01 remains paused until M0-D11
+is reconciled with M0-D12.
 ## Model-routing reminder
 
 Before assigning or recommending a Maestro Architect or review run, explicitly
