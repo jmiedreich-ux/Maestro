@@ -2,14 +2,15 @@
 
 - **Status:** Original planning release received Decision Fidelity APPROVE at
   exact head `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in PR #11 at
-  `dcca2174dd919aa204707961f1b33ad15de9af41`; Owner-approved patient-worker
-  status amendment awaits fresh Decision Fidelity Review and merge
+  `dcca2174dd919aa204707961f1b33ad15de9af41`; Owner-approved patient-worker,
+  allowance-window, context, and usage-reporting amendment awaits fresh
+  Decision Fidelity Review and merge
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
-- **Graph revision:** `maestro-alpha-04-plan-r1`
+- **Graph revision:** `maestro-alpha-04-plan-r2`
 - **Source base:** `d0ec9c4593c42e4be5d3461f11ece8b9021ff141`
   (`master`)
-- **Patient-worker amendment base:**
+- **Combined amendment base:**
   `dcca2174dd919aa204707961f1b33ad15de9af41` (`master`)
 - **Decision authority:**
   [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md) and
@@ -18,6 +19,8 @@
   [2026-08-31 control-loop qualification direction](../../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md)
   and
   [2026-08-31 context and token reporting direction](../../../sources/planning/2026-08-31-context-and-token-reporting.md)
+  plus the captured
+  [Usage & Observability proposal](agent-usage-observability.md)
 - **Predecessor:** Alpha-03 must be implemented, independently approved,
   accepted, and merged before Alpha-04 can be released
 - **Execution class:** one fixture-only, single-process qualification increment
@@ -33,7 +36,9 @@ one synthetic project: identify the eligible packet, assign it once, route its
 scripted result through Integration and an independent reviewer, ask a
 non-terminal worker for honest progress before assuming it is stalled, apply
 context/token budgeting from preflight through status, apply the bounded
-correction rule, survive duplicates/restart, and stop for Owner acceptance.
+correction rule, relate controlled OpenAI use to a supported ChatGPT/Codex
+weekly allowance observation without inventing precision, survive duplicates/
+restart, and stop for Owner acceptance.
 
 This qualifies Maestro's control-loop logic before Foundry becomes the first
 live proving project. It does not contact or dispatch a real agent.
@@ -86,6 +91,9 @@ The execution packet must define exact, repository-owned fixture schemas for:
 - scripted model/context/quantization fingerprints, packet context minimum and
   output reserve, exact/estimated/unavailable token and cost measurements,
   pressure thresholds, and checkpoint observations; and
+- scripted OpenAI allowance-window observations with used/remaining/reset,
+  precision/freshness, tracked controlled usage, registered coarse activity,
+  unattributed remainder, and separate local-Qwen capacity; and
 - the expected coordinator decisions and evidence.
 
 Unknown fields, malformed identities, absent authority, unapproved graph
@@ -120,8 +128,9 @@ reports an unambiguous terminal/safety stop. The request asks for:
 
 The same status record includes the current context limit, used/remaining
 measurement or estimate, output reserve, measurement type/confidence, pressure
-state, and latest available token/cost counters under M0-D14. Unsupported
-counters are `unavailable`; they are never inferred from a different counter.
+state, latest available token/cost counters, and supported allowance-window
+status under M0-D14. Unsupported counters/window facts are `unavailable`; they
+are never inferred from a different counter.
 
 Only one status request may be outstanding for an attempt, and the later packet
 must define a minimum query interval plus the response/lease timeout policy.
@@ -143,7 +152,20 @@ The resulting bounded status record is suitable for a later read-only Atlas
 projection. Alpha-04 does not build Atlas, a read API, or a UI, and Atlas never
 sends the request.
 
-### 4. Context preflight, usage measurement, and checkpoint
+### 4. Allowance observation, context preflight, and usage checkpoint
+
+Before a hosted synthetic assignment, Maestro accepts only a supported or
+fixture-approved account-window observation carrying the provider, non-secret
+account/workspace identity, native window type, used/remaining amount or
+percentage, reset time when supplied, precision, measurement quality,
+observation time, and freshness. Missing support produces `unavailable`; it
+does not trigger UI scraping or a token-derived weekly percentage.
+
+The fixed OpenAI window demonstrates the ChatGPT/Codex weekly allowance. The
+qualification links controlled attempt usage to that window, registers coarse
+ChatGPT Work/web activity when exact per-run detail is absent, and computes a
+visible unattributed remainder from the observed account change. Local Qwen
+time/tokens/capacity remain separate and never reduce the hosted allowance.
 
 Before the synthetic assignment is launched, Maestro validates and records the
 declared model/runtime identity, configured context limit, quantization when
@@ -163,6 +185,10 @@ or remaining-context facts.
 Cost is reported as billed, estimated, `not_billed`, or `unknown`, with amount
 and currency only where applicable. Elapsed time and resource facts remain
 separate from monetary cost.
+
+Allowance pace is estimated only when the fixture supplies a supported window,
+usable elapsed/reset timing, and fresh observations. No pace/remaining value
+changes routing or stops work in Alpha-04.
 
 At the declared context-pressure boundary, the Coordinator asks for one short
 checkpoint at a safe message boundary. The scripted checkpoint records
@@ -223,19 +249,26 @@ The future execution packet must name focused tests that prove at least:
    the attempt;
 7. context preflight rejects an undersized configured limit or a starting
    payload that cannot preserve the packet minimum plus output reserve;
-8. exact tokenizer/runtime measurements, bounded estimates, confidence,
+8. supported OpenAI weekly-window observations preserve used/remaining/reset,
+   precision/freshness, and an unsupported observation remains `unavailable`;
+9. tracked controlled usage plus registered coarse usage plus unattributed
+   remainder reconciles to observed account change without converting tokens
+   into weekly percentage or double-counting parent/child work;
+10. local Qwen usage remains separate from the OpenAI allowance and stale/
+    unknown reset or pace is reported honestly;
+11. exact tokenizer/runtime measurements, bounded estimates, confidence,
    `unavailable`, and runtime-supersedes-estimate behavior remain distinct;
-9. zero/unavailable reasoning tokens cannot erase nonzero context use, and
+12. zero/unavailable reasoning tokens cannot erase nonzero context use, and
    billed/estimated/not-billed/unknown cost states remain honest;
-10. warning/checkpoint pressure produces the bounded worker checkpoint and
+13. warning/checkpoint pressure produces the bounded worker checkpoint and
    declared stop action without silent truncation or replacement-session start;
-11. validate-only, assemble, and replan Integration routes behave distinctly;
-12. an actor cannot review a result it authored or integrated;
-13. one eligible correction is routed and exactly covered, while a second round
+14. validate-only, assemble, and replan Integration routes behave distinctly;
+15. an actor cannot review a result it authored or integrated;
+16. one eligible correction is routed and exactly covered, while a second round
    or new failure class escalates;
-14. restart, duplicate, stale, timeout, and competing-claim cases do not
+17. restart, duplicate, stale, timeout, and competing-claim cases do not
    double-dispatch or corrupt evidence; and
-15. every terminal path prohibits merge, successor selection, and external
+18. every terminal path prohibits merge, successor selection, and external
    access.
 
 Exact fixture paths, implementation-owned paths, commands, schemas, and model
@@ -252,8 +285,8 @@ this architecture proposal.
 | M0-D03 least privilege and no retained secrets | Reject credential/secret/external-route fields; no provider or network client |
 | M0-D05 one targeted correction maximum | One eligible exact correction and targeted review; second round/new failure class escalates |
 | M0-D11 bounded Linux filesystem assurance | Preserve the existing boundary; add no stronger containment claim |
-| M0-D12 bounded quality and proportionality | Q1-Q5 below carry all eight mandatory fields and name sufficient proof/ceilings |
-| M0-D14 context and token reporting from preflight | Attempt-bound model/context/quantization fingerprint, minimum/reserve gate, exact/estimated/unavailable counters, cost state, pressure checkpoint, and Atlas-ready reporting |
+| M0-D12 bounded quality and proportionality | Q1-Q6 below carry all eight mandatory fields and name sufficient proof/ceilings |
+| M0-D14 allowance, context, and usage reporting from preflight | Supported weekly-window observation, tracked/coarse/unattributed reconciliation, separate local capacity, attempt-bound model/context fingerprint, minimum/reserve gate, honest counters/cost, pressure checkpoint, and Atlas-ready reporting |
 | C-22 one milestone and Owner gate | One synthetic assignment reaches `AwaitingOwner` and stops |
 | C-19 durable visible waiting state | Structured worker-reported plan/current step/blocker/ETA-or-unknown plus source/time; no premature failure assumption |
 | V-014/L-011/L-015/P-004/P-007 retained source requirements | Model/context fingerprint, context hard gate, cost/tokens/elapsed evidence, and run outcome begin at preflight rather than as later metrics |
@@ -394,42 +427,55 @@ this architecture proposal.
   non-terminal until timeout policy allows reconciliation; ambiguity never
   authorizes a duplicate run, invented ETA, or silent scope decision.
 
-### Q6 — Context budget and honest token/cost reporting
+### Q6 — Allowance, context budget, and honest usage reporting
 
-- **Protected outcome:** Maestro does not launch a packet that cannot fit its
-  declared context/reserve, misstate estimated usage as exact, confuse one token
-  counter for another, or let context exhaustion silently lose work.
-- **Operating/threat/failure model:** one synthetic attempt has a declared
-  model/runtime/context/quantization fingerprint, known starting input, uncertain
-  future tool/file growth, optional runtime counters, cost availability states,
-  and warning/checkpoint/stop thresholds; missing/malformed counters,
-  estimate/report disagreement, zero reasoning tokens, and pressure crossings
-  are in scope.
-- **Explicit exclusions:** universal token prediction accuracy, raw prompt/
-  transcript storage, chain-of-thought collection, provider billing
-  reconciliation, automatic prompt optimization, silent compaction, automatic
-  session rollover, and global thresholds chosen without run data.
+- **Protected outcome:** Maestro does not misstate controlled tokens as an exact
+  ChatGPT/Codex weekly percentage, lose unexplained account usage, combine local
+  capacity with hosted allowance, launch a packet that cannot fit its declared
+  context/reserve, confuse token counters, or let context exhaustion silently
+  lose work.
+- **Operating/threat/failure model:** one fixed OpenAI allowance window has
+  supported/coarse/stale/unavailable observations, controlled and registered
+  coarse activity, possible concurrent unattributed change, and reset timing;
+  one synthetic attempt has a declared model/runtime/context/quantization
+  fingerprint, uncertain future tool/file growth, optional runtime counters,
+  cost states, and pressure thresholds. Missing/malformed observations,
+  parent/child double counting, estimate/report disagreement, zero reasoning
+  tokens, and pressure crossings are in scope.
+- **Explicit exclusions:** unsupported account UI scraping, exact personal-web
+  conversation attribution where unavailable, provider allowance formulas not
+  published by the provider, automatic budget enforcement/rerouting, universal
+  token prediction accuracy, raw prompt/transcript/chain-of-thought storage,
+  billing reconciliation, automatic prompt optimization/compaction/session
+  rollover, and global thresholds chosen without run data.
 - **Practical assurance level:** strict preflight schema and minimum/reserve
-  gate; exact values only from the declared tokenizer/runtime; otherwise labeled
-  ranges/estimates with confidence; distinct unavailable/zero and cost states;
-  deterministic pressure/checkpoint decisions.
-- **Sufficient acceptance proof:** named tests cover undersized context and
-  oversized-start rejection, exact versus estimated counts, runtime replacement
-  of estimates, malformed/stale counters, unavailable fields, nonzero context
-  with zero reasoning tokens, all cost states, pressure transitions, checkpoint
-  evidence, and an Atlas-ready usage projection.
+  gate; allowance facts only from supported/fixture observations; separate
+  tracked/coarse/unattributed reconciliation and local capacity; exact token
+  values only from the declared tokenizer/runtime, otherwise labeled estimates;
+  distinct stale/unavailable/zero and cost states; deterministic pressure/
+  checkpoint decisions.
+- **Sufficient acceptance proof:** named tests cover allowance used/remaining/
+  reset/precision/freshness, unsupported/stale windows, reconciliation and
+  unattributed remainder, no parent/child double count, local separation,
+  absence of token-to-weekly conversion, undersized context/oversized-start
+  rejection, exact versus estimated counts, runtime replacement of estimates,
+  unavailable fields, nonzero context with zero reasoning tokens, all cost
+  states, pressure/checkpoint evidence, and the Atlas-ready projection.
 - **Permitted implementation boundary and complexity:** explicit synthetic
-  model/usage fixtures, additive attempt/evidence fields, arithmetic derived
-  values, and transition rules in the existing Python/SQLite service; no real
-  tokenizer/model/billing call, new dependency, background meter, or Atlas UI.
-- **Proportionality ceiling:** one fingerprint and bounded sequence of usage
-  observations for one synthetic attempt, packet-declared thresholds, and one
-  checkpoint action; no optimization engine or cross-run forecasting model.
-- **Exact stop/escalation rule:** reject before launch if minimum/reserve cannot
-  be satisfied; on malformed/ambiguous measurement preserve the last valid fact
-  and stop usage-driven action; at checkpoint/stop pressure follow the declared
-  rule and return any need for compaction/session continuation or new global
-  policy to Architecture/Owner.
+  account-window/model/usage fixtures, additive account-window/attempt/evidence
+  fields, bounded reconciliation arithmetic, and transition rules in the
+  existing Python/SQLite service; no real account, tokenizer/model/billing call,
+  new dependency, background meter, or Atlas UI.
+- **Proportionality ceiling:** one OpenAI allowance window, one local-capacity
+  comparison, one fingerprint and bounded observation sequence for one
+  synthetic attempt, packet-declared thresholds, and one checkpoint action; no
+  provider adapter, optimization engine, or cross-run forecasting model.
+- **Exact stop/escalation rule:** preserve `unavailable` rather than infer or
+  scrape an unsupported allowance; preserve unattributed remainder rather than
+  force attribution; reject launch if minimum/reserve cannot be satisfied; on
+  malformed/ambiguous measurement preserve the last valid fact and stop usage-
+  driven action; return any need for account access, budget enforcement,
+  compaction/session continuation, or global policy to Architecture/Owner.
 
 ## Explicit non-goals and deferrals
 
@@ -437,6 +483,9 @@ this architecture proposal.
 - Foundry, VennueSign, or any other repository/project access.
 - Real local/cloud model invocation, agent process management, Git/GitHub/CI,
   webhooks, network, secrets, or notifications.
+- Real provider-account access, unsupported usage-page scraping, credit
+  purchase, budget enforcement, provider rerouting, or a claim of exact weekly
+  use when the supported observation is coarse/unavailable.
 - Production specialist queues, multiple projects, parallel execution,
   resource optimization, fairness/aging, or general scheduling.
 - Atlas/API/UI implementation, backup/USB/recovery, deployment, merge, owner
@@ -454,9 +503,10 @@ The later packet must make the fixture schemas, public result shapes, owned
 paths, exact checks, and stop-before-mutation cases explicit before it can enter
 Decision Fidelity Review. It must also declare exact context minimum, output
 reserve, warning/checkpoint/stop thresholds, measurement fallbacks, and cost
-states for its synthetic route. If doing so requires a production scheduler, a
-real actor/tokenizer/billing service, a second command/control surface, or a
-broader threat model, that is a material replan and returns to
+states for its synthetic route, plus the exact fixture allowance-window and
+reconciliation shapes. If doing so requires a production scheduler, real
+provider/account/actor/tokenizer/billing access, a second command/control
+surface, or a broader threat model, that is a material replan and returns to
 Architecture/Owner.
 
 ## Feasibility and proportionality conclusion

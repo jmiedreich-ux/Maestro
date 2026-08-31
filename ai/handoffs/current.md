@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. Alpha-03 has an approved but unreleased packet. The pre-V1 Alpha-04 synthetic control-loop plan received Decision Fidelity APPROVE and merged in PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`; its Owner-approved patient-worker status amendment still requires fresh review and merge. No Alpha-03/Alpha-04 implementation, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
+**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. Alpha-03 has an approved but unreleased packet. The pre-V1 Alpha-04 synthetic control-loop plan received Decision Fidelity APPROVE and merged in PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`; its Owner-approved patient-worker, weekly-allowance, context, and usage-reporting amendment still requires fresh review and merge. No Alpha-03/Alpha-04 implementation, real worker, API/UI, provider-account access, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
 
 **Alpha-03 planning only:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
 received complete Decision Fidelity coverage and merged at
@@ -38,9 +38,17 @@ The Owner then clarified that the Coordinator must make a patient bounded
 request for a non-terminal worker's reported plan/current
 step/blocker/ETA-or-unknown before assuming a stall or taking timeout/retry
 action. Atlas may later report the durable status but never asks the worker.
-That amendment still requires fresh Decision Fidelity Review and merge. Neither
-the merged plan nor the amendment creates an execution packet or implementation
-authority.
+The Owner also identified the earlier Usage & Observability proposal and
+approved beginning its bounded allowance/context/usage subset under
+[M0-D14](../../docs/planning/decisions/m0-d14-context-and-token-reporting.md):
+record a supported ChatGPT/Codex weekly window when available, keep attempt
+tokens distinct from allowance units, reconcile controlled/coarse/unattributed
+usage, keep local Qwen capacity separate, and report unsupported facts as
+`unavailable` without scraping. The broader multi-provider, live-adapter, UI,
+retention, threshold, and enforcement proposal remains unresolved. This
+combined amendment still requires fresh Decision Fidelity Review and merge.
+Neither the merged plan nor the amendment creates an execution packet or
+implementation authority.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -56,6 +64,7 @@ The current M0 expansion is captured in:
 - [Agent-workforce planning source capture](../../sources/planning/2026-08-29-agent-workforce-conversation.md)
 - [Independent planning capture audit](../../docs/planning/agent-workforce-capture-audit.md)
 - [Atlas Transition Assessment](../../docs/planning/atlas-transition-assessment.md)
+- [Usage & Observability proposal](../../docs/planning/proposed/agent-usage-observability.md)
 - [Agent Role Library](../../docs/agents/)
 
 ## Decisions to preserve
@@ -72,6 +81,11 @@ The current M0 expansion is captured in:
 10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
 11. Every default-branch merge must have complete current review coverage: one exact full reviewed range plus every targeted-reviewed correction-only diff covering the exact final head. Uncovered or materially stale changes block merge.
 12. Before live Foundry V1 execution, Maestro must pass the M0-D13 fixture-only control-loop qualification. Alpha-04 may prove one synthetic assignment, patient worker-status inquiry, and role-separated handoffs, but production queues, real actor/model routing, and limited parallel dispatch remain V2 work. Atlas reports recorded worker status and never initiates the inquiry.
+13. Under M0-D14, every attempt begins with honest context/usage preflight.
+    Supported hosted weekly-window observations remain separate from tokens;
+    controlled usage, coarse registered activity, and unattributed remainder
+    reconcile visibly; local capacity stays separate; and Atlas only reports
+    durable facts.
 
 ## VennueSign adapter guardrails
 
@@ -128,4 +142,6 @@ automation, or USB recovery work from this handoff.
 - Atlas read-only presentation and service-mediated API implementation.
 - Least-privilege service-account/GitHub App/cloud-provider credential and webhook-security policy.
 - Notification/acknowledgement model and measurable concurrency/cost thresholds.
+- Supported provider-account observation sources, usage retention, allowance
+  warning thresholds, and any budget-enforcement policy.
 - Future delegation boundary for auto-merge and autonomous selection of subsequent approved work.

@@ -24,36 +24,59 @@ runtime and reporting contract.
 
 After adding patient worker-status communication to Alpha-04, the Owner asked
 whether context size can be predicted and then directed that the existing token
-reporting feature be brought together with this work "in the beginning."
+reporting feature be brought together with this work "in the beginning." The
+Owner clarified that the intended primary comparison is Maestro-controlled
+OpenAI work against the ChatGPT/Codex weekly usage allowance, not token counts
+alone. The Owner then identified the existing
+`docs/agent-usage-observability` branch as the earlier discussion source.
+
+That branch's `agent-usage-observability.md` already proposes an OpenAI
+allowance card with used/remaining observation, reset time, pace, confidence,
+and last refresh; controlled-run attribution; coarse registered ChatGPT Work/
+web activity; and a visible unattributed remainder. It also states that a
+personal ChatGPT account may not expose exact per-conversation usage through a
+supported API and forbids unsupported UI scraping or invented token counts.
 
 ## Owner-approved direction
 
-Context budgeting and usage reporting begin before assignment and stay attached
-to the same attempt/status record throughout the run:
+Allowance observation, context budgeting, and usage reporting begin before
+assignment and stay attached to the same account-window/attempt/status records
+throughout the run:
 
-1. Preflight records the selected model/runtime, configured context limit,
+1. When a supported account surface supplies it, preflight records the active
+   ChatGPT/Codex allowance window, used/remaining observation, reset time,
+   precision, and observation time. If unsupported, the account state remains
+   `unavailable`; Maestro does not scrape or infer it from tokens.
+2. Preflight records the selected model/runtime, configured context limit,
    quantization when applicable, packet minimum context, output reserve, and
    token-count method.
-2. Before dispatch, Maestro records exact known-input tokens when the selected
+3. Before dispatch, Maestro records exact known-input tokens when the selected
    model tokenizer is available, otherwise a labeled estimate/range and its
    confidence. Unknown future tool/file growth remains an estimate.
-3. A run that cannot satisfy its packet minimum plus output reserve is rejected
+4. A run that cannot satisfy its packet minimum plus output reserve is rejected
    before worker launch.
-4. During execution, runtime-reported counters replace estimates when
+5. During execution, runtime-reported counters replace estimates when
    available. Unsupported counters remain `unavailable`; they are not recorded
    as zero. In particular, zero or unavailable reasoning tokens never means
    zero context use.
-5. Worker status includes current context use/remaining estimate and can request
+6. Controlled OpenAI attempts are linked to the account window without claiming
+   that per-run tokens directly equal allowance percentage. Supported coarse
+   ChatGPT Work/web observations are registered honestly. Concurrent or
+   otherwise unexplained account change remains an unattributed remainder.
+7. Worker status includes current context use/remaining estimate and can request
    a short checkpoint at a configured pressure boundary. Maestro does not
    silently summarize, truncate, or start a replacement session.
-6. Atlas reports the durable facts: context limit, used/remaining estimate,
-   output reserve, token counters, measurement type, confidence, pressure,
-   worker plan/status, elapsed time, and cost as billed/estimated/not-billed/
-   unknown.
-7. No raw prompt, chain-of-thought, or transcript is exposed merely to produce
+8. Atlas reports the durable facts: allowance used/remaining/reset/pace where
+   supported, tracked controlled usage, coarse registered usage, unattributed
+   remainder, context limit, used/remaining estimate, output reserve, token
+   counters, measurement type, confidence, pressure, worker plan/status,
+   elapsed time, and cost as billed/estimated/not-billed/unknown. Local Qwen
+   capacity remains separate from the ChatGPT/Codex allowance.
+9. No raw prompt, chain-of-thought, or transcript is exposed merely to produce
    these measurements.
 
 Global optimization thresholds are not invented before data exists. Each
 approved packet/model route supplies bounded minimum, reserve, warning, and
-checkpoint/stop rules. This direction authorizes planning only and does not
-release Alpha-03 or Alpha-04 implementation.
+checkpoint/stop rules. Allowance pace warnings also require an Owner-approved
+threshold. This direction authorizes planning only and does not release
+Alpha-03 or Alpha-04 implementation.

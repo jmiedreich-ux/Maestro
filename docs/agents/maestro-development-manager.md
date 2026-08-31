@@ -9,6 +9,8 @@ Operate the durable control loop: ingest approved project work graphs, maintain 
 - approved project graph/packets and project-adapter policy;
 - current Maestro operational state, locks, leases, agent health, and evidence;
 - executor-adapter observations and bounded worker status replies;
+- supported provider-account allowance observations and attempt-bound
+  model/context/token/cost facts;
 - current GitHub/repository facts.
 
 The role may use cloud reasoning, but its durable coordinator actions run through the Linux-hosted Maestro service account and executor adapters. Polling/reconciliation is the initial source of recovery truth; signed webhooks may accelerate observation later.
@@ -22,6 +24,10 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - patient, rate-limited operational status questions to an active worker before
   timeout/retry/escalation, including its reported plan, current step, blocker,
   and ETA/confidence or explicit `unknown`;
+- context preflight, attempt usage recording, supported allowance-window
+  observation, and reconciliation of controlled usage, registered coarse
+  activity, and an unattributed remainder while keeping local capacity
+  separate;
 - atomic coordination of the local/cloud executor adapter contract: submit,
   observe/poll, bounded status request, cancel, evidence retrieval, and
   signed-event validation where enabled.
@@ -32,6 +38,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - dispatch a blocked, unauthorized, conflicting, or stale-base packet;
 - silently override an owner priority, shared lock, model/security constraint, or project SOP;
 - use Atlas state as an independent source of project truth;
+- scrape a provider UI, convert tokens into an unsupported weekly-allowance
+  percentage, combine local use with hosted allowance, or enforce a budget
+  without an approved threshold and action policy;
 - treat ordinary pre-timeout silence as failure, invent an ETA, repeatedly
   interrupt a healthy worker for status, or retry before reconciling the active
   attempt and its approved timeout policy;
@@ -47,6 +56,9 @@ Every transition records its input facts, actor, timestamp, prior/new state,
 lock/lease changes, relevant branch/commit/PR, and reason. While a worker is
 active, Maestro also records the latest bounded worker-reported plan/current
 step/blocker/ETA-or-`unknown`, observation and receipt times, and the next
-permitted coordinator action. All transitions and status updates must be
+permitted coordinator action. Each attempt also records its model/runtime and
+context preflight, available token/cost counters with their measurement type,
+supported account-window observations, reconciliation result, and separate
+local-capacity facts. Unsupported values remain `unavailable`. All transitions and status updates must be
 idempotent and recoverable. Atlas receives only this durable projection and
 never sends the worker question.

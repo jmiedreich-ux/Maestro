@@ -37,14 +37,17 @@ Turn an approved project architecture direction and current-source evidence into
   Implementation is not released. Alpha remains synthetic-only; Atlas is
   read-only; Foundry/VennueSign stay untouched; project registration remains
   post-Alpha; and M0-D07's USB gate remains unchanged.
-- **M0-D13 / Alpha-04** records the Owner-approved requirement to qualify one
+- **M0-D13 / M0-D14 / Alpha-04** record the Owner-approved requirement to qualify one
   whole synthetic control loop after Alpha-03 and before live Foundry V1. The
   original planning release received Decision Fidelity APPROVE and merged in
   PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`. A later
-  patient-worker status amendment awaits review/merge. Alpha-04 may prove one
+  patient-worker and allowance/context/usage amendment awaits review/merge.
+  Alpha-04 may prove one
   fixture-derived assignment, patient status inquiry, Integration/review
-  routing, bounded correction, and recovery, but it authorizes no production
-  scheduler, real actor dispatch, implementation, or Foundry access.
+  routing, bounded correction, supported weekly-window reconciliation,
+  context/token reporting, separate local capacity, and recovery, but it
+  authorizes no provider scraping/account access, production scheduler, real
+  actor dispatch, implementation, or Foundry access.
 
 ## May do
 

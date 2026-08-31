@@ -74,19 +74,29 @@ PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`.
 The Owner then added a patient bounded worker-status inquiry before any stall
 assumption. It preserves the worker-reported plan/current
 step/blocker/ETA-or-unknown for later read-only Atlas reporting; Atlas never
-asks the worker. This amendment awaits its own fresh review and merge. There is
-no Alpha-04 execution packet or implementation release.
+asks the worker. The Owner also identified the existing Usage & Observability
+proposal and approved its early M0-D14 subset: supported ChatGPT/Codex weekly-
+window observation, distinct attempt context/token/cost facts, controlled/
+coarse/unattributed reconciliation, separate local-Qwen capacity, honest
+`unavailable` states, and checkpoint behavior at context pressure. No provider
+UI scraping, token-to-allowance conversion, live account access, enforcement,
+or broader multi-provider proposal is approved. This combined amendment awaits
+fresh review and merge. There is no Alpha-04 execution packet or implementation
+release.
 
 ## Guardrails
 
 - Preserve Alpha-01's bounded M0-D11 assurance; do not re-open excluded post-directory-FD same-UID/root containment.
 - Keep Alpha synthetic-only. Foundry and VennueSign remain untouched.
 - Project registration is explicitly post-Alpha work.
-- Live Foundry V1 execution is blocked until the M0-D13 synthetic control-loop
-  qualification is independently approved, accepted, implemented, reviewed,
-  and merged.
+- Live Foundry V1 execution is blocked until the M0-D13/M0-D14 synthetic
+  control-loop qualification is independently approved, accepted, implemented,
+  reviewed, and merged.
 - Alpha-04 is not V2: it may not create a production scheduler, real worker
   route, multi-project queue, or parallel execution.
 - Atlas remains strictly read-only and absent from this increment.
+- Alpha-04 uses allowance/context/usage fixtures only; live provider-account
+  sources, retention, warnings, enforcement, and UI implementation remain
+  later decisions.
 - M0-D05 allows one targeted correction only; a missing quality model or new failure class returns to Architecture/Owner, not another worker loop.
 - Follow-up review is targeted to named findings and directly affected consistency unless a documented reopening reason applies.

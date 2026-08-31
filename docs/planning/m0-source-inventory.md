@@ -15,6 +15,7 @@
 | S-07 | VennueSign Architecture Renewal handoff and approved project records | Example adapter authority, preservation rules, and current project-policy constraints | Referenced only; not moved into Maestro as VennueSign authority |
 | S-08 | [Agent-workforce planning conversation, 2026-08-29](../../sources/planning/2026-08-29-agent-workforce-conversation.md) | Architecture Agent, Maestro manager, specialist queues, Atlas control plane, parallelism, SOP, integration, review, and handoff requirements | Source-preserved and reconciled into the Control Plane and this register |
 | S-09 | [Synthetic control-loop qualification direction, 2026-08-31](../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md) | Owner direction to prove assignment and role handoffs synthetically before the first live Foundry packet | Reconciled into M0-D13, the Master Plan, the Control Plane, and the Alpha-04 proposal |
+| S-10 | `origin/docs/agent-usage-observability` at `bb4a35a` and [context/usage direction, 2026-08-31](../../sources/planning/2026-08-31-context-and-token-reporting.md) | Earlier allowance/usage design plus Owner direction to begin context, token, and ChatGPT/Codex weekly-allowance reporting with the control loop | Early bounded subset reconciled into M0-D14 and Alpha-04; broader proposal remains unresolved |
 
 ## Original M0 agreements retained
 
@@ -68,6 +69,7 @@
 | C-41 | Actual VennueSign work remains GitHub Issues/PRs. Architecture graph nodes link by stable ID; Maestro and Atlas never maintain a competing task tracker. | Control Plane §§3, 6, 12 |
 | C-42 | Eventual Maestro merge and autonomous next-work selection require a separately reviewed delegation policy. This document merge does not grant product-code merge authority. | Control Plane §13 |
 | C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, patient worker-status inquiry, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Worker timing may remain honestly unknown; Atlas reports the durable response but never asks the worker. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §§7, 10, 13 / Alpha-04 proposal |
+| C-44 | Context and usage reporting begins at preflight. Supported ChatGPT/Codex weekly allowance observations remain distinct from attempt tokens; controlled usage, coarse registered activity, and unattributed remainder reconcile to account change; local Qwen capacity stays separate; unsupported facts are `unavailable` and Atlas is read-only. | M0-D14 / Master Plan §§2, 9 / Control Plane §§7, 10–13 / Alpha-04 proposal |
 
 ## Required diagram concepts retained
 
@@ -79,6 +81,7 @@
 | Wrapper loop: author → compile constraints → dispatch → grade → one targeted rework → evidence → invariant improvement | Master Plan §7 / Coding Agent SOP |
 | Planned specialist queue versus dispatchable subset and integration unblocking | Control Plane §7 |
 | Full target packet lifecycle | Control Plane §8.4 |
+| Usage and capacity: account window → attempt usage/coarse activity → reconciliation → read-only Atlas, with local capacity separate | Control Plane §§7.5, 10–11 / M0-D14 |
 
 ## Conversation-to-record traceability
 
@@ -92,6 +95,7 @@
 | SOP and proportionate independent review govern every coding packet | Control Plane §9; `docs/agents/coding-agent-sop.md`; `docs/agents/independent-review-agent.md` |
 | M0 remains design-only and V1 remains a deliberately narrow, owner-gated loop | Master Plan §9; Control Plane §13 |
 | A synthetic whole-loop qualification occurs after Alpha-03 and before live Foundry V1 | M0-D13; Alpha-04 proposal; Master Plan §9; Control Plane §13 |
+| Allowance, context, and token reporting starts in that synthetic loop without provider scraping or false precision | M0-D14; Alpha-04 proposal; Usage & Observability proposal; Control Plane §§10–13 |
 
 ## Current M0 next action
 

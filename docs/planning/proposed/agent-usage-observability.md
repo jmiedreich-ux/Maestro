@@ -1,15 +1,31 @@
 # Proposed Feature — Agent Usage Observability
 
-**Status:** Proposed for consideration — **not approved**  
-**Implementation authority:** None  
-**Approval authority:** Owner  
-**Discussion date:** 2026-08-30  
-**Current-program effect:** None. This proposal does not change Alpha-01,
-Alpha-01-R1, M0-D11/M0-D12 reconciliation, the current handoff, any existing
-rule, agent role, model route, review scope, merge authority, roadmap entry, or
-the next authorized action.
+- **Status:** Comprehensive feature proposal captured for reconciliation; not
+  approved as one implementation scope
+- **Implementation authority:** None
+- **Approval authority:** Owner
+- **Original discussion date:** 2026-08-30
+- **Captured branch/head:** `docs/agent-usage-observability` at `bb4a35a`
 
-> **Proposal boundary:** Everything below describes a possible future feature.
+## 2026-08-31 reconciliation
+
+The Owner has now approved bringing the early OpenAI/ChatGPT allowance-window,
+context-budget, token/cost measurement, patient worker-status, and Atlas-ready
+reporting subset into the Alpha-04 synthetic qualification plan. That bounded
+subset is carried by
+[M0-D14](../decisions/m0-d14-context-and-token-reporting.md) and its pending
+planning amendment.
+
+The broader items below—including a 50/50 Claude partnership denominator,
+CLI-first policy, live provider adapters, exact telemetry sources, Atlas UI,
+retention, warning thresholds, and any budget-enforcement authority—remain
+proposed and unresolved. Capturing this document does not approve those items,
+release an execution packet, or authorize provider access.
+
+> **Proposal boundary:** M0-D14 separately bounds the early allowance,
+> context, token, checkpoint, and read-only reporting subset. Everything else
+> below remains a possible future feature and requires its own decisions,
+> review, and release.
 > The owner-provided 50/50 Claude Code partnership is a design input for this
 > proposal, not a currently active allocation rule.
 
@@ -172,7 +188,7 @@ Maestro job ID and capture:
 - reviewer role, reviewer provider/model, review round, findings, and gate result;
 - branch, commit, changed paths, commands, tests, artifact links, and evidence
   references; and
-- measurement provenance: `measured`, `estimated`, `account-delta-only`, or
+- measurement quality: `measured`, `estimated`, `account-delta-only`, or
   `unavailable`.
 
 Prompt, source, chain-of-thought, credentials, secrets, and full tool traces would
@@ -230,7 +246,7 @@ Current OpenAI reference points:
 - [ChatGPT Work/Codex pricing and usage](https://learn.chatgpt.com/docs/pricing)
 
 Provider contracts and rates can change. An approved implementation would need
-versioned adapters and rate-card provenance for every provider.
+versioned adapters and a recorded rate-card source/version for every provider.
 
 ## 8. Local-agent tracking
 
@@ -428,7 +444,7 @@ Recommended visible columns:
 
 | Time | Work | Role | Provider/model | Location | Elapsed | Usage | Outcome/gate | Review | Quality |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Start or end | Project, packet, concise subject | Factual role | Provider badge and exact model | Hosted/local/QA | Queue + run | Native measured/estimated value | Running, accepted, failed, stalled | Reviewer provider and round | Provenance/freshness |
+| Start or end | Project, packet, concise subject | Factual role | Provider badge and exact model | Hosted/local/QA | Queue + run | Native measured/estimated value | Running, accepted, failed, stalled | Reviewer provider and round | Measurement quality/freshness |
 
 Expanding a row should reveal:
 
@@ -522,7 +538,7 @@ flowchart LR
 ```
 
 Adapters normalize common operational fields while preserving provider-specific
-raw facts and provenance. A provider adapter must not be allowed to write graph,
+raw facts and their source/time. A provider adapter must not be allowed to write graph,
 packet, decision, acceptance, or merge truth.
 
 ## 12. Validation approach if later approved
