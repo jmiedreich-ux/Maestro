@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. No Alpha-03, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
+**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. Alpha-03 has an approved but unreleased packet. The Owner has approved planning a separate pre-V1 Alpha-04 synthetic control-loop qualification. No Alpha-03/Alpha-04 implementation, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
 
 **Alpha-03 planning only:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
 received complete Decision Fidelity coverage and merged at
@@ -18,7 +18,22 @@ Fidelity Review returned **APPROVE** for exact head
 `76e30a701d94a4e091c7a28a28cd0799aefd357d`. The packet remains non-executable
 until the Owner explicitly releases implementation. It authorizes no real
 repository discovery, Foundry/VennueSign contact, registration, project
-binding, or successor work.
+binding, or successor work. The status-only reconciliation in PR #10 merged to
+`master` at `d0ec9c4593c42e4be5d3461f11ece8b9021ff141` without releasing or
+dispatching implementation.
+
+**Alpha-04 planning direction only:** On 2026-08-31, the Owner agreed that
+Maestro must qualify its core assignment/control loop synthetically before a
+real Foundry packet becomes the first whole-loop proving subject. Accepted
+[M0-D13](../../docs/planning/decisions/m0-d13-synthetic-control-loop-qualification.md)
+and the proposed
+[Alpha-04 architecture plan](../../docs/planning/proposed/alpha-04-synthetic-control-loop-qualification.md)
+preserve Alpha-03 unchanged and insert one fixture-only qualification after
+Alpha-03 acceptance and before Foundry V1. The proposal covers eligibility,
+one atomic assignment, scripted worker/Integration/review handoffs, the
+M0-D05 correction cap, restart/duplicate safety, and the Owner stop. It is
+planning only pending fresh Decision Fidelity Review and merge; it creates no
+execution packet or implementation authority.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -49,6 +64,7 @@ The current M0 expansion is captured in:
 9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
 10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
 11. Every default-branch merge must have complete current review coverage: one exact full reviewed range plus every targeted-reviewed correction-only diff covering the exact final head. Uncovered or materially stale changes block merge.
+12. Before live Foundry V1 execution, Maestro must pass the M0-D13 fixture-only control-loop qualification. Alpha-04 may prove one synthetic assignment and its role-separated handoffs, but production queues, real actor/model routing, and limited parallel dispatch remain V2 work.
 
 ## VennueSign adapter guardrails
 
@@ -93,9 +109,10 @@ merge, automatic correction, or successor selection.
 
 There is no executable successor packet. Alpha-03 and all other implementation
 increments require their own Architecture, Owner, Decision Fidelity, and
-implementation authority. Do not start Alpha-03, real worker dispatch,
-Atlas/API/UI, project registration or integration, GitHub automation, or USB
-recovery work from this handoff.
+implementation authority. Alpha-04 has no execution packet and cannot begin
+until Alpha-03 is complete and accepted. Do not start Alpha-03, Alpha-04, real
+worker dispatch, Atlas/API/UI, project registration or integration, GitHub
+automation, or USB recovery work from this handoff.
 
 ## Open implementation decisions
 
