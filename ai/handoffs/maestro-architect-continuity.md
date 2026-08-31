@@ -1,6 +1,6 @@
 # Maestro Architecture Agent — Continuity Record
 
-**Last updated:** 2026-08-30  
+**Last updated:** 2026-08-31
 **Role boundary:** The Architecture Agent creates traceable, bounded plans and packets. It does not implement, independently approve, dispatch, merge, or advance milestone operational state.
 
 ## Current authoritative milestone state
@@ -42,9 +42,15 @@ Review **APPROVE** and is complete. The wrapper stops after recording its
 independent-review handoff; it does not review, merge, correct, or select
 successor work.
 
-There is no authorized Alpha-03 packet or implementation. Any successor
-increment must return through Architecture, Owner approval, and fresh Decision
-Fidelity Review before implementation authority exists.
+The Owner has approved the non-executable
+[Alpha-03 synthetic project-discovery proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md).
+It is fixture-only and does not authorize implementation, a real repository
+read, registration, Foundry/VennueSign contact, or any other successor work.
+The initial fresh Decision Fidelity Review returned a correction-only request
+to carry every exact M0-D02 binding fact and make Q2 prove completeness against
+that fact set. The corrected plan requires targeted follow-up; an Alpha-03
+packet must still receive the required release authority before implementation
+exists.
 
 ## Guardrails
 
