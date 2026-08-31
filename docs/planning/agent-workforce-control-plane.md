@@ -189,6 +189,7 @@ M0 defines the record boundaries, not their database implementation. The operati
 | Graph projection | Exact project graph revision, authority reference, source hash, node/Issue links, and stale/replan status |
 | Specialist queue entry | Derived planned rank, current state, blocker explanation, and dispatchability calculation |
 | Agent capability / route | Eligible executor class, health, qualification, policy version, availability, and factual selected model |
+| Worker progress observation | Attempt-bound worker-reported plan/current step/blocker, ETA/confidence or `unknown`, observation/receipt time, status-request state, and next permitted coordinator action |
 | Lease and resource reservation | Atomic claim, worktree, TTL/heartbeat, path/shared-boundary/resource locks, and recovery history |
 | Dispatch decision | Scheduler inputs, selected work, skipped higher-ranked work, and transparent reason |
 | Integration batch / review unit | Compatible inputs, integration branch, verification, reviewer route, gate result, and findings |
@@ -309,7 +310,7 @@ Atlas becomes the live owner-facing reporting interface over Maestro state. It r
 | Work graph | Project/workstream hierarchy, dependencies, unlocked work, planning authority, and source links |
 | Specialist queues | Ordered current/future work, state, rank, blockers, upstream/downstream links, WIP, and next eligible item |
 | Integration and review | Incoming branches/PRs, assembly requirements, review route, evidence, age, and unblock effect |
-| Agent workforce | Role, model route, location, health, current lease, queue depth, and available capacity |
+| Agent workforce | Role, model route, location, health, current lease, latest worker-reported plan/current step/blocker, ETA/confidence or `unknown`, observation time, queue depth, and available capacity |
 | Resources | Locks, worktrees, local GPU/verification reservations, environments, timeouts, and expected release |
 | Decisions | Owner-facing genuine questions with known facts, options, recommendation, impact, and linked authority |
 | Evidence and metrics | Tests, reviews, retries, time-to-ready, time blocked, first-pass acceptance, cost/model facts, and history |
@@ -318,7 +319,16 @@ Atlas becomes the live owner-facing reporting interface over Maestro state. It r
 
 Atlas does not start, pause, resume, cancel, retry, reassign, reprioritize, route, approve, merge, or otherwise control Maestro work. It shows the latest recorded state, including the factual agent/model route, capacity, waiting reason, expected next action, evidence, and project/owner gate.
 
-Maestro performs coordination only under approved project policy. The owner gives product, architecture, policy, and approval direction outside Atlas. Atlas must not expose agent prompts, traces, credentials, or secrets.
+Maestro performs coordination only under approved project policy. When a local
+worker is active but non-terminal, the Coordinator may ask a bounded
+operational question for its plan, current step, blocker, and expected timing
+before timeout/retry/escalation. The durable reply is labeled worker-reported
+with its observation time; absent or unreliable timing remains `unknown`.
+Ordinary silence before the applicable response/lease boundary is not failure.
+
+The owner gives product, architecture, policy, and approval direction outside
+Atlas. Atlas sends no worker questions and must not expose agent prompts,
+traces, credentials, or secrets.
 
 ## 11. Model routing and capacity
 
@@ -373,8 +383,9 @@ M0 records this control-plane design, role-contract structure, queue/scheduler s
 After its synthetic binding exists, Alpha qualifies the control-plane's
 single-run decision semantics with one fixed work graph and scripted local
 actors/observations. It proves eligibility, one atomic assignment and lock set,
-Integration/review routing, the M0-D05 correction cap, idempotent recovery, and
-the Owner stop. This bounded exception is governed by
+patient worker-status inquiry, Integration/review routing, the M0-D05
+correction cap, idempotent recovery, and the Owner stop. This bounded exception
+is governed by
 [M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md); it is not a
 production scheduler, real agent dispatch, multiple-project queue, or parallel
 workforce.

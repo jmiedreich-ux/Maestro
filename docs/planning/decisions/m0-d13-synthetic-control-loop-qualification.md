@@ -38,7 +38,11 @@ state-transition logic. It must prove:
 6. duplicate polls/events, restart, stale completion, contention, and lease
    expiry cannot double-dispatch or overwrite accepted evidence; and
 7. an approved synthetic result reaches `AwaitingOwner` and stops without
-   merge or successor selection.
+   merge or successor selection; and
+8. before treating a non-terminal local worker as stalled, the Coordinator
+   requests a bounded structured status update, preserves the worker-reported
+   plan/current step/blocker/ETA-or-`unknown`, and waits through the applicable
+   response and lease/timeout policy without premature interruption or retry.
 
 All actors are fixture identities and all outcomes are scripted local data.
 Alpha-04 performs no real model/agent invocation, repository or GitHub access,
@@ -51,6 +55,12 @@ the coordinator's later next-action decisions can be qualified. Maestro does
 not generate or claim any review judgment. This is a fixture-harness exception
 to the earlier Alpha-02/Alpha-03 review-handoff stop, not authority for runtime
 review execution or a second command surface.
+
+The status request is an executor-adapter coordination action, not an Atlas
+command. Atlas may later display only the durable status projection, labeled
+with its worker source and observation time. Maestro must not expose raw prompts
+or traces, invent an ETA, interpret pre-timeout silence as failure, or wait past
+an approved timeout/authorization stop.
 
 ## Boundary amendment
 

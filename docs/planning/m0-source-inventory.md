@@ -67,7 +67,7 @@
 | C-40 | Current VennueSign policy permits only one active milestone. Parallelism is limited to independent packets inside that milestone until its project policy changes. | Control Plane §12 |
 | C-41 | Actual VennueSign work remains GitHub Issues/PRs. Architecture graph nodes link by stable ID; Maestro and Atlas never maintain a competing task tracker. | Control Plane §§3, 6, 12 |
 | C-42 | Eventual Maestro merge and autonomous next-work selection require a separately reviewed delegation policy. This document merge does not grant product-code merge authority. | Control Plane §13 |
-| C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §13 / Alpha-04 proposal |
+| C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, patient worker-status inquiry, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Worker timing may remain honestly unknown; Atlas reports the durable response but never asks the worker. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §§7, 10, 13 / Alpha-04 proposal |
 
 ## Required diagram concepts retained
 

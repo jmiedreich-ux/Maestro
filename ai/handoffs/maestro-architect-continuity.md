@@ -66,8 +66,11 @@ qualification after Alpha-03 and before live Foundry V1. Accepted
 and the proposed
 [Alpha-04 architecture plan](../../docs/planning/proposed/alpha-04-synthetic-control-loop-qualification.md)
 bound that qualification to one synthetic graph, one assignment, scripted
-worker/Integration/review handoffs, one correction maximum, recovery proof, and
-the Owner stop. Planning awaits fresh Decision Fidelity Review and merge.
+worker/Integration/review handoffs, a patient bounded worker-status inquiry
+before any stall assumption, one correction maximum, recovery proof, and the
+Owner stop. The inquiry preserves worker-reported plan/current
+step/blocker/ETA-or-unknown for later read-only Atlas reporting; Atlas never
+asks the worker. Planning awaits fresh Decision Fidelity Review and merge.
 There is no Alpha-04 execution packet or implementation release.
 
 ## Guardrails

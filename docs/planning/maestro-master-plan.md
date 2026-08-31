@@ -15,7 +15,12 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 1. Project plans and code remain versioned in their own repositories.
 2. Maestro keeps durable operational memory: what it observed, what is running, what is blocked, what evidence exists, and which action is safe next.
 3. There must never be two independently writable truths for the same fact.
-4. A known wait is shown immediately: who is running, when it began, what result is awaited, its timeout, and the next permitted action.
+4. A known wait is shown immediately: who is running, when it began, the latest
+   worker-reported plan/current step/blocker, ETA/confidence or `unknown`, what
+   result is awaited, its timeout, and the next permitted action. Before a
+   non-terminal local worker is treated as stalled, Maestro asks one bounded
+   operational status question under the executor/timeout policy and never
+   invents timing from silence.
 5. A worker may not silently redesign a plan. Missing information becomes a tracked question or proposal.
 6. Conversation is valid planning input, but never the only record. Every source item must be captured and traced.
 7. Local models do bounded, well-specified work. Cloud models do planning, contracts, integration, high-judgment work, and independent review.
@@ -167,8 +172,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Establish a synthetic project binding before qualifying orchestration.
 - Before Foundry V1, qualify one fixed synthetic work graph through eligibility,
   one assignment, locks, scripted worker completion, Integration routing,
-  independent-review routing, one bounded correction, restart/duplicate safety,
-  and the Owner stop.
+  independent-review routing, patient worker-status inquiry, one bounded
+  correction, restart/duplicate safety, and the Owner stop.
 - Use scripted local actors and observations only. Alpha does not access a real
   repository, invoke a real agent/model, use GitHub/network/credentials, merge,
   or select successor work.

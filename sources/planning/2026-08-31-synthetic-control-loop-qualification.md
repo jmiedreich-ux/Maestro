@@ -45,3 +45,25 @@ stage. It must:
 The Owner then directed the Maestro Architect to proceed with formal planning.
 This source record and its derivative planning do not release Alpha-03 or any
 control-loop implementation.
+
+## Follow-up clarification — patient worker communication
+
+The Owner supplied an example in which a Coordinator queried an active Local
+Qwen session for its plan and timing before assuming the worker was inactive.
+The worker reported an ordered implementation plan, named its current step, and
+honestly stated that it did not yet have a reliable completion time. The Owner
+confirmed that this was acceptable and clarified the governing behavior:
+
+- the Maestro manager/Coordinator should ask an active local worker bounded
+  operational questions before assuming that silence means no progress;
+- it should not become impatient, interrupt, retry, or escalate merely because
+  a model has not produced a terminal result yet;
+- the status request should ask for the worker-reported plan, current step,
+  blocker, and expected timing, allowing `unknown` when no reliable estimate
+  exists; and
+- Maestro should durably record the factual response so read-only Atlas can
+  show it as worker-reported status, not as a guaranteed completion promise.
+
+This clarification does not make Atlas a controller or authorize arbitrary
+chat, prompt/trace exposure, infinite waiting, or operation past an approved
+timeout or stop condition.
