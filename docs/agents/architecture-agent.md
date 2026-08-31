@@ -22,12 +22,19 @@ Turn an approved project architecture direction and current-source evidence into
   outside-path CLI/direct-constructor coverage is the sole in-scope defect.
 - The repeated earlier cycle is recorded as an Architecture Agent failure.
   Architecture must not reintroduce absolute or unbounded assurance language.
-- **Alpha-01-R2** is the proposed final focused repair and is not executable
-  until its exact planning branch passes complete Decision Fidelity Review and
-  merges with current review coverage.
-- No Alpha-01 code merge or Alpha-02 action is authorized. Alpha remains
-  synthetic-only; Atlas is read-only; Foundry/VennueSign stay untouched;
-  M0-D07's USB gate remains unchanged.
+- **Alpha-01-R2** completed at independently approved implementation head
+  `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f` and merged to `master` at
+  `4cc8e6fa899574e27515f225be1976c9f9f1a6ff`. Its bounded M0-D11 assurance
+  and exclusions remain controlling.
+- **Alpha-02** completed at independently approved implementation head
+  `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base
+  `06c81b8030140cca6001bc1514aabb8152c77dca` and merged to `master` at
+  `16cfb9970e30a7b29192243540629be2dc2c0f40`. It establishes only the
+  synthetic `maestro run-packet` lifecycle wrapper; its review-handoff stop
+  boundary remains controlling.
+- No Alpha-03 action is authorized. Alpha remains synthetic-only; Atlas is
+  read-only; Foundry/VennueSign stay untouched; project registration remains
+  post-Alpha; and M0-D07's USB gate remains unchanged.
 
 ## May do
 
