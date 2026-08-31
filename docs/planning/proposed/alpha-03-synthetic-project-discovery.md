@@ -1,13 +1,12 @@
 # Alpha-03 — Synthetic Project Discovery and Binding Proposal
 
-**Status:** Proposed architecture plan; non-executable
+**Status:** Owner-approved architecture plan; awaiting Decision Fidelity Review; non-executable
 **Project:** Maestro
 **Proposed graph revision:** `maestro-alpha-03-r1`
 **Source base:** `8a088e400a479078acdc85801cab384414d820c8` (`master`)
-**Owner direction:** On 2026-08-31, the Owner agreed to plan a synthetic
-project-discovery and binding-proposal increment as Alpha-03. That agreement
-authorizes this planning work only; it does not approve this packet or any
-implementation.
+**Owner approval:** On 2026-08-31, the Owner approved this synthetic
+project-discovery and binding-proposal plan for independent Decision Fidelity
+Review. It does not authorize a packet release or implementation.
 
 ## Outcome
 
@@ -280,8 +279,7 @@ Those are later Architecture/Owner choices.
 
 ## Required next gates
 
-1. Owner reviews and either approves, changes, or rejects this proposed
-   Alpha-03 plan.
+1. Owner approval is recorded above; the plan is now awaiting review only.
 2. A fresh Decision Fidelity Reviewer independently reviews the exact planning
    range at GPT-5.6 Sol high reasoning.
 3. Only an Owner-approved, fidelity-approved, merged packet can be released

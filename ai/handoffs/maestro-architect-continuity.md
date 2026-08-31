@@ -42,12 +42,12 @@ Review **APPROVE** and is complete. The wrapper stops after recording its
 independent-review handoff; it does not review, merge, correct, or select
 successor work.
 
-The Owner has authorized Architecture to prepare the non-executable
+The Owner has approved the non-executable
 [Alpha-03 synthetic project-discovery proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md).
 It is fixture-only and does not authorize implementation, a real repository
 read, registration, Foundry/VennueSign contact, or any other successor work.
-Any Alpha-03 packet must still receive Owner approval and fresh Decision
-Fidelity Review before implementation authority exists.
+The plan awaits fresh Decision Fidelity Review; an Alpha-03 packet must still
+receive the required release authority before implementation exists.
 
 ## Guardrails
 
