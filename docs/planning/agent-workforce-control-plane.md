@@ -368,9 +368,24 @@ Before specialist queues become executable for a joined project, its Architectur
 
 M0 records this control-plane design, role-contract structure, queue/scheduler semantics, Atlas live-reporting implications, SOP hierarchy, adapter requirements, traceability, and independent planning review. It does **not** build the coordinator, queue database, Atlas live reporting, or workers.
 
-### V1 — one visible controlled loop
+### Alpha qualification — one synthetic loop
 
-V1 remains intentionally narrow: one registered project, one approved milestone, one hosted worker, one draft PR, verification, independent review, evidence, and an owner acceptance/merge point. It proves the authority and recovery loop, not agent-workforce parallelism.
+After its synthetic binding exists, Alpha qualifies the control-plane's
+single-run decision semantics with one fixed work graph and scripted local
+actors/observations. It proves eligibility, one atomic assignment and lock set,
+Integration/review routing, the M0-D05 correction cap, idempotent recovery, and
+the Owner stop. This bounded exception is governed by
+[M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md); it is not a
+production scheduler, real agent dispatch, multiple-project queue, or parallel
+workforce.
+
+### V1 — one live visible controlled loop
+
+V1 begins only after the synthetic control-loop qualification is accepted and
+merged. It remains intentionally narrow: one registered project, one approved
+milestone, one hosted worker, one draft PR, verification, independent review,
+evidence, and an owner acceptance/merge point. It proves the live authority and
+recovery loop, not agent-workforce parallelism.
 
 ### V2 — controlled agent workforce
 

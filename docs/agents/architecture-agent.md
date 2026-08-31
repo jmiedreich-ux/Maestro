@@ -37,6 +37,11 @@ Turn an approved project architecture direction and current-source evidence into
   Implementation is not released. Alpha remains synthetic-only; Atlas is
   read-only; Foundry/VennueSign stay untouched; project registration remains
   post-Alpha; and M0-D07's USB gate remains unchanged.
+- **M0-D13 / proposed Alpha-04** records the Owner-approved requirement to
+  qualify one whole synthetic control loop after Alpha-03 and before live
+  Foundry V1. It may prove one fixture-derived assignment, Integration/review
+  routing, bounded correction, and recovery, but it authorizes no production
+  scheduler, real actor dispatch, implementation, or Foundry access.
 
 ## May do
 

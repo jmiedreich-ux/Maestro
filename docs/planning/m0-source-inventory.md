@@ -14,6 +14,7 @@
 | S-06 | Foundry control-library, agent-guide, and design-to-skin records | Reference for structured agent instructions; not Maestro product scope | Captured as reference only |
 | S-07 | VennueSign Architecture Renewal handoff and approved project records | Example adapter authority, preservation rules, and current project-policy constraints | Referenced only; not moved into Maestro as VennueSign authority |
 | S-08 | [Agent-workforce planning conversation, 2026-08-29](../../sources/planning/2026-08-29-agent-workforce-conversation.md) | Architecture Agent, Maestro manager, specialist queues, Atlas control plane, parallelism, SOP, integration, review, and handoff requirements | Source-preserved and reconciled into the Control Plane and this register |
+| S-09 | [Synthetic control-loop qualification direction, 2026-08-31](../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md) | Owner direction to prove assignment and role handoffs synthetically before the first live Foundry packet | Reconciled into M0-D13, the Master Plan, the Control Plane, and the Alpha-04 proposal |
 
 ## Original M0 agreements retained
 
@@ -66,6 +67,7 @@
 | C-40 | Current VennueSign policy permits only one active milestone. Parallelism is limited to independent packets inside that milestone until its project policy changes. | Control Plane §12 |
 | C-41 | Actual VennueSign work remains GitHub Issues/PRs. Architecture graph nodes link by stable ID; Maestro and Atlas never maintain a competing task tracker. | Control Plane §§3, 6, 12 |
 | C-42 | Eventual Maestro merge and autonomous next-work selection require a separately reviewed delegation policy. This document merge does not grant product-code merge authority. | Control Plane §13 |
+| C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §13 / Alpha-04 proposal |
 
 ## Required diagram concepts retained
 
@@ -89,6 +91,7 @@
 | Atlas provides top-level routing/model visibility without becoming an authority fork | Control Plane §10; Atlas Transition Assessment |
 | SOP and proportionate independent review govern every coding packet | Control Plane §9; `docs/agents/coding-agent-sop.md`; `docs/agents/independent-review-agent.md` |
 | M0 remains design-only and V1 remains a deliberately narrow, owner-gated loop | Master Plan §9; Control Plane §13 |
+| A synthetic whole-loop qualification occurs after Alpha-03 and before live Foundry V1 | M0-D13; Alpha-04 proposal; Master Plan §9; Control Plane §13 |
 
 ## Current M0 next action
 

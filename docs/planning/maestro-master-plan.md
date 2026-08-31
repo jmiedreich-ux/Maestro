@@ -160,8 +160,26 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Assess Atlas for migration into local operational reporting.
 - Independently audit completeness and obtain owner acceptance.
 
-### V1 — prove one control loop
+### Alpha qualification — synthetic foundations and control-loop proof
 
+- Build only separately approved, fixture-bound increments through the local
+  `maestro run-packet` boundary.
+- Establish a synthetic project binding before qualifying orchestration.
+- Before Foundry V1, qualify one fixed synthetic work graph through eligibility,
+  one assignment, locks, scripted worker completion, Integration routing,
+  independent-review routing, one bounded correction, restart/duplicate safety,
+  and the Owner stop.
+- Use scripted local actors and observations only. Alpha does not access a real
+  repository, invoke a real agent/model, use GitHub/network/credentials, merge,
+  or select successor work.
+- Treat [M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) as
+  the controlling boundary for this pre-V1 qualification; production queues,
+  real routing, and parallel execution remain V2 work.
+
+### V1 — prove one live control loop
+
+- Enter live proving only after the synthetic control-loop qualification is
+  independently approved, accepted, and merged.
 - Register Foundry through read-only discovery, a proposed binding, and a dry run.
 - Persist one Foundry run in the operational database.
 - Show the run in the fresh local reporting view.

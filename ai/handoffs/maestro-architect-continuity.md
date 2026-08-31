@@ -56,13 +56,30 @@ exact head `766975650159f3ff9b9b1ea93894cb138e912912`, and PR #9 merged to
 `master` at `76e30a701d94a4e091c7a28a28cd0799aefd357d`. The packet remains
 fixture-only and non-executable until explicit Owner implementation release. It
 does not authorize real repository reads, registration, Foundry/VennueSign
-contact, or successor work.
+contact, or successor work. PR #10 reconciled that status and merged to
+`master` at `d0ec9c4593c42e4be5d3461f11ece8b9021ff141` without releasing or
+dispatching implementation.
+
+The Owner subsequently approved adding a separate fixture-only control-loop
+qualification after Alpha-03 and before live Foundry V1. Accepted
+[M0-D13](../../docs/planning/decisions/m0-d13-synthetic-control-loop-qualification.md)
+and the proposed
+[Alpha-04 architecture plan](../../docs/planning/proposed/alpha-04-synthetic-control-loop-qualification.md)
+bound that qualification to one synthetic graph, one assignment, scripted
+worker/Integration/review handoffs, one correction maximum, recovery proof, and
+the Owner stop. Planning awaits fresh Decision Fidelity Review and merge.
+There is no Alpha-04 execution packet or implementation release.
 
 ## Guardrails
 
 - Preserve Alpha-01's bounded M0-D11 assurance; do not re-open excluded post-directory-FD same-UID/root containment.
 - Keep Alpha synthetic-only. Foundry and VennueSign remain untouched.
 - Project registration is explicitly post-Alpha work.
+- Live Foundry V1 execution is blocked until the M0-D13 synthetic control-loop
+  qualification is independently approved, accepted, implemented, reviewed,
+  and merged.
+- Alpha-04 is not V2: it may not create a production scheduler, real worker
+  route, multi-project queue, or parallel execution.
 - Atlas remains strictly read-only and absent from this increment.
 - M0-D05 allows one targeted correction only; a missing quality model or new failure class returns to Architecture/Owner, not another worker loop.
 - Follow-up review is targeted to named findings and directly affected consistency unless a documented reopening reason applies.

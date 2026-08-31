@@ -5,6 +5,20 @@
 **Proposal reviewed:** owner-directed Alpha boundary, 2026-08-29
 **Scope:** planning and traceability only. This record creates no runtime, worker, project adapter, project registration, GitHub automation, or external agent dispatch.
 
+## Later amendment boundary
+
+This record is the historical pre-build review that governed the original
+Alpha layout and Alpha-01 issuance. Its no-scheduler and no-Integration rows
+remain controlling for Alpha-01 through Alpha-03 and are not retroactively
+expanded. Owner-accepted
+[M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) adds a later,
+separately reviewed Alpha-04 exception for one fixed fixture-only control-loop
+qualification before Foundry V1, including replay of fixed role observations
+past the earlier review-handoff stop. Maestro does not generate those actor or
+review judgments. M0-D13 authorizes planning only; Alpha-04 still requires its
+own planning review, merged graph release, execution packet, packet review, and
+explicit implementation release.
+
 ## Controlling records
 
 This review used the current `master` records, in this order when a rule is more specific:
