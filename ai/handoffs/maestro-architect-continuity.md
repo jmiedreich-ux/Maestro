@@ -51,9 +51,12 @@ review returned a correction-only request; its targeted follow-up left
 `exceptions.items` ambiguous, exhausted the M0-D05 correction route, and froze
 PR #8 at `e669a429`. The Owner approved a superseding Alpha-03-R2 packet with an
 exact exceptions-array contract and delegated non-material packet details to
-Architecture. The superseding packet requires a fresh full Decision Fidelity
-Review and remains fixture-only and non-executable. It does not authorize real
-repository reads, registration, Foundry/VennueSign contact, or successor work.
+Architecture. Fresh full Decision Fidelity Review returned **APPROVE** for
+exact head `766975650159f3ff9b9b1ea93894cb138e912912`, and PR #9 merged to
+`master` at `76e30a701d94a4e091c7a28a28cd0799aefd357d`. The packet remains
+fixture-only and non-executable until explicit Owner implementation release. It
+does not authorize real repository reads, registration, Foundry/VennueSign
+contact, or successor work.
 
 ## Guardrails
 

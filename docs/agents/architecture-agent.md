@@ -32,7 +32,9 @@ Turn an approved project architecture direction and current-source evidence into
   `16cfb9970e30a7b29192243540629be2dc2c0f40`. It establishes only the
   synthetic `maestro run-packet` lifecycle wrapper; its review-handoff stop
   boundary remains controlling.
-- No Alpha-03 action is authorized. Alpha remains synthetic-only; Atlas is
+- **Alpha-03-R2** has an Owner-approved, Decision-Fidelity-approved packet
+  merged to `master` at `76e30a701d94a4e091c7a28a28cd0799aefd357d`.
+  Implementation is not released. Alpha remains synthetic-only; Atlas is
   read-only; Foundry/VennueSign stay untouched; project registration remains
   post-Alpha; and M0-D07's USB gate remains unchanged.
 
