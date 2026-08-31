@@ -2,13 +2,20 @@
 
 **Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. No Alpha-03, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
 
-**Alpha-03 planning only:** On 2026-08-31, the Owner approved the fixture-only
-[Alpha-03 — Synthetic Project Discovery and Binding Proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
-for independent Decision Fidelity Review. The initial review returned a
-correction-only request to carry every exact M0-D02 binding fact and prove Q2
-completeness against that fact set. It remains non-executable and does not
-authorize implementation, real repository discovery, Foundry/VennueSign
-contact, registration, a project binding, or any other successor work.
+**Alpha-03 planning only:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
+received complete Decision Fidelity coverage and merged at
+`e89a850f1894351acc052a33471b53b90bcaee8f`. The Owner authorized drafting of
+the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md),
+then approved that packet for fresh Decision Fidelity Review on 2026-08-31.
+The review returned a correction-only request to define the exact public data
+and failure contract, restore the approved Q2/Q3 proof, and narrow the test
+path. The targeted follow-up left `exceptions.items` ambiguous, exhausting the
+M0-D05 correction route and freezing PR #8 at `e669a429`. The Owner approved a
+superseding Alpha-03-R2 packet with an exact exceptions-array contract and
+delegated non-material packet details to Architecture. The superseding packet
+requires a fresh full Decision Fidelity Review and remains non-executable. It
+authorizes no real repository discovery, Foundry/VennueSign contact,
+registration, project binding, or successor work.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 

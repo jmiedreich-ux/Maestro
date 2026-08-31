@@ -42,15 +42,18 @@ Review **APPROVE** and is complete. The wrapper stops after recording its
 independent-review handoff; it does not review, merge, correct, or select
 successor work.
 
-The Owner has approved the non-executable
-[Alpha-03 synthetic project-discovery proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md).
-It is fixture-only and does not authorize implementation, a real repository
-read, registration, Foundry/VennueSign contact, or any other successor work.
-The initial fresh Decision Fidelity Review returned a correction-only request
-to carry every exact M0-D02 binding fact and make Q2 prove completeness against
-that fact set. The corrected plan requires targeted follow-up; an Alpha-03
-packet must still receive the required release authority before implementation
-exists.
+The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
+received complete Decision Fidelity coverage and merged at
+`e89a850f1894351acc052a33471b53b90bcaee8f`. The Owner authorized drafting of
+the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md)
+and approved that packet for fresh Decision Fidelity Review on 2026-08-31. The
+review returned a correction-only request; its targeted follow-up left
+`exceptions.items` ambiguous, exhausted the M0-D05 correction route, and froze
+PR #8 at `e669a429`. The Owner approved a superseding Alpha-03-R2 packet with an
+exact exceptions-array contract and delegated non-material packet details to
+Architecture. The superseding packet requires a fresh full Decision Fidelity
+Review and remains fixture-only and non-executable. It does not authorize real
+repository reads, registration, Foundry/VennueSign contact, or successor work.
 
 ## Guardrails
 
