@@ -1,6 +1,6 @@
 # Alpha-03 — Establish Synthetic Project Discovery and Binding Proposal
 
-**Status:** Decision Fidelity `REQUEST_CHANGES`; corrected packet awaiting Owner approval; non-executable
+**Status:** Owner-approved corrected packet; awaiting targeted Decision Fidelity Review; non-executable
 **Owner:** Jeremy Miedreich
 **Architecture plan:** [Alpha-03 proposal](../proposed/alpha-03-synthetic-project-discovery.md), merged at `e89a850f1894351acc052a33471b53b90bcaee8f`
 **Source base:** `e89a850f1894351acc052a33471b53b90bcaee8f` (`master`)
@@ -13,6 +13,10 @@
 **Owner packet approval:** On 2026-08-31, the Owner approved this exact packet
 for independent Decision Fidelity Review. Approval does not release
 implementation.
+
+**Owner correction approval:** On 2026-08-31, the Owner approved the corrected
+packet contract at `0bf0c66` for targeted Decision Fidelity follow-up. This
+approval does not release implementation.
 
 ## Outcome
 

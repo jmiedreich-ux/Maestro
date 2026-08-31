@@ -49,9 +49,10 @@ the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-p
 and approved that packet for fresh Decision Fidelity Review on 2026-08-31. The
 review returned a correction-only request to define the exact public data and
 failure contract, restore the approved Q2/Q3 proof, and narrow the test path.
-The corrected exact packet awaits Owner approval before targeted follow-up. It
-remains fixture-only and non-executable and does not authorize real repository
-reads, registration, Foundry/VennueSign contact, or successor work.
+The Owner approved the corrected packet contract at `0bf0c66` for targeted
+follow-up. It remains fixture-only and non-executable and does not authorize
+real repository reads, registration, Foundry/VennueSign contact, or successor
+work.
 
 ## Guardrails
 
