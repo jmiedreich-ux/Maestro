@@ -67,8 +67,15 @@ and the proposed
 [Alpha-04 architecture plan](../../docs/planning/proposed/alpha-04-synthetic-control-loop-qualification.md)
 bound that qualification to one synthetic graph, one assignment, scripted
 worker/Integration/review handoffs, one correction maximum, recovery proof, and
-the Owner stop. Planning awaits fresh Decision Fidelity Review and merge.
-There is no Alpha-04 execution packet or implementation release.
+the Owner stop. That original planning range received Decision Fidelity
+**APPROVE** at `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in
+PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`.
+
+The Owner then added a patient bounded worker-status inquiry before any stall
+assumption. It preserves the worker-reported plan/current
+step/blocker/ETA-or-unknown for later read-only Atlas reporting; Atlas never
+asks the worker. This amendment awaits its own fresh review and merge. There is
+no Alpha-04 execution packet or implementation release.
 
 ## Guardrails
 

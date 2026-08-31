@@ -1,12 +1,16 @@
 # Alpha-04 — Synthetic Control-Loop Qualification
 
-- **Status:** Owner-approved architecture direction; planning-only proposal
-  awaiting fresh Decision Fidelity Review and merge
+- **Status:** Original planning release received Decision Fidelity APPROVE at
+  exact head `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in PR #11 at
+  `dcca2174dd919aa204707961f1b33ad15de9af41`; Owner-approved patient-worker
+  status amendment awaits fresh Decision Fidelity Review and merge
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
 - **Graph revision:** `maestro-alpha-04-plan-r1`
 - **Source base:** `d0ec9c4593c42e4be5d3461f11ece8b9021ff141`
   (`master`)
+- **Patient-worker amendment base:**
+  `dcca2174dd919aa204707961f1b33ad15de9af41` (`master`)
 - **Decision authority:**
   [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md)
 - **Source capture:**
@@ -23,8 +27,9 @@
 
 Prove that Maestro can make and preserve the correct next-action decisions for
 one synthetic project: identify the eligible packet, assign it once, route its
-scripted result through Integration and an independent reviewer, apply the
-bounded correction rule, survive duplicates/restart, and stop for Owner
+scripted result through Integration and an independent reviewer, ask a
+non-terminal worker for honest progress before assuming it is stalled, apply
+the bounded correction rule, survive duplicates/restart, and stop for Owner
 acceptance.
 
 This qualifies Maestro's control-loop logic before Foundry becomes the first
@@ -73,7 +78,8 @@ The execution packet must define exact, repository-owned fixture schemas for:
   unmet review gates, and lock/resource contention;
 - declared worker, Integration, and independent-review role identities;
 - scripted completion, verification, integration, review, correction, timeout,
-  and stale-event observations; and
+  stale-event, and worker-progress observations, including a reliable estimate,
+  an explicit unknown estimate, and no immediate reply; and
 - the expected coordinator decisions and evidence.
 
 Unknown fields, malformed identities, absent authority, unapproved graph
@@ -92,7 +98,41 @@ its declared path, shared-boundary, and finite-resource locks. A blocked,
 unapproved, route-ineligible, base-incompatible, or lock-conflicting candidate
 cannot be assigned.
 
-### 3. Role-separated handoffs
+### 3. Patient worker observation and Atlas-ready status
+
+When an assigned local worker is non-terminal and has not produced the expected
+result, the Coordinator must issue a bounded structured status request through
+the executor adapter before classifying the worker as stalled or taking a
+timeout, interruption, retry, or escalation action, unless the executor already
+reports an unambiguous terminal/safety stop. The request asks for:
+
+- ordered remaining/current plan steps;
+- the current step and whether work is actively progressing;
+- a blocker or an explicit none disposition;
+- expected completion timing with confidence, or an explicit `unknown`; and
+- the worker observation time.
+
+Only one status request may be outstanding for an attempt, and the later packet
+must define a minimum query interval plus the response/lease timeout policy.
+The request is delivered without interrupting a healthy worker when the
+executor supports non-interrupting observation. Otherwise it waits for the next
+safe message boundary unless an approved timeout/safety condition already
+requires action. A status query must never restart the worker, consume a
+correction, change scope, or solicit a product or architecture decision.
+
+Maestro stores the response as worker-reported operational evidence with the
+attempt identity, source, and observation/receipt times. An absent or unreliable
+ETA is stored as `unknown`; Maestro never invents or upgrades it. A healthy
+worker that has not answered before the response window remains `Running` until
+the applicable lease/timeout policy permits another action. At that boundary,
+the Coordinator rereconciles durable and executor facts before interrupting,
+retrying, expiring, or escalating.
+
+The resulting bounded status record is suitable for a later read-only Atlas
+projection. Alpha-04 does not build Atlas, a read API, or a UI, and Atlas never
+sends the request.
+
+### 4. Role-separated handoffs
 
 The scripted worker result records its exact attempt, base/result identity,
 changed synthetic paths, checks, and evidence. Completion creates the declared
@@ -106,7 +146,7 @@ A result eligible for review is routed to a declared reviewer that is
 independent of every actor that changed or assembled it. Missing independence,
 evidence, or a required Integration result blocks review readiness.
 
-### 4. Review, correction, and Owner stop
+### 5. Review, correction, and Owner stop
 
 A scripted independent-review approval observation moves the result to
 `MergeReady` and then `AwaitingOwner`; Maestro stops. The observation is fixed
@@ -120,7 +160,7 @@ correction diff. A second correction, new failure class, scope breach,
 architecture defect, missing contract, or unrelated change produces escalation
 and no further assignment.
 
-### 5. Recovery and stale-event behavior
+### 6. Recovery and stale-event behavior
 
 Duplicate invocation, duplicate poll/event, restart, competing claim, stale
 worker completion, timeout, and lease expiry must reread durable facts before
@@ -137,13 +177,19 @@ The future execution packet must name focused tests that prove at least:
 2. higher-ranked blocked work is skipped only for a recorded valid reason;
 3. a ready but non-dispatchable lock/route/base candidate is not assigned;
 4. assignment plus locks is atomic and idempotent;
-5. validate-only, assemble, and replan Integration routes behave distinctly;
-6. an actor cannot review a result it authored or integrated;
-7. one eligible correction is routed and exactly covered, while a second round
+5. a non-terminal worker status query records exact worker-reported plan,
+   current step, blocker, ETA/confidence or `unknown`, and timestamps without
+   interrupting, restarting, or changing the assignment;
+6. no immediate status response remains `Running` before the response/lease
+   boundary, and timeout reconciliation does not assume failure or duplicate
+   the attempt;
+7. validate-only, assemble, and replan Integration routes behave distinctly;
+8. an actor cannot review a result it authored or integrated;
+9. one eligible correction is routed and exactly covered, while a second round
    or new failure class escalates;
-8. restart, duplicate, stale, timeout, and competing-claim cases do not
+10. restart, duplicate, stale, timeout, and competing-claim cases do not
    double-dispatch or corrupt evidence; and
-9. every terminal path prohibits merge, successor selection, and external
+11. every terminal path prohibits merge, successor selection, and external
    access.
 
 Exact fixture paths, implementation-owned paths, commands, schemas, and model
@@ -160,8 +206,9 @@ this architecture proposal.
 | M0-D03 least privilege and no retained secrets | Reject credential/secret/external-route fields; no provider or network client |
 | M0-D05 one targeted correction maximum | One eligible exact correction and targeted review; second round/new failure class escalates |
 | M0-D11 bounded Linux filesystem assurance | Preserve the existing boundary; add no stronger containment claim |
-| M0-D12 bounded quality and proportionality | Q1-Q4 below carry all eight mandatory fields and name sufficient proof/ceilings |
+| M0-D12 bounded quality and proportionality | Q1-Q5 below carry all eight mandatory fields and name sufficient proof/ceilings |
 | C-22 one milestone and Owner gate | One synthetic assignment reaches `AwaitingOwner` and stops |
+| C-19 durable visible waiting state | Structured worker-reported plan/current step/blocker/ETA-or-unknown plus source/time; no premature failure assumption |
 | C-28 Maestro manages operational eligibility | Deterministic graph projection, dispatchability decision, atomic assignment, and durable reasons |
 | C-31/C-32 planned versus dispatchable and safe bypass | Fixed candidates prove blocked/ready/dispatchable distinctions and valid skip reasons |
 | C-33 locks and designed concurrency | One atomic lock set; contention is simulated; actual execution remains serial |
@@ -267,6 +314,38 @@ this architecture proposal.
   stronger isolation, merge, or automatic successor authority returns to
   Architecture/Owner and is not implemented in Alpha-04.
 
+### Q5 — Patient worker status and honest timing
+
+- **Protected outcome:** Maestro does not mistake a quiet but active local
+  worker for a failed worker, take premature interrupt/retry action, or present
+  an invented completion promise to the Owner.
+- **Operating/threat/failure model:** one assigned synthetic worker may be
+  actively reasoning/generating, may report a plan/current step/blocker and a
+  reliable ETA or `unknown`, may reply late, or may not reply before the bounded
+  response window; duplicate status requests and stale replies are in scope.
+- **Explicit exclusions:** guaranteed completion times, token-level progress,
+  raw chain-of-thought/prompts/traces, arbitrary worker chat, hostile-worker
+  truth verification, infinite waiting, and operation beyond an approved
+  timeout or authorization stop.
+- **Practical assurance level:** one rate-limited outstanding structured status
+  request per attempt, source/timestamp-labeled worker evidence, honest
+  `unknown` handling, and reconciliation before any timeout action.
+- **Sufficient acceptance proof:** named tests prove exact reliable/unknown
+  status capture, Atlas-ready projection fields, duplicate/stale-reply
+  rejection, no pre-boundary interruption/retry/state failure, and correct
+  timeout reconciliation from durable plus executor facts.
+- **Permitted implementation boundary and complexity:** a bounded executor-
+  adapter status operation, explicit status schema, and service-owned evidence;
+  no conversational agent framework, raw transcript store, Atlas write path,
+  background chat daemon, or new provider SDK.
+- **Proportionality ceiling:** one active synthetic attempt, one outstanding
+  request, packet-defined minimum interval/response window, and a short bounded
+  status payload.
+- **Exact stop/escalation rule:** a reported blocker routes to its declared
+  Coordinator/Architecture/Owner boundary; an unanswered request remains
+  non-terminal until timeout policy allows reconciliation; ambiguity never
+  authorizes a duplicate run, invented ETA, or silent scope decision.
+
 ## Explicit non-goals and deferrals
 
 - Alpha-03 implementation, project registration, or a real binding.
@@ -275,8 +354,9 @@ this architecture proposal.
   webhooks, network, secrets, or notifications.
 - Production specialist queues, multiple projects, parallel execution,
   resource optimization, fairness/aging, or general scheduling.
-- Atlas/API/UI, backup/USB/recovery, deployment, merge, owner acceptance
-  automation, or successor selection.
+- Atlas/API/UI implementation, backup/USB/recovery, deployment, merge, owner
+  acceptance automation, or successor selection. Alpha-04 stores only the
+  bounded Atlas-ready worker-status evidence required by Q5.
 - Proving the quality of real worker code or real Integration/reviewer judgment.
 
 These remain V1/V2 or separately approved work. Alpha-04 proves only the
@@ -296,7 +376,7 @@ material replan and returns to Architecture/Owner.
 The proposal is feasible within the existing one-service Python/SQLite and
 fixture-test model. Fixed schemas, deterministic transition functions, and a
 single active assignment can prove the required semantics without a production
-scheduler, external actor, or new infrastructure. The four quality contracts
+scheduler, external actor, or new infrastructure. The five quality contracts
 bound both the expected assurance and the implementation ceiling.
 
 If an exact execution packet cannot provide the named proof inside that class,
