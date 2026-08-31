@@ -1,6 +1,6 @@
-# Alpha-03 — Establish Synthetic Project Discovery and Binding Proposal
+# Alpha-03-R2 — Establish Synthetic Project Discovery and Binding Proposal
 
-**Status:** Owner-approved corrected packet; awaiting targeted Decision Fidelity Review; non-executable
+**Status:** Owner-approved superseding packet; awaiting fresh full Decision Fidelity Review; non-executable
 **Owner:** Jeremy Miedreich
 **Architecture plan:** [Alpha-03 proposal](../proposed/alpha-03-synthetic-project-discovery.md), merged at `e89a850f1894351acc052a33471b53b90bcaee8f`
 **Source base:** `e89a850f1894351acc052a33471b53b90bcaee8f` (`master`)
@@ -17,6 +17,16 @@ implementation.
 **Owner correction approval:** On 2026-08-31, the Owner approved the corrected
 packet contract at `0bf0c66` for targeted Decision Fidelity follow-up. This
 approval does not release implementation.
+
+**Supersedes:** PR #8 at `e669a429f27d8c2d1204a45a062619e8b1a8529b`,
+which is frozen after its one permitted targeted correction left the
+`exceptions.items` schema ambiguous.
+
+**Owner superseding direction:** On 2026-08-31, the Owner approved a
+superseding packet with the exact exceptions contract below and delegated
+non-material schema wording, test specificity, and clerical review corrections
+to the Architect. This does not delegate scope, authority, security, external
+access, release, acceptance, or merge decisions.
 
 ## Outcome
 
@@ -49,15 +59,18 @@ stop. This rehearses registration; it never contacts a real project.
    | Verification | `build_commands`, `test_commands`, `integration_commands`, `ui_qa_commands`: arrays of non-empty strings; `evidence_rules`, `untested_handling`: non-empty strings. An empty command array is an explicit confirmed none disposition. |
    | Roles | `specialist_overlays`: array of non-empty strings; `reviewer_route`, `qa_murphy_policy`, `local_cloud_eligibility`: non-empty strings. An empty overlay array is explicit none. |
    | Operations | `environment_reference_names`, `secret_reference_names`, `resource_locks`: arrays of non-empty strings; `notification_policy`: non-empty string. An empty array is explicit none. |
-   | Exceptions | `disposition` (`none` or `declared`) and `items`; `none` has no items and `declared` has one or more |
+   | Exceptions | `disposition` is `none` or `declared`; `items` is always an array of unique, non-empty strings. `none` requires `items: []`; `declared` requires one or more items. |
 
    String values are trimmed; arrays preserve declared order and reject empty
    entries or duplicates. `secret_reference_names` accepts references only; no
    field accepts or resolves a secret value.
 
    `conflicts`, when present, maps a required dotted leaf path to an array of at
-   least two distinct values valid for that leaf's type. An unknown path,
-   fewer than two values, duplicate values, or wrong-typed value is malformed.
+   least two distinct values valid for that leaf's type. For
+   `exceptions.items`, each conflicting value is itself a valid array of unique,
+   non-empty strings, so its conflict entry is an array containing at least two
+   distinct string arrays. An unknown path, fewer than two values, duplicate
+   values, or wrong-typed value is malformed.
 4. The normalized inventory has exactly this public shape:
 
    ```json

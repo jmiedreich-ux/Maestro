@@ -9,10 +9,13 @@ the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-p
 then approved that packet for fresh Decision Fidelity Review on 2026-08-31.
 The review returned a correction-only request to define the exact public data
 and failure contract, restore the approved Q2/Q3 proof, and narrow the test
-path. The Owner approved the corrected packet contract at `0bf0c66` for
-targeted follow-up. It remains non-executable and authorizes no real repository
-discovery, Foundry/VennueSign contact, registration, project binding, or
-successor work.
+path. The targeted follow-up left `exceptions.items` ambiguous, exhausting the
+M0-D05 correction route and freezing PR #8 at `e669a429`. The Owner approved a
+superseding Alpha-03-R2 packet with an exact exceptions-array contract and
+delegated non-material packet details to Architecture. The superseding packet
+requires a fresh full Decision Fidelity Review and remains non-executable. It
+authorizes no real repository discovery, Foundry/VennueSign contact,
+registration, project binding, or successor work.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
