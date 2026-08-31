@@ -1,6 +1,6 @@
 # Alpha-03 — Synthetic Project Discovery and Binding Proposal
 
-**Status:** Owner-approved architecture plan; Decision Fidelity correction pending; non-executable
+**Status:** Owner-approved and Decision-Fidelity-approved architecture plan; merged at `e89a850f1894351acc052a33471b53b90bcaee8f`; implementation unreleased
 **Project:** Maestro
 **Proposed graph revision:** `maestro-alpha-03-r1`
 **Source base:** `8a088e400a479078acdc85801cab384414d820c8` (`master`)
@@ -285,14 +285,14 @@ Those are later Architecture/Owner choices.
 
 ## Required next gates
 
-1. Owner approval is recorded above. The initial Decision Fidelity Review
-   returned two correction-only findings: carry every exact M0-D02 fact and
-   make Q2 prove completeness across that exact set.
-2. The same independent Decision Fidelity Reviewer performs targeted follow-up
-   on the correction-only range at GPT-5.6 Sol high reasoning.
-3. Only an Owner-approved, fidelity-approved, merged packet can be released
-   for the bounded Local Qwen implementation route.
-4. A fresh Independent Implementation Reviewer then reviews the exact result
+1. The plan received complete Decision Fidelity coverage and merged at the
+   exact revision recorded above.
+2. The superseding Alpha-03-R2 execution packet received fresh full Decision
+   Fidelity **APPROVE** and merged at
+   `76e30a701d94a4e091c7a28a28cd0799aefd357d`.
+3. The Owner must explicitly release that merged packet before the bounded
+   Local Qwen implementation route may begin.
+4. A fresh Independent Implementation Reviewer reviews the exact result
    at GPT-5.6 Terra high reasoning.
 
-Until those gates finish, Alpha-03 is planning only.
+Alpha-03 implementation remains unreleased.
