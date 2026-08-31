@@ -1,0 +1,21 @@
+{
+  "packet_id": "alpha-03-conflict-branches",
+  "title": "Synthetic conflicting discovery with branch and exception conflicts",
+  "authority": {
+    "approval_reference": "Alpha-03 approved packet",
+    "fidelity_reference": "Decision Fidelity Review e89a850"
+  },
+  "owned_paths": [
+    "tests/alpha_03/test_synthetic_project_discovery.py"
+  ],
+  "gates": [
+    {"name": "alpha-03-tests", "command": "python -m unittest discover -s tests/alpha_03 -v"}
+  ],
+  "executor": {
+    "kind": "synthetic-local",
+    "scenario": "discovery-conflicting"
+  },
+  "discovery_fixture": "conflict-branches-examples.json",
+  "independent_review_route": "Independent Implementation Reviewer",
+  "owner_stop_boundary": "Stop after the independent-review handoff."
+}

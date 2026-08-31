@@ -1,4 +1,4 @@
-"""Validation for Alpha-02's local, synthetic packet format."""
+"""Validation for local, synthetic packet format."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any
 
 _PACKET_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 _SYNTHETIC_EXECUTORS = {"synthetic-local"}
-_SYNTHETIC_SCENARIOS = {
+_ALPHA02_SCENARIOS = {
     "success",
     "gate-failure",
     "missing-commit",
@@ -21,6 +21,12 @@ _SYNTHETIC_SCENARIOS = {
     "configuration-violation",
     "placeholder-violation",
 }
+_ALPHA03_SCENARIOS = {
+    "discovery-complete",
+    "discovery-missing",
+    "discovery-conflicting",
+}
+_SYNTHETIC_SCENARIOS = _ALPHA02_SCENARIOS | _ALPHA03_SCENARIOS
 
 
 class PacketValidationError(ValueError):
@@ -49,6 +55,11 @@ class ApprovedPacket:
     scenario: str
     independent_review_route: str
     owner_stop_boundary: str
+    discovery_fixture: str | None = None
+
+    @property
+    def is_discovery(self) -> bool:
+        return self.scenario in _ALPHA03_SCENARIOS
 
     @classmethod
     def from_file(cls, packet_path: str | Path) -> "ApprovedPacket":
@@ -84,6 +95,12 @@ class ApprovedPacket:
         if scenario not in _SYNTHETIC_SCENARIOS:
             raise PacketValidationError("executor.scenario must be a supported synthetic fixture case")
 
+        discovery_fixture: str | None = None
+        if scenario in _ALPHA03_SCENARIOS:
+            if "discovery_fixture" not in payload or not payload["discovery_fixture"]:
+                raise PacketValidationError("Discovery scenarios require discovery_fixture")
+            discovery_fixture = _required_text(payload, "discovery_fixture")
+
         return cls(
             packet_id=packet_id,
             title=title,
@@ -95,11 +112,12 @@ class ApprovedPacket:
             scenario=scenario,
             independent_review_route=_required_text(payload, "independent_review_route"),
             owner_stop_boundary=_required_text(payload, "owner_stop_boundary"),
+            discovery_fixture=discovery_fixture,
         )
 
     def as_evidence(self) -> dict[str, object]:
         """Return local authority facts suitable for durable SQLite evidence."""
-        return {
+        evidence = {
             "packet_id": self.packet_id,
             "title": self.title,
             "approval_reference": self.approval_reference,
@@ -111,6 +129,9 @@ class ApprovedPacket:
             "independent_review_route": self.independent_review_route,
             "owner_stop_boundary": self.owner_stop_boundary,
         }
+        if self.discovery_fixture:
+            evidence["discovery_fixture"] = self.discovery_fixture
+        return evidence
 
 
 def _required_mapping(payload: dict[str, Any], field: str) -> dict[str, Any]:
