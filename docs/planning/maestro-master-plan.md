@@ -15,7 +15,12 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 1. Project plans and code remain versioned in their own repositories.
 2. Maestro keeps durable operational memory: what it observed, what is running, what is blocked, what evidence exists, and which action is safe next.
 3. There must never be two independently writable truths for the same fact.
-4. A known wait is shown immediately: who is running, when it began, what result is awaited, its timeout, and the next permitted action.
+4. A known wait is shown immediately: who is running, when it began, the latest
+   worker-reported plan/current step/blocker, ETA/confidence or `unknown`, what
+   result is awaited, its timeout, and the next permitted action. Before a
+   non-terminal local worker is treated as stalled, Maestro asks one bounded
+   operational status question under the executor/timeout policy and never
+   invents timing from silence.
 5. A worker may not silently redesign a plan. Missing information becomes a tracked question or proposal.
 6. Conversation is valid planning input, but never the only record. Every source item must be captured and traced.
 7. Local models do bounded, well-specified work. Cloud models do planning, contracts, integration, high-judgment work, and independent review.
@@ -26,6 +31,11 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 12. Any future auto-merge or autonomous next-work authority is explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
 13. Every material quality requirement uses a bounded quality contract defining the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Vague quality language is not executable.
 14. Every default-branch merge has complete, current review coverage: one exact full reviewed range plus targeted-reviewed correction-only diffs covering the exact final head. Uncovered or materially stale changes block merge.
+15. Every hosted or local attempt begins with an honest context-and-usage
+    record. Where an approved provider surface supports it, Maestro records the
+    account allowance window and reset separately from attempt token counts;
+    it never derives weekly allowance from tokens. Local capacity remains
+    separate, and unsupported facts are `unavailable`.
 
 ## 3. System shape
 
@@ -47,7 +57,7 @@ flowchart TD
 | Project repository / GitHub | Product and engineering records, code, PRs, reviews, CI, approved plan artifacts |
 | Maestro coordinator | State transitions, locks, dispatch, recovery, evidence collection, notifications, gate enforcement |
 | Operational database | Initial SQLite on the Linux AI box; runs, task/graph projections, packets, attempts, events, evidence, waits, retries, notifications, projected GitHub facts |
-| Local Atlas | Live operational reporting for the AI box: queues, routing, status, evidence, blockers, waits, and capacity. It is not a controller, plan/code editor, or direct database client. |
+| Local Atlas | Live operational reporting for the AI box: queues, routing, status, evidence, blockers, waits, allowance, context, usage, and local capacity. It is not a controller, plan/code editor, provider scraper, or direct database client. |
 | Project adapter | Project-specific branch policy, commands, environments, credentials references, records, and exceptions |
 | Murphy adapter | Manual, owner-approved remote QA against deployed Azure environments |
 
@@ -167,14 +177,17 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Establish a synthetic project binding before qualifying orchestration.
 - Before Foundry V1, qualify one fixed synthetic work graph through eligibility,
   one assignment, locks, scripted worker completion, Integration routing,
-  independent-review routing, one bounded correction, restart/duplicate safety,
-  and the Owner stop.
+  independent-review routing, patient worker-status inquiry, one bounded
+  correction, honest context/token reporting, supported weekly-allowance
+  observation and reconciliation, restart/duplicate safety, and the Owner
+  stop.
 - Use scripted local actors and observations only. Alpha does not access a real
   repository, invoke a real agent/model, use GitHub/network/credentials, merge,
   or select successor work.
-- Treat [M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) as
-  the controlling boundary for this pre-V1 qualification; production queues,
-  real routing, and parallel execution remain V2 work.
+- Treat [M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) and
+  [M0-D14](decisions/m0-d14-context-and-token-reporting.md) as the controlling
+  boundaries for this pre-V1 qualification; production queues, real routing,
+  live provider access, and parallel execution remain later work.
 
 ### V1 — prove one live control loop
 
@@ -205,6 +218,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 1. Fresh reporting-view implementation technology for V1. Its read-only local-service, event-stream, and snapshot-reconnect contract is already decided.
 2. Protected-branch/service-account authority, webhook security, budget limits, and the future auto-merge/autonomous-next-work boundary.
+3. Exact supported provider-account observation sources, retention periods,
+   allowance warning thresholds, and any future budget enforcement policy.
 
 ## 11. M0 acceptance
 

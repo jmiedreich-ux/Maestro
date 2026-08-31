@@ -24,7 +24,8 @@ Strengths to retain:
 |---|---|---|
 | Live execution state | Derived at static-site build time from repository files and GitHub | Durable database rows for runs, packets, attempts, waits, events, evidence, retries, and locks |
 | Worker completion | No persistent worker subscription or coordinator | Poll-first coordinator with idempotent next actions; webhooks later if useful |
-| Waiting visibility | Planning/issue view; no durable worker heartbeat model | Who is awaited, start time, expected result, timeout, blocker, and next permitted action |
+| Waiting visibility | Planning/issue view; no durable worker heartbeat model | Who is awaited, start time, latest worker-reported plan/current step/blocker, ETA/confidence or `unknown`, observation time, expected result, timeout, and next permitted action |
+| Usage and capacity | No durable account-window, context, token, cost, or local-capacity record | Supported weekly window used/remaining/reset, honest attempt context/token/cost facts, controlled/coarse/unattributed reconciliation, and separate local capacity |
 | Task routing | Optional parsed owner and local/cloud marker | Required planned executor location, agent role, model/class, reviewer route, then actual run facts |
 | Reporting access | GitHub Action/static site, with GitHub fetches and rate-limit tolerance | Local AI-box reporting UI reading the operational database or local API |
 | Recovery | Rebuild static records | Resume safely after restart, duplicate poll, timeout, or stale completion |
@@ -33,8 +34,13 @@ Strengths to retain:
 
 1. Keep versioned feature briefs, questions, decisions, milestone plans, packet specifications, acceptance records, and project-specific rules in each project repository.
 2. Introduce a Maestro project adapter that reads those records and projects the required planning facts into the Maestro database.
-3. Store Maestro-only facts only in the database: claims, locks, worker attempts, model fingerprints, events, evidence output, reviews, notifications, waits, retries, and resource reservations.
-4. Local Atlas becomes a live reporting UI over this projection. It shows current operational facts as soon as Maestro records them, but it does not request or perform orchestration actions. It must not become a second editor for project plan/code facts or a direct database client.
+3. Store Maestro-only facts only in the database: claims, locks, worker attempts, model/context fingerprints, supported allowance-window observations, token/cost facts, usage reconciliation, local capacity, events, evidence output, reviews, notifications, waits, retries, and resource reservations.
+4. Local Atlas becomes a live reporting UI over this projection. It shows
+   current operational facts—including bounded worker-reported progress and an
+   honest unknown ETA—as soon as Maestro records them, but it does not request
+   worker status or perform orchestration actions. It must not become a second
+   editor for project plan/code facts, query or scrape provider accounts, or
+   become a direct database client.
 5. Preserve Atlas's stable identifiers and concise owner/task language wherever compatible with the new shared schema.
 
 ## M0 decisions needed before migration work

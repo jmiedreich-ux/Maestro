@@ -19,6 +19,15 @@ review judgments. M0-D13 authorizes planning only; Alpha-04 still requires its
 own planning review, merged graph release, execution packet, packet review, and
 explicit implementation release.
 
+Owner-accepted
+[M0-D14](decisions/m0-d14-context-and-token-reporting.md) further proposes an
+Alpha-04 fixture-only amendment for supported weekly-allowance observation,
+attempt context/token/cost reporting, usage reconciliation, separate local
+capacity, and pressure checkpoints. It does not change Alpha-01 through
+Alpha-03, contact a provider account, scrape a UI, or authorize implementation.
+That amendment remains pending its own fresh Decision Fidelity Review and
+merge.
+
 ## Controlling records
 
 This review used the current `master` records, in this order when a rule is more specific:

@@ -189,6 +189,10 @@ M0 defines the record boundaries, not their database implementation. The operati
 | Graph projection | Exact project graph revision, authority reference, source hash, node/Issue links, and stale/replan status |
 | Specialist queue entry | Derived planned rank, current state, blocker explanation, and dispatchability calculation |
 | Agent capability / route | Eligible executor class, health, qualification, policy version, availability, and factual selected model |
+| Worker progress observation | Attempt-bound worker-reported plan/current step/blocker, ETA/confidence or `unknown`, observation/receipt time, status-request state, and next permitted coordinator action |
+| Provider account allowance window | Provider/account, native window type, used/remaining/reset observation, precision, measurement quality, freshness, and observation time where supported |
+| Attempt context / usage | Attempt-bound model/runtime/context fingerprint, minimum/reserve/pressure policy, token/cost measurements or estimates, confidence, and unavailable fields |
+| Usage reconciliation | Observed account change explained by controlled usage, registered coarse activity, and visible unattributed remainder, with local capacity kept separate |
 | Lease and resource reservation | Atomic claim, worktree, TTL/heartbeat, path/shared-boundary/resource locks, and recovery history |
 | Dispatch decision | Scheduler inputs, selected work, skipped higher-ranked work, and transparent reason |
 | Integration batch / review unit | Compatible inputs, integration branch, verification, reviewer route, gate result, and findings |
@@ -275,6 +279,9 @@ Before execution, the worker must verify and record:
 - required current handoff and decision/source paths;
 - allowed/forbidden paths and current locks;
 - required inputs, dependencies, environment policy, and validation commands;
+- model/runtime/context identity, packet minimum, output reserve, counting
+  method, and available allowance/usage observation required by the approved
+  route;
 - role/SOP/packet version identifiers.
 
 ### 9.2 Required handoff
@@ -309,7 +316,8 @@ Atlas becomes the live owner-facing reporting interface over Maestro state. It r
 | Work graph | Project/workstream hierarchy, dependencies, unlocked work, planning authority, and source links |
 | Specialist queues | Ordered current/future work, state, rank, blockers, upstream/downstream links, WIP, and next eligible item |
 | Integration and review | Incoming branches/PRs, assembly requirements, review route, evidence, age, and unblock effect |
-| Agent workforce | Role, model route, location, health, current lease, queue depth, and available capacity |
+| Agent workforce | Role, model route, location, health, current lease, latest worker-reported plan/current step/blocker, ETA/confidence or `unknown`, observation time, queue depth, and available capacity |
+| Usage and capacity | Supported hosted weekly window used/remaining/reset/pace, measurement freshness, controlled/coarse/unattributed reconciliation, attempt context/token/cost facts, and separate local capacity |
 | Resources | Locks, worktrees, local GPU/verification reservations, environments, timeouts, and expected release |
 | Decisions | Owner-facing genuine questions with known facts, options, recommendation, impact, and linked authority |
 | Evidence and metrics | Tests, reviews, retries, time-to-ready, time blocked, first-pass acceptance, cost/model facts, and history |
@@ -318,7 +326,16 @@ Atlas becomes the live owner-facing reporting interface over Maestro state. It r
 
 Atlas does not start, pause, resume, cancel, retry, reassign, reprioritize, route, approve, merge, or otherwise control Maestro work. It shows the latest recorded state, including the factual agent/model route, capacity, waiting reason, expected next action, evidence, and project/owner gate.
 
-Maestro performs coordination only under approved project policy. The owner gives product, architecture, policy, and approval direction outside Atlas. Atlas must not expose agent prompts, traces, credentials, or secrets.
+Maestro performs coordination only under approved project policy. When a local
+worker is active but non-terminal, the Coordinator may ask a bounded
+operational question for its plan, current step, blocker, and expected timing
+before timeout/retry/escalation. The durable reply is labeled worker-reported
+with its observation time; absent or unreliable timing remains `unknown`.
+Ordinary silence before the applicable response/lease boundary is not failure.
+
+The owner gives product, architecture, policy, and approval direction outside
+Atlas. Atlas sends no worker questions, queries or scrapes no provider account,
+and must not expose agent prompts, traces, credentials, or secrets.
 
 ## 11. Model routing and capacity
 
@@ -331,11 +348,14 @@ Initial VennueSign-oriented routing remains compatible with the current qualific
 - one heavy local inference job at a time until measured capacity shows that concurrent inference and verification are safe;
 - default WIP of one active packet per specialist role, raised only by explicit project/role policy and observed safe capacity.
 
-Atlas shows model and concurrency facts. Routing and concurrency policy changes occur through the approved Maestro/project planning process, not Atlas.
+Atlas shows model, usage, allowance, context, and concurrency facts. These facts
+inform owner decisions but change routing or stop work only under a separately
+approved threshold/action policy. Routing and concurrency policy changes occur
+through the approved Maestro/project planning process, not Atlas.
 
 ### 11.1 Agent executor adapter and service-account boundary
 
-Each local or cloud executor is reached through an executor adapter with a versioned capability contract: `submit`, `observe/poll`, `cancel`, retrieve evidence, and optionally receive a signed event/webhook. Cloud reasoning may choose an eligible executor, but the Linux-hosted Maestro service account performs the durable coordinator actions and owns no broader permission than necessary.
+Each local or cloud executor is reached through an executor adapter with a versioned capability contract: `submit`, `observe/poll`, bounded status request, `cancel`, retrieve evidence, supported usage/context observation, and optionally receive a signed event/webhook. Cloud reasoning may choose an eligible executor, but the Linux-hosted Maestro service account performs the durable coordinator actions and owns no broader permission than necessary. Live provider-account authorization is a separate later decision; it is not granted by this contract.
 
 The service-account baseline is least privilege: protected branches remain protected; workers receive only scoped repository and environment access; production credentials are unavailable by default; credentials are referenced rather than embedded in packets or Atlas; webhook signatures, source, replay, and expiry are verified. Polling/reconciliation remains the recovery authority even when a webhook is available.
 
@@ -373,11 +393,14 @@ M0 records this control-plane design, role-contract structure, queue/scheduler s
 After its synthetic binding exists, Alpha qualifies the control-plane's
 single-run decision semantics with one fixed work graph and scripted local
 actors/observations. It proves eligibility, one atomic assignment and lock set,
-Integration/review routing, the M0-D05 correction cap, idempotent recovery, and
-the Owner stop. This bounded exception is governed by
-[M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md); it is not a
-production scheduler, real agent dispatch, multiple-project queue, or parallel
-workforce.
+patient worker-status inquiry, Integration/review routing, the M0-D05
+correction cap, supported weekly-window reconciliation, context/token/cost
+preflight and pressure reporting, separate local capacity, idempotent recovery,
+and the Owner stop. This bounded exception is governed by
+[M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) and
+[M0-D14](decisions/m0-d14-context-and-token-reporting.md); it is not a
+production scheduler, real provider/account connection, real agent dispatch,
+multiple-project queue, or parallel workforce.
 
 ### V1 — one live visible controlled loop
 
@@ -421,6 +444,8 @@ The following remain implementation design questions for later approved stages:
 - webhook transport, because polling remains the initial completion/recovery mechanism;
 - exact GitHub App/service-account scopes and cloud-agent invocation provider API;
 - numeric concurrency, cost, and queue-aging policy thresholds;
+- exact supported provider-account observation sources, usage retention,
+  allowance warning thresholds, and any budget-enforcement action policy;
 - project-specific specialist-role set and model mapping beyond their versioned adapters.
 - review-round cap/escalation policy and the future auto-merge/autonomous-next-work delegation boundary.
 

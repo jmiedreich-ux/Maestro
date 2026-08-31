@@ -1,16 +1,26 @@
 # Alpha-04 — Synthetic Control-Loop Qualification
 
-- **Status:** Owner-approved architecture direction; planning-only proposal
-  awaiting fresh Decision Fidelity Review and merge
+- **Status:** Original planning release received Decision Fidelity APPROVE at
+  exact head `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in PR #11 at
+  `dcca2174dd919aa204707961f1b33ad15de9af41`; Owner-approved patient-worker,
+  allowance-window, context, and usage-reporting amendment awaits fresh
+  Decision Fidelity Review and merge
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
-- **Graph revision:** `maestro-alpha-04-plan-r1`
+- **Graph revision:** `maestro-alpha-04-plan-r2`
 - **Source base:** `d0ec9c4593c42e4be5d3461f11ece8b9021ff141`
   (`master`)
+- **Combined amendment base:**
+  `dcca2174dd919aa204707961f1b33ad15de9af41` (`master`)
 - **Decision authority:**
-  [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md)
+  [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md) and
+  [M0-D14](../decisions/m0-d14-context-and-token-reporting.md)
 - **Source capture:**
   [2026-08-31 control-loop qualification direction](../../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md)
+  and
+  [2026-08-31 context and token reporting direction](../../../sources/planning/2026-08-31-context-and-token-reporting.md)
+  plus the captured
+  [Usage & Observability proposal](agent-usage-observability.md)
 - **Predecessor:** Alpha-03 must be implemented, independently approved,
   accepted, and merged before Alpha-04 can be released
 - **Execution class:** one fixture-only, single-process qualification increment
@@ -23,9 +33,12 @@
 
 Prove that Maestro can make and preserve the correct next-action decisions for
 one synthetic project: identify the eligible packet, assign it once, route its
-scripted result through Integration and an independent reviewer, apply the
-bounded correction rule, survive duplicates/restart, and stop for Owner
-acceptance.
+scripted result through Integration and an independent reviewer, ask a
+non-terminal worker for honest progress before assuming it is stalled, apply
+context/token budgeting from preflight through status, apply the bounded
+correction rule, relate controlled OpenAI use to a supported ChatGPT/Codex
+weekly allowance observation without inventing precision, survive duplicates/
+restart, and stop for Owner acceptance.
 
 This qualifies Maestro's control-loop logic before Foundry becomes the first
 live proving project. It does not contact or dispatch a real agent.
@@ -56,7 +69,7 @@ remain controlling:
 | Rank / serial order | First Alpha-04 node; serial after accepted Alpha-03 |
 | Hard dependency | Alpha-03 complete, accepted, independently reviewed, and merged at an exact recorded head |
 | Authority dependency | This plan and its future execution packet each receive fresh Decision Fidelity APPROVE and the packet receives explicit Owner implementation release |
-| Change domains / locks | Synthetic graph/actor fixtures, coordinator eligibility and transition logic, service-owned operational schema/evidence, Alpha-04 tests; one exclusive Alpha control-loop/schema lock |
+| Change domains / locks | Synthetic graph/actor/model-usage fixtures, coordinator eligibility and transition logic, service-owned operational schema/evidence, Alpha-04 tests; one exclusive Alpha control-loop/schema lock |
 | Planned route | One bounded local implementation worker after release; exact model and reviewer routes belong in the execution packet |
 | Safe parallelism | None inside Alpha-04; the qualification simulates contention but performs one serial assignment |
 | Terminal result | Independently reviewable implementation result or Architecture/Owner escalation; never live dispatch, merge, or successor selection |
@@ -73,7 +86,14 @@ The execution packet must define exact, repository-owned fixture schemas for:
   unmet review gates, and lock/resource contention;
 - declared worker, Integration, and independent-review role identities;
 - scripted completion, verification, integration, review, correction, timeout,
-  and stale-event observations; and
+  stale-event, and worker-progress observations, including a reliable estimate,
+  an explicit unknown estimate, and no immediate reply; and
+- scripted model/context/quantization fingerprints, packet context minimum and
+  output reserve, exact/estimated/unavailable token and cost measurements,
+  pressure thresholds, and checkpoint observations; and
+- scripted OpenAI allowance-window observations with used/remaining/reset,
+  precision/freshness, tracked controlled usage, registered coarse activity,
+  unattributed remainder, and separate local-Qwen capacity; and
 - the expected coordinator decisions and evidence.
 
 Unknown fields, malformed identities, absent authority, unapproved graph
@@ -92,7 +112,91 @@ its declared path, shared-boundary, and finite-resource locks. A blocked,
 unapproved, route-ineligible, base-incompatible, or lock-conflicting candidate
 cannot be assigned.
 
-### 3. Role-separated handoffs
+### 3. Patient worker observation and Atlas-ready status
+
+When an assigned local worker is non-terminal and has not produced the expected
+result, the Coordinator must issue a bounded structured status request through
+the executor adapter before classifying the worker as stalled or taking a
+timeout, interruption, retry, or escalation action, unless the executor already
+reports an unambiguous terminal/safety stop. The request asks for:
+
+- ordered remaining/current plan steps;
+- the current step and whether work is actively progressing;
+- a blocker or an explicit none disposition;
+- expected completion timing with confidence, or an explicit `unknown`; and
+- the worker observation time.
+
+The same status record includes the current context limit, used/remaining
+measurement or estimate, output reserve, measurement type/confidence, pressure
+state, latest available token/cost counters, and supported allowance-window
+status under M0-D14. Unsupported counters/window facts are `unavailable`; they
+are never inferred from a different counter.
+
+Only one status request may be outstanding for an attempt, and the later packet
+must define a minimum query interval plus the response/lease timeout policy.
+The request is delivered without interrupting a healthy worker when the
+executor supports non-interrupting observation. Otherwise it waits for the next
+safe message boundary unless an approved timeout/safety condition already
+requires action. A status query must never restart the worker, consume a
+correction, change scope, or solicit a product or architecture decision.
+
+Maestro stores the response as worker-reported operational evidence with the
+attempt identity, source, and observation/receipt times. An absent or unreliable
+ETA is stored as `unknown`; Maestro never invents or upgrades it. A healthy
+worker that has not answered before the response window remains `Running` until
+the applicable lease/timeout policy permits another action. At that boundary,
+the Coordinator rereconciles durable and executor facts before interrupting,
+retrying, expiring, or escalating.
+
+The resulting bounded status record is suitable for a later read-only Atlas
+projection. Alpha-04 does not build Atlas, a read API, or a UI, and Atlas never
+sends the request.
+
+### 4. Allowance observation, context preflight, and usage checkpoint
+
+Before a hosted synthetic assignment, Maestro accepts only a supported or
+fixture-approved account-window observation carrying the provider, non-secret
+account/workspace identity, native window type, used/remaining amount or
+percentage, reset time when supplied, precision, measurement quality,
+observation time, and freshness. Missing support produces `unavailable`; it
+does not trigger UI scraping or a token-derived weekly percentage.
+
+The fixed OpenAI window demonstrates the ChatGPT/Codex weekly allowance. The
+qualification links controlled attempt usage to that window, registers coarse
+ChatGPT Work/web activity when exact per-run detail is absent, and computes a
+visible unattributed remainder from the observed account change. Local Qwen
+time/tokens/capacity remain separate and never reduce the hosted allowance.
+
+Before the synthetic assignment is launched, Maestro validates and records the
+declared model/runtime identity, configured context limit, quantization when
+applicable, packet minimum context, completion/output reserve, warning and
+checkpoint/stop thresholds, and counting method. It rejects the assignment
+before worker launch when the configured limit or known starting payload cannot
+satisfy the minimum and reserve.
+
+Known input is exact only when counted with the declared model tokenizer or
+supplied as a valid runtime measurement. Unknown future tool/file growth is a
+bounded estimate/range with confidence. During the run, valid runtime-reported
+counters supersede estimates for the same measurement period. Input, output,
+cached input, reasoning, and total tokens are distinct fields whose unsupported
+values remain `unavailable`. Zero reasoning tokens does not change input/output
+or remaining-context facts.
+
+Cost is reported as billed, estimated, `not_billed`, or `unknown`, with amount
+and currency only where applicable. Elapsed time and resource facts remain
+separate from monetary cost.
+
+Allowance pace is estimated only when the fixture supplies a supported window,
+usable elapsed/reset timing, and fresh observations. No pace/remaining value
+changes routing or stops work in Alpha-04.
+
+At the declared context-pressure boundary, the Coordinator asks for one short
+checkpoint at a safe message boundary. The scripted checkpoint records
+completed work, current plan/step, changed synthetic artifacts, checks/evidence,
+blocker, and next action. Maestro follows the declared checkpoint/stop rule and
+does not silently truncate, summarize, or start a replacement session.
+
+### 5. Role-separated handoffs
 
 The scripted worker result records its exact attempt, base/result identity,
 changed synthetic paths, checks, and evidence. Completion creates the declared
@@ -106,7 +210,7 @@ A result eligible for review is routed to a declared reviewer that is
 independent of every actor that changed or assembled it. Missing independence,
 evidence, or a required Integration result blocks review readiness.
 
-### 4. Review, correction, and Owner stop
+### 6. Review, correction, and Owner stop
 
 A scripted independent-review approval observation moves the result to
 `MergeReady` and then `AwaitingOwner`; Maestro stops. The observation is fixed
@@ -120,7 +224,7 @@ correction diff. A second correction, new failure class, scope breach,
 architecture defect, missing contract, or unrelated change produces escalation
 and no further assignment.
 
-### 5. Recovery and stale-event behavior
+### 7. Recovery and stale-event behavior
 
 Duplicate invocation, duplicate poll/event, restart, competing claim, stale
 worker completion, timeout, and lease expiry must reread durable facts before
@@ -137,13 +241,34 @@ The future execution packet must name focused tests that prove at least:
 2. higher-ranked blocked work is skipped only for a recorded valid reason;
 3. a ready but non-dispatchable lock/route/base candidate is not assigned;
 4. assignment plus locks is atomic and idempotent;
-5. validate-only, assemble, and replan Integration routes behave distinctly;
-6. an actor cannot review a result it authored or integrated;
-7. one eligible correction is routed and exactly covered, while a second round
+5. a non-terminal worker status query records exact worker-reported plan,
+   current step, blocker, ETA/confidence or `unknown`, and timestamps without
+   interrupting, restarting, or changing the assignment;
+6. no immediate status response remains `Running` before the response/lease
+   boundary, and timeout reconciliation does not assume failure or duplicate
+   the attempt;
+7. context preflight rejects an undersized configured limit or a starting
+   payload that cannot preserve the packet minimum plus output reserve;
+8. supported OpenAI weekly-window observations preserve used/remaining/reset,
+   precision/freshness, and an unsupported observation remains `unavailable`;
+9. tracked controlled usage plus registered coarse usage plus unattributed
+   remainder reconciles to observed account change without converting tokens
+   into weekly percentage or double-counting parent/child work;
+10. local Qwen usage remains separate from the OpenAI allowance and stale/
+    unknown reset or pace is reported honestly;
+11. exact tokenizer/runtime measurements, bounded estimates, confidence,
+   `unavailable`, and runtime-supersedes-estimate behavior remain distinct;
+12. zero/unavailable reasoning tokens cannot erase nonzero context use, and
+   billed/estimated/not-billed/unknown cost states remain honest;
+13. warning/checkpoint pressure produces the bounded worker checkpoint and
+   declared stop action without silent truncation or replacement-session start;
+14. validate-only, assemble, and replan Integration routes behave distinctly;
+15. an actor cannot review a result it authored or integrated;
+16. one eligible correction is routed and exactly covered, while a second round
    or new failure class escalates;
-8. restart, duplicate, stale, timeout, and competing-claim cases do not
+17. restart, duplicate, stale, timeout, and competing-claim cases do not
    double-dispatch or corrupt evidence; and
-9. every terminal path prohibits merge, successor selection, and external
+18. every terminal path prohibits merge, successor selection, and external
    access.
 
 Exact fixture paths, implementation-owned paths, commands, schemas, and model
@@ -160,8 +285,11 @@ this architecture proposal.
 | M0-D03 least privilege and no retained secrets | Reject credential/secret/external-route fields; no provider or network client |
 | M0-D05 one targeted correction maximum | One eligible exact correction and targeted review; second round/new failure class escalates |
 | M0-D11 bounded Linux filesystem assurance | Preserve the existing boundary; add no stronger containment claim |
-| M0-D12 bounded quality and proportionality | Q1-Q4 below carry all eight mandatory fields and name sufficient proof/ceilings |
+| M0-D12 bounded quality and proportionality | Q1-Q6 below carry all eight mandatory fields and name sufficient proof/ceilings |
+| M0-D14 allowance, context, and usage reporting from preflight | Supported weekly-window observation, tracked/coarse/unattributed reconciliation, separate local capacity, attempt-bound model/context fingerprint, minimum/reserve gate, honest counters/cost, pressure checkpoint, and Atlas-ready reporting |
 | C-22 one milestone and Owner gate | One synthetic assignment reaches `AwaitingOwner` and stops |
+| C-19 durable visible waiting state | Structured worker-reported plan/current step/blocker/ETA-or-unknown plus source/time; no premature failure assumption |
+| V-014/L-011/L-015/P-004/P-007 retained source requirements | Model/context fingerprint, context hard gate, cost/tokens/elapsed evidence, and run outcome begin at preflight rather than as later metrics |
 | C-28 Maestro manages operational eligibility | Deterministic graph projection, dispatchability decision, atomic assignment, and durable reasons |
 | C-31/C-32 planned versus dispatchable and safe bypass | Fixed candidates prove blocked/ready/dispatchable distinctions and valid skip reasons |
 | C-33 locks and designed concurrency | One atomic lock set; contention is simulated; actual execution remains serial |
@@ -267,16 +395,102 @@ this architecture proposal.
   stronger isolation, merge, or automatic successor authority returns to
   Architecture/Owner and is not implemented in Alpha-04.
 
+### Q5 — Patient worker status and honest timing
+
+- **Protected outcome:** Maestro does not mistake a quiet but active local
+  worker for a failed worker, take premature interrupt/retry action, or present
+  an invented completion promise to the Owner.
+- **Operating/threat/failure model:** one assigned synthetic worker may be
+  actively reasoning/generating, may report a plan/current step/blocker and a
+  reliable ETA or `unknown`, may reply late, or may not reply before the bounded
+  response window; duplicate status requests and stale replies are in scope.
+- **Explicit exclusions:** guaranteed completion times, token-level progress,
+  raw chain-of-thought/prompts/traces, arbitrary worker chat, hostile-worker
+  truth verification, infinite waiting, and operation beyond an approved
+  timeout or authorization stop.
+- **Practical assurance level:** one rate-limited outstanding structured status
+  request per attempt, source/timestamp-labeled worker evidence, honest
+  `unknown` handling, and reconciliation before any timeout action.
+- **Sufficient acceptance proof:** named tests prove exact reliable/unknown
+  status capture, Atlas-ready projection fields, duplicate/stale-reply
+  rejection, no pre-boundary interruption/retry/state failure, and correct
+  timeout reconciliation from durable plus executor facts.
+- **Permitted implementation boundary and complexity:** a bounded executor-
+  adapter status operation, explicit status schema, and service-owned evidence;
+  no conversational agent framework, raw transcript store, Atlas write path,
+  background chat daemon, or new provider SDK.
+- **Proportionality ceiling:** one active synthetic attempt, one outstanding
+  request, packet-defined minimum interval/response window, and a short bounded
+  status payload.
+- **Exact stop/escalation rule:** a reported blocker routes to its declared
+  Coordinator/Architecture/Owner boundary; an unanswered request remains
+  non-terminal until timeout policy allows reconciliation; ambiguity never
+  authorizes a duplicate run, invented ETA, or silent scope decision.
+
+### Q6 — Allowance, context budget, and honest usage reporting
+
+- **Protected outcome:** Maestro does not misstate controlled tokens as an exact
+  ChatGPT/Codex weekly percentage, lose unexplained account usage, combine local
+  capacity with hosted allowance, launch a packet that cannot fit its declared
+  context/reserve, confuse token counters, or let context exhaustion silently
+  lose work.
+- **Operating/threat/failure model:** one fixed OpenAI allowance window has
+  supported/coarse/stale/unavailable observations, controlled and registered
+  coarse activity, possible concurrent unattributed change, and reset timing;
+  one synthetic attempt has a declared model/runtime/context/quantization
+  fingerprint, uncertain future tool/file growth, optional runtime counters,
+  cost states, and pressure thresholds. Missing/malformed observations,
+  parent/child double counting, estimate/report disagreement, zero reasoning
+  tokens, and pressure crossings are in scope.
+- **Explicit exclusions:** unsupported account UI scraping, exact personal-web
+  conversation attribution where unavailable, provider allowance formulas not
+  published by the provider, automatic budget enforcement/rerouting, universal
+  token prediction accuracy, raw prompt/transcript/chain-of-thought storage,
+  billing reconciliation, automatic prompt optimization/compaction/session
+  rollover, and global thresholds chosen without run data.
+- **Practical assurance level:** strict preflight schema and minimum/reserve
+  gate; allowance facts only from supported/fixture observations; separate
+  tracked/coarse/unattributed reconciliation and local capacity; exact token
+  values only from the declared tokenizer/runtime, otherwise labeled estimates;
+  distinct stale/unavailable/zero and cost states; deterministic pressure/
+  checkpoint decisions.
+- **Sufficient acceptance proof:** named tests cover allowance used/remaining/
+  reset/precision/freshness, unsupported/stale windows, reconciliation and
+  unattributed remainder, no parent/child double count, local separation,
+  absence of token-to-weekly conversion, undersized context/oversized-start
+  rejection, exact versus estimated counts, runtime replacement of estimates,
+  unavailable fields, nonzero context with zero reasoning tokens, all cost
+  states, pressure/checkpoint evidence, and the Atlas-ready projection.
+- **Permitted implementation boundary and complexity:** explicit synthetic
+  account-window/model/usage fixtures, additive account-window/attempt/evidence
+  fields, bounded reconciliation arithmetic, and transition rules in the
+  existing Python/SQLite service; no real account, tokenizer/model/billing call,
+  new dependency, background meter, or Atlas UI.
+- **Proportionality ceiling:** one OpenAI allowance window, one local-capacity
+  comparison, one fingerprint and bounded observation sequence for one
+  synthetic attempt, packet-declared thresholds, and one checkpoint action; no
+  provider adapter, optimization engine, or cross-run forecasting model.
+- **Exact stop/escalation rule:** preserve `unavailable` rather than infer or
+  scrape an unsupported allowance; preserve unattributed remainder rather than
+  force attribution; reject launch if minimum/reserve cannot be satisfied; on
+  malformed/ambiguous measurement preserve the last valid fact and stop usage-
+  driven action; return any need for account access, budget enforcement,
+  compaction/session continuation, or global policy to Architecture/Owner.
+
 ## Explicit non-goals and deferrals
 
 - Alpha-03 implementation, project registration, or a real binding.
 - Foundry, VennueSign, or any other repository/project access.
 - Real local/cloud model invocation, agent process management, Git/GitHub/CI,
   webhooks, network, secrets, or notifications.
+- Real provider-account access, unsupported usage-page scraping, credit
+  purchase, budget enforcement, provider rerouting, or a claim of exact weekly
+  use when the supported observation is coarse/unavailable.
 - Production specialist queues, multiple projects, parallel execution,
   resource optimization, fairness/aging, or general scheduling.
-- Atlas/API/UI, backup/USB/recovery, deployment, merge, owner acceptance
-  automation, or successor selection.
+- Atlas/API/UI implementation, backup/USB/recovery, deployment, merge, owner
+  acceptance automation, or successor selection. Alpha-04 stores only the
+  bounded Atlas-ready worker-status and usage evidence required by Q5/Q6.
 - Proving the quality of real worker code or real Integration/reviewer judgment.
 
 These remain V1/V2 or separately approved work. Alpha-04 proves only the
@@ -287,16 +501,20 @@ control-loop decisions and durable handoff semantics using synthetic data.
 There is no unresolved material architecture choice in this planning release.
 The later packet must make the fixture schemas, public result shapes, owned
 paths, exact checks, and stop-before-mutation cases explicit before it can enter
-Decision Fidelity Review. If doing so requires a production scheduler, a real
-actor, a second command/control surface, or a broader threat model, that is a
-material replan and returns to Architecture/Owner.
+Decision Fidelity Review. It must also declare exact context minimum, output
+reserve, warning/checkpoint/stop thresholds, measurement fallbacks, and cost
+states for its synthetic route, plus the exact fixture allowance-window and
+reconciliation shapes. If doing so requires a production scheduler, real
+provider/account/actor/tokenizer/billing access, a second command/control
+surface, or a broader threat model, that is a material replan and returns to
+Architecture/Owner.
 
 ## Feasibility and proportionality conclusion
 
 The proposal is feasible within the existing one-service Python/SQLite and
 fixture-test model. Fixed schemas, deterministic transition functions, and a
 single active assignment can prove the required semantics without a production
-scheduler, external actor, or new infrastructure. The four quality contracts
+scheduler, external actor, or new infrastructure. The six quality contracts
 bound both the expected assurance and the implementation ceiling.
 
 If an exact execution packet cannot provide the named proof inside that class,
