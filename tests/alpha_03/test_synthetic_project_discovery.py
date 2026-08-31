@@ -636,5 +636,150 @@ class DiscoveryEvidenceSQLiteTests(unittest.TestCase):
         self.assertEqual(snap["status"], AWAITING_REVIEW)
 
 
+class PerLeafRemovalTests(unittest.TestCase):
+    """Q2 – parameterized removal of every required leaf asserts missing + escalation."""
+
+    @staticmethod
+    def _complete_fixture_data() -> dict:
+        return load_and_validate_discovery_fixture("complete-snapshot.json")
+
+    def _fixture_without_leaf(self, dotted: str) -> dict:
+        data = self._complete_fixture_data()
+        area, leaf = dotted.split(".", 1)
+        if area in data and leaf in data[area]:
+            del data[area][leaf]
+        return data
+
+    def test_each_required_leaf_removal_yields_missing(self) -> None:
+        all_dotted: list[str] = []
+        for area, leaves in _REQUIRED_AREAS.items():
+            for leaf in leaves:
+                all_dotted.append(f"{area}.{leaf}")
+        self.assertGreater(len(all_dotted), 0)
+        for dotted in all_dotted:
+            with self.subTest(leaf=dotted):
+                data = self._fixture_without_leaf(dotted)
+                inv = build_inventory(data)
+                area, leaf = dotted.split(".", 1)
+                entry = inv["areas"][area][leaf]
+                self.assertEqual(entry["status"], "missing", dotted)
+                self.assertNotIn("value", entry)
+                self.assertNotIn("observed_values", entry)
+                self.assertFalse(inv["reviewable"])
+                self.assertEqual(inv["summary"]["missing"], 1)
+                self.assertIsNone(build_proposed_binding(data))
+                reason = build_escalation_reason(data)
+                self.assertIsNotNone(reason)
+                self.assertIn(dotted, reason)
+
+
+class SymlinkRejectionTests(unittest.TestCase):
+    """Q1 – fixture-root symlink resolution is rejected before claim."""
+
+    def test_symlink_inside_fixture_root_rejected(self) -> None:
+        link_path = DISCOVERY_FIXTURES / "symlink-target.json"
+        self.addCleanup(
+            lambda: os.unlink(link_path) if link_path.exists() or link_path.is_symlink() else None
+        )
+        link_path.symlink_to("complete-snapshot.json")
+        with self.assertRaises(ValueError):
+            load_and_validate_discovery_fixture("symlink-target.json")
+
+    def test_symlink_resolving_outside_root_rejected(self) -> None:
+        outside = FIXTURES / "complete-snapshot.json"
+        link_path = DISCOVERY_FIXTURES / "symlink-outside.json"
+        self.addCleanup(
+            lambda: os.unlink(link_path) if link_path.exists() or link_path.is_symlink() else None
+        )
+        link_path.symlink_to(outside.resolve())
+        with self.assertRaises(ValueError):
+            load_and_validate_discovery_fixture("symlink-outside.json")
+
+
+class MalformedConflictValueRejectTests(unittest.TestCase):
+    """Q2 – malformed and semantic conflict values rejected before claim/mutation."""
+
+    def _write_and_load(self, payload: dict) -> None:
+        with tempfile.NamedTemporaryFile(
+            dir=DISCOVERY_FIXTURES, suffix=".json", delete=False, mode="w"
+        ) as tmp:
+            json.dump(payload, tmp)
+        try:
+            load_and_validate_discovery_fixture(Path(tmp.name).name)
+        finally:
+            os.unlink(tmp.name)
+
+    def _minimal(self, overrides: dict) -> dict:
+        base = {
+            "identity": {"project_name": "x", "repository_identifier": "y", "default_branch": "z", "adapter_version": "1", "process_version": "1"},
+        }
+        base.update(overrides)
+        return base
+
+    def test_conflict_string_whitespace_duplicates_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"identity.project_name": ["  hello  ", "hello"]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_string_empty_after_trim_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"identity.project_name": [" ", "valid"]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_string_wrong_type_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"identity.project_name": [123, "valid"]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_array_wrong_type_entry_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"identity.default_branch": [("a", "b"), "c"]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_exceptions_items_empty_string_entry_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"exceptions.items": [["a"], [""]]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_exceptions_items_wrong_type_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"exceptions.items": ["not-array", ["valid"]]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_exceptions_disposition_invalid_value_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"exceptions.disposition": ["none", "pending"]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_exceptions_disposition_wrong_type_rejected(self) -> None:
+        payload = self._minimal({
+            "conflicts": {"exceptions.disposition": ["none", 42]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+    def test_conflict_array_leaf_empty_entries_rejected(self) -> None:
+        payload = self._minimal({
+            "authority": {"architecture_paths": ["a"], "plan_paths": ["b"], "handoff_path": "c", "rules_sop_path": "d", "task_issue_conventions": "e"},
+            "conflicts": {"authority.plan_paths": [["  "], ["valid"]]},
+        })
+        with self.assertRaises(ValueError):
+            self._write_and_load(payload)
+
+
 if __name__ == "__main__":
     unittest.main()

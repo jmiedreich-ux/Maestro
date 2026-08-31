@@ -74,6 +74,8 @@ def load_and_validate_discovery_fixture(fixture_name: str) -> dict[str, Any]:
     Rejects missing files, malformed JSON, unknown keys, and schema violations.
     """
     fixture_path = _DISCOVERY_FIXTURE_ROOT / fixture_name
+    if fixture_path.is_symlink():
+        raise ValueError(f"Discovery fixture must not be a symlink: {fixture_name}")
     if not fixture_path.is_file():
         raise ValueError(f"Discovery fixture file not found: {fixture_name}")
     if _resolves_outside_root(fixture_path):
@@ -107,7 +109,9 @@ def build_inventory(data: dict[str, Any]) -> dict[str, Any]:
         for leaf, leaf_type in leaves.items():
             dotted = f"{area}.{leaf}"
             if conflicts and dotted in conflicts:
-                leaf_map[leaf] = {"status": "conflicting", "observed_values": conflicts[dotted]}
+                raw_obs = conflicts[dotted]
+                normalized_obs = _normalize_conflict_observed(raw_obs, area, leaf)
+                leaf_map[leaf] = {"status": "conflicting", "observed_values": normalized_obs}
                 conflicting += 1
             elif leaf in area_data:
                 normalized = _normalize_leaf(area_data[leaf], leaf_type)
@@ -223,12 +227,12 @@ def _validate_exceptions(data: Any) -> None:
         if key not in allowed:
             raise ValueError(f"Unknown key '{key}' in area 'exceptions'")
     disposition = data.get("disposition")
+    items = data.get("items")
     if disposition is None:
         pass
     elif disposition not in ("none", "declared"):
         raise ValueError(f"exceptions.disposition must be 'none' or 'declared', got '{disposition}'")
     else:
-        items = data.get("items")
         if disposition == "none" and items is not None:
             if not isinstance(items, list) or items != []:
                 raise ValueError("exceptions.items must be [] when disposition is 'none'")
@@ -237,7 +241,7 @@ def _validate_exceptions(data: Any) -> None:
                 raise ValueError(
                     "exceptions.items must contain one or more items when disposition is 'declared'"
                 )
-        _validate_array_items(data.get("items"))
+    _validate_array_items(items)
 
 
 def _validate_array_items(value: Any) -> None:
@@ -266,18 +270,36 @@ def _validate_conflicts(conflicts: Any) -> None:
             raise ValueError(f"Unknown conflict path: {path}")
         if not isinstance(values, list) or len(values) < 2:
             raise ValueError(f"Conflict for '{path}' requires at least two distinct values")
-        normalized = _normalize_conflict_values(values)
-        if len(set(normalized)) != len(values):
-            raise ValueError(f"Conflict for '{path}' must have distinct values")
         dotted_area, dotted_leaf = path.rsplit(".", 1)
         leaf_type = _REQUIRED_AREAS[dotted_area][dotted_leaf]
         for v in values:
-            if dotted_area == "exceptions" and dotted_leaf == "items":
+            if dotted_area == "exceptions" and dotted_leaf == "disposition":
+                _validate_conflict_disposition_value(v)
+            elif dotted_area == "exceptions" and dotted_leaf == "items":
                 _validate_conflict_exception_item_value(v)
-            elif leaf_type == "string" and not isinstance(v, str):
-                raise ValueError(f"Conflict value for string leaf '{path}' must be a string")
-            elif leaf_type == "array" and not isinstance(v, list):
-                raise ValueError(f"Conflict value for array leaf '{path}' must be an array")
+            elif leaf_type == "array":
+                _validate_conflict_array_value(v, path)
+            elif leaf_type == "string":
+                if not isinstance(v, str):
+                    raise ValueError(f"Conflict value for string leaf '{path}' must be a string")
+                if not v.strip():
+                    raise ValueError(f"Conflict value for string leaf '{path}' must be non-empty after trimming")
+        normalized = _normalize_conflict_values(values, dotted_area, dotted_leaf)
+        if len(set(normalized)) != len(values):
+            raise ValueError(f"Conflict for '{path}' must have distinct values after normalization")
+
+
+def _validate_conflict_disposition_value(v: Any) -> None:
+    """Validate that a conflicting exceptions.disposition value is 'none' or 'declared'."""
+    if not isinstance(v, str):
+        raise ValueError(
+            "Conflict value for exceptions.disposition must be 'none' or 'declared', "
+            f"got {type(v).__name__}"
+        )
+    if v not in ("none", "declared"):
+        raise ValueError(
+            f"Conflict value for exceptions.disposition must be 'none' or 'declared', got '{v}'"
+        )
 
 
 def _validate_conflict_exception_item_value(v: Any) -> None:
@@ -291,8 +313,47 @@ def _validate_conflict_exception_item_value(v: Any) -> None:
         raise ValueError(f"Conflict value for exceptions.items must not contain duplicates")
 
 
-def _normalize_conflict_values(values: list) -> tuple:
-    return tuple(tuple(v) if isinstance(v, (list, tuple)) else v for v in values)
+def _validate_conflict_array_value(v: Any, path: str) -> None:
+    """Validate that a conflicting array leaf value has non-empty, unique string entries."""
+    if not isinstance(v, list):
+        raise ValueError(f"Conflict value for array leaf '{path}' must be an array")
+    for item in v:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"Conflict value for array leaf '{path}' entries must be non-empty strings")
+    trimmed = [item.strip() for item in v]
+    if len(set(trimmed)) != len(v):
+        raise ValueError(f"Conflict value for array leaf '{path}' must not contain duplicates")
+
+
+def _normalize_conflict_observed(values: list, dotted_area: str, dotted_leaf: str) -> list:
+    """Normalize conflict observed_values for inventory storage."""
+    if dotted_area == "exceptions" and dotted_leaf == "items":
+        return [
+            [item.strip() for item in v] for v in values
+        ]
+    if leaf_type_for_leaf(dotted_area, dotted_leaf) == "string":
+        return [v.strip() for v in values]
+    return [
+        [item.strip() for item in v] for v in values
+    ]
+
+
+def leaf_type_for_leaf(dotted_area: str, dotted_leaf: str) -> str:
+    return _REQUIRED_AREAS[dotted_area][dotted_leaf]
+
+
+def _normalize_conflict_values(values: list, dotted_area: str, dotted_leaf: str) -> tuple:
+    """Normalize conflict values per their leaf type for distinctness comparison."""
+    if dotted_area == "exceptions" and dotted_leaf == "items":
+        return tuple(
+            tuple(item.strip() for item in v) for v in values
+        )
+    if dotted_area == "exceptions" and dotted_leaf == "disposition":
+        return tuple(v.strip() if isinstance(v, str) else v for v in values)
+    leaf_type = _REQUIRED_AREAS[dotted_area][dotted_leaf]
+    if leaf_type == "string":
+        return tuple(v.strip() for v in values)
+    return tuple(tuple(item.strip() for item in v) for v in values)
 
 
 def _normalize_leaf(value: Any, leaf_type: str) -> Any:
