@@ -4,8 +4,10 @@
 
 **Alpha-03 planning only:** On 2026-08-31, the Owner approved the fixture-only
 [Alpha-03 — Synthetic Project Discovery and Binding Proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
-for independent Decision Fidelity Review. It remains non-executable and does
-not authorize implementation, real repository discovery, Foundry/VennueSign
+for independent Decision Fidelity Review. The initial review returned a
+correction-only request to carry every exact M0-D02 binding fact and prove Q2
+completeness against that fact set. It remains non-executable and does not
+authorize implementation, real repository discovery, Foundry/VennueSign
 contact, registration, a project binding, or any other successor work.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.

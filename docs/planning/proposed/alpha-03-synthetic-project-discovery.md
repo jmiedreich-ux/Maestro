@@ -1,6 +1,6 @@
 # Alpha-03 — Synthetic Project Discovery and Binding Proposal
 
-**Status:** Owner-approved architecture plan; awaiting Decision Fidelity Review; non-executable
+**Status:** Owner-approved architecture plan; Decision Fidelity correction pending; non-executable
 **Project:** Maestro
 **Proposed graph revision:** `maestro-alpha-03-r1`
 **Source base:** `8a088e400a479078acdc85801cab384414d820c8` (`master`)
@@ -72,11 +72,11 @@ It contains exactly these M0-D02 fact areas:
 | Fact area | Required synthetic result |
 | --- | --- |
 | Identity | Project name, synthetic repository identifier, default branch, adapter version, process version |
-| Authority | Architecture, handoff, rules/SOP, and task/issue paths or explicit missing/conflict dispositions |
+| Authority | Architecture and plan paths, current handoff path, rules/SOP path, and task/issue conventions or explicit missing/conflict dispositions |
 | Delivery | Branch/PR/merge, owner-acceptance, deployment, and rollback policy facts |
-| Verification | Declared build, test, integration, UI/QA, and evidence rules |
+| Verification | Declared build, test, integration, UI/QA, evidence rules, and honest `UNTESTED` handling |
 | Roles | Specialist-overlay, reviewer, QA/Murphy, and local/cloud eligibility facts |
-| Operations | Environment-reference names, resource locks, and notification policy facts; never a secret value |
+| Operations | Environment-reference names, secret-reference names, resource locks, and notification policy facts; never a secret value |
 | Exceptions | A stricter project rule or a declared exception, or an explicit none disposition |
 
 The discovery result is one of two bounded outcomes:
@@ -152,8 +152,11 @@ Decision Fidelity Review.
 ### Q2 — Complete, honest synthetic binding inventory
 
 - **Protected outcome:** a synthetic discovery cannot be represented as a
-  registration-ready binding unless all seven M0-D02 fact areas are explicit,
-  complete, and non-conflicting.
+  registration-ready binding unless every exact M0-D02 required fact is
+  explicit, complete, and non-conflicting: identity; architecture and plan
+  paths, current handoff, rules/SOP, and task/issue conventions; delivery;
+  verification including honest `UNTESTED` handling; roles; operations
+  including secret-reference names but never values; and exceptions.
 - **Operating/threat/failure model:** fixture facts may be complete, missing,
   or mutually contradictory; ordinary malformed JSON and wrong field types are
   in scope.
@@ -163,11 +166,14 @@ Decision Fidelity Review.
 - **Practical assurance level:** deterministic normalization into one
   owner-readable inventory with each area marked confirmed, missing, or
   conflicting, plus a proposed binding only for a complete result.
-- **Sufficient acceptance proof:** fixtures/tests cover a complete result, one
-  missing required fact, one conflicting fact, malformed input, and exact
-  preservation of declared exception/no-exception dispositions. Only the
-  complete fixture may receive `AwaitingReview`; every incomplete/conflicting
-  fixture returns immediate escalation with the named reason.
+- **Sufficient acceptance proof:** a complete fixture/test asserts the exact
+  normalized M0-D02 field schema and every required fact listed above. A
+  parameterized test removes each required leaf fact and proves the result is
+  not reviewable; bounded missing/conflict fixtures prove the named inventory
+  and escalation behavior; malformed input and declared exception/no-exception
+  dispositions are preserved. Only the complete fixture may receive
+  `AwaitingReview`; every incomplete/conflicting fixture returns immediate
+  escalation with the named reason.
 - **Permitted implementation boundary and complexity:** one small local data
   model/normalizer and structured JSON evidence; no policy engine, natural
   language inference, repository parser, or automatic repair.
@@ -279,9 +285,11 @@ Those are later Architecture/Owner choices.
 
 ## Required next gates
 
-1. Owner approval is recorded above; the plan is now awaiting review only.
-2. A fresh Decision Fidelity Reviewer independently reviews the exact planning
-   range at GPT-5.6 Sol high reasoning.
+1. Owner approval is recorded above. The initial Decision Fidelity Review
+   returned two correction-only findings: carry every exact M0-D02 fact and
+   make Q2 prove completeness across that exact set.
+2. The same independent Decision Fidelity Reviewer performs targeted follow-up
+   on the correction-only range at GPT-5.6 Sol high reasoning.
 3. Only an Owner-approved, fidelity-approved, merged packet can be released
    for the bounded Local Qwen implementation route.
 4. A fresh Independent Implementation Reviewer then reviews the exact result

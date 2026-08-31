@@ -46,8 +46,11 @@ The Owner has approved the non-executable
 [Alpha-03 synthetic project-discovery proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md).
 It is fixture-only and does not authorize implementation, a real repository
 read, registration, Foundry/VennueSign contact, or any other successor work.
-The plan awaits fresh Decision Fidelity Review; an Alpha-03 packet must still
-receive the required release authority before implementation exists.
+The initial fresh Decision Fidelity Review returned a correction-only request
+to carry every exact M0-D02 binding fact and make Q2 prove completeness against
+that fact set. The corrected plan requires targeted follow-up; an Alpha-03
+packet must still receive the required release authority before implementation
+exists.
 
 ## Guardrails
 
