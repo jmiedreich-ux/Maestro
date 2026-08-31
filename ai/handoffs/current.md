@@ -2,6 +2,13 @@
 
 **Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. No Alpha-03, real worker, API/UI, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
 
+**Alpha-03 planning only:** On 2026-08-31, the Owner authorized Architecture to
+prepare a fixture-only proposal for synthetic project discovery and a proposed
+binding. [Alpha-03 — Synthetic Project Discovery and Binding Proposal](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
+is non-executable. It does not authorize implementation, real repository
+discovery, Foundry/VennueSign contact, registration, a project binding, or any
+other successor work.
+
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
 ## What is now established
