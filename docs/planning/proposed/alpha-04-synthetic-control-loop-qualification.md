@@ -12,9 +12,12 @@
 - **Patient-worker amendment base:**
   `dcca2174dd919aa204707961f1b33ad15de9af41` (`master`)
 - **Decision authority:**
-  [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md)
+  [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md) and
+  [M0-D14](../decisions/m0-d14-context-and-token-reporting.md)
 - **Source capture:**
   [2026-08-31 control-loop qualification direction](../../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md)
+  and
+  [2026-08-31 context and token reporting direction](../../../sources/planning/2026-08-31-context-and-token-reporting.md)
 - **Predecessor:** Alpha-03 must be implemented, independently approved,
   accepted, and merged before Alpha-04 can be released
 - **Execution class:** one fixture-only, single-process qualification increment
@@ -29,8 +32,8 @@ Prove that Maestro can make and preserve the correct next-action decisions for
 one synthetic project: identify the eligible packet, assign it once, route its
 scripted result through Integration and an independent reviewer, ask a
 non-terminal worker for honest progress before assuming it is stalled, apply
-the bounded correction rule, survive duplicates/restart, and stop for Owner
-acceptance.
+context/token budgeting from preflight through status, apply the bounded
+correction rule, survive duplicates/restart, and stop for Owner acceptance.
 
 This qualifies Maestro's control-loop logic before Foundry becomes the first
 live proving project. It does not contact or dispatch a real agent.
@@ -61,7 +64,7 @@ remain controlling:
 | Rank / serial order | First Alpha-04 node; serial after accepted Alpha-03 |
 | Hard dependency | Alpha-03 complete, accepted, independently reviewed, and merged at an exact recorded head |
 | Authority dependency | This plan and its future execution packet each receive fresh Decision Fidelity APPROVE and the packet receives explicit Owner implementation release |
-| Change domains / locks | Synthetic graph/actor fixtures, coordinator eligibility and transition logic, service-owned operational schema/evidence, Alpha-04 tests; one exclusive Alpha control-loop/schema lock |
+| Change domains / locks | Synthetic graph/actor/model-usage fixtures, coordinator eligibility and transition logic, service-owned operational schema/evidence, Alpha-04 tests; one exclusive Alpha control-loop/schema lock |
 | Planned route | One bounded local implementation worker after release; exact model and reviewer routes belong in the execution packet |
 | Safe parallelism | None inside Alpha-04; the qualification simulates contention but performs one serial assignment |
 | Terminal result | Independently reviewable implementation result or Architecture/Owner escalation; never live dispatch, merge, or successor selection |
@@ -80,6 +83,9 @@ The execution packet must define exact, repository-owned fixture schemas for:
 - scripted completion, verification, integration, review, correction, timeout,
   stale-event, and worker-progress observations, including a reliable estimate,
   an explicit unknown estimate, and no immediate reply; and
+- scripted model/context/quantization fingerprints, packet context minimum and
+  output reserve, exact/estimated/unavailable token and cost measurements,
+  pressure thresholds, and checkpoint observations; and
 - the expected coordinator decisions and evidence.
 
 Unknown fields, malformed identities, absent authority, unapproved graph
@@ -112,6 +118,11 @@ reports an unambiguous terminal/safety stop. The request asks for:
 - expected completion timing with confidence, or an explicit `unknown`; and
 - the worker observation time.
 
+The same status record includes the current context limit, used/remaining
+measurement or estimate, output reserve, measurement type/confidence, pressure
+state, and latest available token/cost counters under M0-D14. Unsupported
+counters are `unavailable`; they are never inferred from a different counter.
+
 Only one status request may be outstanding for an attempt, and the later packet
 must define a minimum query interval plus the response/lease timeout policy.
 The request is delivered without interrupting a healthy worker when the
@@ -132,7 +143,34 @@ The resulting bounded status record is suitable for a later read-only Atlas
 projection. Alpha-04 does not build Atlas, a read API, or a UI, and Atlas never
 sends the request.
 
-### 4. Role-separated handoffs
+### 4. Context preflight, usage measurement, and checkpoint
+
+Before the synthetic assignment is launched, Maestro validates and records the
+declared model/runtime identity, configured context limit, quantization when
+applicable, packet minimum context, completion/output reserve, warning and
+checkpoint/stop thresholds, and counting method. It rejects the assignment
+before worker launch when the configured limit or known starting payload cannot
+satisfy the minimum and reserve.
+
+Known input is exact only when counted with the declared model tokenizer or
+supplied as a valid runtime measurement. Unknown future tool/file growth is a
+bounded estimate/range with confidence. During the run, valid runtime-reported
+counters supersede estimates for the same measurement period. Input, output,
+cached input, reasoning, and total tokens are distinct fields whose unsupported
+values remain `unavailable`. Zero reasoning tokens does not change input/output
+or remaining-context facts.
+
+Cost is reported as billed, estimated, `not_billed`, or `unknown`, with amount
+and currency only where applicable. Elapsed time and resource facts remain
+separate from monetary cost.
+
+At the declared context-pressure boundary, the Coordinator asks for one short
+checkpoint at a safe message boundary. The scripted checkpoint records
+completed work, current plan/step, changed synthetic artifacts, checks/evidence,
+blocker, and next action. Maestro follows the declared checkpoint/stop rule and
+does not silently truncate, summarize, or start a replacement session.
+
+### 5. Role-separated handoffs
 
 The scripted worker result records its exact attempt, base/result identity,
 changed synthetic paths, checks, and evidence. Completion creates the declared
@@ -146,7 +184,7 @@ A result eligible for review is routed to a declared reviewer that is
 independent of every actor that changed or assembled it. Missing independence,
 evidence, or a required Integration result blocks review readiness.
 
-### 5. Review, correction, and Owner stop
+### 6. Review, correction, and Owner stop
 
 A scripted independent-review approval observation moves the result to
 `MergeReady` and then `AwaitingOwner`; Maestro stops. The observation is fixed
@@ -160,7 +198,7 @@ correction diff. A second correction, new failure class, scope breach,
 architecture defect, missing contract, or unrelated change produces escalation
 and no further assignment.
 
-### 6. Recovery and stale-event behavior
+### 7. Recovery and stale-event behavior
 
 Duplicate invocation, duplicate poll/event, restart, competing claim, stale
 worker completion, timeout, and lease expiry must reread durable facts before
@@ -183,13 +221,21 @@ The future execution packet must name focused tests that prove at least:
 6. no immediate status response remains `Running` before the response/lease
    boundary, and timeout reconciliation does not assume failure or duplicate
    the attempt;
-7. validate-only, assemble, and replan Integration routes behave distinctly;
-8. an actor cannot review a result it authored or integrated;
-9. one eligible correction is routed and exactly covered, while a second round
+7. context preflight rejects an undersized configured limit or a starting
+   payload that cannot preserve the packet minimum plus output reserve;
+8. exact tokenizer/runtime measurements, bounded estimates, confidence,
+   `unavailable`, and runtime-supersedes-estimate behavior remain distinct;
+9. zero/unavailable reasoning tokens cannot erase nonzero context use, and
+   billed/estimated/not-billed/unknown cost states remain honest;
+10. warning/checkpoint pressure produces the bounded worker checkpoint and
+   declared stop action without silent truncation or replacement-session start;
+11. validate-only, assemble, and replan Integration routes behave distinctly;
+12. an actor cannot review a result it authored or integrated;
+13. one eligible correction is routed and exactly covered, while a second round
    or new failure class escalates;
-10. restart, duplicate, stale, timeout, and competing-claim cases do not
+14. restart, duplicate, stale, timeout, and competing-claim cases do not
    double-dispatch or corrupt evidence; and
-11. every terminal path prohibits merge, successor selection, and external
+15. every terminal path prohibits merge, successor selection, and external
    access.
 
 Exact fixture paths, implementation-owned paths, commands, schemas, and model
@@ -207,8 +253,10 @@ this architecture proposal.
 | M0-D05 one targeted correction maximum | One eligible exact correction and targeted review; second round/new failure class escalates |
 | M0-D11 bounded Linux filesystem assurance | Preserve the existing boundary; add no stronger containment claim |
 | M0-D12 bounded quality and proportionality | Q1-Q5 below carry all eight mandatory fields and name sufficient proof/ceilings |
+| M0-D14 context and token reporting from preflight | Attempt-bound model/context/quantization fingerprint, minimum/reserve gate, exact/estimated/unavailable counters, cost state, pressure checkpoint, and Atlas-ready reporting |
 | C-22 one milestone and Owner gate | One synthetic assignment reaches `AwaitingOwner` and stops |
 | C-19 durable visible waiting state | Structured worker-reported plan/current step/blocker/ETA-or-unknown plus source/time; no premature failure assumption |
+| V-014/L-011/L-015/P-004/P-007 retained source requirements | Model/context fingerprint, context hard gate, cost/tokens/elapsed evidence, and run outcome begin at preflight rather than as later metrics |
 | C-28 Maestro manages operational eligibility | Deterministic graph projection, dispatchability decision, atomic assignment, and durable reasons |
 | C-31/C-32 planned versus dispatchable and safe bypass | Fixed candidates prove blocked/ready/dispatchable distinctions and valid skip reasons |
 | C-33 locks and designed concurrency | One atomic lock set; contention is simulated; actual execution remains serial |
@@ -346,6 +394,43 @@ this architecture proposal.
   non-terminal until timeout policy allows reconciliation; ambiguity never
   authorizes a duplicate run, invented ETA, or silent scope decision.
 
+### Q6 — Context budget and honest token/cost reporting
+
+- **Protected outcome:** Maestro does not launch a packet that cannot fit its
+  declared context/reserve, misstate estimated usage as exact, confuse one token
+  counter for another, or let context exhaustion silently lose work.
+- **Operating/threat/failure model:** one synthetic attempt has a declared
+  model/runtime/context/quantization fingerprint, known starting input, uncertain
+  future tool/file growth, optional runtime counters, cost availability states,
+  and warning/checkpoint/stop thresholds; missing/malformed counters,
+  estimate/report disagreement, zero reasoning tokens, and pressure crossings
+  are in scope.
+- **Explicit exclusions:** universal token prediction accuracy, raw prompt/
+  transcript storage, chain-of-thought collection, provider billing
+  reconciliation, automatic prompt optimization, silent compaction, automatic
+  session rollover, and global thresholds chosen without run data.
+- **Practical assurance level:** strict preflight schema and minimum/reserve
+  gate; exact values only from the declared tokenizer/runtime; otherwise labeled
+  ranges/estimates with confidence; distinct unavailable/zero and cost states;
+  deterministic pressure/checkpoint decisions.
+- **Sufficient acceptance proof:** named tests cover undersized context and
+  oversized-start rejection, exact versus estimated counts, runtime replacement
+  of estimates, malformed/stale counters, unavailable fields, nonzero context
+  with zero reasoning tokens, all cost states, pressure transitions, checkpoint
+  evidence, and an Atlas-ready usage projection.
+- **Permitted implementation boundary and complexity:** explicit synthetic
+  model/usage fixtures, additive attempt/evidence fields, arithmetic derived
+  values, and transition rules in the existing Python/SQLite service; no real
+  tokenizer/model/billing call, new dependency, background meter, or Atlas UI.
+- **Proportionality ceiling:** one fingerprint and bounded sequence of usage
+  observations for one synthetic attempt, packet-declared thresholds, and one
+  checkpoint action; no optimization engine or cross-run forecasting model.
+- **Exact stop/escalation rule:** reject before launch if minimum/reserve cannot
+  be satisfied; on malformed/ambiguous measurement preserve the last valid fact
+  and stop usage-driven action; at checkpoint/stop pressure follow the declared
+  rule and return any need for compaction/session continuation or new global
+  policy to Architecture/Owner.
+
 ## Explicit non-goals and deferrals
 
 - Alpha-03 implementation, project registration, or a real binding.
@@ -356,7 +441,7 @@ this architecture proposal.
   resource optimization, fairness/aging, or general scheduling.
 - Atlas/API/UI implementation, backup/USB/recovery, deployment, merge, owner
   acceptance automation, or successor selection. Alpha-04 stores only the
-  bounded Atlas-ready worker-status evidence required by Q5.
+  bounded Atlas-ready worker-status and usage evidence required by Q5/Q6.
 - Proving the quality of real worker code or real Integration/reviewer judgment.
 
 These remain V1/V2 or separately approved work. Alpha-04 proves only the
@@ -367,16 +452,19 @@ control-loop decisions and durable handoff semantics using synthetic data.
 There is no unresolved material architecture choice in this planning release.
 The later packet must make the fixture schemas, public result shapes, owned
 paths, exact checks, and stop-before-mutation cases explicit before it can enter
-Decision Fidelity Review. If doing so requires a production scheduler, a real
-actor, a second command/control surface, or a broader threat model, that is a
-material replan and returns to Architecture/Owner.
+Decision Fidelity Review. It must also declare exact context minimum, output
+reserve, warning/checkpoint/stop thresholds, measurement fallbacks, and cost
+states for its synthetic route. If doing so requires a production scheduler, a
+real actor/tokenizer/billing service, a second command/control surface, or a
+broader threat model, that is a material replan and returns to
+Architecture/Owner.
 
 ## Feasibility and proportionality conclusion
 
 The proposal is feasible within the existing one-service Python/SQLite and
 fixture-test model. Fixed schemas, deterministic transition functions, and a
 single active assignment can prove the required semantics without a production
-scheduler, external actor, or new infrastructure. The five quality contracts
+scheduler, external actor, or new infrastructure. The six quality contracts
 bound both the expected assurance and the implementation ceiling.
 
 If an exact execution packet cannot provide the named proof inside that class,
