@@ -1,6 +1,6 @@
 # Alpha-03 — Establish Synthetic Project Discovery and Binding Proposal
 
-**Status:** Draft execution packet; non-executable pending Owner packet approval and Decision Fidelity Review
+**Status:** Owner-approved execution packet; awaiting Decision Fidelity Review; non-executable
 **Owner:** Jeremy Miedreich
 **Architecture plan:** [Alpha-03 proposal](../proposed/alpha-03-synthetic-project-discovery.md), merged at `e89a850f1894351acc052a33471b53b90bcaee8f`
 **Source base:** `e89a850f1894351acc052a33471b53b90bcaee8f` (`master`)
@@ -9,6 +9,10 @@
 **Worker route:** Local Qwen, after this exact packet is approved and released
 **Reviewer route:** fresh Independent Implementation Reviewer, GPT-5.6 Terra at high reasoning
 **Planning fidelity route:** fresh Decision Fidelity Reviewer, GPT-5.6 Sol at high reasoning
+
+**Owner packet approval:** On 2026-08-31, the Owner approved this exact packet
+for independent Decision Fidelity Review. Approval does not release
+implementation.
 
 ## Outcome
 

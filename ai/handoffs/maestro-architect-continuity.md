@@ -45,11 +45,12 @@ successor work.
 The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
 received complete Decision Fidelity coverage and merged at
 `e89a850f1894351acc052a33471b53b90bcaee8f`. The Owner authorized drafting of
-the non-executable [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md).
-It remains fixture-only and needs Owner packet approval plus fresh Decision
-Fidelity Review before implementation authority exists. It does not authorize
-real repository reads, registration, Foundry/VennueSign contact, or successor
-work.
+the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md)
+and approved that exact packet for fresh Decision Fidelity Review on
+2026-08-31. It remains fixture-only and non-executable unless the exact packet
+passes review and receives a later implementation release. It does not
+authorize real repository reads, registration, Foundry/VennueSign contact, or
+successor work.
 
 ## Guardrails
 
