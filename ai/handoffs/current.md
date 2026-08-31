@@ -6,9 +6,11 @@
 received complete Decision Fidelity coverage and merged at
 `e89a850f1894351acc052a33471b53b90bcaee8f`. The Owner authorized drafting of
 the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md),
-then approved that exact packet for fresh Decision Fidelity Review on
-2026-08-31. It remains non-executable unless the exact packet passes review and
-receives a later implementation release. It authorizes no real repository
+then approved that packet for fresh Decision Fidelity Review on 2026-08-31.
+The review returned a correction-only request to define the exact public data
+and failure contract, restore the approved Q2/Q3 proof, and narrow the test
+path. The corrected exact packet now awaits Owner approval before targeted
+follow-up. It remains non-executable and authorizes no real repository
 discovery, Foundry/VennueSign contact, registration, project binding, or
 successor work.
 

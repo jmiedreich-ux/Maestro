@@ -1,6 +1,6 @@
 # Alpha-03 — Establish Synthetic Project Discovery and Binding Proposal
 
-**Status:** Owner-approved execution packet; awaiting Decision Fidelity Review; non-executable
+**Status:** Decision Fidelity `REQUEST_CHANGES`; corrected packet awaiting Owner approval; non-executable
 **Owner:** Jeremy Miedreich
 **Architecture plan:** [Alpha-03 proposal](../proposed/alpha-03-synthetic-project-discovery.md), merged at `e89a850f1894351acc052a33471b53b90bcaee8f`
 **Source base:** `e89a850f1894351acc052a33471b53b90bcaee8f` (`master`)
@@ -30,33 +30,68 @@ stop. This rehearses registration; it never contacts a real project.
    `fixtures/alpha/project-discovery/`. Empty, absolute, traversal,
    separator-containing, missing, or outside-root/symlink-resolving references
    are rejected before a claim, worktree, executor, or SQLite mutation.
-3. The snapshot is a strict JSON object with only `identity`, `authority`,
-   `delivery`, `verification`, `roles`, `operations`, and `exceptions` areas.
-   Unknown fields are rejected. Required leaves are:
+3. The snapshot is a JSON object with the seven fact areas below and optional
+   `conflicts`. No other top-level, area, or leaf key is allowed. A missing area
+   or required leaf is valid discovery input and normalizes to `missing`;
+   malformed JSON, a wrong-typed area/leaf, an unknown key, invalid exception
+   disposition, or invalid conflict encoding is rejected before claim or any
+   mutation. Required leaves and value contracts are:
 
    | Area | Required leaves |
    | --- | --- |
-   | Identity | `project_name`, `repository_identifier`, `default_branch`, `adapter_version`, `process_version` |
-   | Authority | `architecture_paths`, `plan_paths`, `handoff_path`, `rules_sop_path`, `task_issue_conventions` |
-   | Delivery | `branch_pr_merge_policy`, `owner_acceptance_policy`, `deployment_rollback_policy` |
-   | Verification | `build_commands`, `test_commands`, `integration_commands`, `ui_qa_commands`, `evidence_rules`, `untested_handling` |
-   | Roles | `specialist_overlays`, `reviewer_route`, `qa_murphy_policy`, `local_cloud_eligibility` |
-   | Operations | `environment_reference_names`, `secret_reference_names`, `resource_locks`, `notification_policy` |
+   | Identity | `project_name`, `repository_identifier`, `default_branch`, `adapter_version`, `process_version`: non-empty strings |
+   | Authority | `architecture_paths`, `plan_paths`: non-empty arrays of non-empty strings; `handoff_path`, `rules_sop_path`, `task_issue_conventions`: non-empty strings |
+   | Delivery | `branch_pr_merge_policy`, `owner_acceptance_policy`, `deployment_rollback_policy`: non-empty strings |
+   | Verification | `build_commands`, `test_commands`, `integration_commands`, `ui_qa_commands`: arrays of non-empty strings; `evidence_rules`, `untested_handling`: non-empty strings. An empty command array is an explicit confirmed none disposition. |
+   | Roles | `specialist_overlays`: array of non-empty strings; `reviewer_route`, `qa_murphy_policy`, `local_cloud_eligibility`: non-empty strings. An empty overlay array is explicit none. |
+   | Operations | `environment_reference_names`, `secret_reference_names`, `resource_locks`: arrays of non-empty strings; `notification_policy`: non-empty string. An empty array is explicit none. |
    | Exceptions | `disposition` (`none` or `declared`) and `items`; `none` has no items and `declared` has one or more |
 
-   `secret_reference_names` accepts references only; no field accepts or resolves
-   a secret value.
-4. A complete, non-conflicting snapshot records a normalized inventory, a
-   deterministic proposed binding, a SHA-256 fixture digest, bounded evidence,
-   and `AwaitingReview` / `IndependentReview`; the wrapper stops.
-5. A well-formed snapshot with a missing leaf, invalid exception disposition,
-   or conflict records the named inventory/reason, `Rejected` /
-   `CoordinatorEscalation`, and stops. It never defaults, retries, requests a
-   correction, or claims registration.
-6. The existing packet claim is the idempotency key. Duplicate invocation,
+   String values are trimmed; arrays preserve declared order and reject empty
+   entries or duplicates. `secret_reference_names` accepts references only; no
+   field accepts or resolves a secret value.
+
+   `conflicts`, when present, maps a required dotted leaf path to an array of at
+   least two distinct values valid for that leaf's type. An unknown path,
+   fewer than two values, duplicate values, or wrong-typed value is malformed.
+4. The normalized inventory has exactly this public shape:
+
+   ```json
+   {
+     "areas": {
+       "<area>": {
+         "<leaf>": {
+           "status": "confirmed | missing | conflicting",
+           "value": "present only for confirmed",
+           "observed_values": "present only for conflicting"
+         }
+       }
+     },
+     "summary": {"confirmed": 0, "missing": 0, "conflicting": 0},
+     "reviewable": false
+   }
+   ```
+
+   Every required area/leaf is present in `areas`. A missing input leaf has only
+   `status: missing`; a conflict has `status: conflicting` and its normalized
+   `observed_values`; a confirmed fact has `status: confirmed` and normalized
+   `value`. `reviewable` is true only when missing and conflicting counts are
+   zero.
+5. A complete, non-conflicting snapshot records that inventory, a deterministic
+   proposed binding, SHA-256 fixture digest, bounded evidence, and
+   `AwaitingReview` / `IndependentReview`; the wrapper stops. The proposed
+   binding contains exactly the seven fact areas and normalized confirmed
+   values, excludes `conflicts` and inventory status metadata, and is serialized
+   with sorted object keys and compact JSON separators.
+6. A well-formed missing/conflicting snapshot durably records the inventory and
+   a reason listing all dotted missing/conflicting paths, records `Rejected` /
+   `CoordinatorEscalation`, and stops. Malformed input returns validation error
+   before claim, mutation, evidence, or handoff. Neither outcome defaults,
+   retries, requests correction, or claims registration.
+7. The existing packet claim is the idempotency key. Duplicate invocation,
    replay, restart, and competing claim cannot rerun discovery or overwrite the
    initial inventory, proposal, digest, or handoff.
-7. Discovery evidence passes only through the service-owned SQLite boundary.
+8. Discovery evidence passes only through the service-owned SQLite boundary.
    No direct database client, Atlas path, API, or UI is introduced.
 
 ## Owned implementation paths
@@ -72,7 +107,7 @@ services/maestro/maestro/packet_contract.py
 services/maestro/maestro/packet_wrapper.py
 services/maestro/maestro/storage.py
 services/maestro/maestro/synthetic_discovery.py
-tests/alpha_03/**
+tests/alpha_03/test_synthetic_project_discovery.py
 ```
 
 No other path may change. If passing the named proof requires an out-of-scope
@@ -106,17 +141,22 @@ change, stop and return to Architecture/Owner.
 
 - **Protected outcome:** no result is registration-ready unless every leaf in
   the required-facts table is present, valid, and non-conflicting.
-- **Operating/threat/failure model:** trusted synthetic JSON may omit any leaf,
-  include an unknown/wrong-typed field, invalid exception disposition, or a
-  declared conflict.
+- **Operating/threat/failure model:** trusted synthetic JSON may omit any area
+  or leaf or declare a valid conflict; malformed JSON, unknown fields,
+  wrong-typed values, invalid exceptions, and invalid conflict encodings are
+  validation failures before claim/mutation.
 - **Explicit exclusions:** real policy reconciliation, defaults, repository
   parsing, adapter/binding-PR creation, and secret value collection or lookup.
-- **Assurance level:** strict normalization to an owner-readable inventory;
-  only a complete snapshot gets a proposed binding.
-- **Sufficient acceptance proof:** a complete-fixture test asserts the exact
-  normalized schema and every required leaf; parameterized tests remove each
-  leaf and prove non-reviewability; fixtures cover a conflict, malformed/unknown
-  input, and both exception dispositions.
+- **Assurance level:** strict normalization to the exact inventory and proposed-
+  binding shapes in Required behavior; only a complete snapshot is reviewable.
+- **Sufficient acceptance proof:** a complete-fixture test asserts every
+  area/leaf is `confirmed`, the exact inventory/summary, exact normalized
+  proposed binding, digest, and review handoff. Parameterized tests remove each
+  leaf and assert its `missing` status, named reason, no proposed binding, and
+  immediate escalation. Conflict fixtures assert `conflicting`, normalized
+  observed values, named reason, no proposed binding, and escalation. Malformed
+  JSON, unknown/wrong-typed fields, invalid exceptions/conflicts are each
+  rejected before claim/mutation. Both valid exception dispositions are tested.
 - **Implementation boundary:** one parser/normalizer and structured JSON
   evidence; no policy engine, language inference, or auto-repair.
 - **Proportionality ceiling:** only the seven M0-D02 areas and finite fixture
@@ -135,9 +175,11 @@ change, stop and return to Architecture/Owner.
   and guarantees beyond the existing one-process synthetic model.
 - **Assurance level:** the existing atomic claim controls one packet key; new
   SQLite evidence is tied to it and preserved on replay.
-- **Sufficient acceptance proof:** complete/missing/conflict cases have one
-  durable result; duplicate/restart/competing-claim tests prove no second
-  executor or overwritten result; outcomes have review or escalation handoff.
+- **Sufficient acceptance proof:** complete input durably stores exactly one
+  inventory, proposed binding, digest, and `AwaitingReview` handoff;
+  missing/conflicting input durably stores exactly one inventory, named reason,
+  and escalation handoff with no proposal. Duplicate/restart/competing-claim
+  tests prove no second executor and no altered evidence or terminal outcome.
 - **Implementation boundary:** existing SQLite transaction pattern plus
   standard-library JSON/SHA-256; Maestro storage is sole writer.
 - **Proportionality ceiling:** additive local evidence only; no migration
