@@ -1,6 +1,6 @@
 # Alpha-03-R2 — Establish Synthetic Project Discovery and Binding Proposal
 
-**Status:** Decision Fidelity **APPROVE** at exact head `766975650159f3ff9b9b1ea93894cb138e912912`; merged to `master` at `76e30a701d94a4e091c7a28a28cd0799aefd357d`; non-executable pending explicit Owner implementation release
+**Status:** Complete by explicit Owner acceptance at official implementation head `f21e4a2ff25cead8b972b4433da33f0e9910efc5`; see the [Alpha-03 done record](../done/alpha-03-synthetic-project-discovery.md)
 **Owner:** Jeremy Miedreich
 **Architecture plan:** [Alpha-03 proposal](../proposed/alpha-03-synthetic-project-discovery.md), merged at `e89a850f1894351acc052a33471b53b90bcaee8f`
 **Source base:** `e89a850f1894351acc052a33471b53b90bcaee8f` (`master`)
@@ -31,6 +31,11 @@ access, release, acceptance, or merge decisions.
 **Full Decision Fidelity Review:** **APPROVE** for exact range
 `e89a850f1894351acc052a33471b53b90bcaee8f..766975650159f3ff9b9b1ea93894cb138e912912`.
 The planning merge does not release implementation.
+
+**Owner completion:** On 2026-09-01, the Owner confirmed the official first
+Local Qwen implementation was signed off and directed closeout at corrected
+head `f21e4a2ff25cead8b972b4433da33f0e9910efc5`. The implementation-review
+exception and known Alpha-only limitation are recorded in the done record.
 
 ## Outcome
 

@@ -1,0 +1,49 @@
+{
+  "identity": {
+    "project_name": "maestro-alpha-03-test-conflict",
+    "repository_identifier": "alpha-03/synthetic-test-conflict",
+    "default_branch": "main",
+    "adapter_version": "0.1.0",
+    "process_version": "1.0.0"
+  },
+  "authority": {
+    "architecture_paths": ["docs/architecture"],
+    "plan_paths": ["docs/planning"],
+    "handoff_path": "docs/planning/handoff.md",
+    "rules_sop_path": "docs/sop/rules.md",
+    "task_issue_conventions": "github-issues-standard"
+  },
+  "delivery": {
+    "branch_pr_merge_policy": "feature-branch-pr-merge",
+    "owner_acceptance_policy": "owner-must-approve",
+    "deployment_rollback_policy": "immediate-manual-rollback"
+  },
+  "verification": {
+    "build_commands": ["python -m pytest --collect-only"],
+    "test_commands": ["python -m pytest tests/"],
+    "integration_commands": ["python -m pytest tests/integration/"],
+    "ui_qa_commands": ["python -m pytest tests/ui/"],
+    "evidence_rules": "require-log-evidence",
+    "untested_handling": "escalate-untested"
+  },
+  "roles": {
+    "specialist_overlays": ["architecture", "security"],
+    "reviewer_route": "independent-reviewer",
+    "qa_murphy_policy": "always-inject",
+    "local_cloud_eligibility": "local-only"
+  },
+  "operations": {
+    "environment_reference_names": ["dev", "staging"],
+    "secret_reference_names": ["DB_PASSWORD_REF", "API_KEY_REF"],
+    "resource_locks": ["docs-generation-lock"],
+    "notification_policy": "on-failure-only"
+  },
+  "exceptions": {
+    "disposition": "declared",
+    "items": ["custom-approval-flow"]
+  },
+  "conflicts": {
+    "identity.default_branch": ["main", "develop"],
+    "exceptions.items": [["custom-approval-flow"], ["custom-approval-flow", "ci-skip-weekends"]]
+  }
+}

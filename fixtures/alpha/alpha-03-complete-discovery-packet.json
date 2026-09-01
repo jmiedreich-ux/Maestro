@@ -1,0 +1,33 @@
+{
+  "packet_id": "alpha-03-complete-discovery",
+  "title": "Synthetic complete project discovery with proposed binding",
+  "authority": {
+    "approval_reference": "Alpha-03 approved packet",
+    "fidelity_reference": "Decision Fidelity Review e89a850"
+  },
+  "owned_paths": [
+    "docs/architecture/alpha-03-synthetic-project-discovery.md",
+    "docs/operations/alpha-03-synthetic-project-discovery.md",
+    "fixtures/alpha/alpha-03-*.json",
+    "fixtures/alpha/project-discovery/**",
+    "services/maestro/maestro/cli.py",
+    "services/maestro/maestro/lifecycle.py",
+    "services/maestro/maestro/packet_contract.py",
+    "services/maestro/maestro/packet_wrapper.py",
+    "services/maestro/maestro/storage.py",
+    "services/maestro/maestro/synthetic_discovery.py",
+    "tests/alpha_03/test_synthetic_project_discovery.py"
+  ],
+  "gates": [
+    {"name": "alpha-01-tests", "command": "python -m unittest discover -s tests/alpha_01 -v"},
+    {"name": "alpha-02-tests", "command": "python -m unittest discover -s tests/alpha_02 -v"},
+    {"name": "alpha-03-tests", "command": "python -m unittest discover -s tests/alpha_03 -v"}
+  ],
+  "executor": {
+    "kind": "synthetic-local",
+    "scenario": "discovery-complete"
+  },
+  "discovery_fixture": "complete-snapshot.json",
+  "independent_review_route": "Independent Implementation Reviewer",
+  "owner_stop_boundary": "Stop after the independent-review handoff."
+}
