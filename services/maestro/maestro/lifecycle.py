@@ -1,9 +1,9 @@
-"""Pure Alpha-02 lifecycle grading for controlled synthetic executor facts."""
+"""Lifecycle grading for controlled synthetic executor facts."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from .packet_contract import ApprovedPacket
 
@@ -23,6 +23,9 @@ class SyntheticWorkerResult:
     gate_results: Mapping[str, bool]
     violations: tuple[str, ...]
     log: str
+    inventory: dict[str, Any] | None = None
+    proposed_binding: dict[str, Any] | None = None
+    fixture_digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +39,12 @@ class LifecycleDecision:
 
 def grade_result(packet: ApprovedPacket, result: SyntheticWorkerResult) -> LifecycleDecision:
     """Apply M0-D05 mechanically, without choosing product or design work."""
+    if packet.is_discovery:
+        return _grade_discovery(packet, result)
+    return _grade_alpha02(packet, result)
+
+
+def _grade_alpha02(packet: ApprovedPacket, result: SyntheticWorkerResult) -> LifecycleDecision:
     if not result.commit:
         return LifecycleDecision(REJECTED, "CoordinatorEscalation", "missing required commit")
     if not result.scoped_diff:
@@ -57,6 +66,13 @@ def grade_result(packet: ApprovedPacket, result: SyntheticWorkerResult) -> Lifec
             f"one eligible targeted correction: named gate failed: {failed_gates[0]}",
         )
     return LifecycleDecision(AWAITING_REVIEW, "IndependentReview", "valid result awaits independent review")
+
+
+def _grade_discovery(packet: ApprovedPacket, result: SyntheticWorkerResult) -> LifecycleDecision:
+    if result.inventory is not None and result.inventory.get("reviewable", False):
+        return LifecycleDecision(AWAITING_REVIEW, "IndependentReview", "complete synthetic discovery inventory awaits review")
+    reason_parts = result.log if result.log else "missing or conflicting facts"
+    return LifecycleDecision(REJECTED, "CoordinatorEscalation", reason_parts)
 
 
 def _in_scope(changed_paths: Sequence[str], owned_paths: Sequence[str]) -> bool:

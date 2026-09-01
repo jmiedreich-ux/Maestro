@@ -1,4 +1,4 @@
-"""Minimal SQLite foundation: connection safety and migration metadata only."""
+"""Minimal SQLite foundation: connection safety, migration metadata, and discovery evidence."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any, Iterator
 from .config import RuntimeConfig
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -243,6 +243,18 @@ class SQLiteFoundation:
             )
             """
         )
+        # Alpha-03 discovery evidence table.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS discovery_evidence (
+                packet_id TEXT PRIMARY KEY REFERENCES packet_runs(packet_id),
+                inventory_json TEXT NOT NULL,
+                proposed_binding_json TEXT,
+                fixture_digest TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
 
     @staticmethod
     def _prepare_connection(connection: sqlite3.Connection) -> tuple[str, bool]:
@@ -261,6 +273,26 @@ class SQLiteFoundation:
             "INSERT OR IGNORE INTO packet_evidence(packet_id, evidence_kind, payload_json) VALUES (?, ?, ?)",
             (packet_id, evidence_kind, _json(payload)),
         )
+
+    def record_discovery_evidence(
+        self,
+        packet_id: str,
+        inventory: dict[str, Any],
+        proposed_binding: dict[str, Any] | None,
+        fixture_digest: str,
+    ) -> None:
+        """Record immutable discovery inventory, binding, and fixture digest."""
+        with self._connection() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO discovery_evidence(packet_id, inventory_json, proposed_binding_json, fixture_digest) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    packet_id,
+                    _json(inventory),
+                    _json(proposed_binding) if proposed_binding else None,
+                    fixture_digest,
+                ),
+            )
 
 
 def _json(payload: dict[str, Any]) -> str:
