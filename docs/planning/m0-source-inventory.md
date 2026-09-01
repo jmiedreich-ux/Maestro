@@ -16,6 +16,7 @@
 | S-08 | [Agent-workforce planning conversation, 2026-08-29](../../sources/planning/2026-08-29-agent-workforce-conversation.md) | Architecture Agent, Maestro manager, specialist queues, Atlas control plane, parallelism, SOP, integration, review, and handoff requirements | Source-preserved and reconciled into the Control Plane and this register |
 | S-09 | [Synthetic control-loop qualification direction, 2026-08-31](../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md) | Owner direction to prove assignment and role handoffs synthetically before the first live Foundry packet | Reconciled into M0-D13, the Master Plan, the Control Plane, and the Alpha-04 proposal |
 | S-10 | `origin/docs/agent-usage-observability` at `bb4a35a` and [context/usage direction, 2026-08-31](../../sources/planning/2026-08-31-context-and-token-reporting.md) | Earlier allowance/usage design plus Owner direction to begin context, token, and ChatGPT/Codex weekly-allowance reporting with the control loop | Early bounded subset reconciled into M0-D14 and Alpha-04; broader proposal remains unresolved |
+| S-11 | [Alpha-03 Owner closeout, 2026-09-01](../../sources/planning/2026-09-01-alpha-03-owner-closeout.md) | Owner confirmation that the official first Qwen Alpha-03 result was signed off, acceptance of its recorded fixture-only limitation, and direction to pause Alpha-04 | Reconciled into the Alpha-03 done record, current handoff, and Architecture continuity |
 
 ## Original M0 agreements retained
 
@@ -70,6 +71,7 @@
 | C-42 | Eventual Maestro merge and autonomous next-work selection require a separately reviewed delegation policy. This document merge does not grant product-code merge authority. | Control Plane §13 |
 | C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, patient worker-status inquiry, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Worker timing may remain honestly unknown; Atlas reports the durable response but never asks the worker. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §§7, 10, 13 / Alpha-04 proposal |
 | C-44 | Context and usage reporting begins at preflight. Supported ChatGPT/Codex weekly allowance observations remain distinct from attempt tokens; controlled usage, coarse registered activity, and unattributed remainder reconcile to account change; local Qwen capacity stays separate; unsupported facts are `unavailable` and Atlas is read-only. | M0-D14 / Master Plan §§2, 9 / Control Plane §§7, 10–13 / Alpha-04 proposal |
+| C-45 | Alpha-03 is complete at official corrected head `f21e4a2`; its remaining malformed authority-conflict limitation is explicitly accepted only for trusted Alpha fixtures. The later Qwen rerun is benchmark-only, and Alpha-04 remains paused pending new Owner direction. | S-11 / Alpha-03 done record / current handoff |
 
 ## Required diagram concepts retained
 

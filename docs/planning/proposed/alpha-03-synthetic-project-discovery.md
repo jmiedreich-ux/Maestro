@@ -1,12 +1,13 @@
 # Alpha-03 — Synthetic Project Discovery and Binding Proposal
 
-**Status:** Owner-approved and Decision-Fidelity-approved architecture plan; merged at `e89a850f1894351acc052a33471b53b90bcaee8f`; implementation unreleased
+**Status:** Complete by explicit Owner acceptance at official implementation head `f21e4a2ff25cead8b972b4433da33f0e9910efc5`; see the [Alpha-03 done record](../done/alpha-03-synthetic-project-discovery.md)
 **Project:** Maestro
 **Proposed graph revision:** `maestro-alpha-03-r1`
 **Source base:** `8a088e400a479078acdc85801cab384414d820c8` (`master`)
 **Owner approval:** On 2026-08-31, the Owner approved this synthetic
-project-discovery and binding-proposal plan for independent Decision Fidelity
-Review. It does not authorize a packet release or implementation.
+project-discovery and binding-proposal plan. On 2026-09-01, the Owner confirmed
+the official first Qwen implementation was signed off and directed Alpha-03
+closeout. This authorizes no real-project or Alpha-04 work.
 
 ## Outcome
 
@@ -30,7 +31,7 @@ inspect, register, bind, or modify a real project.
 
 | Authority | Alpha-03 consequence |
 | --- | --- |
-| [Current handoff](../../../ai/handoffs/current.md) | Alpha-01 and Alpha-02 are complete; Alpha-03 has no implementation authority. Alpha stays synthetic-only. |
+| [Current handoff](../../../ai/handoffs/current.md) | Alpha-01 through Alpha-03 are complete. Alpha-03 remains synthetic-only, and Alpha-04 is paused pending separate Owner direction. |
 | [M0-D02 — Project Registration and Bootstrap](../decisions/m0-d02-project-registration.md) | The synthetic inventory and proposal carry M0-D02's required identity, authority, delivery, verification, role, operations, and exception facts. No real registration state is created. |
 | [M0-D01 — Operational Database](../decisions/m0-d01-operational-database.md) | Maestro's local service remains the only SQLite writer. Atlas receives no command path or direct database access. |
 | [M0-D05 — Rework, Review, and Escalation](../decisions/m0-d05-rework-review-and-escalation.md) | An insufficient or contradictory discovery is an immediate escalation, not a worker correction loop. A valid result stops at independent review. |
@@ -283,16 +284,10 @@ Those are later Architecture/Owner choices.
 | M0-D07 USB recovery deferral | No backup/recovery work |
 | Owner-gated successor work | Valid output stops at independent-review handoff; this proposal authorizes no later work |
 
-## Required next gates
+## Completion
 
-1. The plan received complete Decision Fidelity coverage and merged at the
-   exact revision recorded above.
-2. The superseding Alpha-03-R2 execution packet received fresh full Decision
-   Fidelity **APPROVE** and merged at
-   `76e30a701d94a4e091c7a28a28cd0799aefd357d`.
-3. The Owner must explicitly release that merged packet before the bounded
-   Local Qwen implementation route may begin.
-4. A fresh Independent Implementation Reviewer reviews the exact result
-   at GPT-5.6 Terra high reasoning.
-
-Alpha-03 implementation remains unreleased.
+The official Local Qwen implementation and correction completed at exact head
+`f21e4a2ff25cead8b972b4433da33f0e9910efc5`. The Owner accepted that result on
+2026-09-01 with the exact Alpha-only limitation preserved in the
+[done record](../done/alpha-03-synthetic-project-discovery.md). Alpha-04 remains
+paused and requires separate Owner release.

@@ -32,22 +32,26 @@ Turn an approved project architecture direction and current-source evidence into
   `16cfb9970e30a7b29192243540629be2dc2c0f40`. It establishes only the
   synthetic `maestro run-packet` lifecycle wrapper; its review-handoff stop
   boundary remains controlling.
-- **Alpha-03-R2** has an Owner-approved, Decision-Fidelity-approved packet
-  merged to `master` at `76e30a701d94a4e091c7a28a28cd0799aefd357d`.
-  Implementation is not released. Alpha remains synthetic-only; Atlas is
-  read-only; Foundry/VennueSign stay untouched; project registration remains
+- **Alpha-03** is complete by explicit Owner acceptance at official Local Qwen
+  implementation head `f21e4a2ff25cead8b972b4433da33f0e9910efc5`.
+  Its done record preserves the independent-review disposition and one accepted
+  fixture-only authority-array limitation. Alpha remains synthetic-only; Atlas
+  is read-only; Foundry/VennueSign stay untouched; project registration remains
   post-Alpha; and M0-D07's USB gate remains unchanged.
 - **M0-D13 / M0-D14 / Alpha-04** record the Owner-approved requirement to qualify one
   whole synthetic control loop after Alpha-03 and before live Foundry V1. The
   original planning release received Decision Fidelity APPROVE and merged in
   PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`. A later
-  patient-worker and allowance/context/usage amendment awaits review/merge.
+  patient-worker and allowance/context/usage amendment merged in PR #12 at
+  `b2594d9ab4cad528cd6272622f68162850a0584e`.
   Alpha-04 may prove one
   fixture-derived assignment, patient status inquiry, Integration/review
   routing, bounded correction, supported weekly-window reconciliation,
   context/token reporting, separate local capacity, and recovery, but it
   authorizes no provider scraping/account access, production scheduler, real
-  actor dispatch, implementation, or Foundry access.
+  actor dispatch, implementation, or Foundry access. The Owner paused Alpha-04
+  on 2026-09-01; do not create or release its execution packet without new
+  direction.
 
 ## May do
 

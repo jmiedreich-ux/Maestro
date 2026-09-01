@@ -1,28 +1,30 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 and Alpha-02 are complete and merged. Alpha-02's exact independently approved implementation head is `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base `06c81b8030140cca6001bc1514aabb8152c77dca`. Alpha-03 has an approved but unreleased packet. The pre-V1 Alpha-04 synthetic control-loop plan received Decision Fidelity APPROVE and merged in PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`; its Owner-approved patient-worker, weekly-allowance, context, and usage-reporting amendment still requires fresh review and merge. No Alpha-03/Alpha-04 implementation, real worker, API/UI, provider-account access, Foundry, VennueSign, project registration, project-adapter, GitHub automation, or USB-recovery implementation is authorized by this handoff.
+**Status:** Alpha-01 through Alpha-03 are complete. Alpha-03's official Local
+Qwen implementation is accepted at exact corrected head
+`f21e4a2ff25cead8b972b4433da33f0e9910efc5` by explicit Owner closeout on
+2026-09-01. The later Qwen rerun is benchmark evidence only. Alpha-04 planning
+and its reporting amendment are merged, but Alpha-04 is paused by the Owner and
+has no execution packet or implementation release. No real worker, API/UI,
+provider-account access, Foundry, VennueSign, real project registration,
+project-adapter, GitHub automation, or USB-recovery implementation is
+authorized by this handoff.
 
-**Alpha-03 planning only:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
-received complete Decision Fidelity coverage and merged at
-`e89a850f1894351acc052a33471b53b90bcaee8f`. The Owner authorized drafting of
-the [Alpha-03 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md),
-then approved that packet for fresh Decision Fidelity Review on 2026-08-31.
-The review returned a correction-only request to define the exact public data
-and failure contract, restore the approved Q2/Q3 proof, and narrow the test
-path. The targeted follow-up left `exceptions.items` ambiguous, exhausting the
-M0-D05 correction route and freezing PR #8 at `e669a429`. The Owner approved a
-superseding Alpha-03-R2 packet with an exact exceptions-array contract and
-delegated non-material packet details to Architecture. Fresh full Decision
-Fidelity Review returned **APPROVE** for exact head
-`766975650159f3ff9b9b1ea93894cb138e912912`, and PR #9 merged to `master` at
-`76e30a701d94a4e091c7a28a28cd0799aefd357d`. The packet remains non-executable
-until the Owner explicitly releases implementation. It authorizes no real
-repository discovery, Foundry/VennueSign contact, registration, project
-binding, or successor work. The status-only reconciliation in PR #10 merged to
-`master` at `d0ec9c4593c42e4be5d3461f11ece8b9021ff141` without releasing or
-dispatching implementation.
+**Alpha-03 complete:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
+and [R2 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md)
+received their required planning approvals and merges. The official Local Qwen
+implementation completed at `e3929c46882dbd0512bac377bdef1440d4e17cff`
+with its targeted correction at
+`f21e4a2ff25cead8b972b4433da33f0e9910efc5`. The full and targeted
+implementation reviews returned `REQUEST_CHANGES`; all named commands passed,
+but a conflicting empty required authority-path array remained accepted. On
+2026-09-01 the Owner confirmed the official run was signed off and directed
+closeout at `f21e4a2`. The [Alpha-03 done record](../../docs/planning/done/alpha-03-synthetic-project-discovery.md)
+preserves that explicit Owner acceptance exception and the exact trusted-fixture
+limitation. The benchmark head `e9a0a0196a019962f2f15095b8f492f62643e95e`
+is not the accepted implementation.
 
-**Alpha-04 planning only:** On 2026-08-31, the Owner agreed that
+**Alpha-04 paused:** On 2026-08-31, the Owner agreed that
 Maestro must qualify its core assignment/control loop synthetically before a
 real Foundry packet becomes the first whole-loop proving subject. Accepted
 [M0-D13](../../docs/planning/decisions/m0-d13-synthetic-control-loop-qualification.md)
@@ -44,11 +46,12 @@ approved beginning its bounded allowance/context/usage subset under
 record a supported ChatGPT/Codex weekly window when available, keep attempt
 tokens distinct from allowance units, reconcile controlled/coarse/unattributed
 usage, keep local Qwen capacity separate, and report unsupported facts as
-`unavailable` without scraping. The broader multi-provider, live-adapter, UI,
-retention, threshold, and enforcement proposal remains unresolved. This
-combined amendment still requires fresh Decision Fidelity Review and merge.
-Neither the merged plan nor the amendment creates an execution packet or
-implementation authority.
+`unavailable` without scraping. The combined amendment merged in PR #12 at
+`b2594d9ab4cad528cd6272622f68162850a0584e`. The broader multi-provider,
+live-adapter, UI, retention, threshold, and enforcement proposal remains
+unresolved. No Alpha-04 execution packet exists. On 2026-09-01 the Owner
+explicitly paused Alpha-04; do not draft, review, release, or implement it until
+the Owner provides new direction.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -94,7 +97,7 @@ The current M0 expansion is captured in:
 - Current policy permits parallelism only among independent packets within one active milestone. Shared contracts, DI, migrations, fixtures, workflows, tracker/status, and handoff retain their declared ownership/locks.
 - An AI-friendly source-affordance refactor may be proposed as planning work first. M0 does not change VennueSign source to make it agent-friendly.
 
-## Alpha-01 and Alpha-02 completion
+## Alpha-01 through Alpha-03 completion
 
 [Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md)
 is complete and merged to `master` at
@@ -128,12 +131,18 @@ preserves the exact review, scope, check, and exclusion evidence. The wrapper
 records its independent-review handoff and stops; it does not perform review,
 merge, automatic correction, or successor selection.
 
-There is no executable successor packet. Alpha-03 and all other implementation
-increments require their own Architecture, Owner, Decision Fidelity, and
-implementation authority. Alpha-04 has no execution packet and cannot begin
-until Alpha-03 is complete and accepted. Do not start Alpha-03, Alpha-04, real
-worker dispatch, Atlas/API/UI, project registration or integration, GitHub
-automation, or USB recovery work from this handoff.
+[Alpha-03 — Synthetic Project Discovery and Binding Proposal](../../docs/planning/done/alpha-03-synthetic-project-discovery.md)
+is complete by explicit Owner acceptance at exact official corrected head
+`f21e4a2ff25cead8b972b4433da33f0e9910efc5`. Its fixture-only binding result is
+available to the future Alpha-04 qualification. The done record preserves the
+review outcomes and accepted malformed-conflict limitation without claiming an
+independent-review approval.
+
+There is no executable successor packet. Alpha-04 is explicitly paused and
+requires new Owner direction before any packet drafting, review, release, or
+implementation. Do not start Alpha-04, real worker dispatch, Atlas/API/UI,
+project registration or integration, GitHub automation, or USB recovery work
+from this handoff.
 
 ## Open implementation decisions
 

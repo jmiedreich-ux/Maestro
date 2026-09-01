@@ -1,10 +1,9 @@
 # Alpha-04 — Synthetic Control-Loop Qualification
 
-- **Status:** Original planning release received Decision Fidelity APPROVE at
-  exact head `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in PR #11 at
-  `dcca2174dd919aa204707961f1b33ad15de9af41`; Owner-approved patient-worker,
-  allowance-window, context, and usage-reporting amendment awaits fresh
-  Decision Fidelity Review and merge
+- **Status:** Planning release and reporting amendment are merged through PR
+  #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`; Alpha-03 predecessor is
+  complete; Owner paused Alpha-04 on 2026-09-01; no execution packet or
+  implementation release
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
 - **Graph revision:** `maestro-alpha-04-plan-r2`
