@@ -8,9 +8,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .config import RuntimeConfig
-from .lifecycle import LifecycleDecision, SyntheticWorkerResult, grade_result
-from .packet_contract import ApprovedPacket
+from .lifecycle import LifecycleDecision, SyntheticWorkerResult, grade_discovery, grade_result
+from .packet_contract import _DISCOVERY_SCENARIOS, ApprovedPacket
 from .storage import SQLiteFoundation
+from .synthetic_discovery import load_discovery_fixture, propose_binding
 
 
 MAX_CAPTURED_LOG_BYTES = 2048
@@ -52,10 +53,40 @@ class PacketWrapper:
     def run(self, packet_path: str | Path) -> RunPacketResult:
         # This deliberately precedes storage construction/claiming/worktree creation.
         packet = ApprovedPacket.from_file(packet_path)
+
+        # Discovery scenarios: load and validate the fixture once, before claim.
+        loaded = None
+        if packet.scenario in _DISCOVERY_SCENARIOS:
+            loaded = load_discovery_fixture(packet.discovery_fixture)
+
         claim = self.storage.claim_packet(packet.packet_id, packet.as_evidence())
         if not claim.claimed:
             return RunPacketResult(packet.packet_id, claim.status, None, False, claim.worktree_path)
 
+        # Discovery scenarios: bypass worktree and executor entirely.
+        if loaded is not None:
+            decision = grade_discovery(loaded.inventory)
+            proposed_binding = None
+            if decision.handoff_kind == "IndependentReview":
+                proposed_binding = propose_binding(loaded.inventory)
+            finished = self.storage.finish_discovery(
+                packet.packet_id,
+                decision.status,
+                decision.handoff_kind,
+                decision.reason,
+                loaded.inventory,
+                proposed_binding,
+                loaded.fixture_digest,
+            )
+            return RunPacketResult(
+                packet.packet_id,
+                finished.status,
+                decision.handoff_kind if finished.claimed else None,
+                finished.claimed,
+                None,
+            )
+
+        # Legacy synthetic path (unchanged).
         worktree_path = self._create_fixture_worktree(packet.packet_id)
         started = self.storage.start_packet(
             packet.packet_id,

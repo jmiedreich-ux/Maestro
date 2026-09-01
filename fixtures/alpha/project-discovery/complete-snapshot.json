@@ -1,0 +1,45 @@
+{
+  "identity": {
+    "project_name": "maestro",
+    "repository_identifier": "jmiedreich-ux/maestro",
+    "default_branch": "main",
+    "adapter_version": "1.0.0",
+    "process_version": "alpha"
+  },
+  "authority": {
+    "architecture_paths": ["docs/architecture/maestro.md"],
+    "plan_paths": ["docs/planning/maestro-master-plan.md"],
+    "handoff_path": "docs/planning/handoff-contract.md",
+    "rules_sop_path": "docs/operations/sop.md",
+    "task_issue_conventions": "Linear tickets with prefix MAESTRO"
+  },
+  "delivery": {
+    "branch_pr_merge_policy": "Require one approved review before merge",
+    "owner_acceptance_policy": "Owner signs off on every merged PR",
+    "deployment_rollback_policy": "Roll-back within one hour on regression"
+  },
+  "verification": {
+    "build_commands": ["pip install -e services/maestro", "python -m compileall services/maestro"],
+    "test_commands": ["python -m pytest tests/"],
+    "integration_commands": ["python -m pytest tests/integration/"],
+    "ui_qa_commands": [],
+    "evidence_rules": "Every claim backed by a test or fixture file path",
+    "untested_handling": "Record as known risk in evidence store"
+  },
+  "roles": {
+    "specialist_overlays": [],
+    "reviewer_route": "Independent Implementation Reviewer",
+    "qa_murphy_policy": "Mandatory adversarial review for all PRs",
+    "local_cloud_eligibility": "Local-first; cloud optional if local passes"
+  },
+  "operations": {
+    "environment_reference_names": ["dev"],
+    "secret_reference_names": [],
+    "resource_locks": [],
+    "notification_policy": "Terminal summary only"
+  },
+  "exceptions": {
+    "disposition": "none",
+    "items": []
+  }
+}

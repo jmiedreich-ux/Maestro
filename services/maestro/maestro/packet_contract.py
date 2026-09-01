@@ -11,7 +11,12 @@ from typing import Any
 
 _PACKET_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 _SYNTHETIC_EXECUTORS = {"synthetic-local"}
-_SYNTHETIC_SCENARIOS = {
+_DISCOVERY_SCENARIOS = frozenset({
+    "discovery-complete",
+    "discovery-missing",
+    "discovery-conflicting",
+})
+_LEGACY_SCENARIOS = frozenset({
     "success",
     "gate-failure",
     "missing-commit",
@@ -20,7 +25,8 @@ _SYNTHETIC_SCENARIOS = {
     "dependency-violation",
     "configuration-violation",
     "placeholder-violation",
-}
+})
+_SYNTHETIC_SCENARIOS = _DISCOVERY_SCENARIOS | _LEGACY_SCENARIOS
 
 
 class PacketValidationError(ValueError):
@@ -47,6 +53,7 @@ class ApprovedPacket:
     gates: tuple[ValidationGate, ...]
     executor_kind: str
     scenario: str
+    discovery_fixture: str | None
     independent_review_route: str
     owner_stop_boundary: str
 
@@ -83,6 +90,8 @@ class ApprovedPacket:
         scenario = _required_text(executor, "scenario")
         if scenario not in _SYNTHETIC_SCENARIOS:
             raise PacketValidationError("executor.scenario must be a supported synthetic fixture case")
+        discovery_fixture = _safe_fixture_basename(payload.get("discovery_fixture"))
+        _enforce_discovery_pairing(scenario, discovery_fixture)
 
         return cls(
             packet_id=packet_id,
@@ -93,13 +102,14 @@ class ApprovedPacket:
             gates=gates,
             executor_kind=executor_kind,
             scenario=scenario,
+            discovery_fixture=discovery_fixture,
             independent_review_route=_required_text(payload, "independent_review_route"),
             owner_stop_boundary=_required_text(payload, "owner_stop_boundary"),
         )
 
     def as_evidence(self) -> dict[str, object]:
         """Return local authority facts suitable for durable SQLite evidence."""
-        return {
+        result: dict[str, object] = {
             "packet_id": self.packet_id,
             "title": self.title,
             "approval_reference": self.approval_reference,
@@ -111,6 +121,9 @@ class ApprovedPacket:
             "independent_review_route": self.independent_review_route,
             "owner_stop_boundary": self.owner_stop_boundary,
         }
+        if self.discovery_fixture is not None:
+            result["discovery_fixture"] = self.discovery_fixture
+        return result
 
 
 def _required_mapping(payload: dict[str, Any], field: str) -> dict[str, Any]:
@@ -152,3 +165,35 @@ def _gates(value: Any) -> tuple[ValidationGate, ...]:
         names.add(name)
         gates.append(ValidationGate(name=name, command=_required_text(gate, "command")))
     return tuple(gates)
+
+
+def _safe_fixture_basename(value: Any) -> str | None:
+    """Validate and return a safe JSON basename for the discovery fixture, or None."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise PacketValidationError("discovery_fixture must be a string or absent")
+    trimmed = value.strip()
+    if not trimmed:
+        raise PacketValidationError("discovery_fixture must not be empty")
+    if trimmed.startswith("/") or "\\" in trimmed or "/" in trimmed:
+        raise PacketValidationError("discovery_fixture must be a plain basename")
+    if trimmed in (".", ".."):
+        raise PacketValidationError("discovery_fixture must not be '.' or '..'")
+    if not trimmed.endswith(".json"):
+        raise PacketValidationError("discovery_fixture must end with .json")
+    return trimmed
+
+
+def _enforce_discovery_pairing(scenario: str, discovery_fixture: str | None) -> None:
+    """Discovery scenarios require a discovery_fixture; legacy scenarios reject one."""
+    if scenario in _DISCOVERY_SCENARIOS:
+        if discovery_fixture is None:
+            raise PacketValidationError(
+                f"Scenario {scenario!r} requires a discovery_fixture"
+            )
+    elif scenario in _LEGACY_SCENARIOS:
+        if discovery_fixture is not None:
+            raise PacketValidationError(
+                f"Legacy scenario {scenario!r} must not carry a discovery_fixture"
+            )

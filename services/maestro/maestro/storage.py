@@ -144,6 +144,59 @@ class SQLiteFoundation:
             connection.commit()
         return PacketClaim(packet_id, status, True, row[1])
 
+    def finish_discovery(
+        self,
+        packet_id: str,
+        status: str,
+        handoff_kind: str,
+        reason: str,
+        inventory: dict[str, Any],
+        proposed_binding: dict[str, Any] | None,
+        fixture_digest: str,
+    ) -> PacketClaim:
+        """Persist discovery results and transition a Claimed packet to a terminal status.
+
+        Only transitions a row whose status is exactly ``"Claimed"``.  On success
+        the single ``BEGIN IMMEDIATE`` transaction writes immutable evidence
+        (inventory, fixture_digest, and optionally proposed_binding), one handoff,
+        and updates both ``packet_runs`` and ``packet_attempts`` to the terminal
+        status.  On failure the original state is preserved and a
+        ``PacketClaim(claimed=False)`` is returned.
+        """
+        if not isinstance(fixture_digest, str) or not fixture_digest.strip():
+            raise ValueError("fixture_digest must be a non-empty string")
+        if not isinstance(inventory, dict):
+            raise ValueError("inventory must be a dict")
+        if proposed_binding is not None and not isinstance(proposed_binding, dict):
+            raise ValueError("proposed_binding must be a dict or None")
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status, worktree_path FROM packet_runs WHERE packet_id = ?", (packet_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Packet {packet_id} has no durable claim")
+            current_status: str = str(row[0])
+            worktree_path = row[1]
+            if current_status != "Claimed":
+                connection.commit()
+                return PacketClaim(packet_id, current_status, False, worktree_path)
+            self._record_evidence(connection, packet_id, "inventory", inventory)
+            self._record_evidence(connection, packet_id, "fixture_digest", {"sha256": fixture_digest})
+            if proposed_binding is not None:
+                self._record_evidence(connection, packet_id, "proposed_binding", proposed_binding)
+            connection.execute(
+                "INSERT OR IGNORE INTO packet_handoffs(packet_id, handoff_kind, reason) VALUES (?, ?, ?)",
+                (packet_id, handoff_kind, reason),
+            )
+            connection.execute(
+                "UPDATE packet_runs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE packet_id = ?",
+                (status, packet_id),
+            )
+            connection.execute("UPDATE packet_attempts SET status = ? WHERE packet_id = ?", (status, packet_id))
+            connection.commit()
+        return PacketClaim(packet_id, status, True, None)
+
     def packet_snapshot(self, packet_id: str) -> dict[str, Any] | None:
         """Read local lifecycle facts for tests and CLI output; no separate read service."""
         with self._connection() as connection:
