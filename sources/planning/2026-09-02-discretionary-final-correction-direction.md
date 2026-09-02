@@ -26,8 +26,9 @@ packet or architecture failure.
    scope, proof obligations, or unrelated cleanup.
 5. There is a hard maximum of two implementation corrections per packet. A new
    failure class, failed/out-of-scope correction, non-delivery, contract defect,
-   or failure after the final correction returns for rematerialization,
-   reassignment, or takeover under the existing Project Architect route.
+   or failure after the final correction ends the current packet and requires
+   Project Architect rematerialization. Any later reassignment or takeover
+   operates only under that superseding packet.
 6. The Owner is involved only if resolution itself crosses an M0-D15 reserved
    material boundary.
 

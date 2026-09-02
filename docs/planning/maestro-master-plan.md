@@ -240,7 +240,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
   M0-D05's normal correction, and M0-D17's gated final-correction hard maximum.
 - Compile and freeze M0-D16 completion/coverage manifests, reject structurally
   oversized or infeasible packets, and combine Integration/review findings
-  before the single eligible correction.
+  before the normal correction; only M0-D17's separately recorded eligibility
+  gate can authorize one final correction.
 
 ### M4 — complete the persistent Development Manager loop
 

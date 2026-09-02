@@ -23,16 +23,18 @@ final targeted correction only when every eligibility condition below passes.
 3. The remaining fix is localized to the same owned paths and needs no changed
    architecture, schema, API, product behavior, authority, dependency,
    configuration, environment, security/data/credential/external-access
-   boundary, lock, or reviewer route.
+   boundary, lock, or any executor, implementation, Integration, review, or
+   other execution route.
 4. Integration and the targeted reviewer have returned terminal results with
    immutable evidence sufficient to judge the remaining work.
 5. The Project Architect records the remaining finding IDs/proof IDs, exact
    correction range, bounded expected diff, and the reason the work is close
    enough that one final correction is proportionate.
 
-Failure of any condition ends correction and returns the packet for
-rematerialization, reassignment, or Coordinator takeover. Owner involvement is
-required only when the resolution crosses an M0-D15 reserved material choice.
+Failure of any condition ends the current packet and requires Project Architect
+rematerialization. A later reassignment or Coordinator takeover may occur only
+under that superseding rematerialized packet. Owner involvement is required
+only when the resolution crosses an M0-D15 reserved material choice.
 
 ### Final correction and hard stop
 
