@@ -42,6 +42,18 @@ routing its exact range to a fresh independent GPT-5.6 Sol Decision Fidelity
 Reviewer. It does not approve the review outcome in advance or release
 implementation.
 
+## Initial Decision Fidelity result
+
+The fresh GPT-5.6 Sol review of exact range
+`8aa4cb517dcb902060cf5acd1d58806787e03841..f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15`
+returned `REQUEST_CHANGES`. It returned five bounded planning findings to the
+Project Architecture Agent: close the outer/event/duplicate contracts; carry
+usage and elapsed time through completion; restore M0-D05 Coordinator-owned
+initial rejection; define attempt role, IDs, correction lease/claim lineage,
+and release; and reconcile the current handoff. None changes an accepted Owner
+choice. The correction therefore preserves M0-D05 rather than superseding it
+and remains planning-only pending targeted verification.
+
 ## Predecessor fact to preserve
 
 Alpha-03 is complete by explicit Owner acceptance at corrected implementation

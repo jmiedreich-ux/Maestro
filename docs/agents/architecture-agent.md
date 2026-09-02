@@ -51,9 +51,13 @@ Turn an approved project architecture direction and current-source evidence into
   authorizes no provider scraping/account access, production scheduler, real
   actor dispatch, implementation, or Foundry access. On 2026-09-01 the Owner
   resumed readiness and authorized exact execution-packet drafting with
-  explicit Project Architect return routes. Readiness does not approve the
-  packet or release implementation; Decision Fidelity approval, planning
-  merge, and an explicit Owner implementation release remain required.
+  explicit Project Architect return routes, then authorized committing and
+  routing that packet. Initial Decision Fidelity review of exact head
+  `f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15` returned `REQUEST_CHANGES` and
+  sent five bounded contract corrections back to this Architecture Agent.
+  Readiness does not approve the packet or release implementation; targeted
+  Decision Fidelity approval, planning merge, and an explicit Owner
+  implementation release remain required.
 
 ## May do
 

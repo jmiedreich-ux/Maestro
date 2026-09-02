@@ -553,13 +553,16 @@ must not compensate by building V2 infrastructure.
 3. **Complete by recorded exception:** Alpha-03 completed its release,
    implementation, independent reviews, explicit Owner acceptance, and merge;
    the review outcome remains `REQUEST_CHANGES`, not relabeled approval.
-4. **Readiness draft created:** the separate
+4. **Readiness draft reviewed; bounded correction active:** the separate
    [Alpha-04 execution packet](../packets/alpha-04-synthetic-control-loop-qualification.md)
    materializes exact schemas, paths, commands, routes, checks, and Project
-   Architect returns.
-5. **Next gate:** that exact packet requires fresh Decision Fidelity `APPROVE`,
-   planning acceptance/merge, and explicit Owner implementation release before
-   any build begins.
+   Architect returns. Initial Decision Fidelity review of exact head
+   `f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15` returned `REQUEST_CHANGES` with
+   five bounded packet-contract findings.
+5. **Next gate:** the correction-only planning diff requires targeted Decision
+   Fidelity `APPROVE`; the fully covered packet then requires planning
+   acceptance/merge and explicit Owner implementation release before any build
+   begins.
 
 This proposal creates no executable packet or operational queue state and does
 not authorize implementation, dispatch, Foundry access, review execution, or

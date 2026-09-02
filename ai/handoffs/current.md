@@ -6,8 +6,14 @@ Qwen implementation is accepted at exact corrected head
 2026-09-01. The later Qwen rerun is benchmark evidence only. Alpha-04 planning
 and its reporting amendment are merged. On 2026-09-01 the Owner resumed
 readiness and authorized exact execution-packet drafting with explicit Project
-Architect return routes. The resulting packet remains a draft with no Decision
-Fidelity approval or implementation release. No real worker, API/UI,
+Architect return routes. The resulting packet was committed at
+`f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15` and routed under that authority.
+Fresh Decision Fidelity Review of exact range
+`8aa4cb517dcb902060cf5acd1d58806787e03841..f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15`
+returned `REQUEST_CHANGES` with five bounded packet-contract findings. The
+packet is back with the Project Architecture Agent for one correction-only
+planning diff. It has no Decision Fidelity approval or implementation release.
+No real worker, API/UI,
 provider-account access, Foundry, VennueSign, real project registration,
 project-adapter, GitHub automation, or USB-recovery implementation is
 authorized by this handoff.
@@ -55,8 +61,11 @@ unresolved. On 2026-09-01 the Owner first paused Alpha-04 and later supplied new
 direction to proceed with readiness. The draft
 [Alpha-04 execution packet](../../docs/planning/packets/alpha-04-synthetic-control-loop-qualification.md)
 materializes exact fixture schemas, paths, commands, state transitions, proof,
-and `ProjectArchitectReturn` outcomes. It is not yet Decision-Fidelity reviewed,
-accepted, merged, or released for implementation.
+and explicit Coordinator/Project Architect/Owner outcomes. Its initial review
+found incomplete outer/event contracts, through-completion usage/elapsed
+coverage, M0-D05 routing drift, correction lease/claim lineage, and stale
+handoff status. Those findings are now in correction and require targeted
+verification. It is not accepted, merged, or released for implementation.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -143,9 +152,11 @@ available to the future Alpha-04 qualification. The done record preserves the
 review outcomes and accepted malformed-conflict limitation without claiming an
 independent-review approval.
 
-The Alpha-04 packet is a readiness draft, not an executable release. Route it
-next to independent Decision Fidelity Review only after the Owner accepts the
-packet for that review. Do not start implementation, real worker dispatch,
+The Alpha-04 packet is a readiness draft, not an executable release. The Owner
+already authorized its initial Decision Fidelity route; that review returned
+`REQUEST_CHANGES`. Route only the exact correction-only planning diff for
+targeted verification, then return the result to the Owner. Do not start
+implementation, real worker dispatch,
 Atlas/API/UI, project registration or integration, GitHub automation, or USB
 recovery work from this handoff. A planning or architecture defect returns to
 the Project Architecture Agent with exact evidence and safe stop; it is never a

@@ -1,6 +1,6 @@
 # Maestro Architecture Agent — Continuity Record
 
-**Last updated:** 2026-08-31
+**Last updated:** 2026-09-01
 **Role boundary:** The Architecture Agent creates traceable, bounded plans and packets. It does not implement, independently approve, dispatch, merge, or advance milestone operational state.
 
 ## Current authoritative milestone state
@@ -83,9 +83,13 @@ UI scraping, token-to-allowance conversion, live account access, enforcement,
 or broader multi-provider proposal is approved. The combined amendment merged
 in PR #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`. After an initial
 pause, the Owner resumed readiness on 2026-09-01 and authorized an exact draft
-execution packet with explicit Project Architect return routes. The packet is
-not yet Decision-Fidelity reviewed, accepted, merged, or released for
-implementation.
+execution packet with explicit Project Architect return routes, then authorized
+its commit and initial review. Fresh Decision Fidelity review of
+`8aa4cb517dcb902060cf5acd1d58806787e03841..f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15`
+returned `REQUEST_CHANGES` and sent five bounded planning corrections back to
+the Project Architecture Agent. The correction preserves M0-D05 Coordinator
+rejection ownership and remains unaccepted, unmerged, and unreleased for
+implementation pending targeted verification.
 
 ## Guardrails
 

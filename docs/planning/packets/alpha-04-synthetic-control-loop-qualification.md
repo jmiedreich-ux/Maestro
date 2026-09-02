@@ -1,19 +1,34 @@
 # Alpha-04 — Execute Synthetic Control-Loop Qualification
 
-**Status:** DRAFT READINESS PACKET — not Decision-Fidelity reviewed, approved,
-released, or authorized for implementation  
-**Owner:** Jeremy Miedreich  
-**Packet ID:** `maestro-alpha-04-control-loop-qualification`  
-**Graph node:** `MAESTRO-ALPHA-04-CONTROL-LOOP-QUALIFICATION`  
-**Graph revision:** `maestro-alpha-04-plan-r2`  
-**Architecture plan:** [Alpha-04 synthetic control-loop qualification](../proposed/alpha-04-synthetic-control-loop-qualification.md), merged through PR #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`  
-**Decision authority:** [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md) and [M0-D14](../decisions/m0-d14-context-and-token-reporting.md)  
-**Readiness direction:** [2026-09-01 Alpha-04 readiness direction](../../../sources/planning/2026-09-01-alpha-04-readiness-direction.md)  
-**Exact source base:** `8aa4cb517dcb902060cf5acd1d58806787e03841` (`origin/master`)  
-**Execution class:** one fixture-only, single-process implementation in a clean isolated worktree  
-**Worker route after release:** Local Qwen  
-**Independent implementation-review route:** GPT-5.6 Terra at high reasoning  
-**Decision Fidelity route:** GPT-5.6 Sol at high reasoning  
+**Status:** CORRECTION IN PROGRESS — initial Decision Fidelity review returned
+`REQUEST_CHANGES`; not approved, released, or authorized for implementation
+
+**Owner:** Jeremy Miedreich
+
+**Packet ID:** `maestro-alpha-04-control-loop-qualification`
+
+**Graph node:** `MAESTRO-ALPHA-04-CONTROL-LOOP-QUALIFICATION`
+
+**Graph revision:** `maestro-alpha-04-plan-r2`
+
+**Architecture plan:** [Alpha-04 synthetic control-loop qualification](../proposed/alpha-04-synthetic-control-loop-qualification.md), merged through PR #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`
+
+**Decision authority:** [M0-D13](../decisions/m0-d13-synthetic-control-loop-qualification.md) and [M0-D14](../decisions/m0-d14-context-and-token-reporting.md)
+
+**Readiness direction:** [2026-09-01 Alpha-04 readiness direction](../../../sources/planning/2026-09-01-alpha-04-readiness-direction.md)
+
+**Initial Decision Fidelity review:** [review record](../../../sources/planning/2026-09-01-alpha-04-decision-fidelity-review.md) for exact range `8aa4cb517dcb902060cf5acd1d58806787e03841..f0bf2889b28eb78e2b98b239f5ad7d82d4a7ba15` returned `REQUEST_CHANGES`; findings DF-01 through DF-05 are corrected by the next correction-only commit and require targeted verification
+
+**Exact source base:** `8aa4cb517dcb902060cf5acd1d58806787e03841` (`origin/master`)
+
+**Execution class:** one fixture-only, single-process implementation in a clean isolated worktree
+
+**Worker route after release:** Local Qwen
+
+**Independent implementation-review route:** GPT-5.6 Terra at high reasoning
+
+**Decision Fidelity route:** GPT-5.6 Sol at high reasoning
+
 **Safe parallelism:** none; one exclusive Alpha control-loop/schema lock
 
 **Owner packet-review approval:** On 2026-09-01 the Owner approved this draft
@@ -92,6 +107,65 @@ absolute paths, separators, traversal, missing files, or symlink escape. The
 complete packet and control-loop fixture must validate before a packet claim,
 SQLite mutation, fixture-worktree creation, or executor action.
 
+The complete Alpha-04 packet is a strict JSON object with exactly these root
+keys; no other key is permitted:
+
+```text
+packet_id, title, authority, owned_paths, gates, executor,
+control_loop_fixture, independent_review_route, owner_stop_boundary
+```
+
+The exact non-scenario values are:
+
+```json
+{
+  "packet_id": "maestro-alpha-04-control-loop-qualification",
+  "title": "Alpha-04 Synthetic Control-Loop Qualification",
+  "authority": {
+    "approval_reference": "Alpha-04 approved execution packet",
+    "fidelity_reference": "Alpha-04 Decision Fidelity review coverage"
+  },
+  "owned_paths": [
+    "docs/architecture/alpha-04-synthetic-control-loop-qualification.md",
+    "docs/operations/alpha-04-synthetic-control-loop-qualification.md",
+    "fixtures/alpha/alpha-04-*-packet.json",
+    "fixtures/alpha/control-loop/**",
+    "services/maestro/maestro/control_loop.py",
+    "services/maestro/maestro/control_loop_contract.py",
+    "services/maestro/maestro/lifecycle.py",
+    "services/maestro/maestro/packet_contract.py",
+    "services/maestro/maestro/packet_wrapper.py",
+    "services/maestro/maestro/storage.py",
+    "tests/alpha_04/test_control_loop_qualification.py"
+  ],
+  "gates": [
+    "python -m unittest discover -s ../../tests/alpha_01 -v",
+    "python -m unittest discover -s ../../tests/alpha_02 -v",
+    "python -m unittest discover -s ../../tests/alpha_03 -v",
+    "python -m unittest discover -s ../../tests/alpha_04 -v"
+  ],
+  "independent_review_route": "Independent Implementation Reviewer",
+  "owner_stop_boundary": "Stop at AwaitingOwner or ProjectArchitectReturn; no merge or successor action."
+}
+```
+
+`authority` has exactly the two shown keys and values. `owned_paths` and
+`gates` are ordered arrays equal byte-for-byte after JSON decoding to the arrays
+above. `executor` has exactly `kind` and `scenario`; `kind` is always
+`synthetic-local`, and `scenario` plus `control_loop_fixture` must be exactly
+one row from this table:
+
+| Packet fixture | `executor.scenario` | `control_loop_fixture` |
+| --- | --- | --- |
+| `alpha-04-happy-path-packet.json` | `control-loop-happy` | `happy-path.json` |
+| `alpha-04-correction-packet.json` | `control-loop-correction` | `one-correction.json` |
+| `alpha-04-assemble-packet.json` | `control-loop-assemble` | `integration-assemble.json` |
+| `alpha-04-replan-packet.json` | `control-loop-replan` | `integration-replan.json` |
+
+The two authority strings are fixed fixture authority labels. They do not claim
+that approval or review occurred; implementation remains barred until the
+release gate records the exact released packet commit and review coverage.
+
 ## Exact packet fixtures
 
 Implementation creates these repository-owned packet inputs:
@@ -115,16 +189,17 @@ fields; unknown fields are invalid:
 
 ```text
 schema_version, fixture_id, binding, authority, policy, actors, candidates,
-available_locks, available_resources, allowance_window, attempt_preflight,
-observations, expected
+available_locks, available_resources, allowance_window, attempt_preflights,
+assignment, correction_assignment, observations, expected
 ```
 
 `schema_version` is the integer `1`. Stable identifiers are lowercase ASCII
 `[a-z][a-z0-9-]{2,63}`. Timestamps are UTC RFC 3339 strings ending in `Z` and
 must be nondecreasing within an observation sequence. Finite numbers are JSON
 integers or decimals, never strings, NaN, or infinity. Unknown keys, duplicate
-IDs, invalid enums, inconsistent arithmetic, or references to absent objects
-are malformed and rejected before mutation.
+IDs other than the one later-defined literal event occurrence, invalid enums,
+inconsistent arithmetic, or references to absent objects are malformed and
+rejected before mutation.
 
 ### Binding and authority
 
@@ -184,23 +259,31 @@ introduce configurable production scheduling policy.
 
 ### Actors
 
-`actors` is a non-empty array of exact objects:
+`actors` is an ordered array of exactly four objects with the exact values
+below:
 
 ```json
-{
-  "actor_id": "fixture-worker-01",
-  "role": "Worker | Integration | IndependentReviewer",
-  "route": "scripted-local-adapter | validate-only | assemble | replan | scripted-independent-review",
-  "may_change_result": true,
-  "synthetic": true
-}
+[
+  {"actor_id": "fixture-coordinator-01", "role": "Coordinator", "route": "synthetic-coordinator", "may_change_result": false, "synthetic": true},
+  {"actor_id": "fixture-worker-01", "role": "Worker", "route": "scripted-local-adapter", "may_change_result": true, "synthetic": true},
+  {"actor_id": "fixture-integration-01", "role": "Integration", "route": "validate-only", "may_change_result": false, "synthetic": true},
+  {"actor_id": "fixture-reviewer-01", "role": "IndependentReviewer", "route": "scripted-independent-review", "may_change_result": false, "synthetic": true}
+]
 ```
 
-There is exactly one Worker, one Integration actor, and one
-IndependentReviewer. All IDs differ. The reviewer must differ from every actor
-whose `may_change_result` is true. `synthetic` must be true. No provider
+The Integration object varies only by fixture: the happy and correction
+fixtures use `validate-only`/`false`, the assemble fixture uses
+`assemble`/`true`, and the replan fixture uses `replan`/`false`. No other
+role-to-route or `may_change_result` combination is valid. All IDs differ. The
+reviewer differs from every result-changing actor. `synthetic` is true. No provider
 credential, executable command, prompt, transcript, network endpoint, real
 repository identity, or arbitrary route is allowed.
+
+The Coordinator owns requests, boundaries, assignment decisions, and recovery
+decisions. The Worker owns status reports, checkpoints, usage observations,
+and worker/correction completions. Integration owns `integration_completed`.
+IndependentReviewer owns `review_completed`. Any event whose `actor_id` does
+not match that exact ownership is invalid before mutation.
 
 ### Candidates and queue projection
 
@@ -223,11 +306,12 @@ integer `rank`:
   "required_locks": ["path:services-maestro", "shared:sqlite-schema"],
   "required_resources": {"synthetic-worker-slot": 1},
   "expected_state": "Dispatchable",
-  "expected_reason": "all dispatchability conditions satisfied"
+  "expected_reasons": ["all_dispatchability_conditions_satisfied"]
 }
 ```
 
-Projection is mechanical and uses this precedence:
+Projection is mechanical and uses this precedence; every applicable reason in
+the first matching state is retained in the listed order:
 
 1. `released: false` -> `Planned`.
 2. Released with an incomplete same-role predecessor -> `Waiting`.
@@ -240,6 +324,15 @@ Projection is mechanical and uses this precedence:
 
 A base mismatch, active hold, lock conflict, or finite-resource shortage stays
 `Ready` but is not `Dispatchable`, with the exact failed condition recorded.
+The only reason codes, in precedence order, are
+`not_released`, `same_role_predecessor_incomplete`,
+`hard_dependency_incomplete`, `review_gate_incomplete`,
+`contract_unavailable`, `route_contract_unavailable`,
+`route_currently_ineligible`, `base_incompatible`, `active_hold`, followed by
+`lock_unavailable:<lock-id>` sorted by lock ID and
+`resource_unavailable:<resource-id>` sorted by resource ID. A fully eligible
+candidate has only `all_dispatchability_conditions_satisfied`. No prose or
+additional reason code is permitted.
 The chosen candidate is the lowest-rank-number `Dispatchable` candidate. The
 fixture must contain at least one higher-ranked non-dispatchable candidate and
 exactly one expected selected candidate. The selected candidate declares at
@@ -260,6 +353,8 @@ not contain a filesystem path outside the fixed synthetic namespace.
 
 ```json
 {
+  "window_id": "allowance-window-01",
+  "reconciliation_id": "allowance-reconciliation-01",
   "provider": "openai",
   "account_reference": "fixture-workspace",
   "window_type": "chatgpt-codex-weekly",
@@ -299,10 +394,21 @@ changes routing in Alpha-04.
 
 ### Attempt preflight
 
-`attempt_preflight` contains exactly:
+`attempt_preflights` is an ordered array with one entry for the primary attempt
+and, in the correction fixture only, a second entry for the correction attempt.
+Each entry contains exactly:
 
 ```json
 {
+  "attempt_id": "attempt-primary",
+  "observation_id": "usage-preflight-01",
+  "measurement_period_id": "period-attempt-01",
+  "revision": 0,
+  "period_started_at": "2026-09-01T12:00:00Z",
+  "period_ended_at": null,
+  "measurement_type": "estimated",
+  "confidence": "medium",
+  "pressure_state": "normal",
   "model": {
     "provider": "openai",
     "model_id": "fixture-hosted-model",
@@ -328,6 +434,7 @@ changes routing in Alpha-04.
     "total": {"state": "unavailable", "value": null}
   },
   "cost": {"state": "unknown", "amount": null, "currency": null},
+  "elapsed": {"state": "unavailable", "milliseconds": null, "measured_from": null},
   "local_capacity": {
     "provider": "local-qwen",
     "state": "available",
@@ -359,38 +466,86 @@ nonnegative integer. A later valid `runtime_reported` observation supersedes an
 estimate only for the same period. Zero reasoning tokens never sets input,
 output, total, or context use to zero.
 
+The primary preflight object is durable usage revision zero for
+`period-attempt-01`; it exists before any event may reference it. Measurement
+types are `estimated` or `runtime_reported`, and confidence is
+`none|low|medium|high`. Pressure states are `normal|warning|checkpoint|stop`.
+Elapsed time is independent from tokens and cost and is exactly
+`{"state":"exact|estimated","milliseconds":<nonnegative integer>,
+"measured_from":"attempt_start|period_start"}` or
+`{"state":"unavailable","milliseconds":null,"measured_from":null}`.
+The correction preflight uses `attempt-correction`, `usage-preflight-02`, and
+`period-attempt-02`, occurs before correction lease/claim acquisition, and
+otherwise obeys the identical strict schema and fit rules. Every attempt thus
+has its own preflight and through-completion measurement period.
+
+### Assignment, identity, time, lease, and claim contract
+
+`assignment` contains exactly:
+
+```json
+{
+  "attempt_id": "attempt-primary",
+  "attempt_number": 1,
+  "actor_id": "fixture-worker-01",
+  "role": "Worker",
+  "base_identity": "fixture-base-001",
+  "lease_id": "lease-primary",
+  "lease_acquired_at": "2026-09-01T12:00:00Z",
+  "lease_expires_at": "2026-09-01T12:15:00Z",
+  "lock_claims": {
+    "path:services-maestro": "claim-primary-path",
+    "shared:sqlite-schema": "claim-primary-schema"
+  },
+  "resource_claims": {"synthetic-worker-slot": "claim-primary-worker-slot"}
+}
+```
+
+The happy, assemble, and replan fixtures set `correction_assignment` to null.
+The correction fixture supplies exactly:
+
+```json
+{
+  "attempt_id": "attempt-correction",
+  "attempt_number": 2,
+  "actor_id": "fixture-worker-01",
+  "role": "Worker",
+  "original_attempt_id": "attempt-primary",
+  "base_identity": "fixture-result-primary",
+  "lease_id": "lease-correction",
+  "lease_acquired_at": "2026-09-01T12:12:00Z",
+  "lease_expires_at": "2026-09-01T12:27:00Z",
+  "lock_claims": {
+    "path:services-maestro": "claim-correction-path",
+    "shared:sqlite-schema": "claim-correction-schema"
+  },
+  "resource_claims": {"synthetic-worker-slot": "claim-correction-worker-slot"}
+}
+```
+
+These are assertions of fixture facts, not permission to assign. The primary
+claim keys and units equal the selected candidate's complete required lock and
+resource set. The correction claim keys and units equal the primary set. Every
+attempt, lease, claim, request, checkpoint, usage observation, measurement
+period, event, reconciliation, and handoff ID is supplied by the strict fixture
+and validated before mutation. No runtime-generated ID is used in this
+qualification. Every lifecycle timestamp is supplied by the fixture, is UTC,
+and is checked against the event sequence and fixed 900-second lease. The
+durable attempt captures both `role` and the canonical full actor object at the
+instant of claim so later actor-table changes cannot alter its identity.
+
 ### Observation script
 
 `observations` is an ordered array. Each observation has exactly
 `event_id`, `event_type`, `attempt_id`, `actor_id`, `observed_at`, `received_at`,
-`idempotency_key`, and `payload`. IDs and idempotency keys are unique except an
-intentional duplicate case, which must repeat the original event byte-for-byte.
+`idempotency_key`, and `payload`. IDs and idempotency keys are unique except one
+intentional literal duplicate occurrence, which repeats the original event
+object byte-for-byte in canonical JSON, including the same `event_id` and
+`idempotency_key`. There is no `duplicate_event` event type.
 The attempt ID must match the active attempt unless the event is an explicitly
 expected stale/wrong-attempt test.
 
-Permitted event types and payloads are:
-
-- `worker_status_requested`: request ID and the five required question fields;
-- `worker_status_reported`: request ID, ordered plan, current step,
-  `actively_progressing`, blocker disposition/details, ETA state/value/unit/
-  confidence, context/usage snapshot, and worker observation time;
-- `status_response_boundary`: request ID plus durable attempt state, executor
-  state, lease state, and expected next action;
-- `checkpoint_requested`: one checkpoint ID and the pressure observation;
-- `checkpoint_reported`: completed work, current plan/step, changed synthetic
-  artifacts, checks/evidence, blocker, and next action;
-- `worker_completed`: attempt/base/result identity, changed synthetic paths,
-  named checks, evidence references, token/cost snapshot, and correction round;
-- `integration_completed`: mode, Integration actor, input/result identity,
-  changed paths, checks, evidence, and disposition;
-- `review_completed`: reviewer actor, reviewed result, outcome, named findings,
-  evidence, and correction round;
-- `correction_assigned` and `correction_completed`: exact finding IDs, original
-  lineage, correction result/diff/evidence, and correction count;
-- `lease_expired`, `competing_claim`, `duplicate_event`, `stale_completion`, and
-  `restart_reconcile`: the durable facts and expected no-corruption decision.
-
-The exact payload key sets are:
+The only event types and exact payload key sets are:
 
 | Event type | Exact payload keys |
 | --- | --- |
@@ -399,23 +554,104 @@ The exact payload key sets are:
 | `status_response_boundary` | `request_id`, `durable_attempt_state`, `executor_state`, `lease_state`, `decision` |
 | `checkpoint_requested` | `checkpoint_id`, `pressure`, `safe_boundary` |
 | `checkpoint_reported` | `checkpoint_id`, `completed_work`, `plan_steps`, `current_step_id`, `changed_artifacts`, `checks`, `evidence_references`, `blocker`, `next_action` |
-| `worker_completed` | `base_identity`, `result_identity`, `changed_paths`, `checks`, `evidence_references`, `token_cost_observation_id`, `correction_round` |
+| `usage_observed` | `observation_id`, `measurement_period_id`, `revision`, `period_started_at`, `period_ended_at`, `context_limit_tokens`, `context_used_tokens`, `context_remaining_tokens`, `output_reserve_tokens`, `measurement_type`, `confidence`, `tokens`, `cost`, `elapsed`, `pressure_state` |
+| `worker_completed` | `base_identity`, `result_identity`, `commit_identity`, `scoped_diff`, `violation_codes`, `changed_paths`, `checks`, `evidence_references`, `token_cost_observation_id`, `correction_round` |
 | `integration_completed` | `mode`, `input_result_identity`, `result_identity`, `changed_paths`, `checks`, `evidence_references`, `disposition` |
 | `review_completed` | `reviewed_result_identity`, `outcome`, `finding_ids`, `evidence_references`, `correction_round` |
-| `correction_assigned` | `finding_ids`, `original_attempt_id`, `original_result_identity`, `correction_round` |
-| `correction_completed` | `finding_ids`, `original_attempt_id`, `original_result_identity`, `result_identity`, `changed_paths`, `checks`, `evidence_references`, `correction_round` |
+| `correction_assigned` | `finding_ids`, `original_attempt_id`, `original_result_identity`, `correction_attempt_id`, `correction_lease_id`, `released_claim_ids`, `acquired_claim_ids`, `correction_round` |
+| `correction_completed` | `finding_ids`, `original_attempt_id`, `original_result_identity`, `result_identity`, `commit_identity`, `scoped_diff`, `violation_codes`, `changed_paths`, `checks`, `evidence_references`, `token_cost_observation_id`, `correction_round` |
 | recovery event types | `durable_state`, `observed_state`, `referenced_attempt_id`, `referenced_event_id`, `decision`, `reason` |
 
-`questions` must equal the ordered array `ordered_plan`, `current_step`,
-`actively_progressing`, `blocker`, `eta`. `plan_steps`, changed paths/artifacts,
-checks, findings, and evidence references are bounded arrays of unique non-empty
-strings. `blocker` is exactly `{"state": "none", "details": null}` or
+Recovery event types are exactly `lease_expired`, `competing_claim`,
+`stale_completion`, and `restart_reconcile`. Event ownership is exact:
+
+| Owner | Event types |
+| --- | --- |
+| `fixture-coordinator-01` | `worker_status_requested`, `status_response_boundary`, `checkpoint_requested`, `correction_assigned`, all recovery event types |
+| `fixture-worker-01` | `worker_status_reported`, `checkpoint_reported`, `usage_observed`, `worker_completed`, `correction_completed` |
+| `fixture-integration-01` | `integration_completed` |
+| `fixture-reviewer-01` | `review_completed` |
+
+Nested shapes are also closed. `questions` is exactly the ordered array
+`["ordered_plan","current_step","actively_progressing","blocker","eta"]`.
+`plan_steps` contains one through eight exact objects
+`{"step_id":"<stable-id>","position":<positive integer>,
+"status":"pending|current|complete","summary":"<non-empty text>"}` with
+unique contiguous positions and exactly one `current` step matching
+`current_step_id` until completion. `checks` contains one through eight exact
+objects `{"gate":"<declared packet gate>","result":"pass|fail",
+"evidence_reference":"<non-empty reference>"}`. Changed paths/artifacts are
+ordered unique arrays of zero through sixteen non-empty strings; completed work
+and evidence references contain one through sixteen; finding IDs contain zero
+through eight. Changed paths must be covered by the outer packet `owned_paths`
+allowlist. `pressure` is exactly
+`{"usage_observation_id":"<accepted observation>",
+"measurement_period_id":"<same period>","revision":<same revision>,
+"pressure_state":"warning|checkpoint|stop"}`; `safe_boundary` must be true.
+`next_action` is `continue|complete|stop`.
+
+`commit_identity` is a stable non-empty fixture string or null. `scoped_diff`
+is exactly `{"present":<boolean>,"paths":["<ordered unique path>"]}` and its
+paths equal `changed_paths` when present. `violation_codes` is an ordered unique
+subset of `ScopeViolation`, `DependencyViolation`, `ConfigurationViolation`,
+and `PlaceholderViolation`. A reviewable completion has a non-null commit,
+`present: true`, at least one changed path, and no violation code. Rejection
+classification uses this exact precedence: null commit -> `MissingCommit`;
+otherwise absent/empty scoped diff -> `MissingScopedDiff`; otherwise the first
+present violation in the enum order above. The chosen code is stored as the
+single canonical rejection reason; all supplied evidence remains durable.
+
+An `integration_completed.mode` equals the declared Integration route.
+`validate-only` requires unchanged input/result identity, no changed paths, and
+`validated`; `assemble` requires a new result identity, non-empty changed
+paths, and `assembled`; `replan` requires unchanged identity, no changed paths,
+and `needs_replan`. Review `APPROVE` requires an empty finding array; review
+`REQUEST_CHANGES` requires one through eight stable finding IDs. A committed,
+in-scope completion with one or more failed named checks is
+`CorrectionEligible` under M0-D05 without pretending it passed review;
+non-delivery/violation evidence uses `CoordinatorRejection`, and architecture
+ambiguity uses `ProjectArchitectReturn`. `correction_assigned` is the
+only non-stale event whose outer `attempt_id` names the original active attempt
+while its payload names the next attempt. Every other non-recovery event names
+the active attempt owned by its actor.
+
+Status-boundary states are closed enums: `durable_attempt_state` is
+`Running|AwaitingIntegration|AwaitingReview`, `executor_state` is
+`healthy|completed|unavailable`, `lease_state` is `active|expired|closed`, and
+`decision` is `remain_running|accept_completion|reconcile_expiry`. Recovery
+`durable_state` is exactly `{"run_state":"<declared lifecycle state>",
+"active_attempt_id":"<stable ID or null>","lease_id":"<stable ID or null>",
+"lease_state":"active|expired|closed","claim_ids":["<sorted ID>"],
+"last_accepted_event_id":"<stable ID or null>"}`. `observed_state` is exactly
+`{"attempt_id":"<stable ID>","lease_id":"<stable ID or null>",
+"executor_state":"healthy|completed|unavailable",
+"event_id":"<stable ID>"}`. Recovery reasons are
+`duplicate_idempotency`, `stale_attempt`, `active_claim_conflict`,
+`healthy_before_timeout`, `expired_lease`, or `ambiguous_facts`.
+`ambiguous_facts` alone requires `project_architect_return`.
+
+`blocker` is exactly `{"state": "none", "details": null}` or
 `{"state": "reported", "details": "<non-empty text>"}`. `eta` is exactly
 `{"state": "reliable", "value": <positive integer>, "unit": "seconds",
 "confidence": "low|medium|high"}` or `{"state": "unknown", "value": null,
-"unit": null, "confidence": "none"}`. `context_usage` references one valid
-attempt-usage observation and repeats only its bounded limit/used/remaining/
-reserve/measurement/confidence/pressure facts.
+"unit": null, "confidence": "none"}`. `context_usage` is exactly
+`{"usage_observation_id":"<accepted observation>",
+"measurement_period_id":"<same period>","revision":<same revision>}`.
+It references either preflight revision zero or an earlier accepted
+`usage_observed` event for the same attempt; it does not repeat or invent usage
+facts. A completion's `token_cost_observation_id` similarly references an
+already accepted usage observation for that attempt.
+
+`tokens` and `cost` inside `usage_observed` use the exact preflight token/cost
+shapes. Context arithmetic must satisfy `used + remaining = limit` and
+`remaining >= 0`. A measurement period starts at preflight and ends no later
+than its completion observation. Revisions start at zero and increase by one.
+A higher `runtime_reported` revision supersedes an `estimated` revision only
+for the same `measurement_period_id`; both remain durable, exactly one is
+marked effective, and no later estimate may supersede a runtime report. Usage
+observations occur at preflight, at the status or checkpoint boundary that
+changes pressure, and before every completion. Thus tokens, cost, context, and
+elapsed time are represented through completion.
 
 Review outcomes are `APPROVE` or `REQUEST_CHANGES`; Integration dispositions
 are `validated`, `assembled`, or `needs_replan`. Correction round is zero for
@@ -423,6 +659,12 @@ the original result and one for the only permitted correction. Recovery
 decisions are `ignore_duplicate`, `ignore_stale`, `remain_running`,
 `preserve_terminal`, or `project_architect_return`; they cannot directly create
 an attempt or release a lock.
+
+For the one literal duplicate occurrence, the first occurrence index is
+accepted and the later identical occurrence index is ignored. It creates no
+second event row and cannot change state. Event IDs alone are therefore not
+used to account for the script; the expected result accounts for observation
+array indexes.
 
 The happy fixture uses this deterministic patient-status sequence:
 
@@ -462,13 +704,70 @@ identity differs from every result-changing actor. It moves the result to
 `MergeReady`, then immediately records `AwaitingOwner` and stops. There is no
 `Merged`, `Complete`, successor-selection, or external action transition.
 
-Review `REQUEST_CHANGES` may create one correction only when every finding is a
-named, committed, in-scope gate failure. The correction retains the original
+One or more failed named gates, including a Review `REQUEST_CHANGES`, may create
+one correction only when every finding belongs to a committed, in-scope
+result. The correction retains the original
 attempt lineage, increments correction count from zero to one, names the exact
-finding IDs, and receives targeted review of the correction-only diff. A second
-correction, new failure class, scope breach, missing architecture contract, or
+finding IDs, and receives targeted review of the correction-only diff. The
+original attempt follows:
+
+```text
+Dispatchable -> Leased -> Running -> AwaitingIntegration -> AwaitingReview
+-> CorrectionEligible
+```
+
+The accepted `correction_assigned` event performs one `BEGIN IMMEDIATE`
+transaction that closes the original lease, releases every original claim,
+inserts correction attempt two with its original-attempt/result lineage,
+inserts its already validated preflight revision zero, acquires its declared
+lease and exactly the same complete lock/resource set, and advances the active
+attempt. Any failed release, insert, or reacquisition
+rolls back the whole transaction. The correction then follows:
+
+```text
+CorrectionEligible -> Leased -> Running -> AwaitingIntegration
+-> AwaitingReview -> MergeReady -> AwaitingOwner -> STOP
+```
+
+It passes through Integration again and only a review of its exact correction
+result/diff may approve it. Success or any terminal return closes the active
+lease and releases only that active attempt's claims in the same transaction.
+A stale or wrong-attempt event can never close a lease or release claims. A
+second correction, new failure class, missing architecture contract, or
 unrelated change records `ProjectArchitectReturn` and stops without another
-assignment.
+assignment. Scope, dependency, configuration, placeholder, commit, and diff
+failures instead use the Coordinator rejection contract below.
+
+## Exact Coordinator rejection contract
+
+M0-D05 keeps initial non-delivery and eligibility failures with the
+Coordinator. Missing commit, missing scoped diff, scope violation, dependency
+violation, configuration violation, and placeholder violation are rejected
+immediately before review and never receive a correction or
+`ProjectArchitectReturn`. Alpha-04 records exactly:
+
+```json
+{
+  "handoff_id": "handoff-coordinator-rejection",
+  "status": "Rejected",
+  "handoff_kind": "CoordinatorRejection",
+  "reason_code": "MissingCommit",
+  "reason": "The exact rejected evidence condition.",
+  "evidence_references": ["event:event-worker-completed"],
+  "required_decision": "Coordinator routes the rejected packet under M0-D05.",
+  "owner_decision_required": false,
+  "safe_stop": "NoCorrectionOrFurtherAssignment",
+  "created_at": "<causing event received_at>"
+}
+```
+
+The only rejection reason codes are `MissingCommit`, `MissingScopedDiff`,
+`ScopeViolation`, `DependencyViolation`, `ConfigurationViolation`, and
+`PlaceholderViolation`. The scripted qualification records Coordinator
+ownership and stops; it does not actually reassign Local Qwen. A correction
+that makes no source change, lacks its required commit, or remains out of scope
+uses the same exact rejection and stop. Only an actual ambiguity or defect in
+project architecture/packet authority uses `ProjectArchitectReturn`.
 
 ## Explicit Project Architect return contract
 
@@ -478,6 +777,7 @@ insufficient, it records:
 
 ```json
 {
+  "handoff_id": "handoff-project-architect-return",
   "status": "NeedsReplan",
   "handoff_kind": "ProjectArchitectReturn",
   "reason_code": "IntegrationReplan",
@@ -485,7 +785,8 @@ insufficient, it records:
   "evidence_references": ["event:event-integration-replan"],
   "required_decision": "The exact architecture clarification or superseding packet needed.",
   "owner_decision_required": false,
-  "safe_stop": "NoFurtherAssignmentOrMutation"
+  "safe_stop": "NoFurtherAssignmentOrMutation",
+  "created_at": "<causing event received_at>"
 }
 ```
 
@@ -521,6 +822,22 @@ not contact the Owner or treat no response as approval.
 
 `AwaitingOwner` is reserved for the successful final acceptance stop. It is not
 used as a substitute for an under-specified Project Architect return.
+Its exact successful handoff is:
+
+```json
+{
+  "handoff_id": "handoff-awaiting-owner",
+  "status": "AwaitingOwner",
+  "handoff_kind": "AwaitingOwner",
+  "reason_code": "IndependentReviewApproved",
+  "reason": "The separately reviewed synthetic result passed the packet gates.",
+  "evidence_references": ["event:<accepted review event>"],
+  "required_decision": "Owner acceptance or rejection; no implied merge.",
+  "owner_decision_required": true,
+  "safe_stop": "NoMergeOrSuccessorAction",
+  "created_at": "<accepted review event received_at>"
+}
+```
 
 ## Durable storage and transition requirements
 
@@ -530,24 +847,25 @@ through the existing `SQLiteFoundation` service-owned writer:
 | Record | Exact logical columns |
 | --- | --- |
 | `control_loop_runs` | `packet_id`, `fixture_id`, `fixture_digest`, `graph_revision`, `authority_reference`, `source_base`, `selected_candidate_id`, `state`, `correction_count`, `created_at`, `updated_at` |
-| `control_loop_queue_entries` | `packet_id`, `candidate_id`, `rank`, `derived_state`, `dispatchable`, `reason`, `selected` |
-| `control_loop_attempts` | `packet_id`, `attempt_id`, `attempt_number`, `actor_id`, `base_identity`, `result_identity`, `state`, `lease_acquired_at`, `lease_expires_at`, `context_fingerprint_json`, `original_attempt_id`, `correction_round` |
-| `control_loop_locks` | `packet_id`, `attempt_id`, `claim_id`, `claim_kind`, `units`, `state`, `acquired_at`, `released_at` |
+| `control_loop_queue_entries` | `packet_id`, `candidate_id`, `rank`, `derived_state`, `dispatchable`, `reasons_json`, `selected` |
+| `control_loop_attempts` | `packet_id`, `attempt_id`, `attempt_number`, `actor_id`, `role`, `actor_snapshot_json`, `base_identity`, `result_identity`, `state`, `lease_id`, `lease_acquired_at`, `lease_expires_at`, `lease_closed_at`, `context_fingerprint_json`, `original_attempt_id`, `correction_round` |
+| `control_loop_locks` | `packet_id`, `attempt_id`, `lease_id`, `claim_id`, `claim_kind`, `claim_target`, `units`, `state`, `acquired_at`, `released_at` |
 | `control_loop_events` | `packet_id`, `attempt_id`, `event_id`, `event_type`, `idempotency_key`, `actor_id`, `prior_state`, `new_state`, `observed_at`, `received_at`, `payload_json`, `decision`, `reason` |
 | `worker_status_records` | `packet_id`, `attempt_id`, `request_id`, `request_state`, `plan_json`, `current_step_id`, `actively_progressing`, `blocker_json`, `eta_json`, `context_usage_json`, `observed_at`, `received_at`, `next_permitted_action` |
 | `allowance_windows` | `packet_id`, `window_id`, `provider`, `account_reference`, `window_type`, `unit`, `before_json`, `after_json`, `reset_at`, `precision`, `measurement_quality`, `freshness`, `raw_fixture_json` |
-| `attempt_usage` | `packet_id`, `attempt_id`, `observation_id`, `model_id`, `runtime_id`, `context_limit`, `quantization`, `packet_minimum`, `output_reserve`, `thresholds_json`, `tokens_json`, `cost_json`, `pressure_state`, `observed_at` |
+| `attempt_usage` | `packet_id`, `attempt_id`, `observation_id`, `measurement_period_id`, `revision`, `effective`, `measurement_type`, `confidence`, `model_id`, `runtime_id`, `context_limit`, `context_used`, `context_remaining`, `quantization`, `packet_minimum`, `output_reserve`, `thresholds_json`, `tokens_json`, `cost_json`, `elapsed_state`, `elapsed_milliseconds`, `elapsed_measured_from`, `pressure_state`, `period_started_at`, `period_ended_at`, `observed_at` |
 | `usage_reconciliations` | `packet_id`, `attempt_id`, `reconciliation_id`, `window_id`, `observed_change`, `tracked_usage`, `coarse_usage`, `unattributed_remainder`, `reconciles`, `local_capacity_json`, `pace_json` |
-| `control_loop_handoffs` | `packet_id`, `attempt_id`, `handoff_id`, `handoff_kind`, `reason_code`, `reason`, `evidence_references_json`, `required_decision`, `owner_decision_required`, `safe_stop`, `created_at` |
+| `control_loop_handoffs` | `packet_id`, `attempt_id`, `handoff_id`, `status`, `handoff_kind`, `reason_code`, `reason`, `evidence_references_json`, `required_decision`, `owner_decision_required`, `safe_stop`, `created_at` |
 
 Identifiers, enums, booleans, counts, and timestamps use `TEXT`/`INTEGER` with
 `NOT NULL` and `CHECK` constraints matching the fixture contract; decimal
 allowance values use canonical decimal strings so binary floating-point cannot
 change reconciliation. JSON columns contain canonical sorted-key compact JSON
 that has already passed the relevant strict schema. `released_at`,
-`result_identity`, `original_attempt_id`, and successful-handoff architecture
-fields may be null only in the lifecycle states where the earlier contract says
-they do not yet apply. No other nullability is inferred.
+`lease_closed_at`, `period_ended_at`, `result_identity`,
+`original_attempt_id`, elapsed detail fields, and successful-handoff
+architecture fields may be null only in the lifecycle states where the earlier
+contract says they do not yet apply. No other nullability is inferred.
 
 Primary keys are, respectively: `packet_id`; `(packet_id, candidate_id)`;
 `(packet_id, attempt_id)`; `(packet_id, claim_id)`;
@@ -562,11 +880,19 @@ attempt, lock owner, event idempotency key, status request, usage observation,
 and terminal handoff immutable on replay. Foreign keys remain enabled and all
 multi-record state transitions use `BEGIN IMMEDIATE` transactions.
 
-The atomic assignment transaction must insert the selected attempt and lease,
-reserve every path/shared/resource lock, record the dispatch decision and skip
-reasons, and transition the selected queue entry together. If any insert or
-reservation fails, the whole transaction rolls back. No partial attempt or lock
-set may remain.
+The atomic assignment transaction must insert the selected attempt, its already
+validated preflight usage revision, and lease; reserve every path/shared/
+resource lock; record the dispatch decision and skip reasons; and transition
+the selected queue entry together. If any insert or reservation fails, the
+whole transaction rolls back. No partial attempt, usage row, or lock set may
+remain.
+
+The exact fixture owns all IDs and time values described above. `created_at`
+for a terminal handoff equals the `received_at` of the accepted event that
+caused it; the successful handoff ID is `handoff-awaiting-owner`, the replan or
+architecture handoff ID is `handoff-project-architect-return`, and the
+M0-D05 rejection handoff ID is `handoff-coordinator-rejection`. A fixture may
+contain only the one terminal handoff ID applicable to its asserted route.
 
 Before processing a duplicate, restart, timeout, expiry, competing claim, stale
 completion, or wrong-attempt observation, reread the durable run, attempt,
@@ -587,16 +913,20 @@ this packet.
   "selected_candidate_id": "candidate-ready",
   "terminal_status": "AwaitingOwner | NeedsReplan",
   "terminal_handoff": "AwaitingOwner | ProjectArchitectReturn",
+  "terminal_handoff_id": "handoff-awaiting-owner | handoff-project-architect-return",
   "integration_mode": "validate-only | assemble | replan",
   "correction_count": 0,
-  "accepted_event_ids": ["event-001"],
-  "ignored_event_ids": [],
+  "accepted_event_indexes": [0],
+  "ignored_event_indexes": [],
   "external_call_count": 0
 }
 ```
 
-The maps and arrays must account for every candidate and scripted event exactly
-once. `external_call_count` must be integer zero. The Coordinator recomputes
+`queue_states` accounts for every candidate exactly once. The union of accepted
+and ignored indexes equals every zero-based `observations` array index exactly
+once, with no overlap or duplicate index. This remains unambiguous when two
+occurrences carry the same event ID. `external_call_count` must be integer zero.
+The Coordinator recomputes
 each value in a pure, non-mutating transition evaluation before assignment; any
 mismatch between that computed result and this assertion is an inconsistent
 fixture and fails validation before the initial mutation. Expected values never
@@ -632,7 +962,7 @@ change.
 ## Required implementation behavior
 
 1. Strictly validate the packet, binding, fixture, actors, candidates, policy,
-   allowance, preflight, observations, expectations, cross-references,
+   allowance, preflights, observations, expectations, cross-references,
    arithmetic, and sequence with a pure transition evaluation before mutation.
 2. Recompute every expected queue state and expected result; fixture-provided
    `expected` values are assertions, never instructions that override the
@@ -658,17 +988,19 @@ change.
 `tests/alpha_04/test_control_loop_qualification.py` must contain named,
 independently readable tests proving at least:
 
-1. strict packet/fixture safe-basename and pre-mutation validation, including
-   unknown fields, absent authority, malformed IDs/times/enums, inconsistent
-   references/arithmetic, secret/external route fields, and a valid Alpha-03
-   binding with non-empty required authority arrays;
+1. strict outer packet and fixture key/value allowlists, scenario mapping,
+   safe-basename and pre-mutation validation, including unknown fields, absent
+   authority, invalid role/route/result-change combinations, malformed
+   IDs/times/enums, inconsistent references/arithmetic, secret/external route
+   fields, and a valid Alpha-03 binding with non-empty authority arrays;
 2. exact `Planned`, `Waiting`, `Blocked`, `Ready`, and `Dispatchable`
    projection plus recorded skip reasons and highest-ranked selection;
 3. blocked, unreleased, review-gate-incomplete, route-ineligible,
    base-incompatible, held, lock-conflicting, and resource-conflicting
    candidates cannot be assigned;
-4. assignment, attempt, lease, path/shared/resource locks, dispatch decision,
-   and queue transition are one atomic idempotent transaction;
+4. assignment, attempt, preflight usage revision, lease, path/shared/resource
+   locks, dispatch decision, and queue transition are one atomic idempotent
+   transaction;
 5. reliable ETA and explicit `unknown` status records preserve exact worker
    facts and timestamps without interruption/restart/scope change;
 6. no immediate reply remains `Running` before the response/lease boundary,
@@ -686,8 +1018,10 @@ independently readable tests proving at least:
 11. local Qwen capacity remains separate and stale/unknown pace cannot route or
     stop work;
 12. exact, estimated, runtime-superseded, unavailable, and confidence states
-    remain distinct for every token field; zero/unavailable reasoning never
-    erases other context use;
+    remain distinct for every token and elapsed-time field; every referenced
+    usage observation exists, same-period runtime data supersedes but does not
+    erase its estimate, and zero/unavailable reasoning never erases other
+    context use;
 13. billed, estimated, `not_billed`, and `unknown` cost states enforce their
     exact amount/currency contracts;
 14. warning/checkpoint pressure produces one safe-boundary checkpoint and the
@@ -696,19 +1030,24 @@ independently readable tests proving at least:
 15. `validate-only`, `assemble`, and `replan` have distinct result lineage and
     handoffs; `replan` records the complete Project Architect return;
 16. a worker or Integration actor cannot review its own changed result;
-17. one eligible correction retains lineage and gets exact targeted review,
-    while a second round, new failure class, scope breach, unrelated change, or
-    architecture-contract defect records `ProjectArchitectReturn` and no new
-    assignment;
-18. restart, duplicate event, competing claim, stale/wrong completion, timeout,
-    and lease expiry cannot double-dispatch, release another attempt's locks, or
-    overwrite accepted/terminal evidence;
+17. one eligible correction atomically closes the original lease/claims,
+    creates attempt two, reacquires its exact complete claim set, preserves
+    role/actor/result lineage, repeats Integration, and gets exact targeted
+    review; initial missing commit/diff, scope, dependency, configuration, and
+    placeholder failures record `CoordinatorRejection`; a second round, new
+    failure class, unrelated change, or architecture-contract defect records
+    `ProjectArchitectReturn` and no new assignment;
+18. restart, one literal duplicate occurrence, competing claim, stale/wrong
+    completion, timeout, and lease expiry cannot double-dispatch, release
+    another attempt's locks, or overwrite accepted/terminal evidence; every
+    observation occurrence index is accounted for exactly once;
 19. every Project Architect reason code produces the exact reason/evidence/
     decision/Owner-flag/safe-stop shape and never a bare escalation; and
 20. successful CLI execution records the complete path through Integration and
-    independent review to `AwaitingOwner`, with zero external calls and no
-    merge, `Complete`, successor, Atlas, provider, Git, GitHub, credential, or
-    real-project action.
+    independent review to `AwaitingOwner`, including preflight-through-
+    completion context/token/cost/elapsed observations and the exact terminal
+    handoff time/ID, with zero external calls and no merge, `Complete`,
+    successor, Atlas, provider, Git, GitHub, credential, or real-project action.
 
 Passing the named proof is sufficient. Tests must verify coordinator outcomes
 from inputs and durable records, not merely repeat constants from the
@@ -747,8 +1086,8 @@ Runtime artifacts may exist only beneath the ignored
 | Binding choice | Packet carrier and sufficient proof |
 | --- | --- |
 | M0-D13 fixed synthetic qualification | Strict repository fixtures, one serial attempt, scripted actors/observations, tests 1–7 and 15–20 |
-| M0-D14 preflight-through-status reporting | Exact allowance/context/token/cost/local-capacity schemas and tests 8–14 |
-| M0-D05 one correction maximum | Correction lineage and targeted review in test 17; all other contract/scope failures return to the Project Architect |
+| M0-D14 preflight-through-completion reporting | Exact allowance/context/token/cost/elapsed/local-capacity lifecycle and tests 8–14 and 20 |
+| M0-D05 rejection/correction routing | Coordinator-owned initial rejection plus one eligible correction with atomic attempt/lease/claim lineage in test 17; architecture ambiguity alone returns to the Project Architect |
 | M0-D01 service-only SQLite writer | Exact additive tables and transaction boundary; no other writer or direct client |
 | M0-D11 bounded filesystem assurance | Existing runtime boundary is reused unchanged; hostile post-acquisition same-UID/root behavior remains excluded |
 | M0-D12 bounded quality/proportionality | Q1–Q6 below contain all eight required fields; passing tests 1–20 is enough |
@@ -779,8 +1118,8 @@ return proof.
   candidate receives one complete attempt/lease/lock set.
 - **Operating/failure model:** one trusted process consumes one strict fixed
   graph with blocked, waiting, unreleased, ready-but-nondispatchable, and
-  dispatchable candidates; invalid authority, bases, routes, holds, locks, and
-  resources are in scope.
+  dispatchable candidates; invalid outer packet/fixture keys, actor roles,
+  IDs, authority, bases, routes, holds, locks, and resources are in scope.
 - **Exclusions:** real adapters, dynamic priority, multiple projects,
   production queues, parallel runs, remote scheduling, and policy inference.
 - **Assurance:** deterministic projection plus one transactional claim and
@@ -821,14 +1160,14 @@ return proof.
   cost, local capacity, context fit, or preserved work at pressure.
 - **Operating/failure model:** supported/unavailable/stale/coarse windows,
   tracked/coarse/unattributed arithmetic, exact/estimated/unavailable counters,
-  zero reasoning, all cost states, malformed thresholds, and pressure crossing
-  are in scope.
+  zero reasoning, all cost/elapsed states, same-period runtime supersession,
+  malformed thresholds, and pressure crossing through completion are in scope.
 - **Exclusions:** UI scraping, unsupported allowance formulas, billing
   reconciliation, real tokenizer/provider calls, budget enforcement/rerouting,
   universal prediction, raw content, compaction, and replacement sessions.
 - **Assurance:** strict preflight, exact fixture arithmetic, labeled measurement
   states, local/hosted separation, and one deterministic checkpoint action.
-- **Sufficient proof:** required tests 8–14 pass.
+- **Sufficient proof:** required tests 8–14 and 20 pass.
 - **Implementation boundary:** explicit fixtures, bounded decimal arithmetic,
   additive SQLite evidence, and no external dependency.
 - **Proportionality ceiling:** one OpenAI weekly window, one local-capacity
@@ -843,8 +1182,9 @@ return proof.
 - **Protected outcome:** result lineage, Integration ownership, reviewer
   independence, and the one-correction ceiling cannot be bypassed.
 - **Operating/failure model:** validate-only, assemble, replan, self-review,
-  missing evidence, one named-gate correction, second correction, new failure,
-  unrelated work, scope breach, and contract defect are in scope.
+  missing evidence, Coordinator-owned initial rejection, one named-gate
+  correction with atomic lease/claim turnover, second correction, new failure,
+  unrelated work, and architecture contract defect are in scope.
 - **Exclusions:** real code quality, GitHub reviews, automatic repair, general
   workflow engines, and production multi-result Integration.
 - **Assurance:** exact actor/result lineage and explicit gated transitions for
@@ -854,17 +1194,20 @@ return proof.
   functions only.
 - **Proportionality ceiling:** one worker result, at most one Integration result,
   one review chain, and one correction.
-- **Stop/return:** `replan`, self-review, missing architecture contract, scope
-  change, exhausted correction, or new failure records the exact
-  `ProjectArchitectReturn`; no second correction is assigned.
+- **Stop/return:** initial non-delivery/scope/dependency/configuration/
+  placeholder violations record `CoordinatorRejection`; `replan`, self-review,
+  missing architecture contract, required scope expansion, exhausted
+  correction, or new failure records the exact `ProjectArchitectReturn`; no
+  second correction is assigned.
 
 ### Q5 — Durable idempotency and recovery
 
 - **Protected outcome:** duplicates, restart, contention, timeout, expiry, and
   stale/wrong observations cannot duplicate work or corrupt evidence/locks.
-- **Operating/failure model:** one local SQLite writer receives repeated or
-  reordered scripted observations around one active attempt, including restart
-  between durable transitions.
+- **Operating/failure model:** one local SQLite writer receives a literal
+  duplicate occurrence or reordered scripted observation around one active
+  attempt, including restart between durable transitions and atomic correction
+  claim turnover.
 - **Exclusions:** distributed consensus, hostile database writers, remote event
   guarantees, multiple coordinators, and real heartbeat transport.
 - **Assurance:** transactional state/attempt guards, unique idempotency keys,
@@ -929,8 +1272,10 @@ authorized Owner acceptance/merge decision. It does not merge, release a real
 project, or select Alpha-05/Foundry work.
 
 M0-D05 allows one targeted correction only for committed in-scope work failing
-a named packet gate. Missing authority, scope breach, dependency/configuration/
-placeholder violation, contract defect, or a new failure class returns to the
-Project Architect immediately. If the one correction is used, the same
-independent reviewer verifies only the named correction diff and directly
-affected consistency; any uncovered final-head change blocks merge coverage.
+a named packet gate. Missing commit/diff, scope, dependency, configuration, or
+placeholder violations receive the exact Coordinator rejection and stop.
+Missing or contradictory authority, a required scope expansion, an
+architecture contract defect, or a new failure class receives the exact
+Project Architect return. If the one correction is used, the same independent
+reviewer verifies only the named correction diff and directly affected
+consistency; any uncovered final-head change blocks merge coverage.
