@@ -61,11 +61,13 @@ only the explicit dependencies below control release. The Coordinator may
 prepare a later packet while another is under review, but may not dispatch it
 until all listed dependencies are accepted.
 
-## Active graph node
+## Fully materialized graph candidate
 
-Only this node is dispatchable in graph revision `maestro-m1-m4-real-r1`.
-The remaining 21 implementation packets and E2E-01 are candidates whose exact
-node records will be materialized and reviewed before release.
+Only this node is fully materialized in graph revision
+`maestro-m1-m4-real-r1`. It is currently a candidate, not runtime
+`Dispatchable`. The remaining 21 implementation packets and E2E-01 are outline
+candidates whose exact node records will be materialized and reviewed before
+release.
 
 | Field | Value |
 |---|---|
@@ -89,6 +91,8 @@ node records will be materialized and reviewed before release.
 | Integration route | Integration Agent, `validate-only` unless assembly is required |
 | Review route | fresh Independent Implementation Reviewer over exact implementation base/head and any targeted correction diff |
 | Resource envelope | one isolated worktree; one Developer attempt; at most one eligible M0-D05 correction; no parallel writer in the locked domains |
+| Approval state | `PendingDecisionFidelity`; no implementation lease or dispatch is permitted |
+| Dispatchable transition | exact packet receives Decision Fidelity `APPROVE`; Project Architect releases that exact reviewed head; Coordinator then verifies the exact base, clean isolated worktree, execution route/context, unlocked resources, and all hard dependencies immediately before atomic claim |
 | Approval boundary | Project Architect for routine packet acceptance; Owner only for a reserved M0-D15 material choice |
 
 ## M1 — Build the core and register projects

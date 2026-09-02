@@ -20,7 +20,9 @@ factual model/runtime identity is recorded at dispatch preflight
 `docs/agents/coding-agent-sop.md`, `docs/agents/integration-agent.md`, and
 `docs/agents/independent-review-agent.md` at planning authority
 `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4`; bootstrap Coordinator authority
-is M0-D15 plus `sources/planning/current-handoff.md` at the same revision
+is M0-D15 plus the current project handoff `ai/handoffs/current.md` at the same
+revision. `sources/planning/current-handoff.md` is historical planning input,
+not current dispatch authority
 **Bootstrap coordinator:** Maestro Coordinator
 **Decision Fidelity route:** fresh independent Decision Fidelity Reviewer
 **Integration route:** Integration Agent, `validate-only` unless integration
