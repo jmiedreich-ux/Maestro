@@ -6,7 +6,7 @@ blocked on integrated M1-02C acceptance; not released and never itself runtime
 **Packet ID:** `maestro-m1-03-real-repository-github-adapter`
 **Graph node:** `MAESTRO-M1-03-REAL-REPOSITORY-GITHUB-ADAPTER`
 **Graph revision:** `maestro-m1-m4-real-r1`
-**Planning source base:** `6b3a16b2e32973b133776faa5407ab815035db46`
+**Planning source base:** `8a126be0a0fd57ff918954c6d5faeb10b0aab71d`
 **Implementation base:** unresolved until routine Project Architect acceptance
 of the exact integrated M1-02C implementation head
 **Implementation shape:** two serial, independently reviewed slices M1-03A
@@ -20,10 +20,14 @@ and M1-03B; the umbrella node is never leased
 [M0-D12](../decisions/m0-d12-bounded-quality-contracts.md),
 [M0-D14](../decisions/m0-d14-context-and-token-reporting.md), and
 [M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md)
-**Roadmap authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1;
+**Active current handoff:** `ai/handoffs/current.md` at the planning source
+base; it controls current status and restart direction under M0-D15
+**Roadmap/planning authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1;
 `docs/planning/maestro-master-plan.md`;
-`docs/planning/agent-workforce-control-plane.md`; and
-`sources/planning/current-handoff.md`
+`docs/planning/agent-workforce-control-plane.md`. The older
+`sources/planning/current-handoff.md` is historical planning input only, not
+active handoff or dispatch authority. M0-D15 and `ai/handoffs/current.md`
+control any conflict with that historical source.
 **Typed hard dependency:**
 `MAESTRO-M1-02C-CUMULATIVE-INTEGRATION-PROOF @ ProjectArchitectAccepted`,
 with exact final implementation head, schema/API inventory, Integration PASS,
@@ -59,14 +63,23 @@ authorize a network call. It remains both `DependencyBlocked` and
 4. the Coordinator completes exact preflight and atomically acquires the current
    slice's declared locks.
 
-M1-03B code may be implemented and reviewed after routine acceptance of A
-without a credential. Its networked qualification may begin only after the
-Project Architect records an Owner-approved external-setup record containing
-the exact dedicated non-live repository, repository-scoped service identity,
-selected secret provider and reference, permitted action classes, expiry or
-rotation facts, and any spending fact. Missing, stale, revoked, broader, live,
+M1-03B code may be implemented, reviewed, and routinely accepted by the
+Project Architect without a credential. Its networked qualification may begin
+only after the Project Architect stores an active `ExternalSetupAuthority`
+through the exact API below, backed by Owner acceptance evidence for the
+reserved repository, identity, provider/reference, capability, lifetime, and
+spending facts. Missing, stale, expired, revoked, superseded, broader, live,
 personal, or ambiguous setup blocks before DNS, socket, Git remote, or GitHub
-API activity. Code acceptance never grants external authority.
+API activity. Routine code acceptance remains Project Architect-owned and
+never grants external authority.
+
+That pre-activation decision records code-readiness evidence at the exact
+reviewed head; it is not a new packet lifecycle state. It does not mark the B
+slice, umbrella M1-03, or a downstream dependency accepted. After the real
+qualification, Integration/review validate the same head plus external
+evidence and the Project Architect records the routine integrated B/M1-03
+acceptance. The Owner supplies acceptance evidence for the reserved setup
+facts only; the Owner is not the code or packet acceptor.
 
 The following are intentionally unresolved setup values, not choices an
 implementer may fill in: GitHub organization/repository, service identity or
@@ -75,17 +88,24 @@ approved Git author/committer identity references, credential lifetime, and
 any paid plan. Selecting or expanding any of them returns through the Project
 Architect to the Owner under M0-D15.
 
-The separately supplied `ExternalSetupAuthority` is closed and non-secret:
+The closed, non-secret `ExternalSetupAuthority` is never caller-supplied to an
+operation. Both adapters receive an authoritative lookup at construction and
+resolve the exact `external_setup_record_id` from durable state:
 
 ```text
-setup_record_id; owner_decision_reference; project_id; binding_id;
+external_setup_record_id; revision; supersedes_setup_record_id NULL;
+record_digest; reserved_facts_digest; owner_decision_reference;
+owner_acceptance_evidence_id;
+project_architect_reference; project_id; binding_id;
 repository_identity; repository_classification = DedicatedNonLive;
+github_repository_reference; push_remote_reference;
 service_identity_kind CHECK GitHubApp|EquivalentRepositoryScopedService;
 service_identity_reference; credential_provider; credential_reference_name;
 git_author_identity_reference; git_committer_identity_reference;
 capability_names; reviewer_references; valid_from; expires_at NULL;
 spending_disposition CHECK NoNewSpend|OwnerApprovedSpend;
-observed_at
+state CHECK Active|Expired|Revoked|Superseded;
+recorded_at; updated_at; version
 ```
 
 Capabilities are a subset of `RepositoryMetadataRead`, `ContentsRead`,
@@ -93,8 +113,40 @@ Capabilities are a subset of `RepositoryMetadataRead`, `ContentsRead`,
 `ChecksRead`, `ReviewsRead`, and `ReviewRequestWrite`. Each operation requires
 only its named subset. Unknown/admin/default-branch/protection/merge/workflow/
 deployment/secret capabilities are rejected even if the external identity has
-them. This packet records and validates the setup reference but does not
-create, approve, provision, rotate, revoke, or expand it.
+them. The record/API stores accepted authority facts only; it does not create a
+repository or identity, retrieve a secret, provision/rotate a credential, or
+expand an external grant.
+
+`record_external_setup_authority` is owned by the Project Architect role and
+requires a referenced immutable M1-02 evidence row containing the Owner's
+acceptance of every reserved external fact. Revision 1 has no superseded ID.
+Each later revision is exactly the latest revision plus one and names that
+latest record. If the latest row is `Active`, one transaction marks it
+`Superseded`; an already `Expired` or `Revoked` latest row remains terminal.
+The transaction inserts the new `Active` row and appends one supersession event
+whose closed before/after payload names both records. An unchanged
+`reserved_facts_digest` returns the existing latest record as idempotent and is
+not a new revision. No API edits accepted immutable facts in place.
+
+`expire_external_setup_authority` is a clock-driven recovery API that changes
+`Active -> Expired` only when `expires_at IS NOT NULL AND now >= expires_at`.
+`revoke_external_setup_authority` changes `Active -> Revoked` only from an
+authoritative provider/security evidence reference and cannot broaden facts.
+Expiration/revocation does not wait for Owner action because it only removes
+authority. `Expired`, `Revoked`, and `Superseded` are terminal. Re-enabling,
+changing, or expanding setup requires a new Project Architect-recorded revision
+with new Owner acceptance evidence.
+
+The injected `ExternalSetupAuthorityLookup.get(external_setup_record_id,
+expected_revision, expected_digest, project_id, binding_id,
+repository_identity)` reads only the durable record and uses its constructor
+clock. It returns `Active` only when ID/revision/digest/project/binding/
+repository all match, `valid_from <= now`, expiry is absent or later than
+`now`, there is no newer revision, and state is `Active`; it never substitutes
+the latest record.
+At startup, M1-02 recovery expires due rows before reconciling M1-03 actions and
+reconstructs this lookup from the accepted `OperationalStateStore`; no
+process-memory cache is authority after restart.
 
 ## Exact dispatch controls
 
@@ -131,10 +183,12 @@ create, approve, provision, rotate, revoke, or expand it.
   only and are not production adapter constants.
 - A slice handoff records exact base/head, changed paths, full command outcomes,
   schema/API inventory, local and external side effects, action IDs and
-  redacted evidence references, idempotency/concurrency/restart proof, model/
-  runtime/context facts, released locks, and every `UNTESTED` item. Raw headers,
-  credentials, prompts, command traces, and unredacted Git/GitHub output never
-  enter handoff text or durable state.
+  redacted evidence references, exact setup ID/revision/digest and Owner-
+  acceptance evidence reference when used, non-secret runtime-session metadata,
+  idempotency/concurrency/restart proof, model/runtime/context facts, released
+  locks, and every `UNTESTED` item. Raw headers, credentials, prompts, command
+  traces, and unredacted Git/GitHub output never enter handoff text or durable
+  state.
 
 ## Outcome
 
@@ -191,6 +245,7 @@ default_branch; branch_policy; pull_request_policy; merge_policy;
 allowed_path_prefixes; declared_check_names; resource_lock_ids;
 github_repository_reference NULL; credential_provider NULL;
 credential_reference_name NULL; external_setup_record_id NULL;
+external_setup_revision NULL; external_setup_digest NULL;
 push_remote_reference NULL;
 git_author_identity_reference; git_committer_identity_reference;
 accepted_at; source_commit; binding_digest
@@ -201,11 +256,11 @@ Architect authority reference supplied by the later M1-04/M1-05 create or
 register workflow. It does not activate or register a project. Networked
 operations additionally require all nullable GitHub/setup fields,
 `push_remote_reference`, an active latest secret-reference observation, and
-the exact Owner-approved external-setup record. A method's logical remote
-reference must equal that authority value; the injected transport resolves it
-to a credential-free locator. Local ephemeral tests may carry an exact
-test-only filesystem remote reference and require none of the credential/setup
-fields.
+the exact Project Architect-recorded active setup ID/revision/digest carrying
+Owner acceptance evidence. A method's logical remote reference must equal that
+authority value; the injected transport resolves it to a credential-free
+locator. Local ephemeral tests may carry an exact test-only filesystem remote
+reference and require none of the credential/setup fields.
 
 The closed policy for this packet accepts only:
 
@@ -227,16 +282,18 @@ Every operation also receives this closed `RepositoryOperationContext`:
 ```text
 run_id; packet_id NULL; actor_type; actor_id; purpose_reference;
 correlation_id; causation_event_id NULL; expected_binding_version;
-resource_lock_ids; requested_at
+resource_lock_ids
 ```
 
 `run_id` names the owning M1-02 run. If present, `packet_id` must belong to
 that run. `purpose_reference`, project/binding identity, action kind, and—once
 known—external object reference are durably recorded for M0-D03. Actor,
-correlation, causation, time, and sorted unique locks use the accepted M1-02
-validators. The adapter rejects an absent/stale run or binding, wrong packet/
-run relation, missing purpose, or missing declared lock before preparing an
-action.
+correlation, causation, and sorted unique locks use the accepted M1-02
+validators; event time comes only from the adapter's constructor clock.
+Malformed/missing context fields fail structural validation before intent.
+Existence/currentness of the run/binding, packet/run relation, binding version,
+and declared lock ownership are mutable operational lookups performed after
+`Prepared`; their failure records `Prepared -> Blocked`.
 
 Commit identity is a closed non-secret
 `GitIdentity(authority_reference, name, email)`. `authority_reference` must
@@ -253,6 +310,120 @@ exactly schema `4` with the assumed event/idempotency/store API. The migration
 is additive, preserves every existing row, and inserts version `5` only after
 all DDL succeeds in one transaction. It creates these tables without
 dropping, renaming, rebuilding, or rewriting an earlier table.
+
+### `external_setup_authorities`
+
+```text
+external_setup_record_id TEXT PRIMARY KEY;
+revision INTEGER NOT NULL CHECK revision > 0;
+supersedes_setup_record_id TEXT NULL
+  REFERENCES external_setup_authorities(external_setup_record_id);
+record_digest TEXT NOT NULL;
+reserved_facts_digest TEXT NOT NULL;
+owner_decision_reference TEXT NOT NULL;
+owner_acceptance_evidence_id TEXT NOT NULL REFERENCES evidence(evidence_id);
+project_architect_reference TEXT NOT NULL;
+project_id TEXT NOT NULL REFERENCES projects(project_id);
+binding_id TEXT NOT NULL REFERENCES project_bindings(binding_id);
+repository_identity TEXT NOT NULL;
+repository_classification TEXT NOT NULL CHECK repository_classification = 'DedicatedNonLive';
+github_repository_reference TEXT NOT NULL;
+push_remote_reference TEXT NOT NULL;
+service_identity_kind TEXT NOT NULL CHECK service_identity_kind IN
+  ('GitHubApp','EquivalentRepositoryScopedService');
+service_identity_reference TEXT NOT NULL;
+credential_provider TEXT NOT NULL; credential_reference_name TEXT NOT NULL;
+git_author_identity_reference TEXT NOT NULL;
+git_committer_identity_reference TEXT NOT NULL;
+capability_names_json TEXT NOT NULL; reviewer_references_json TEXT NOT NULL;
+valid_from TEXT NOT NULL; expires_at TEXT NULL;
+spending_disposition TEXT NOT NULL CHECK spending_disposition IN
+  ('NoNewSpend','OwnerApprovedSpend');
+state TEXT NOT NULL CHECK state IN ('Active','Expired','Revoked','Superseded');
+recorded_at TEXT NOT NULL; updated_at TEXT NOT NULL;
+version INTEGER NOT NULL CHECK version > 0;
+UNIQUE(project_id,binding_id,revision);
+UNIQUE(project_id,binding_id,record_digest);
+UNIQUE(project_id,binding_id,reserved_facts_digest)
+```
+
+A partial unique index permits one `Active` row per `(project_id,binding_id)`.
+Checks require revision 1 with null `supersedes_setup_record_id`, later
+revisions with a non-null different predecessor, `valid_from < expires_at`
+when expiry exists, sorted-unique closed capability/reviewer arrays, and the
+M0-D03 provider/reference grammars. `reserved_facts_digest` is SHA-256 over the
+reserved facts enumerated for Owner evidence below. `record_digest` is SHA-256
+over the canonical immutable record fields from ID/revision/supersedes through
+spending disposition, including `reserved_facts_digest` and both acceptance
+references but excluding mutable state/timestamps/version. Triggers reject
+`DELETE` and any update except the
+guarded `Active -> Expired|Revoked|Superseded` APIs. Each insert or state
+transition command appends one M1-02 event atomically. Closed event types are
+`ExternalSetupAuthorityRecorded`, `ExternalSetupAuthorityExpired`,
+`ExternalSetupAuthorityRevoked`, and `ExternalSetupAuthoritySuperseded`.
+Record/supersede may insert `Active` only; no caller may insert a terminal
+state or transition a terminal row.
+
+The store surface is exact:
+
+```python
+ExternalSetupAuthorityStore(store, clock)
+
+ExternalSetupAuthorityLookup(store, clock)
+
+ExternalSetupAuthorityStore.record_external_setup_authority(
+    record, idempotency_key, actor
+) -> ExternalSetupAuthority
+
+ExternalSetupAuthorityStore.supersede_external_setup_authority(
+    expected_latest_id, expected_version, replacement, idempotency_key, actor
+) -> ExternalSetupAuthority
+
+ExternalSetupAuthorityStore.revoke_external_setup_authority(
+    external_setup_record_id, expected_version,
+    authoritative_revocation_evidence_id, idempotency_key, actor
+) -> ExternalSetupAuthority
+
+ExternalSetupAuthorityStore.expire_external_setup_authority(
+    external_setup_record_id, expected_version, idempotency_key, actor
+) -> ExternalSetupAuthority
+
+ExternalSetupAuthorityLookup.get(
+    external_setup_record_id, expected_revision, expected_digest,
+    project_id, binding_id, repository_identity
+) -> ExternalSetupAuthority
+```
+
+The production composition root passes the identical `Clock` instance to the
+store, lookup, and both adapters. Constructors reject a lookup/store wired to a
+different clock object, and no component constructs or consults another system
+clock. None of these calls accepts `now`. Record/supersede require
+`actor = ProjectArchitect`
+and immutable Owner-acceptance evidence. Revoke accepts the Project Architect
+recording authoritative revocation; expiry is a mechanical recovery action
+available to the Development Manager. The adapter and Developer cannot call
+record/supersede/revoke and cannot treat lookup failure as permission. Startup
+enumerates due active IDs read-only and calls expiry once per row with
+deterministic key `external-setup-expire:<record-id>:<expires-at>`; replay is
+the original terminal result.
+
+These store mutations use the accepted M1-02 closed failures only:
+`InvalidRecord` for wrong role/evidence/digest/revision/state,
+`StaleState` for expected-version mismatch, `IdempotencyConflict` for reused
+key/different facts, `ResourceConflict` for a conflicting active row, and
+`ResourceBusy` for busy exhaustion. Each fails before commit with no partial
+row/event; exact replay returns the original record.
+
+The required evidence row has
+`evidence_kind = OwnerExternalSetupAcceptance`, an exact
+`OwnerExternalSetupAcceptancePayload` below, and a `source_reference` equal to
+`owner_decision_reference`. Its reserved-facts digest covers repository/
+classification, remote references, service and Git identities,
+provider/reference, capabilities/reviewers, validity/expiry, and spending
+disposition. The setup store rejects a missing/different digest, non-Owner
+acceptance reference, or evidence recorded outside the Project Architect
+route. This evidence authorizes only those external facts; it does not accept
+M1-03 code or its qualification result.
 
 ### `repository_actions`
 
@@ -271,6 +442,9 @@ target_kind TEXT NOT NULL CHECK target_kind IN
 target_reference TEXT NOT NULL;
 authority_reference TEXT NOT NULL;
 purpose_reference TEXT NOT NULL;
+external_setup_record_id TEXT NULL;
+external_setup_revision INTEGER NULL CHECK external_setup_revision > 0;
+external_setup_digest TEXT NULL;
 idempotency_key TEXT NOT NULL UNIQUE;
 command_fingerprint TEXT NOT NULL;
 request_payload_json TEXT NOT NULL;
@@ -284,12 +458,15 @@ updated_at TEXT NOT NULL; version INTEGER NOT NULL CHECK version > 0;
 UNIQUE(project_id,action_kind,target_reference,idempotency_key)
 ```
 
-A partial unique index on `(project_id, action_kind, target_reference)` while
-`state IN ('Prepared','InFlight','OutcomeUnknown')` prevents two active effects
-against one logical target. A trigger rejects a non-null packet whose run does
-not equal `run_id`. Request/result/failure values use only the closed payload
-variants below. Triggers reject `DELETE`; state changes use the exact API and
-append an event in the same transaction.
+A partial unique index on `(project_id, target_kind, target_reference)` while
+`state IN ('InFlight','OutcomeUnknown')` prevents two active/uncertain effects
+against one logical target while still allowing a competing structurally valid
+request to record `Prepared -> Blocked`. A trigger rejects a non-null packet
+whose run does not equal `run_id`. The three external-setup columns are all null or all
+non-null; every GitHub action and non-file push requires all three, while local
+operations require all null. Request/result/failure values use only the closed
+payload variants below. Triggers reject `DELETE`; state changes use the exact
+API and append an event in the same transaction.
 
 Database checks enforce: `Prepared` has null start/observation/result/failure/
 external-object fields; `InFlight` has `started_at` and null observation/result/
@@ -340,6 +517,15 @@ M1-03 accepts and persists only these bounded, canonical payloads in addition
 to M1-02's accepted safe variants:
 
 ```text
+OwnerExternalSetupAcceptancePayload(owner_reference,
+  owner_decision_reference, reserved_facts_digest, accepted_at)
+ExternalSetupAuthorityPayload(external_setup_record_id, revision,
+  supersedes_setup_record_id NULL, record_digest, reserved_facts_digest,
+  owner_decision_reference, owner_acceptance_evidence_id,
+  project_architect_reference, project_id, binding_id,
+  repository_identity, service_identity_reference, credential_provider,
+  credential_reference_name, capability_names, reviewer_references,
+  valid_from, expires_at NULL, state)
 ObserveRepositoryRequestPayload(expected_head, authority_digest)
 EnsureBranchRequestPayload(full_ref, base_commit, authority_digest)
 CreateCommitRequestPayload(full_ref, expected_parent, changed_paths,
@@ -381,11 +567,15 @@ ReviewObservationPayload(external_id, pull_request_number,
   reviewer_reference, commit NULL, state
   Pending|Commented|Approved|ChangesRequested|Dismissed,
   submitted_at NULL)
+CheckObservationBatchPayload(head_commit, checks)
+ReviewObservationBatchPayload(pull_request_number, head_commit, reviews)
 ExternalFailurePayload(error_code, retry_class Never|AfterReconcile,
   redacted_message, redaction_receipt, provider NULL, reference_name NULL)
 ```
 
-The request variants are the only values allowed in
+`OwnerExternalSetupAcceptancePayload` is allowed only for its matching M1-02
+evidence kind, and `ExternalSetupAuthorityPayload` only for setup-authority
+events. The request variants are the only values allowed in
 `repository_actions.request_payload_json`; the observation variants are the
 only values allowed in successful result JSON and
 `repository_observations.payload_json`; `ExternalFailurePayload` is the only
@@ -405,11 +595,23 @@ messages cross the adapter only as an already validated M1-02
 digest plus receipt reference; raw text is discarded after the call.
 
 The runtime credential carrier is an opaque `ExternalAccessSession` with only
-`session_id`, `provider`, `reference_name`, `capability_names`, `expires_at`,
-and `status` (`Active|Stale|Revoked|Expired|Unavailable`) visible to this layer.
-Its provider, reference, capabilities, and lifetime must equal or be narrower
-than the setup and latest secret-reference observation. It offers transport
-execution without a serializable secret getter. The adapter rejects mappings, strings, URLs,
+`session_id`, `external_setup_record_id`, `setup_revision`, `setup_digest`,
+`project_id`, `repository_identity`, `service_identity_reference`, `provider`,
+`reference_name`, `capability_names`, `issued_at`, `expires_at`, and `status`
+(`Active|Stale|Revoked|Expired|Unavailable`) visible to this layer. The injected
+`ExternalAccessSessionProvider.acquire(active_setup, required_capabilities)`
+returns it; no operation accepts a caller-supplied session.
+
+The session's setup ID/revision/digest, project, repository, service identity,
+provider, and reference must exactly equal the active lookup record and latest
+active secret-reference observation. Status must be `Active`; `issued_at` must
+be at or after setup `valid_from`; `expires_at` is required, later than the one
+adapter-clock `now`, and no later than setup expiry when setup expiry exists.
+Session capabilities must be a subset of setup capabilities while containing
+every capability required by the current action. Any extra, missing, or
+mismatched fact is `ExternalSessionMismatch`/`CredentialScopeInsufficient` and
+blocks before transport. The session offers transport execution without a
+serializable secret getter. The adapter rejects mappings, strings, URLs,
 headers, command arguments, environment snapshots, prompts, traces, or payload
 fields offered as a credential. GitHub authorization headers, Git askpass
 responses, private keys, and token values are never logged, returned, placed
@@ -424,6 +626,25 @@ is provider plus reference, raw transport fields have no persistence path,
 and representative PAT, bearer, private-key, query-string credential, and
 userinfo carriers are rejected before an action enters `Prepared`.
 
+Every adapter method returns exactly one `RepositoryOperationResult`:
+
+```text
+RepositoryOperationResult(
+  status RejectedBeforeIntent|Blocked|Failed|OutcomeUnknown|Succeeded,
+  action_id NULL only when RejectedBeforeIntent,
+  observation NULL or exactly one closed observation/batch payload,
+  error NULL or exactly one ExternalFailurePayload
+)
+```
+
+`Succeeded` requires one observation and null error. Every other status
+requires null observation and one error. `Blocked`, `Failed`, and
+`OutcomeUnknown` require the durable action ID. A structurally invalid request
+returns `RejectedBeforeIntent` with no action ID because no intent row/event was
+written. Expected operational failures are returned, not raised as unstructured
+exceptions; corruption/programming exceptions stop the caller and remain
+outside this closed product-result contract.
+
 ## Action state, idempotency, and recovery
 
 The exact state transitions are:
@@ -435,36 +656,56 @@ OutcomeUnknown -> ObservedSucceeded | ObservedFailed | Blocked
 ObservedSucceeded, ObservedFailed, Blocked -> terminal
 ```
 
-For every operation the service performs exactly: (1) validate authority,
-policy, context, lock, expected source fact, closed carriers, and credential/
-setup where required; (2) atomically insert `Prepared` plus its event; (3)
-atomically transition to `InFlight` plus its event; (4) invoke the one listed
-Git or GitHub operation; (5) authoritatively observe the target; and (6)
-atomically append the observation, terminal action transition, and terminal
-event. No transaction remains open across Git, network, or redaction work.
-Failure of either database transaction rolls it back wholly. Failure after
-step 4 leaves `InFlight`/`OutcomeUnknown` for read-only reconciliation, never
-a second mutation.
+Every new request follows one unambiguous sequence:
 
-`Prepared -> InFlight` commits before any external effect. A missing policy,
-lock, authority, active credential observation, or external-setup fact uses
-`Prepared -> Blocked` and performs no effect. Definite pre-effect transport
-failure uses `InFlight -> ObservedFailed`. If a process, connection, or response
-can fail after an effect may have occurred, the state becomes or is recovered
-as `OutcomeUnknown`; the adapter must observe the exact ref/object and may not
-repeat the mutation. Only authoritative observation resolves
-`OutcomeUnknown`. An inconclusive bounded observation resolves it to `Blocked`
-with `ExternalReconciliationRequired`, not to success or an automatic retry.
-Every transition requires exact expected state/version and one event.
-`ObservedSucceeded` requires its append-only observation and, for GitHub, exact
-external object reference. `ObservedFailed` requires the closed failure plus
-an authoritative or transport fact proving no effect occurred.
-`OutcomeUnknown` requires a named effect-before-observation seam.
-`Blocked` requires a closed reason/evidence reference. Result, failure, and
-observed time nullability are constrained consistently with those states.
+1. Perform **structural pre-intent validation** only: closed request/authority/
+   context/result carrier shape, required fields, ID/ref/SHA/digest/timestamp/
+   path grammar, size, action/request match, forbidden live/default/tag/force/
+   shell/secret carrier, idempotency-key grammar, and existing-key replay or
+   conflict. Failure returns `RejectedBeforeIntent`, the mapped structural
+   error, `action_id = NULL`, and writes no action/event. Same-key/same-
+   fingerprint replay returns the original result and creates nothing.
+2. For a new structurally valid request, atomically insert `Prepared` and
+   `RepositoryActionPrepared` before consulting mutable operational facts.
+3. Read the current binding/policy/version, run/packet relation, M1-02 locks,
+   expected Git/GitHub source facts and, for network operations, the exact
+   setup lookup, latest secret-reference observation, and runtime session.
+   Missing/stale/conflicting/unavailable dynamic facts atomically change
+   `Prepared -> Blocked`, append `RepositoryActionBlocked`, return `Blocked`
+   with that action ID, and invoke no Git mutation/network transport.
+4. Atomically change `Prepared -> InFlight` and append its event, then invoke
+   exactly one listed Git or GitHub operation. No database transaction remains
+   open across Git, network, session acquisition, or redaction work.
+5. Authoritatively observe the target and atomically append the observation,
+   terminal action transition, and terminal event. Transaction failure rolls
+   back the whole local write. Failure after the effect can have occurred
+   leaves `InFlight`/`OutcomeUnknown` for read-only reconciliation, never a
+   second mutation.
+
+The exact failure-phase mapping is:
+
+| Phase | Examples | Result / durable state |
+|---|---|---|
+| Structural pre-intent | malformed/extra field; invalid ID/ref/SHA/path; live/default/force target; raw secret carrier; idempotency conflict | `RejectedBeforeIntent`; no row/event; structural error code |
+| Dynamic after `Prepared`, before effect | stale/missing binding or policy; absent/mismatched lock; missing/expired/revoked/superseded setup; stale secret observation; missing/broader/mismatched session; stale source ref | `Blocked`; `Prepared -> Blocked`; mapped authority/resource/credential/source error |
+| Definite invocation failure before an effect | transport construction, DNS/connect/auth/permission/rate-limit response proving no mutation | `Failed`; `InFlight -> ObservedFailed`; mapped Git/GitHub error |
+| Effect may have occurred | lost response, timeout after send, process death after invocation | `OutcomeUnknown`; `InFlight -> OutcomeUnknown` now or on restart |
+| Authoritative post-effect fact matches | exact branch/commit/push/PR/reviewer observation | `Succeeded`; `InFlight|OutcomeUnknown -> ObservedSucceeded` |
+| Authoritative post-effect fact proves no effect | exact ref/object absence after bounded authoritative reconciliation | `Failed`; `OutcomeUnknown -> ObservedFailed` |
+| Bounded reconciliation remains inconclusive | unavailable/eventually inconsistent source with no safe conclusion | `Blocked`; `OutcomeUnknown -> Blocked`; `ExternalReconciliationRequired` |
+
+Only authoritative observation resolves `OutcomeUnknown`; it never repeats the
+mutation. Every transition requires exact expected state/version and one
+event. `ObservedSucceeded` requires its append-only observation and, for
+GitHub, exact external object reference. `ObservedFailed` requires the closed
+failure plus an authoritative or transport fact proving no effect occurred.
+`OutcomeUnknown` requires a named effect-before-observation seam. `Blocked`
+requires a closed reason/evidence reference. Result, failure, and observed time
+nullability are constrained consistently with those states.
 
 Every command has an idempotency key and fingerprint over authority digest,
-kind, target, expected-before facts, and closed request payload. Same key and
+expected binding version, external setup ID/revision/digest when present, kind,
+target, expected-before facts, and closed request payload. Same key and
 fingerprint returns the original row/result; same key with different facts is
 `IdempotencyConflict`. A terminal failed/blocked action is not retried by
 changing state. A later attempt requires Project Architect or calling-policy
@@ -472,11 +713,14 @@ authority, a new idempotency key, and a fresh authoritative observation.
 
 After process restart, an `InFlight` row is first changed to `OutcomeUnknown`
 in one M1-02 transaction. Startup reconciliation then observes Git/GitHub and
-records exactly one terminal transition/event. It never invokes a mutating
-API for that row. M1-02 resource locks plus the active-target unique index
-serialize concurrent calls. A busy or lock conflict returns `ResourceBusy`
-before an effect. Stale expected refs/versions return `RepositoryStateConflict`
-without an effect or success event.
+records exactly one terminal transition/event. It first expires due setup rows,
+then retrieves the original action's exact setup ID/revision/digest through the
+durable injected lookup and acquires a current session no broader than that
+record. Missing/stale setup or session resolves to `Blocked`, never a fallback.
+Reconciliation never invokes a mutating API for the row. M1-02 resource locks
+plus the active-target unique index serialize concurrent calls. Dynamic lock
+conflict maps to a durable `Blocked/ResourceBusy`; stale expected refs/versions
+map to durable `Blocked/RepositoryStateConflict`, both without an effect.
 
 ## Exact adapter APIs and side effects
 
@@ -485,35 +729,45 @@ packet/run; the project adapter supplies authority. The bootstrap Coordinator
 only dispatches M1-03 implementation slices, and M1-03 itself provides no
 clock/tick, scheduler, worker, or automatic-next-action loop.
 
-Public methods accept a `RepositoryOperationAuthority`,
-`RepositoryOperationContext`, injected clock, idempotency key,
-expected-before values, and the typed inputs shown. They return a durable
-action ID plus one closed observation or error. No method accepts an arbitrary
-database path, credential value, shell command, raw HTTP request, default
-branch override, or merge flag.
+The constructors are exact and receive the sole clock used for preparation,
+start, lookup freshness, session validity, observation, expiry, and recovery:
+
+```python
+RepositoryAdapter(store, git_transport, clock,
+    external_setup_lookup=None, external_access_session_provider=None)
+
+GitHubAdapter(store, github_transport, external_setup_lookup,
+    external_access_session_provider, clock)
+```
+
+Tests inject one deterministic clock object. Public methods do not accept
+`now`, another clock, a caller-supplied setup record, or a caller-supplied
+session. They accept a `RepositoryOperationAuthority`,
+`RepositoryOperationContext`, idempotency key, expected-before values, and the
+typed inputs shown. Every method returns the one `RepositoryOperationResult`.
+No method accepts an arbitrary database path, credential value, shell command,
+raw HTTP request, default branch override, or merge flag.
 
 ### Local Git adapter
 
 ```python
 RepositoryAdapter.observe_repository(authority, context, expected_head,
-    idempotency_key) -> RepositoryObservationPayload
+    idempotency_key) -> RepositoryOperationResult
 
 RepositoryAdapter.ensure_feature_branch(authority, context, full_ref,
-    base_commit, idempotency_key) -> BranchObservationPayload
+    base_commit, idempotency_key) -> RepositoryOperationResult
 
 RepositoryAdapter.create_commit(authority, context, full_ref,
     expected_parent, changed_paths, changed_path_input_digests,
     author: GitIdentity, committer: GitIdentity,
-    message: RedactedTextPayload, idempotency_key) -> CommitObservationPayload
+    message: RedactedTextPayload, idempotency_key) -> RepositoryOperationResult
 
 RepositoryAdapter.push_feature_branch(authority, context, full_ref,
     local_commit, expected_remote_commit, remote_reference,
-    access_session: ExternalAccessSession | None,
-    idempotency_key) -> PushObservationPayload
+    idempotency_key) -> RepositoryOperationResult
 
 RepositoryAdapter.reconcile(action_id, authority, context)
-    -> RepositoryObservationPayload | BranchObservationPayload |
-       CommitObservationPayload | PushObservationPayload
+    -> RepositoryOperationResult
 ```
 
 Exact behavior:
@@ -546,7 +800,10 @@ Exact behavior:
   same commit is idempotent. A different/non-fast-forward result conflicts.
 - Local proof uses an explicit filesystem bare remote and no access session.
   A non-file/network remote requires the approved external setup and active
-  session before Git is invoked.
+  session before Git is invoked. It resolves the authority's exact setup
+  ID/revision/digest through the injected lookup and acquires an exact/narrower
+  session with `ContentsRead` and `FeatureBranchWrite`; mismatch records
+  `Prepared -> Blocked` before resolving or contacting the remote.
 
 Git uses argument arrays, closed stdin except bounded message/content input,
 `shell=False`, `GIT_CONFIG_NOSYSTEM=1`, a disabled global config,
@@ -558,36 +815,45 @@ plumbing, but its observable guarantees above are mandatory.
 ### GitHub adapter
 
 ```python
-GitHubAdapter.observe_repository(authority, context, access_session,
-    idempotency_key) -> GitHubRepositoryObservationPayload
+GitHubAdapter.observe_repository(authority, context,
+    idempotency_key) -> RepositoryOperationResult
 
-GitHubAdapter.ensure_draft_pull_request(authority, context, access_session,
+GitHubAdapter.ensure_draft_pull_request(authority, context,
     head_ref, head_commit, base_ref, title: RedactedTextPayload,
     body: RedactedTextPayload, idempotency_key)
-    -> PullRequestObservationPayload
+    -> RepositoryOperationResult
 
-GitHubAdapter.request_reviewers(authority, context, access_session,
+GitHubAdapter.request_reviewers(authority, context,
     pull_request_number, head_commit, reviewer_references,
-    idempotency_key) -> ReviewerRequestObservationPayload
+    idempotency_key) -> RepositoryOperationResult
 
-GitHubAdapter.observe_pull_request(authority, context, access_session,
+GitHubAdapter.observe_pull_request(authority, context,
     pull_request_number, expected_head, idempotency_key)
-    -> PullRequestObservationPayload
+    -> RepositoryOperationResult
 
-GitHubAdapter.observe_checks(authority, context, access_session,
+GitHubAdapter.observe_checks(authority, context,
     head_commit, declared_check_names, idempotency_key)
-    -> tuple[CheckObservationPayload, ...]
+    -> RepositoryOperationResult
 
-GitHubAdapter.observe_reviews(authority, context, access_session,
+GitHubAdapter.observe_reviews(authority, context,
     pull_request_number, expected_head, idempotency_key)
-    -> tuple[ReviewObservationPayload, ...]
+    -> RepositoryOperationResult
 
-GitHubAdapter.reconcile(action_id, authority, context, access_session)
-    -> closed observation
+GitHubAdapter.reconcile(action_id, authority, context)
+    -> RepositoryOperationResult
 ```
 
 Exact behavior:
 
+- Every GitHub call first resolves the authority's exact setup ID/revision/
+  digest through the injected durable lookup, then acquires and compares the
+  runtime session. Required capabilities are: observe repository
+  `RepositoryMetadataRead`; observe PR `PullRequestsRead`; ensure draft PR
+  `PullRequestsRead + DraftPullRequestWrite`; request reviewers
+  `PullRequestsRead + ReviewsRead + ReviewRequestWrite`; observe checks
+  `ChecksRead`; and observe reviews `ReviewsRead`. Reconciliation uses only the
+  read capabilities of its target kind and never acquires a write capability.
+  No call or restart caches/substitutes a setup revision or session.
 - The adapter uses the official GitHub API through an injected, authenticated
   provider transport. Endpoint/version/media-header mapping is isolated in that
   transport and must be verified against official GitHub documentation at
@@ -622,17 +888,35 @@ dismiss method.
 Closed error codes are:
 
 ```text
-InvalidRepositoryAuthority, UnsupportedRepositoryPolicy,
+InvalidRepositoryAuthority, InvalidOperationContext,
+UnsupportedRepositoryPolicy,
 LiveRepositoryRejected, DefaultBranchWriteRejected, PathOutsideAuthority,
 InvalidGitReference, InvalidCommit, RepositoryStateConflict,
 RemoteStateConflict, RepositoryNotFound, RepositoryDirty,
-UnapprovedExternalAccess, CredentialUnavailable, CredentialStale,
+UnapprovedExternalAccess, ExternalSetupUnavailable, ExternalSetupExpired,
+ExternalSetupRevoked, ExternalSetupSuperseded, ExternalSessionMismatch,
+CredentialUnavailable, CredentialStale,
 CredentialRevoked, CredentialExpired, CredentialScopeInsufficient,
 SensitiveCarrierRejected, IdempotencyConflict, ResourceBusy,
 GitOperationFailed, GitHubAuthenticationFailed, GitHubPermissionDenied,
 GitHubRateLimited, GitHubRequestFailed, ExternalResultTooLarge,
 OutcomeUnknown, ExternalReconciliationRequired
 ```
+
+Dynamic pre-effect mapping is exact: missing/no accepted setup ->
+`ExternalSetupUnavailable`; wrong ID/project/binding/repository/digest ->
+`UnapprovedExternalAccess`; time-expired -> `ExternalSetupExpired`; terminal
+revocation -> `ExternalSetupRevoked`; superseded or non-current revision ->
+`ExternalSetupSuperseded`; runtime identity/provider/reference/setup mismatch or
+capabilities broader than the setup -> `ExternalSessionMismatch`; unavailable,
+stale, revoked, or expired session/secret observation -> the corresponding
+`Credential*` code; missing required capability ->
+`CredentialScopeInsufficient`; stale/missing current binding/policy ->
+`InvalidRepositoryAuthority`/`UnsupportedRepositoryPolicy`; absent/conflicting
+lock -> `ResourceBusy`; stale Git/GitHub target ->
+`RepositoryStateConflict` or `RemoteStateConflict`. Each maps to durable
+`Blocked` after `Prepared`. Structural forms of invalid context/authority/ref/
+path/secret/idempotency map to `RejectedBeforeIntent` as defined above.
 
 Errors expose code, safe subject reference, action ID if prepared, retry class,
 and redacted receipt only. They do not expose command output, headers, response
@@ -662,16 +946,19 @@ M1-02 suites remain mandatory. No test is removed, skipped, weakened, made
 order-dependent, or changed to accept a newer schema generically. Add these
 named M1-03 proofs:
 
-1. Schema 4 upgrades atomically to 5; all prior rows/constraints/events survive;
-   empty and populated migrations, reopen, duplicate migration, injected DDL
-   failure rollback, foreign keys, WAL, and exact health version pass.
+1. Schema 4 upgrades atomically to 5 with exact external-setup/action/
+   observation tables; all prior rows/constraints/events survive; empty and
+   populated migrations, reopen, duplicate migration, injected DDL failure
+   rollback, foreign keys, WAL, and exact health version pass.
 2. Every new store/service/factory/read/write/reconcile route reuses the M1-02
    store and M0-D11 boundary. Forged/outside/symlink/swapped runtime paths fail
    without artifacts; valid calls remain physically under `var/`.
-3. Closed authorities reject missing/conflicting identity, unaccepted binding,
-   unsupported policy, unknown/live classification, symbolic/abbreviated SHA,
-   invalid ref, default branch, tag, wildcard, ref deletion, unknown remote,
-   and outside allowed path before effect.
+3. Closed malformed authorities/contexts/requests/idempotency, unknown/live
+   classification, symbolic/abbreviated SHA, invalid ref, default branch, tag,
+   wildcard, ref deletion, raw secret, and outside path return
+   `RejectedBeforeIntent` with null action ID and no row/event. Structurally
+   valid requests with stale/missing current binding/policy, lock, source fact,
+   or remote record `Prepared -> Blocked` with exact mapped code and no effect.
 4. A real temporary worktree proves observation uses exact refs/objects, reports
    clean/dirty honestly, and makes byte-for-byte no repository change.
 5. Real Git proves feature-branch creation is compare-and-set and idempotent;
@@ -685,18 +972,21 @@ named M1-03 proofs:
    exact replay, non-fast-forward/concurrent rejection, bounded failure, and
    restart reconciliation after effect-before-record without duplicate push or
    default/tag/config mutation.
-8. Same-key replay returns the original local result; same key/different facts
-   conflicts. Separate processes and database reopen prove one active target
-   and one terminal transition/event.
+8. Same-key replay returns the original `RepositoryOperationResult` and action;
+   same key/different facts rejects before a new intent. Separate processes and
+   database reopen prove one active target and one terminal transition/event.
 9. Structural carrier tests enumerate every new request/result/error/event/
    evidence/handoff route. Provider/reference succeeds; PAT, bearer header,
    private key, userinfo URL, credential query, environment snapshot, raw
    prompt, raw trace, raw Git/HTTP output, and unknown fields fail before
    durable state. Redacted receipts/digests persist; raw values do not appear in
    DB bytes, events, logs, exceptions, or returned objects.
-10. A local deterministic GitHub transport server proves exact repository/PR/
-    reviewer/check/review request mapping, pagination bounds, typed failures,
-    redaction, no credential in URL/log, and no unlisted endpoint or method.
+10. One deterministic constructor clock supplies every timestamp/freshness/
+    expiry comparison, and every local/GitHub/reconcile method returns exactly
+    one discriminated `RepositoryOperationResult`. A local deterministic GitHub
+    transport server proves exact repository/PR/reviewer/check/review request
+    mapping, pagination bounds, typed failures, redaction, no credential in
+    URL/log, and no unlisted endpoint or method.
 11. Draft PR replay observes one exact existing PR. Mismatch/multiple candidate,
     non-draft, stale head/base, response loss, and process restart block or
     reconcile without a second create or edit.
@@ -706,16 +996,21 @@ named M1-03 proofs:
 13. Check/review observations preserve external IDs, exact head, states,
     conclusions, and timestamps without inferring pass, approval, acceptance,
     or dispatchability. Changed facts append; identical facts deduplicate.
-14. Missing setup, missing provider/reference, inactive/stale/revoked/expired
-    credential, insufficient capability, personal credential, broadened scope,
-    unknown/live repository, and missing external lock all block before DNS,
-    socket, Git remote, or GitHub transport invocation.
+14. Project Architect-only record/supersede/revoke APIs, immutable Owner
+    acceptance evidence, exact revision/digest/currentness, mechanical expiry,
+    startup reload, and no-cache exact-ID lookup pass. Missing/wrong/stale/
+    expired/revoked/superseded setup; missing provider/reference; inactive/
+    stale/revoked/expired or broader/mismatched session; insufficient
+    capability; personal identity; unknown/live repository; and missing
+    external lock all record the exact blocked mapping before DNS, socket, Git
+    remote, or GitHub transport invocation.
 15. The public API and source scan prove no merge, force, default-ref update,
     branch-protection/admin, workflow/deploy, secret-management, PR-edit/close,
     review-submit/dismiss, arbitrary command, shell, personal fallback, or
     unapproved-network route exists.
-16. Under the separately Owner-approved setup, a real dedicated non-live
-    GitHub repository proves service-identity repository observation, one
+16. Under one active setup record stored by the Project Architect with immutable
+    Owner acceptance evidence, a real dedicated non-live GitHub repository
+    proves service-identity repository observation, one
     unique feature branch and commit push, one exact draft PR, current check
     observations, one approved reviewer request, and observation of one real
     independent-review result. Repeat and fresh-process replay create no second
@@ -727,11 +1022,13 @@ named M1-03 proofs:
     successful observation through the separately authorized setup
     administrator (not through M1-03), then prove the next operation visibly
     blocks with no personal fallback or network effect. Restore requires a new
-    Owner-approved setup observation; code does not self-heal authority.
+    Project Architect-recorded setup revision with Owner acceptance evidence;
+    code does not self-heal authority.
 18. Kill/restart at every durable-before-effect/effect-before-result seam for
-    branch, commit, push, PR, and reviewer request. Authoritative observation
-    produces one safe terminal history and never blindly replays an uncertain
-    mutation.
+    branch, commit, push, PR, and reviewer request. Startup expires due setup,
+    reloads the exact recorded ID/revision/digest, requires a no-broader fresh
+    session, and authoritative observation produces one safe terminal history
+    without blindly replaying an uncertain mutation.
 19. All Alpha-01, Alpha-02, Alpha-03, M1-01, accepted M1-02, M1-03A/B unit and
     integration tests, JSON/schema consistency if extended, Python compileall,
     exact changed-path review, and repository artifact scan pass from the exact
@@ -783,8 +1080,9 @@ Project Architect/Owner-authorized external action.
   automatic remediation.
 - **Assurance:** durable intent plus conservative authoritative reconciliation;
   unknown remains blocked rather than claimed exactly-once.
-- **Sufficient proof:** tests 5, 7-8, 11-12, and 18 produce one action history and
-  no repeated unknown mutation.
+- **Sufficient proof:** tests 3, 5, 7-8, 10-12, 14, and 18 prove the exact
+  pre-intent/blocked/effect phases, one result shape, one action history, and no
+  repeated unknown mutation.
 - **Implementation boundary:** schema 5, accepted M1-02 APIs, Git, injected
   GitHub transport, and owned modules.
 - **Proportionality ceiling:** deterministic seam injection, real process
@@ -795,8 +1093,10 @@ Project Architect/Owner-authorized external action.
 ### Q3 — Least-privilege credential and redaction boundary
 
 - **Protected outcome:** only an Owner-approved repository-scoped service
-  capability reaches the exact non-live target; no secret value survives in
-  SQLite, output, logs, errors, evidence, handoff, URL, or argv.
+  capability from the exact active Project Architect-recorded setup revision
+  reaches the exact non-live target, and the runtime session is never broader;
+  no secret value survives in SQLite, output, logs, errors, evidence, handoff,
+  URL, or argv.
 - **Operating/threat/failure model:** missing/stale/revoked/expired credentials,
   over-broad or personal identities, malformed carriers, raw error responses,
   representative token/key/header/URL carriers, and caller mistakes.
@@ -805,9 +1105,11 @@ Project Architect/Owner-authorized external action.
   semantic detection.
 - **Assurance:** closed structural carriers, runtime injection, allowlisted
   capabilities, and redaction receipts; no claim of memory-zeroization.
-- **Sufficient proof:** tests 9-10, 14, 16-17 and DB/log byte scans.
-- **Implementation boundary:** provider-neutral opaque session and selected
-  provider at qualification; no provider is selected or provisioned here.
+- **Sufficient proof:** tests 9-10, 14, 16-18, exact setup lifecycle/restart
+  proof, and DB/log byte scans.
+- **Implementation boundary:** Project Architect-owned durable setup API,
+  injected exact-ID lookup, provider-neutral opaque session provider, and the
+  separately selected provider at qualification; none is provisioned here.
 - **Proportionality ceiling:** enumerate all new carriers and representative
   high-risk secret shapes; M3 owns worker prompt/trace scanning.
 - **Stop/return:** raw-secret API, personal fallback, new provider, expanded
@@ -845,8 +1147,9 @@ Project Architect/Owner-authorized external action.
   mount/kernel compromise, provider compromise, and live repositories.
 - **Assurance:** accepted M0-D11 trusted-local containment plus explicit project
   authority validation; these are distinct boundaries.
-- **Sufficient proof:** tests 2-4, 6, and 14 parameterize every new constructor,
-  factory, action, observation, and reconciliation route.
+- **Sufficient proof:** tests 2-4, 6, 10, and 14 parameterize every new store,
+  clock, setup/session provider, adapter constructor, factory, action,
+  observation, and reconciliation route.
 - **Implementation boundary:** accepted `RuntimeConfig`,
   `OperationalStateStore`, directory-FD routines, Git worktree validation, and
   owned code only.
@@ -870,8 +1173,9 @@ Project Architect/Owner-authorized external action.
   and GitHub evidence; offline doubles do not satisfy it.
 - **Sufficient proof:** tests 16-17 plus exact external object IDs, before/after
   default/protection/ref inventory, and redacted action evidence.
-- **Implementation boundary:** reviewed B code at an exact head, separately
-  accepted setup record, one dedicated non-live repo, service identity, and
+- **Implementation boundary:** reviewed B code at an exact head, one active
+  Project Architect-recorded setup ID/revision/digest with immutable Owner
+  acceptance evidence, one dedicated non-live repo, service identity, and
   approved reviewer.
 - **Proportionality ceiling:** one unique branch/commit/draft PR/check/reviewer
   chain and replay/credential-loss observations; no broad GitHub certification.
@@ -896,16 +1200,19 @@ including real external qualification, creates accepted M1-03.
   `implementation/m1-03a-local-git-recovery` at
   `/home/jeremy/Development/Maestro-m1-03a-implementation`, created only from
   the exact accepted M1-02C head after packet reconciliation.
-- **Outcome:** additive schema-4-to-5 action/observation ledger, authority and
-  closed payloads, local observe/branch/commit/push adapter, local bare-remote
-  proof, and restart/concurrency reconciliation.
+- **Outcome:** additive schema-4-to-5 setup-authority/action/observation ledger,
+  Project Architect-owned setup record API and injected lookup, one clock/
+  result contract, closed payloads, local observe/branch/commit/push adapter,
+  local bare-remote proof, and restart/concurrency reconciliation.
 - **Non-goals:** GitHub HTTP/API code, credential selection/injection,
-  networked remote, external setup, project create/register, or any umbrella
-  exclusion.
+  networked remote, setup/credential provisioning or activation, project
+  create/register, or any umbrella exclusion.
 - **Owned paths:** `services/maestro/maestro/storage.py` only for additive
   migration/factory integration;
   `services/maestro/maestro/operational_state.py` only for registered safe
   payload/event integration;
+  `services/maestro/maestro/recovery.py` only for setup-expiry and M1-03 action
+  startup ordering;
   `services/maestro/maestro/git_repository.py` only for preserving/extending
   shared Git primitives;
   `services/maestro/maestro/repository_adapter.py`;
@@ -914,28 +1221,31 @@ including real external qualification, creates accepted M1-03.
   `tests/m1_03/test_action_storage.py`;
   `tests/m1_03/test_repository_adapter.py`; and
   `tests/m1_03/test_repository_recovery.py`.
-- **Proof group:** proofs 1-9, 14-15 for local/no-network routes, 18 for local
-  actions, and all prior regressions/compileall.
+- **Proof group:** proofs 1-10, proof 14 for durable setup API/lookup and
+  no-network routes, proof 15, proof 18 for local/startup recovery, and all
+  prior regressions/compileall.
 - **Locks/envelope/routes:** `shared:sqlite-schema`,
   `file:services-maestro-storage`, `path:maestro-operational-state`,
-  `path:maestro-git-adapter`, and `path:tests-m1-03`; one 150-minute attempt and
-  at most one correction; Developer -> Integration validate-only unless
-  assembly -> fresh exact-range independent review -> routine Project
-  Architect A acceptance. A acceptance opens only B code.
+  `path:maestro-recovery`, `path:maestro-git-adapter`, and `path:tests-m1-03`;
+  one 150-minute attempt and at most one correction; Developer -> Integration
+  validate-only unless assembly -> fresh exact-range independent review ->
+  routine Project Architect A acceptance. A acceptance opens only B code.
 
 ### M1-03B — Credential-gated non-live GitHub integration
 
 - **Stable ID:** `MAESTRO-M1-03B-NONLIVE-GITHUB-INTEGRATION`.
 - **Dependency:** `hard: MAESTRO-M1-03A-LOCAL-GIT-RECOVERY @
   ProjectArchitectAccepted`; real qualification also requires `hard:
-  M1-03-EXTERNAL-SETUP @ OwnerAccepted` recorded by the Project Architect.
+  M1-03-EXTERNAL-SETUP-AUTHORITY @ ProjectArchitectRecorded` with immutable
+  Owner acceptance evidence for the reserved external facts.
 - **Branch/worktree/base:**
   `implementation/m1-03b-nonlive-github-integration` at
   `/home/jeremy/Development/Maestro-m1-03b-implementation`, created only from
   the exact accepted A head. External setup changes no code base.
-- **Outcome:** provider-neutral GitHub transport, PR/reviewer/check/review
-  operations, structural credential/redaction boundary, offline contract proof,
-  then real dedicated non-live qualification and cumulative M1-03 evidence.
+- **Outcome:** provider-neutral GitHub transport and session provider, exact
+  active-setup/session comparison, PR/reviewer/check/review operations,
+  structural credential/redaction boundary, offline contract proof, then real
+  dedicated non-live qualification and cumulative M1-03 evidence.
 - **Non-goals:** selecting/provisioning credentials or repositories, accepting
   costs/scopes, merge/default-write/protection/admin, webhooks, live projects,
   or any umbrella exclusion.
@@ -957,18 +1267,19 @@ including real external qualification, creates accepted M1-03.
   `external:owner-approved-m1-03-nonlive-github-repository` and
   `finite:owner-approved-m1-03-credential-session`. Developer -> Integration
   cumulative validate/assemble -> fresh exact-range independent review ->
-  Owner-authorized activation -> attended proof -> Integration validates exact
-  final head/evidence -> reviewer confirms coverage/evidence -> routine Project
-  Architect integrated acceptance.
+  Project Architect records the Owner-evidenced active setup -> attended proof
+  -> Integration validates exact final head/evidence -> reviewer confirms
+  coverage/evidence -> routine Project Architect integrated acceptance.
 
 ## Status, stop, handoff, and acceptance
 
 The Coordinator reports `DependencyBlocked` while M1-02C is unaccepted,
 `PendingDecisionFidelity` until this planning range is approved,
 runtime packet state `Waiting` with an open `ExternalSetup` gate when reviewed
-B code lacks accepted setup, and the exact typed failure/action state during
-qualification. Waiting is not failure and does not authorize polling more
-frequently, credential substitution, or another action.
+B code lacks an active Project Architect-recorded setup ID/revision/digest with
+Owner evidence, and the exact typed failure/action state during qualification.
+Waiting is not failure and does not authorize polling more frequently,
+credential substitution, or another action.
 
 Stop immediately on dirty/wrong base, missing lock, changed accepted M1-02 API,
 outside-path diff, raw secret carrier, personal identity, unknown/live target,
