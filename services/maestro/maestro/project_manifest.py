@@ -17,6 +17,7 @@ _PROJECT_ID = re.compile(r"[a-z][a-z0-9-]{2,63}\Z")
 _REPOSITORY = re.compile(r"[^/\s]+/[^/\s]+\Z")
 _SECRET_REFERENCE = re.compile(r"[A-Z][A-Z0-9_]{2,127}\Z")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+_ACCEPTANCE_AUTHORITIES = frozenset({"project-architect", "owner"})
 
 _SHAPE: dict[str, tuple[str, ...]] = {
     "identity": (
@@ -158,6 +159,14 @@ def _validate_closed_shape(manifest: dict[str, Any]) -> None:
         repository = identity.get("repository")
         if repository is not None and not _REPOSITORY.fullmatch(repository):
             raise ProjectManifestError("identity.repository must have owner/name form")
+
+    delivery = manifest.get("delivery", {})
+    if isinstance(delivery, dict) and "acceptance_authority" in delivery:
+        acceptance_authority = delivery["acceptance_authority"]
+        if acceptance_authority not in _ACCEPTANCE_AUTHORITIES:
+            raise ProjectManifestError(
+                "delivery.acceptance_authority must be project-architect or owner"
+            )
 
     authority = manifest.get("authority", {})
     if isinstance(authority, dict):

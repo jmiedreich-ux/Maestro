@@ -36,7 +36,7 @@
       "required": ["branch_policy", "pull_request_policy", "merge_policy", "acceptance_authority", "deployment_policy", "rollback_policy"],
       "properties": {
         "branch_policy": {"$ref": "#/$defs/scalar"}, "pull_request_policy": {"$ref": "#/$defs/scalar"},
-        "merge_policy": {"$ref": "#/$defs/scalar"}, "acceptance_authority": {"$ref": "#/$defs/scalar"},
+        "merge_policy": {"$ref": "#/$defs/scalar"}, "acceptance_authority": {"enum": ["project-architect", "owner"]},
         "deployment_policy": {"$ref": "#/$defs/scalar"}, "rollback_policy": {"$ref": "#/$defs/scalar"}
       }
     },

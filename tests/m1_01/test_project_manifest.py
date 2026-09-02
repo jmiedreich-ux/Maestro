@@ -132,6 +132,42 @@ class ProjectManifestTests(unittest.TestCase):
             f"imported PyYAML {imported_version} does not satisfy required range >=6.0.2,<7",
         )
 
+    def test_acceptance_authority_enum_agrees_across_schema_and_python(self) -> None:
+        schema = self.schema()
+        validator = Draft202012Validator(schema)
+        authority_schema = schema["properties"]["delivery"]["properties"]["acceptance_authority"]
+        self.assertEqual(authority_schema, {"enum": ["project-architect", "owner"]})
+
+        for authority in ("project-architect", "owner"):
+            manifest = complete_manifest()
+            manifest["delivery"]["acceptance_authority"] = authority
+            with self.subTest(accepted=authority):
+                self.assertEqual(
+                    parse_project_manifest(dump_manifest(manifest))["delivery"]["acceptance_authority"],
+                    authority,
+                )
+                validator.validate(manifest)
+
+        rejected = (
+            "unrecognized-approver",
+            "",
+            "Project-Architect",
+            " project-architect",
+            "project-architect ",
+            None,
+            False,
+            1,
+            ["project-architect"],
+            {"authority": "project-architect"},
+        )
+        for authority in rejected:
+            manifest = complete_manifest()
+            manifest["delivery"]["acceptance_authority"] = authority
+            with self.subTest(rejected=authority):
+                with self.assertRaises(ProjectManifestError):
+                    parse_project_manifest(dump_manifest(manifest))
+                self.assertFalse(validator.is_valid(manifest))
+
     def test_every_missing_required_leaf_has_one_exact_missing_fact(self) -> None:
         for dotted in manifest_leaf_paths():
             with self.subTest(dotted=dotted):

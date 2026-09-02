@@ -17,6 +17,14 @@ from support import (
 )
 
 
+def registration_counts(database_path) -> tuple[int, int, int]:
+    with closing(sqlite3.connect(database_path)) as connection:
+        return tuple(
+            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in ("projects", "project_registration_runs", "events")
+        )
+
+
 class ProjectAuthorityLoaderTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repository = TemporaryProjectRepository()
@@ -30,11 +38,7 @@ class ProjectAuthorityLoaderTests(unittest.TestCase):
         return ProjectAuthorityLoader(self.runtime.foundation())
 
     def database_counts(self) -> tuple[int, int, int]:
-        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
-            return tuple(
-                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                for table in ("projects", "project_registration_runs", "events")
-            )
+        return registration_counts(self.runtime.path / "maestro.sqlite3")
 
     def test_complete_real_repository_records_one_candidate_run_event_without_mutation(self) -> None:
         before = repository_snapshot(self.repository.path)
@@ -205,13 +209,14 @@ class ProjectAuthorityLoaderTests(unittest.TestCase):
                 runtime.close()
                 repository.close()
 
-    def test_valid_secret_references_are_reviewable_and_owner_acceptance_is_blocked(self) -> None:
+    def test_project_architect_is_reviewable_and_owner_is_reserved_blocked(self) -> None:
         valid = complete_manifest()
         valid["operations"]["secret_references"] = ["GITHUB_APP_PRIVATE_KEY", "SLACK_BOT_TOKEN"]
         self.repository.write_manifest(valid)
         commit = self.repository.commit_all("declare secret references")
         result = self.loader().load(self.repository.path, commit, "owner/example-project")
         self.assertEqual(result.disposition, "Reviewable")
+        self.assertEqual(self.database_counts(), (1, 1, 1))
 
         owner_repository = TemporaryProjectRepository()
         owner_runtime = RuntimeDirectory()
@@ -229,10 +234,54 @@ class ProjectAuthorityLoaderTests(unittest.TestCase):
             )
             self.assertEqual(owner_result.disposition, "Blocked")
             self.assertEqual(owner_fact.status, "conflicting")
+            self.assertEqual(owner_fact.observed_value, "owner")
             self.assertIn("reserved material return", owner_fact.reason)
+            self.assertEqual(
+                registration_counts(owner_runtime.path / "maestro.sqlite3"),
+                (0, 1, 1),
+            )
         finally:
             owner_runtime.close()
             owner_repository.close()
+
+    def test_unrecognized_acceptance_authorities_fail_before_persistence(self) -> None:
+        rejected = (
+            "unrecognized-approver",
+            "",
+            "Project-Architect",
+            " project-architect",
+            "project-architect ",
+            None,
+            False,
+            1,
+            ["project-architect"],
+            {"authority": "project-architect"},
+        )
+        for authority in rejected:
+            repository = TemporaryProjectRepository()
+            runtime = RuntimeDirectory()
+            try:
+                manifest = complete_manifest()
+                manifest["delivery"]["acceptance_authority"] = authority
+                repository.write_manifest(manifest)
+                commit = repository.commit_all("invalid acceptance authority")
+                before = repository_snapshot(repository.path)
+
+                with self.subTest(authority=authority), self.assertRaises(ProjectManifestError):
+                    ProjectAuthorityLoader(runtime.foundation()).load(
+                        repository.path, commit, "owner/example-project"
+                    )
+
+                self.assertFalse((runtime.path / "maestro.sqlite3").exists())
+                self.assertEqual(repository_snapshot(repository.path), before)
+                runtime.foundation().health()
+                self.assertEqual(
+                    registration_counts(runtime.path / "maestro.sqlite3"),
+                    (0, 0, 0),
+                )
+            finally:
+                runtime.close()
+                repository.close()
 
     def test_git_symlink_submodule_nonblob_and_per_blob_overflow_are_rejected_read_only(self) -> None:
         builders = [self._symlink_repository, self._submodule_repository,
