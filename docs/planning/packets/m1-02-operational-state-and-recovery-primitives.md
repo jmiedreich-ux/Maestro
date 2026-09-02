@@ -1,13 +1,13 @@
 # M1-02 — Complete Operational State and Recovery Primitives
 
-**Status:** Materialized candidate for Project Architect and Decision Fidelity review; dependency-blocked and not released
+**Status:** Materialized candidate pending Decision Fidelity review and Project Architect release; M1-01 dependency satisfied, not released
 **Packet ID:** `maestro-m1-02-operational-state-recovery`
 **Graph node:** `MAESTRO-M1-02-OPERATIONAL-STATE-RECOVERY`
 **Graph revision:** `maestro-m1-m4-real-r1`
 **Planning source base:** `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84`
-**Implementation base:** unresolved until M1-01 has complete implementation-review coverage and routine Project Architect acceptance; before release the Coordinator must replace this field with that exact accepted M1-01 final head
-**Expected implementation branch:** `implementation/m1-02-operational-state-recovery`
-**Expected worktree:** `/home/jeremy/Development/Maestro-m1-02-implementation`
+**Implementation base:** `56b4dfb5e4d4bef860616cde93d172affb0e4210`, routinely accepted by the Project Architect with schema version `3`, Integration `PASS`, and contiguous implementation-review coverage `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4..f44518c3144ae5bdc95fc73607cde7e9d58b8a5c`, `f44518c3144ae5bdc95fc73607cde7e9d58b8a5c..4e213b1` (`REQUEST_CHANGES`), and approved correction `4e213b1..56b4dfb5e4d4bef860616cde93d172affb0e4210`
+**Implementation shape:** three serial independently reviewed slices M1-02A,
+M1-02B, and M1-02C below; the umbrella node is never leased directly
 **Decision authority:** [M0-D01](../decisions/m0-d01-operational-database.md),
 [M0-D02](../decisions/m0-d02-project-registration.md),
 [M0-D03](../decisions/m0-d03-access-and-secrets.md),
@@ -21,8 +21,8 @@
 **Roadmap authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1; `docs/planning/maestro-master-plan.md`; and `docs/planning/agent-workforce-control-plane.md`
 **Typed hard dependency:** `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER @
 ProjectArchitectAccepted`, with exact final implementation head and complete
-implementation-review coverage; packet planning or Decision Fidelity review
-does not satisfy this dependency
+implementation-review coverage; satisfied at
+`56b4dfb5e4d4bef860616cde93d172affb0e4210`
 **Implementation role:** dedicated Maestro Developer
 **Execution route:** cloud collaboration worktree / dedicated Maestro Developer / `codex-cloud-maestro-developer` / session-inherited Codex model; factual model/runtime identity is recorded at dispatch preflight
 **Role/SOP versions:** `docs/agents/maestro-developer.md`, `docs/agents/coding-agent-sop.md`, `docs/agents/integration-agent.md`, `docs/agents/independent-review-agent.md`, and `docs/agents/maestro-development-manager.md` at planning source base `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84`; bootstrap Coordinator authority is M0-D15 plus `ai/handoffs/current.md` at the same revision
@@ -34,21 +34,39 @@ does not satisfy this dependency
 
 ## Candidate and dispatch boundary
 
-This packet completely defines M1-02, but it is not runtime `Dispatchable`. It may be reviewed while M1-01 is being implemented. It may not be released, leased, or implemented until:
+This packet completely defines M1-02, but it is not runtime `Dispatchable`.
+The M1-01 dependency is satisfied at the exact implementation base above. No
+slice may be released, leased, or implemented until:
 
-1. M1-01 has one exact accepted final implementation head with complete independent-review coverage;
-2. the Project Architect records that SHA as this packet's implementation base and confirms that accepted M1-01 produced schema version `3` with the `projects`, `project_registration_runs`, and `events` contract named by M1-01;
-3. the resulting packet-only correction receives targeted Decision Fidelity verification when required; and
-4. the Coordinator completes the exact preflight and atomically acquires every declared resource lock.
+1. this corrected packet receives Decision Fidelity `APPROVE` over its exact
+   planning range;
+2. the Project Architect releases that exact reviewed packet head;
+3. the Coordinator resolves and releases M1-02A only; each later slice waits for
+   routine Project Architect acceptance of the preceding exact slice head; and
+4. the Coordinator completes that slice's exact preflight and atomically
+   acquires every declared resource lock.
 
-If accepted M1-01 changes a table, state, migration, or API assumed here, do not translate it silently. Return the exact difference to the Project Architect for reconciliation before release.
+If the accepted M1-01 head changes or its accepted table/state/migration/API
+shape differs from the contract assumed here, do not translate it silently.
+Return the exact difference to the Project Architect for reconciliation before
+release.
 
 ## Exact dispatch controls
 
-- Use one clean isolated worktree at the accepted M1-01 final head and expected branch. No other writer may use it.
-- Acquire `shared:sqlite-schema`, `path:maestro-operational-state`, and `file:services-maestro-storage`. No parallel packet may write the schema, storage core, operational-state modules, or `tests/m1_02/` until handoff/cancellation releases them.
-- One initial Developer attempt is allowed. One M0-D05 correction is available only for committed, in-scope work failing a named gate. No automatic retry is permitted. Infrastructure failure stops to the Coordinator; a missing/infeasible contract returns to the Project Architect.
-- The attempt ceiling is 120 minutes. After 10 minutes without visible update, the Coordinator may request one bounded factual status; later requests are at least 10 minutes apart with a 2-minute reply window. No role invents an ETA.
+- Use the exact clean branch/worktree/base declared for the current serial slice.
+  No other writer may use it, and no slice begins from an unaccepted predecessor.
+- Acquire that slice's declared locks. No parallel packet may write a locked
+  schema, storage, state/recovery, documentation, or `tests/m1_02/` path until
+  handoff/cancellation releases it.
+- Each slice has one initial Developer attempt and at most one M0-D05 correction
+  for committed in-scope work failing a named gate. There is no automatic retry
+  and no correction allowance shared or borrowed across slices. Infrastructure
+  failure stops to the Coordinator; a missing/infeasible contract returns to
+  the Project Architect.
+- Slice ceilings are 150 minutes for M1-02A, 150 minutes for M1-02B, and 120
+  minutes for M1-02C. After 10 minutes without visible update, the Coordinator
+  may request one bounded factual status; later requests are at least 10
+  minutes apart with a 2-minute reply window. No role invents an ETA.
 - Preflight sets packet minimum context to 32,768 plus a separate 8,192-token
   output/handoff reserve, requiring configured capacity of at least 40,960.
   Record model, runtime, configured context, counting method, source/time, and
@@ -246,7 +264,8 @@ The joined project graph owns meaning/rank/dependencies. Maestro stores the obse
 run_id PK; run_fingerprint UNIQUE; project_id FK projects;
 binding_id FK project_bindings; graph_projection_id FK graph_projections;
 milestone_ref; approved_authority_reference; branch_name NULL;
-pull_request_reference NULL;
+pull_request_reference NULL; current_head NULL; current_head_source_reference NULL;
+candidate_head NULL; candidate_head_source_reference NULL;
 state CHECK Planned|Running|Blocked|AwaitingArchitect|AwaitingOwner|Complete|Cancelled;
 acceptance_boundary CHECK ProjectArchitect|Owner;
 created_at; updated_at; version
@@ -255,11 +274,20 @@ created_at; updated_at; version
 Run transitions are exactly `Planned -> Running|Blocked|Cancelled`,
 `Running -> Blocked|AwaitingArchitect|AwaitingOwner|Cancelled`,
 `Blocked -> Running|AwaitingArchitect|AwaitingOwner|Cancelled`, and
-`AwaitingArchitect|AwaitingOwner -> Complete|Blocked`. `Complete` requires all
-run packets to be `Complete`, the matching acceptance record or exact reviewed
-binding delegation that authorized a direct merge observation, and every
-required authoritative merge observation/post-merge gate. `Complete` and
-`Cancelled` are terminal, and no transition starts a successor milestone.
+`AwaitingArchitect|AwaitingOwner -> Complete|Blocked`. Each authoritative merge
+observation for a run atomically advances `current_head` to its observed
+`merge_commit` and sets `current_head_source_reference`; the observation must
+assert that it extends the prior current head. Entry to `AwaitingArchitect`
+requires every required packet `Complete` and snapshots the non-null
+`current_head` and its source into `candidate_head` and
+`candidate_head_source_reference`. Direct entry to `AwaitingOwner` applies the
+same snapshot rule plus the exact `ReservedChoice` guard below. `Complete`
+requires all run packets still `Complete`, one matching accepted Run-subject
+record whose `exact_head` equals both unchanged head columns, and every
+required authoritative merge observation/post-merge gate. A later head change
+blocks completion and returns for a new run/revision; it is never silently
+accepted. `Complete` and `Cancelled` are terminal, and no transition starts a
+successor milestone.
 
 `packets`
 
@@ -277,6 +305,24 @@ UNIQUE(run_id,work_item_id,packet_revision)
 ```
 
 Production names map the master plan's small diagram as `Claimed = Leased`, `Executing = Running`, and `Verified = AwaitingIntegration`. Architect/Owner decisions are acceptance rows, not another packet state.
+
+Each materialized packet's `context_policy_json` is this closed production
+object; extra or missing keys are invalid:
+
+```text
+{
+  minimum_context_tokens: positive integer,
+  output_reserve_tokens: positive integer,
+  warning_remaining_tokens: positive integer,
+  checkpoint_remaining_tokens: positive integer,
+  stop_remaining_tokens: positive integer
+}
+```
+
+It must satisfy `warning > checkpoint > stop >= output_reserve`. At attempt
+preflight the configured limit must also be greater than `warning`. These
+values are packet authority, not global constants and not defaults supplied by
+the usage table.
 
 Packet transitions are exactly:
 
@@ -301,7 +347,14 @@ NeedsReplan -> Planned|Cancelled
 gate, and review reference. No other transition increments it. Entry to
 `Merged` is reserved to the authoritative merge-observation command below;
 entry to `Complete` requires that observation and the declared post-merge
-gate. `Complete`/`Cancelled` are terminal.
+gate. Every packet entry to `AwaitingOwner`, whether directly from `MergeReady`
+or from `AwaitingArchitect`, requires an existing sequence-1 Project Architect
+`ReservedChoice` for subject `Packet`, that exact packet ID, and its unchanged
+non-null `current_head`. Every run entry to `AwaitingOwner` has the identical
+guard for subject `Run`, that run ID, and the run's unchanged non-null
+`current_head`; the transition snapshots that head as the run candidate when
+needed. No state transition creates the decision row implicitly.
+`Complete`/`Cancelled` are terminal.
 
 `leases`
 
@@ -461,25 +514,41 @@ only, no external delivery. `Acknowledged` never means approved.
 `acceptance_records`
 
 ```text
-acceptance_id PK; run_id FK runs; packet_id NULL FK packets;
+acceptance_id PK; subject_type CHECK Packet|Run; subject_id;
+packet_id NULL FK packets; run_id NULL FK runs;
 sequence_number INTEGER CHECK IN(1,2);
 supersedes_acceptance_id NULL FK acceptance_records;
 required_authority CHECK ProjectArchitect|Owner;
 decision CHECK Accepted|Returned|ReservedChoice;
 authority_reference; exact_head; review_coverage_json; reason_payload_json;
-created_at; UNIQUE(packet_id,sequence_number)
+created_at;
+CHECK ((subject_type='Packet' AND packet_id IS NOT NULL AND run_id IS NULL
+        AND subject_id=packet_id)
+    OR (subject_type='Run' AND run_id IS NOT NULL AND packet_id IS NULL
+        AND subject_id=run_id));
+UNIQUE(subject_type,subject_id,sequence_number)
 ```
 
-Acceptance is append-only. The matrix is exactly: no prior record permits one
+Acceptance is append-only. `subject_type`, non-null `subject_id`, the
+exactly-one relation check, and non-null three-column uniqueness make Packet
+and Run sequences distinct without relying on SQLite's nullable-unique
+behavior. The matrix is exactly: no prior row for the same subject permits one
 sequence-1 Project Architect `Accepted|Returned|ReservedChoice`; `Accepted` or
 `Returned` is terminal; `ReservedChoice` permits exactly one sequence-2 Owner
-`Accepted|Returned` that names the sequence-1 record in
-`supersedes_acceptance_id`. `ReservedChoice` may be recorded only by the
-Project Architect for a named M0-D15 reserved choice, requires
-`required_authority = Owner`, does not accept work, and is the sole guard for
-`AwaitingArchitect -> AwaitingOwner`. `Accepted` requires the packet in its matching
-`AwaitingArchitect|AwaitingOwner` state, the decision actor to match
-`required_authority`, and `exact_head` to equal the packet's current head.
+`Accepted|Returned` for the same subject and exact head that names the
+sequence-1 record in `supersedes_acceptance_id`. `ReservedChoice` may be
+recorded only by the Project Architect for a named M0-D15 reserved choice,
+requires `required_authority = Owner`, and does not accept work. It requires
+the subject to be in a state that may enter `AwaitingOwner` and `exact_head` to
+equal the Packet `current_head` or Run `current_head`; a missing head is
+invalid. It is the sole guard for every Packet or Run entry to
+`AwaitingOwner`. `Accepted` requires the subject in its matching
+`AwaitingArchitect|AwaitingOwner` state and the decision actor to match
+`required_authority`. For a Packet, `exact_head` must equal its unchanged
+`current_head`. For a Run, it must equal both its unchanged `candidate_head`
+and `current_head`, whose source references must be present. Sequence 2 must
+also preserve the sequence-1 `exact_head`; a head change rejects rather than
+reusing either sequence.
 For `Accepted`, `review_coverage_json` is the following closed object (extra or
 missing keys are invalid):
 
@@ -519,7 +588,8 @@ review_coverage_json NULL; observed_at
 ```
 
 Merge observations are append-only. The normal path requires an `Accepted`
-record for the same exact head and complete fresh review coverage. The sole
+record whose closed subject is `Packet` with this `packet_id`, for the same
+exact head and complete fresh review coverage. The sole
 alternative is the Control Plane's direct `MergeReady -> Merged` path: it
 requires `acceptance_id` null, `merge_execution_authority = PolicyDelegated`,
 the exact independently reviewed project delegation reference, and complete
@@ -570,9 +640,7 @@ timing is `unknown`/`Unknown`.
 ```text
 context_usage_id PK; attempt_id UNIQUE FK attempts; model_identity;
 runtime_identity; quantization NULL; configured_context_limit NULL CHECK >0;
-packet_minimum_context CHECK >0; output_reserve CHECK >0;
-warning_threshold CHECK >0; checkpoint_threshold CHECK >0;
-stop_threshold CHECK >0;
+context_policy_digest;
 counting_method CHECK Runtime|Tokenizer|Estimate|Unavailable;
 starting_input_measurement_json; future_growth_estimate_json;
 token_measurements_json; cost_measurement_json;
@@ -580,14 +648,31 @@ availability_state CHECK Available|Partial|Unavailable;
 observed_at; updated_at; version
 ```
 
-For this packet route, `packet_minimum_context = 32768` and
-`output_reserve = 8192`, so the configured context limit must be at least
-`32768 + 8192 = 40960`; the values are not alternatives and the reserve is not
-included inside 32,768. Warning/checkpoint/stop are exactly
-`16384/12288/8192` remaining tokens. Known starting input plus the 8,192 output
-reserve must fit the configured limit. `future_growth_estimate_json` is an
-explicit lower/upper range and never a false exact value. An attempt cannot
-transition to `Running` until this valid record is committed.
+Production validation loads the attempt's materialized Packet
+`context_policy_json`; it never substitutes the M1-02 Developer dispatch
+values or another packet's policy. `context_policy_digest` must equal the
+SHA-256 digest of that exact canonical policy. The configured limit must be at
+least `minimum_context_tokens + output_reserve_tokens`; known starting input
+plus `output_reserve_tokens` must fit; and the policy thresholds must retain
+the full order `configured > warning > checkpoint > stop >= reserve`.
+`future_growth_estimate_json` is an explicit lower/upper
+range and never a false exact value. An attempt cannot transition to `Running`
+until the record is committed and the digest/arithmetic/fit/order checks match
+its own Packet.
+
+The M1-02 Developer dispatch is one representative policy only:
+
+```text
+minimum=32768; reserve=8192; configured>=40960;
+warning/checkpoint/stop=16384/12288/8192
+```
+
+A second valid policy used to prove there are no hard-coded constants is:
+
+```text
+minimum=24576; reserve=4096; configured>=28672;
+warning/checkpoint/stop=12288/8192/4096
+```
 
 `starting_input_measurement_json` is one measurement object.
 `future_growth_estimate_json` is exactly
@@ -730,6 +815,122 @@ A heartbeat changes only its `Active` lease after version/monotonic-time checks 
 
 `record_attempt_observation` may transition only when the supplied lease is the attempt's current active lease and expected state/version match. A late result for expired/released/replaced lease appends one `StaleObservationIgnored` keyed by observation identity and cannot change attempt, packet, evidence, review, or acceptance.
 
+## Serial implementation slices
+
+M1-02 is implemented as three cumulative, serial slices. They divide delivery
+and review only; they do not change this packet's outcome, schema version,
+public contract, exclusions, or downstream gate. A slice is not a separately
+usable release and cannot unlock M1-03, M3-01, or M4-01.
+
+### M1-02A — Schema, records, and closed validation
+
+- **Stable ID:** `MAESTRO-M1-02A-SCHEMA-RECORDS-VALIDATION`.
+- **Typed dependency:**
+  `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER @ ProjectArchitectAccepted`,
+  satisfied at `56b4dfb5e4d4bef860616cde93d172affb0e4210`.
+- **Branch/worktree:** `implementation/m1-02a-schema-records-validation` at
+  `/home/jeremy/Development/Maestro-m1-02a-implementation`; it is created clean
+  from exact base `56b4dfb5e4d4bef860616cde93d172affb0e4210`
+  and is never rebased onto an unaccepted M1-01 result.
+- **Outcome:** additive schema-3-to-4 migration; closed records, constraints,
+  event compatibility, canonical payload/context/usage validators, record
+  append APIs, idempotency foundation, and M0-D11-safe store construction.
+- **Non-goals:** lifecycle/claim/recovery behavior, final operational docs,
+  external effects, or any outcome excluded by the umbrella packet.
+- **Owned paths:** `services/maestro/maestro/storage.py`,
+  `services/maestro/maestro/operational_state.py`,
+  `tests/m1_02/test_schema_and_records.py`, and
+  `tests/m1_02/test_context_and_payloads.py`.
+- **Proof group:** final proofs 1-9 for A-owned schema/record routes and 23-29;
+  all Alpha/M1-01 regressions and compileall also run.
+- **Routes:** dedicated Maestro Developer -> Integration Agent
+  `validate-only` unless assembly is required -> fresh Independent
+  Implementation Reviewer over exact M1-01-base/A-head -> routine Project
+  Architect slice acceptance.
+- **Locks/envelope:** `shared:sqlite-schema`,
+  `path:maestro-operational-state`, `file:services-maestro-storage`, and
+  `path:tests-m1-02`; one 150-minute attempt and at most one eligible targeted
+  correction.
+
+### M1-02B — Atomic lifecycle, claims, and recovery
+
+- **Stable ID:** `MAESTRO-M1-02B-LIFECYCLE-CLAIMS-RECOVERY`.
+- **Typed dependency:**
+  `MAESTRO-M1-02A-SCHEMA-RECORDS-VALIDATION @ ProjectArchitectAccepted`.
+- **Branch/worktree:** `implementation/m1-02b-lifecycle-claims-recovery` at
+  `/home/jeremy/Development/Maestro-m1-02b-implementation`; the Coordinator
+  creates it only from the exact accepted A head. Any changed A head stops B
+  for base reconciliation.
+- **Outcome:** exact state/event transitions and guards, atomic claim/lease/
+  lock primitives, ordinary/non-claim rollback seams, notification and
+  acceptance/merge transitions, stale-observation handling, and conservative
+  startup reconciliation.
+- **Non-goals:** schema redesign, new workflow states/policies, final docs,
+  external action, or any umbrella exclusion.
+- **Owned paths:** `services/maestro/maestro/operational_state.py`,
+  `services/maestro/maestro/recovery.py`,
+  `services/maestro/maestro/storage.py`,
+  `tests/m1_02/test_transitions_and_claims.py`,
+  `tests/m1_02/test_recovery.py`, and
+  `tests/m1_02/test_acceptance_and_notifications.py`.
+- **Proof group:** final proofs 7-22 and 30-31 plus all accepted A proofs,
+  Alpha/M1-01 regressions, and compileall.
+- **Routes:** dedicated Maestro Developer -> Integration Agent
+  `validate-only` unless assembly is required -> fresh Independent
+  Implementation Reviewer over exact accepted-A-base/B-head -> routine Project
+  Architect slice acceptance.
+- **Locks/envelope:** `shared:sqlite-schema`,
+  `path:maestro-operational-state`, `path:maestro-recovery`,
+  `file:services-maestro-storage`, and `path:tests-m1-02`; one 150-minute
+  attempt and at most one eligible targeted correction.
+
+### M1-02C — Cumulative integration, documentation, and proof
+
+- **Stable ID:** `MAESTRO-M1-02C-CUMULATIVE-INTEGRATION-PROOF`.
+- **Typed dependency:**
+  `MAESTRO-M1-02B-LIFECYCLE-CLAIMS-RECOVERY @ ProjectArchitectAccepted`.
+- **Branch/worktree:** `implementation/m1-02c-cumulative-integration-proof` at
+  `/home/jeremy/Development/Maestro-m1-02c-implementation`; the Coordinator
+  creates it only from the exact accepted B head. Any changed A/B head stops C
+  for base and review-coverage reconciliation.
+- **Outcome:** assemble the unchanged A+B contract, complete architecture and
+  operations documentation, close cumulative test coverage, run all gates,
+  and produce one exact integrated M1-02C final head.
+- **Non-goals:** new schema/state/product semantics, downstream implementation,
+  external action, or any umbrella exclusion.
+- **Owned paths:** limited cumulative integration corrections in
+  `services/maestro/maestro/storage.py`,
+  `services/maestro/maestro/operational_state.py`,
+  `services/maestro/maestro/recovery.py`,
+  `tests/m1_02/test_schema_and_records.py`,
+  `tests/m1_02/test_context_and_payloads.py`,
+  `tests/m1_02/test_transitions_and_claims.py`,
+  `tests/m1_02/test_recovery.py`,
+  `tests/m1_02/test_acceptance_and_notifications.py`,
+  `tests/m1_02/test_cumulative_contract.py`,
+  `docs/architecture/m1-02-operational-state-and-recovery-primitives.md`,
+  `docs/operations/m1-02-operational-state-and-recovery-primitives.md`, and
+  no other path.
+- **Proof group:** all final proofs 1-32 and every named Alpha/M1-01/M1-02/
+  compileall gate, including exact changed-path and no-artifact review.
+- **Routes:** dedicated Maestro Developer -> Integration Agent for cumulative
+  assembly/validation -> fresh Independent Implementation Reviewer over exact
+  accepted-B-base/C-head, followed by final cumulative coverage verification
+  over accepted-M1-01-base through C-head and every A/B/C correction diff ->
+  routine Project Architect integrated M1-02 acceptance.
+- **Locks/envelope:** `shared:sqlite-schema`,
+  `path:maestro-operational-state`, `path:maestro-recovery`,
+  `file:services-maestro-storage`, `path:tests-m1-02`,
+  `file:m1-02-architecture-doc`, and `file:m1-02-operations-doc`; one
+  120-minute attempt and at most one eligible targeted correction.
+
+Each slice releases its locks after its exact committed handoff. Integration
+or review-authored changes require the governing different-reviewer route.
+Project Architect acceptance of A or B records only a serial implementation
+gate. Only routine Project Architect acceptance of the exact integrated C head
+creates `MAESTRO-M1-02-OPERATIONAL-STATE-RECOVERY @ ProjectArchitectAccepted`
+and unlocks the downstream dependencies.
+
 ## Owned implementation paths
 
 ```text
@@ -745,14 +946,14 @@ No other path may change. Do not change `cli.py`, project authority/manifest/Git
 
 ## Required implementation sequence
 
-1. Inventory accepted M1-01 schema and stop unless it is exact version 3 input above.
-2. Add typed records, state/event registries, canonical validators, and closed errors with no public side-effecting entry.
-3. Add version-4 migration, constraints, indexes, append-only triggers, and failure injection.
-4. Add idempotent transition/event and record-append primitives.
-5. Add atomic lease/lock claim, heartbeat, release, and contention.
-6. Add deterministic startup and stale-observation reconciliation.
-7. Add architecture/operations docs and real SQLite tests.
-8. Run every gate and hand one exact commit to Integration.
+1. Verify exact accepted M1-01 base `56b4dfb5e4d4bef860616cde93d172affb0e4210` and schema version 3; stop on any mismatch.
+2. Release and implement only M1-02A; run A's proof group and all regressions.
+3. Complete A Integration, independent review, any one eligible correction, and routine Project Architect slice acceptance.
+4. Create M1-02B only from accepted A; implement B and run B plus all A/regression proofs.
+5. Complete B Integration, independent review, any one eligible correction, and routine Project Architect slice acceptance.
+6. Create M1-02C only from accepted B; complete cumulative integration/docs and run all gates/proofs 1-32.
+7. Complete C Integration, independent slice review, any one eligible correction, and final cumulative coverage verification over accepted M1-01 through C.
+8. The Project Architect accepts the exact integrated C head as M1-02; only then may the Coordinator expose its downstream dependency state.
 
 Stop if an accepted M1-01 row must be dropped/rewritten, an owned path is insufficient, a state/recovery meaning is absent or conflicting, external access is required, or bounded secret/SQLite assurance cannot be met.
 
@@ -780,8 +981,8 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 7. every binding/secret-reference/graph/work/run/packet/attempt/evidence/wait/review/notification/progress/context/allowance/reconciliation/acceptance/merge API persists and reopens its exact record;
 8. same idempotency key/fingerprint returns the original result and one event after reopen;
 9. same key/different facts raises `IdempotencyConflict` with no mutation;
-10. every allowed graph/run/packet/attempt/wait/notification transition satisfies its guards with one version increment and exact event;
-11. every prohibited, stale, terminal, missing-context, wrong-lease, premature-time, or direct-to-`Merged` transition fails without mutation;
+10. every allowed graph/run/packet/attempt/wait/notification transition satisfies its guards with one version increment and exact event, including Packet/Run entry to `AwaitingOwner` only after the same-subject/current-head Project Architect `ReservedChoice` and deterministic Run candidate-head snapshot;
+11. every prohibited, stale, terminal, missing/mismatched-context-policy, wrong-lease, premature-time, direct-to-`Merged`, or Packet/Run `AwaitingOwner` transition with a missing/wrong-subject/wrong-head/non-Project-Architect `ReservedChoice` fails without mutation;
 12. targeted correction is available once, requires a named review finding, and a second is rejected;
 13. injected `after_entity_write` and `after_event_write` failures for representative ordinary record methods roll back row/event and remain absent after close/reopen;
 14. the same injected seams for graph, packet, and notification non-claim transitions restore original state/version/event history after reopen;
@@ -794,14 +995,14 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 21. orphan/conflict blocks and returns exact recovery action without replacement work;
 22. stale completion after expiry records one ignored event and cannot alter outcome records;
 23. `OperationalStateStore`, every constructor/factory and every public record/transition/claim/read/recovery entry point named above, and `RecoveryService` reject source-tree/outside/symlinked/forged/swapped runtime configurations before creating database/journal/WAL/SHM/log/socket or outside artifacts; parameterized valid calls all stay under physical `var/`;
-24. exact context values `32768 + 8192 = 40960`, thresholds `16384/12288/8192`, starting-input fit, and growth range are enforced, and no attempt enters `Running` without that committed record;
+24. the representative Developer policy proves `32768 + 8192 = 40960` with thresholds `16384/12288/8192`; the distinct valid `24576 + 4096 = 28672` policy with thresholds `12288/8192/4096` also passes; altered digest, copied constants, insufficient sum/starting-input fit, or unordered thresholds fail before `Running`;
 25. every token category validates value/quality/confidence/source/time and runtime-reported values take precedence over tokenizer/estimate for the same period;
 26. billed/estimated/not-billed/unknown cost shapes and unavailable token/cost/allowance facts remain honest, never implicit zero;
 27. exact-decimal usage reconciliation balances native allowance units, rejects imbalance/token-to-weekly conversion, and excludes local capacity;
 28. each closed safe payload variant accepts exact fields; arbitrary roots/extra fields/raw prompt/trace/value carriers and invalid provider/reference patterns are rejected, while redacted prose with receipt is accepted without semantic word detection;
 29. provider plus secret-reference observations accept valid provider/reference/owner/rotation/expiry facts, reject GitHub/Slack/Bearer/cookie/PEM values structurally, and persist no value/fallback;
 30. notifications store event/audience/severity/grouping/escalation and state before any delivery observation; retry/time/acknowledgement guards pass and acknowledgement never accepts work;
-31. acceptance rejects wrong authority/head, stale/incomplete review coverage, and uncovered correction; normal merge rejects a missing acceptance and undelegated direct merge is rejected, while only a matching accepted exact head or the exact reviewed `PolicyDelegated` direct path plus an authoritative Git/GitHub observation can enter `Merged`; and
+31. Packet and Run acceptance enforce the closed subject/exactly-one relation and non-null per-subject sequence uniqueness; reject SQLite-null duplicate attempts, wrong authority/subject/head, changed Run candidate/current head, stale/incomplete review coverage, and uncovered correction; derive Run completion only from all Complete packets, authoritative merge/head sources, and same-head Run acceptance; normal merge rejects missing Packet acceptance and undelegated direct merge, while only a matching accepted exact head or the exact reviewed `PolicyDelegated` direct path plus an authoritative Git/GitHub observation can enter `Merged`; and
 32. all Alpha/M1-01 suites stay green with no CLI, repo, network, worker, Atlas, external delivery, merge/deploy action, or live-project effect.
 
 ## Complete M0-D12 quality contracts
@@ -852,7 +1053,8 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
   merge/deploy, and successor selection.
 - **Assurance level:** closed typed/source-linked records, append-only judgments, explicit unknown/unavailable, no controller entrypoint.
 - **Sufficient proof:** tests 7, 10-12, 30-32 and changed-path review, including
-  exact-head coverage and authoritative observation guards.
+  Packet/Run subject uniqueness, exact-head/ReservedChoice/run-completion
+  derivation, coverage, and authoritative observation guards.
 - **Implementation boundary:** storage/value/recovery/docs only; no CLI/HTTP/executor/GitHub/notification adapter.
 - **Proportionality ceiling:** accepted V1 records/transitions only; no M2/M3/M4 policy implementation.
 - **Stop/return:** missing source, fabricated outcome, new state, or reserved material choice returns to Project Architect.
@@ -871,7 +1073,8 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 - **Assurance level:** structural closed-schema rejection, reference-only
   credential records, pre-redacted prose receipts, honest measurement labels,
   runtime precedence, and exact native-unit arithmetic.
-- **Sufficient proof:** tests 24-29 and 32 including exact context arithmetic,
+- **Sufficient proof:** tests 24-29 and 32 including two distinct valid packet
+  policies, digest/mismatch-before-Running rejection, exact context arithmetic,
   invalid raw fields/carriers, unavailable-not-zero, runtime precedence, and no
   quota conversion.
 - **Implementation boundary:** standard-library structural validation/SHA-256/
@@ -925,8 +1128,23 @@ Architecture/public-contract, security/data/credential/external-access, material
 
 ## Handoff and acceptance
 
-The Developer hands one exact commit/evidence to Integration. Integration uses `validate-only` when unchanged; Integration-authored code requires a different reviewer.
+For each slice, the Developer hands one exact commit/evidence bundle to
+Integration. Integration uses `validate-only` when unchanged;
+Integration-authored code requires a different reviewer. The next slice's base
+is the exact routinely accepted predecessor head, never merely a Developer or
+Integration head.
 
-Independent review covers the exact accepted-M1-01-base to M1-02-head range, every schema/state/API/quality proof and gate. One targeted correction is available under M0-D05. Uncovered commits, unrelated changes, missing contract, new failure class, or exhausted correction return to Project Architect.
+Independent review covers each exact slice base/head and its declared proof
+group. One targeted correction per slice is available under M0-D05. Before
+final acceptance, cumulative coverage must prove the ordered accepted A, B,
+and C ranges plus every targeted correction exactly cover the accepted M1-01
+base through final C head with no gap, overlap ambiguity, unrelated commit, or
+stale result. Any uncovered commit, missing contract, new failure class, base
+change, or exhausted slice correction returns to the Project Architect.
 
-After approval and complete final-head coverage, routine acceptance belongs to Project Architect. It releases M1-03, M3-01, and M4-01 dependencies only as their packets permit. It does not register a project, start the service, expose Atlas, dispatch a worker, contact an external system, merge/deploy, or test a live product.
+Project Architect acceptance of A/B only opens the next serial slice. After C
+approval and complete cumulative final-head coverage, routine integrated M1-02
+acceptance belongs to the Project Architect. Only that acceptance releases
+M1-03, M3-01, and M4-01 dependencies as their packets permit. It does not
+register a project, start the service, expose Atlas, dispatch a worker, contact
+an external system, merge/deploy, or test a live product.
