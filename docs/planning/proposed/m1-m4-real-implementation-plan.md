@@ -63,11 +63,14 @@ until all listed dependencies are accepted.
 
 ## Fully materialized graph candidate
 
-Only this node is fully materialized in graph revision
-`maestro-m1-m4-real-r1`. It is currently a candidate, not runtime
-`Dispatchable`. The remaining 21 implementation packets and E2E-01 are outline
-candidates whose exact node records will be materialized and reviewed before
-release.
+M1-01 and M1-02 are fully materialized in graph revision
+`maestro-m1-m4-real-r1`. Neither graph candidate is thereby runtime
+`Dispatchable`. M1-02 remains hard-blocked on routine Project Architect
+acceptance of the exact M1-01 implementation result. The remaining 20
+implementation packets and E2E-01 are outline candidates whose exact node
+records will be materialized and reviewed before release.
+
+### M1-01 graph candidate
 
 | Field | Value |
 |---|---|
@@ -94,6 +97,34 @@ release.
 | Approval state | `PendingDecisionFidelity`; no implementation lease or dispatch is permitted |
 | Dispatchable transition | exact packet receives Decision Fidelity `APPROVE`; Project Architect releases that exact reviewed head; Coordinator then verifies the exact base, clean isolated worktree, execution route/context, unlocked resources, and all hard dependencies immediately before atomic claim |
 | Approval boundary | Project Architect for routine packet acceptance; Owner only for a reserved M0-D15 material choice |
+
+### M1-02 graph candidate
+
+| Field | Value |
+|---|---|
+| Stable ID | `MAESTRO-M1-02-OPERATIONAL-STATE-RECOVERY` |
+| Project / workstream / milestone | `maestro` / `operational-core` / `M1` |
+| Task link | `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` |
+| Outcome | Complete the additive V1 operational schema and exact atomic state, event, lease, lock, idempotency, and conservative restart-reconciliation primitives. |
+| Non-goals | Project create/register CLI, Git/GitHub, workers, Atlas, notification delivery, merge/deploy, USB backup/restore, or live projects. |
+| Priority / rank | `P0` / `2` |
+| Risk | `high`: shared operational schema, lifecycle constraints, concurrency, and recovery; bounded by additive migration, failure-injection, real contention, and reopen proof |
+| Planned location / role / model class | cloud collaboration worktree / dedicated Maestro Developer / session-inherited Codex model, with factual model and runtime recorded at preflight |
+| Execution class | `codex-cloud-maestro-developer` |
+| Hard dependencies | routine Project Architect acceptance and complete review coverage of the exact M1-01 implementation result; planning source base `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84`; M0-D01, D05, D11, D12, D14, and D15 |
+| Soft dependencies | none |
+| Downstream unlock | M1-03, M3-01, and M4-01 dependencies after routine Project Architect acceptance |
+| Owned domains | additive SQLite migration; operational record/value contracts; state/event/idempotency primitives; lease/lock claim; startup reconciliation; `tests/m1_02/` |
+| Resource locks | `shared:sqlite-schema`; `path:maestro-operational-state`; `file:services-maestro-storage` |
+| Input contract version | accepted M1-01 schema version `3` and `maestro-project-authority-load-result-v1` |
+| Output contract version | Maestro operational schema version `4` and `maestro-operational-state-v1` |
+| Required checks | Alpha-01, Alpha-02, Alpha-03, M1-01, and M1-02 unit suites; Python compileall; exact changed-path review |
+| Integration route | Integration Agent, `validate-only` unless assembly is required |
+| Review route | fresh Independent Implementation Reviewer over exact accepted M1-01 base/M1-02 head and any targeted correction diff; high-risk shared-boundary review before downstream use |
+| Resource envelope | one isolated worktree; one 120-minute Developer attempt; at most one eligible M0-D05 correction; no parallel writer in the locked domains |
+| Approval state | `MaterializedCandidate`, `DependencyBlocked`, and `PendingDecisionFidelity`; no implementation lease or dispatch is permitted |
+| Dispatchable transition | exact accepted M1-01 final head is inserted as implementation base; complete packet receives Decision Fidelity `APPROVE`; Project Architect releases exact reviewed head; Coordinator verifies worktree, route/context, locks, and dependencies before atomic claim |
+| Approval boundary | Project Architect for routine packet/implementation acceptance; Owner only for a reserved M0-D15 material choice |
 
 ## M1 — Build the core and register projects
 
