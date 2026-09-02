@@ -23,10 +23,13 @@ the Project Architect and dispatched by the bootstrap Coordinator or the
 implemented Development Manager. It works in a clean isolated non-default
 worktree at the packet's exact base.
 
-Before changing files, it returns a concise packet-read plan to the Coordinator:
+Before changing files, it returns a concise packet-read plan to the dispatching
+Coordinator or implemented Development Manager:
 the ordered requirement/proof coverage, expected owned paths and checks,
 likely stop conditions, and intended Integration handoff. The Coordinator
-records or returns the plan; it does not use it to expand the frozen packet.
+or Manager records it once without approving or revising it. A missing or
+contradictory frozen fact uses the existing stop-and-return route; otherwise
+the Developer proceeds. The plan never expands the frozen packet.
 
 ## Owns
 

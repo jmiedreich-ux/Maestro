@@ -26,7 +26,8 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - operational event history, notification state, recovery after duplicate events or restart;
 - collection and durable recording of each assigned role's packet-read plan
   before its substantive execution, with exact proof coverage, paths/commands,
-  risks/stops, and intended handoff;
+  risks/stops, and intended handoff; this is a one-pass non-approving record,
+  and only a missing/contradictory frozen fact uses the existing return route;
 - M0-D16 completion-manifest enforcement, collection of terminal Integration
   and full-review findings before the normal combined correction, M0-D17 final-
   correction eligibility routing to the Project Architect, and durable process

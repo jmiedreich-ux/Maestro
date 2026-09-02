@@ -9,11 +9,14 @@ This SOP applies to every implementation agent. Project policy comes first; this
 3. Read the project-required startup records and exact authority paths named by the packet.
 4. Confirm the packet is approved, its graph revision/authority reference/source base are current, dependencies are complete, required locks are leased, and environment/credential policy is satisfied.
 5. Confirm allowed/forbidden paths, acceptance behavior, validation commands, timeout, and handoff route.
-6. Return a concise packet-read plan to the Coordinator before changing files:
+6. Return a concise packet-read plan to the dispatching Coordinator or, when
+   implemented, Development Manager before changing files:
    named requirements/proofs in execution order, expected owned paths and
    commands, likely risks/stop conditions, and the intended handoff. The
-   Coordinator records or returns it before execution; it is not a new design
-   gate or permission to change the frozen packet.
+   recorder records it once without approving or revising it. If it exposes a
+   missing or contradictory frozen fact, use the existing preflight
+   block/return route; otherwise substantive execution proceeds. It is not a
+   new design gate or permission to change the frozen packet.
 7. Record the preflight result; block rather than improvising when a fact is missing or contradictory.
 
 ## 2. Execute within scope

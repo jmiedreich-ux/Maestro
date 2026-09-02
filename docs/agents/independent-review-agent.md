@@ -60,11 +60,13 @@ the packet, create commits, merge, deploy, or start successor work.
 Missing authority, unverifiable provenance, or an incomplete review range blocks
 the review. The reviewer does not infer a broader assignment.
 
-Before substantive review, return a concise packet-read plan to the Coordinator:
-the frozen requirement/proof crosswalk to inspect, exact range/commands,
-independence check, and stop conditions. The Coordinator records or returns the
-plan without broadening the approved contract. The terminal review must state
-whether that planned coverage was completed.
+Before substantive review, return a concise packet-read plan to the dispatching
+Coordinator or implemented Development Manager: the frozen requirement/proof
+crosswalk to inspect, exact range/commands, independence check, and stop
+conditions. The recorder records it once without approving or revising it. A
+missing or contradictory frozen fact uses the existing return route; otherwise
+review proceeds without broadening the approved contract. The terminal review
+must state whether that planned coverage was completed.
 
 ## Eligible work and queue behavior
 

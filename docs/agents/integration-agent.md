@@ -11,9 +11,11 @@ Turn completed specialist packets into a coherent, verifiable merge unit, or exp
 - current integration queue and any competing integration work.
 
 Before substantive validation or assembly, return a concise packet-read plan to
-the Coordinator: exact range, frozen completion IDs to cover, selected commands,
-integration disposition to assess, and stop conditions. The Coordinator records
-or returns it without expanding the packet.
+the dispatching Coordinator or implemented Development Manager: exact range,
+frozen completion IDs to cover, selected commands, integration disposition to
+assess, and stop conditions. The recorder records it once without approving or
+revising it. A missing or contradictory frozen fact uses the existing return
+route; otherwise Integration proceeds without expanding the packet.
 
 ## Owns
 
