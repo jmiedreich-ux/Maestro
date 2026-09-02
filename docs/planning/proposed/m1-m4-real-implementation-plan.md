@@ -61,6 +61,48 @@ only the explicit dependencies below control release. The Coordinator may
 prepare a later packet while another is under review, but may not dispatch it
 until all listed dependencies are accepted.
 
+## Closed definition of done and return loop
+
+Before dispatch, every executable slice has a finite, numbered proof inventory
+and exact owned paths, gates, routes, and stop rules. A slice is done only when:
+
+1. the exact committed head passes every named gate and every item in that
+   pre-approved proof inventory;
+2. Integration records `validate-only` or an independently reviewed assembly;
+3. independent review covers the exact base/head plus every correction-only
+   diff, leaving no uncovered final commit;
+4. the clean handoff records the required evidence, gaps, executor/context/
+   usage facts, and released locks; and
+5. the Project Architect records routine acceptance of that exact head.
+
+Review is bounded by M0-D05 and M0-D12. A reviewer may block on a direct
+violation of the approved contract or a contradiction introduced by a
+correction. A newly imagined improvement outside the approved operating model,
+proof inventory, or proportionality ceiling is recorded for later planning; it
+does not keep the current slice open. Words such as `every` or `complete` are
+not executable proof unless the packet supplies the closed inventory against
+which they are measured.
+
+Returns and resumption follow this exact route:
+
+- a preflight or infrastructure failure returns to the Coordinator;
+- committed in-scope work failing a named gate receives at most one exact
+  Coordinator correction;
+- a missing/infeasible contract, architecture defect, new failure class after
+  correction, or exhausted correction returns to the Project Architect;
+- the Project Architect resolves or rematerializes the bounded packet and
+  releases it after required Decision Fidelity review;
+- only an M0-D15 reserved material choice is routed by the Project Architect to
+  the Owner; and
+- after the blocking return is resolved, the Coordinator—or the Development
+  Manager after M4—rereads durable authority and resumes the highest-ranked
+  eligible node without requiring a chat message to wake it.
+
+The bootstrap Coordinator performs these calls manually while Maestro is being
+built. M4 is not complete until the persistent Development Manager performs the
+same return, reread, and resume loop after process restart with real agents and
+durable state.
+
 ## Fully materialized graph candidate
 
 M1-01 through M1-03 are fully materialized in graph revision
