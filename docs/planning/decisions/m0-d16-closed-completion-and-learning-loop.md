@@ -26,7 +26,11 @@ manifest. Each item has:
 
 The manifest also includes a coverage ledger mapping every atomic packet
 requirement to at least one proof item. Unmapped requirements and proof items
-without a requirement are compiler errors.
+without a requirement are compiler errors. One proof item may map to multiple
+requirements only when it names every stable requirement ID and carries a
+distinct expected assertion and evidence result for each; otherwise the
+many-to-one mapping is rejected. Equivalent input order is accepted and
+canonicalized by stable IDs, producing the same ordered manifest and digest.
 
 Words such as `every`, `all`, `complete`, `safe`, `robust`, or
 `production-ready` do not define executable proof by themselves. A universal
@@ -151,7 +155,10 @@ authority, quality thresholds, model routing, or acceptance.
    for the exact supported packet schema and pinned local authority inputs.
 5. **Sufficient acceptance proof:** the M3 compiler suite must prove: the same
    valid input compiled twice yields identical ordered IDs, expanded members,
-   and digest; one isolated case each for an unmapped requirement, orphan proof,
+   and digest; reordered equivalent input is accepted and yields that same
+   canonical output/digest; a valid many-to-one proof with separate named
+   assertions/evidence is accepted, while a many-to-one proof without them is
+   rejected; one isolated case each for an unmapped requirement, orphan proof,
    duplicate ID, missing M0-D12 field, universal claim without carrier, carrier
    member/digest change after release, and each of the five M0-D16 structural
    split/rejection conditions fails before claim with its exact reason; and a

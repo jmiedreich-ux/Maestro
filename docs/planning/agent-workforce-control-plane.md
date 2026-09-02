@@ -435,7 +435,7 @@ its queue, routing, capacity, and evidence views over the same Maestro state.
 
 ### V3 — mature parallel operations
 
-V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, review/escalation limits, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters.
+V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters. M0-D05/M0-D16 review and correction limits remain controlling.
 
 ### Later explicit authority decision — continuous operation
 

@@ -40,9 +40,12 @@ Each material quality requirement must state:
    the Owner only when resolution requires an M0-D15 reserved material choice.
 
 All eight elements are required. If an element is genuinely inapplicable, the
-contract must state the reason and carry an explicit owner-approved
-not-applicable disposition. An unstated or unjustified omission makes the
-packet unready for Decision Fidelity Review or implementation.
+contract must state the reason and carry an explicit not-applicable disposition
+from the project's declared acceptance authority. Under M0-D15 that is the
+Project Architect unless the disposition requires a reserved material choice,
+in which case the Project Architect involves the Owner. An unstated or
+unjustified omission makes the packet unready for Decision Fidelity Review or
+implementation.
 
 ## Definition of enough
 
