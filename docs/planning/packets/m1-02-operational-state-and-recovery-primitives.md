@@ -839,8 +839,15 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   external effects, or any outcome excluded by the umbrella packet.
 - **Owned paths:** `services/maestro/maestro/storage.py`,
   `services/maestro/maestro/operational_state.py`,
+  `tests/m1_01/test_project_authority_storage.py`,
   `tests/m1_02/test_schema_and_records.py`, and
   `tests/m1_02/test_context_and_payloads.py`.
+- **Accepted-regression adjustment:** the one M1-01 test file may change only
+  to replace its schema-2 health expectation `[(2,), (3,)]` with the cumulative
+  schema-4 expectation `[(2,), (3,), (4,)]` and to assert
+  `health.schema_version == 4`. It must retain the existing Alpha/M1-01 row-
+  preservation, health, and migration assertions; no test may be removed,
+  skipped, weakened, or made version-agnostic.
 - **Proof group:** final proofs 1-9 for A-owned schema/record routes; proof 23
   only for A-owned `OperationalStateStore` constructors/factories and public
   record/read routes; proof 24 only for closed policy validation, digest,
@@ -947,9 +954,14 @@ services/maestro/maestro/operational_state.py
 services/maestro/maestro/recovery.py
 services/maestro/maestro/storage.py
 tests/m1_02/**
+tests/m1_01/test_project_authority_storage.py
 ```
 
-No other path may change. Do not change `cli.py`, project authority/manifest/Git modules, Alpha fixture behavior, planning/role records, GitHub adapters, executor code, Atlas, packaging dependencies, or any project repository.
+No other path may change. The single M1-01 test path has only the exact
+cumulative-version adjustment stated in M1-02A. Do not change `cli.py`, project
+authority/manifest/Git modules, other Alpha/M1-01 fixture behavior,
+planning/role records, GitHub adapters, executor code, Atlas, packaging
+dependencies, or any project repository.
 
 ## Required implementation sequence
 
