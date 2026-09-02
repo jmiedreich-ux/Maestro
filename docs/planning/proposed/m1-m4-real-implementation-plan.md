@@ -103,21 +103,25 @@ records will be materialized and reviewed before release.
 | Field | Value |
 |---|---|
 | Stable ID | `MAESTRO-M1-02-OPERATIONAL-STATE-RECOVERY` |
+| Title | `M1-02 · Complete operational state and recovery primitives` |
 | Project / workstream / milestone | `maestro` / `operational-core` / `M1` |
 | Task link | `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` |
 | Outcome | Complete the additive V1 operational schema and exact atomic state, event, lease, lock, idempotency, and conservative restart-reconciliation primitives. |
 | Non-goals | Project create/register CLI, Git/GitHub, workers, Atlas, notification delivery, merge/deploy, USB backup/restore, or live projects. |
 | Priority / rank | `P0` / `2` |
+| Allowed out-of-order semantics | `none`; it may be planned/reviewed early but cannot be released, leased, or implemented before its typed hard dependency reaches routine Project Architect acceptance |
 | Risk | `high`: shared operational schema, lifecycle constraints, concurrency, and recovery; bounded by additive migration, failure-injection, real contention, and reopen proof |
 | Planned location / role / model class | cloud collaboration worktree / dedicated Maestro Developer / session-inherited Codex model, with factual model and runtime recorded at preflight |
 | Execution class | `codex-cloud-maestro-developer` |
-| Hard dependencies | routine Project Architect acceptance and complete review coverage of the exact M1-01 implementation result; planning source base `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84`; M0-D01, D05, D11, D12, D14, and D15 |
+| Typed upstream dependencies | `hard: MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER @ ProjectArchitectAccepted` with complete implementation-review coverage |
 | Soft dependencies | none |
 | Downstream unlock | M1-03, M3-01, and M4-01 dependencies after routine Project Architect acceptance |
 | Owned domains | additive SQLite migration; operational record/value contracts; state/event/idempotency primitives; lease/lock claim; startup reconciliation; `tests/m1_02/` |
 | Resource locks | `shared:sqlite-schema`; `path:maestro-operational-state`; `file:services-maestro-storage` |
 | Input contract version | accepted M1-01 schema version `3` and `maestro-project-authority-load-result-v1` |
 | Output contract version | Maestro operational schema version `4` and `maestro-operational-state-v1` |
+| Planning authorities | M0-D01, D02, D03, D04, D05, D06, D11, D12, D14, and D15; Master Plan; Agent Workforce Control Plane; original M1 roadmap; planning source base `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84` |
+| Implementation-base dependency | unresolved until the exact M1-01 final implementation head has complete review coverage and routine Project Architect acceptance; any schema/API difference returns for packet reconciliation |
 | Required checks | Alpha-01, Alpha-02, Alpha-03, M1-01, and M1-02 unit suites; Python compileall; exact changed-path review |
 | Integration route | Integration Agent, `validate-only` unless assembly is required |
 | Review route | fresh Independent Implementation Reviewer over exact accepted M1-01 base/M1-02 head and any targeted correction diff; high-risk shared-boundary review before downstream use |
