@@ -6,7 +6,7 @@ blocked on integrated M1-02C acceptance; not released and never itself runtime
 **Packet ID:** `maestro-m1-03-real-repository-github-adapter`
 **Graph node:** `MAESTRO-M1-03-REAL-REPOSITORY-GITHUB-ADAPTER`
 **Graph revision:** `maestro-m1-m4-real-r1`
-**Planning source base:** `8a126be0a0fd57ff918954c6d5faeb10b0aab71d`
+**Planning source base:** `47456aeda5b5c545396855fbb48124d96ef2877f`
 **Implementation base:** unresolved until routine Project Architect acceptance
 of the exact integrated M1-02C implementation head
 **Implementation shape:** two serial, independently reviewed slices M1-03A
@@ -63,15 +63,16 @@ authorize a network call. It remains both `DependencyBlocked` and
 4. the Coordinator completes exact preflight and atomically acquires the current
    slice's declared locks.
 
-M1-03B code may be implemented, reviewed, and routinely accepted by the
-Project Architect without a credential. Its networked qualification may begin
+M1-03B code may be implemented, reviewed, and recorded by the Project
+Architect as code-ready without a credential. That record is not acceptance of
+B or M1-03. Its networked qualification may begin
 only after the Project Architect stores an active `ExternalSetupAuthority`
 through the exact API below, backed by Owner acceptance evidence for the
 reserved repository, identity, provider/reference, capability, lifetime, and
 spending facts. Missing, stale, expired, revoked, superseded, broader, live,
 personal, or ambiguous setup blocks before DNS, socket, Git remote, or GitHub
-API activity. Routine code acceptance remains Project Architect-owned and
-never grants external authority.
+API activity. The code-ready record remains Project Architect-owned and never
+grants external authority.
 
 That pre-activation decision records code-readiness evidence at the exact
 reviewed head; it is not a new packet lifecycle state. It does not mark the B
@@ -445,6 +446,8 @@ purpose_reference TEXT NOT NULL;
 external_setup_record_id TEXT NULL;
 external_setup_revision INTEGER NULL CHECK external_setup_revision > 0;
 external_setup_digest TEXT NULL;
+requires_external_access INTEGER NOT NULL
+  CHECK requires_external_access IN (0,1);
 idempotency_key TEXT NOT NULL UNIQUE;
 command_fingerprint TEXT NOT NULL;
 request_payload_json TEXT NOT NULL;
@@ -462,9 +465,21 @@ A partial unique index on `(project_id, target_kind, target_reference)` while
 `state IN ('InFlight','OutcomeUnknown')` prevents two active/uncertain effects
 against one logical target while still allowing a competing structurally valid
 request to record `Prepared -> Blocked`. A trigger rejects a non-null packet
-whose run does not equal `run_id`. The three external-setup columns are all null or all
-non-null; every GitHub action and non-file push requires all three, while local
-operations require all null. Request/result/failure values use only the closed
+whose run does not equal `run_id`. `requires_external_access` is derived by the
+closed request validator, never supplied as caller authority: it is `0` for
+`ObserveLocalRepository`, `EnsureFeatureBranch`, `CreateCommit`, and a
+`PushFeatureBranch` whose `PushRequestPayload.remote_route = FileRemote`; it is
+`1` for every GitHub action and a push whose route is `NetworkRemote`. Database
+checks require the three external-setup columns to be all null or all non-null,
+require them all null when `requires_external_access = 0`, and require them all
+non-null before an external action may enter `InFlight`, `OutcomeUnknown`, or
+an observed terminal state. An external action may remain all-null only through
+`Prepared -> Blocked/ExternalSetupUnavailable`; a partial tuple is structural
+rejection before intent. Checks also reject any action-kind/route mismatch and
+require a push action's stored route value to match its closed request payload.
+A local action stores no setup tuple even when the immutable project authority
+also contains setup facts for later network work; it neither resolves nor
+validates those unused facts. Request/result/failure values use only the closed
 payload variants below. Triggers reject `DELETE`; state changes use the exact
 API and append an event in the same transaction.
 
@@ -532,7 +547,7 @@ CreateCommitRequestPayload(full_ref, expected_parent, changed_paths,
   changed_path_input_digests, author_reference, committer_reference,
   message_digest, redaction_receipt_reference, authority_digest)
 PushRequestPayload(full_ref, local_commit, expected_remote_commit NULL,
-  remote_reference, authority_digest)
+  remote_reference, remote_route FileRemote|NetworkRemote, authority_digest)
 DraftPullRequestRequestPayload(head_ref, head_commit, base_ref,
   title_digest, body_digest, title_redaction_receipt_reference,
   body_redaction_receipt_reference, authority_digest)
@@ -667,9 +682,15 @@ Every new request follows one unambiguous sequence:
    fingerprint replay returns the original result and creates nothing.
 2. For a new structurally valid request, atomically insert `Prepared` and
    `RepositoryActionPrepared` before consulting mutable operational facts.
+   That transaction performs no Git/GitHub observation, setup lookup, session
+   acquisition, or external effect. No external effect may begin while the
+   durable row remains `Prepared`; read-only mutable checks occur only in the
+   next step.
 3. Read the current binding/policy/version, run/packet relation, M1-02 locks,
-   expected Git/GitHub source facts and, for network operations, the exact
-   setup lookup, latest secret-reference observation, and runtime session.
+   expected Git/GitHub source facts and, only for a network operation carrying
+   a non-null setup tuple, the exact setup lookup, latest secret-reference
+   observation, and runtime session. An all-null network setup blocks without
+   calling the lookup or session provider.
    Missing/stale/conflicting/unavailable dynamic facts atomically change
    `Prepared -> Blocked`, append `RepositoryActionBlocked`, return `Blocked`
    with that action ID, and invoke no Git mutation/network transport.
@@ -687,6 +708,7 @@ The exact failure-phase mapping is:
 | Phase | Examples | Result / durable state |
 |---|---|---|
 | Structural pre-intent | malformed/extra field; invalid ID/ref/SHA/path; live/default/force target; raw secret carrier; idempotency conflict | `RejectedBeforeIntent`; no row/event; structural error code |
+| Restart finds committed `Prepared` | process stopped after durable intent and before mutable checks completed | `Blocked`; `Prepared -> Blocked`; `InterruptedBeforeObservation`; no observation/setup/session/effect |
 | Dynamic after `Prepared`, before effect | stale/missing binding or policy; absent/mismatched lock; missing/expired/revoked/superseded setup; stale secret observation; missing/broader/mismatched session; stale source ref | `Blocked`; `Prepared -> Blocked`; mapped authority/resource/credential/source error |
 | Definite invocation failure before an effect | transport construction, DNS/connect/auth/permission/rate-limit response proving no mutation | `Failed`; `InFlight -> ObservedFailed`; mapped Git/GitHub error |
 | Effect may have occurred | lost response, timeout after send, process death after invocation | `OutcomeUnknown`; `InFlight -> OutcomeUnknown` now or on restart |
@@ -711,16 +733,44 @@ fingerprint returns the original row/result; same key with different facts is
 changing state. A later attempt requires Project Architect or calling-policy
 authority, a new idempotency key, and a fresh authoritative observation.
 
-After process restart, an `InFlight` row is first changed to `OutcomeUnknown`
-in one M1-02 transaction. Startup reconciliation then observes Git/GitHub and
-records exactly one terminal transition/event. It first expires due setup rows,
-then retrieves the original action's exact setup ID/revision/digest through the
-durable injected lookup and acquires a current session no broader than that
-record. Missing/stale setup or session resolves to `Blocked`, never a fallback.
-Reconciliation never invokes a mutating API for the row. M1-02 resource locks
-plus the active-target unique index serialize concurrent calls. Dynamic lock
-conflict maps to a durable `Blocked/ResourceBusy`; stale expected refs/versions
-map to durable `Blocked/RepositoryStateConflict`, both without an effect.
+Startup recovery partitions rows by durable state and
+`requires_external_access`:
+
+1. A stranded `Prepared` row is proof that the process stopped after intent
+   commit and before the mandatory `Prepared -> InFlight` commit that precedes
+   any effect. With expected state/version, one transaction changes it to
+   `Blocked`, stores `ExternalFailurePayload(error_code =
+   InterruptedBeforeObservation, retry_class = Never, redacted_message =
+   "process interrupted before authoritative observation", redaction_receipt =
+   <canonical structural-redactor receipt for that fixed literal>, provider =
+   NULL, reference_name = NULL)`, sets `observed_at = updated_at = clock.now()`,
+   increments `version` once, leaves `result_payload_json` null, and appends
+   exactly one `RepositoryActionBlocked` event using the recovery key below as
+   its event fingerprint. It creates no observation row and performs no
+   Git/GitHub observation, setup lookup, session acquisition, or external
+   effect. Recovery returns the same
+   `RepositoryOperationResult(status=Blocked, action_id=<original>,
+   observation=NULL, error=<stored failure>)`. A later startup sees the
+   terminal row and returns that stored result without a second transition or
+   event; the deterministic recovery key is
+   `repository-action-interrupted:<action-id>:<prepared-at>`.
+2. An `InFlight` row is first changed to `OutcomeUnknown` in one M1-02
+   transaction. For local Git actions and `FileRemote` pushes, whose stored
+   setup tuple is null, reconciliation uses only authoritative local Git or
+   filesystem bare-remote observation. It performs no setup lookup or session
+   acquisition.
+3. For GitHub actions and `NetworkRemote` pushes, whose stored setup tuple is
+   non-null, startup first expires due setup rows, retrieves that action's exact
+   setup ID/revision/digest through the durable injected lookup, and acquires a
+   current session no broader than the record before read-only authoritative
+   GitHub/network reconciliation. Missing/stale setup or session resolves to
+   `Blocked`, never a fallback.
+
+Reconciliation records exactly one terminal transition/event and never invokes
+a mutating API for the row. M1-02 resource locks plus the active-target unique
+index serialize concurrent calls. Dynamic lock conflict maps to a durable
+`Blocked/ResourceBusy`; stale expected refs/versions map to durable
+`Blocked/RepositoryStateConflict`, both without an effect.
 
 ## Exact adapter APIs and side effects
 
@@ -845,9 +895,11 @@ GitHubAdapter.reconcile(action_id, authority, context)
 
 Exact behavior:
 
-- Every GitHub call first resolves the authority's exact setup ID/revision/
-  digest through the injected durable lookup, then acquires and compares the
-  runtime session. Required capabilities are: observe repository
+- After `Prepared`, a GitHub action with an all-null setup tuple blocks as
+  `ExternalSetupUnavailable` without a lookup, session, or transport call.
+  Every GitHub action carrying a non-null tuple first resolves the authority's
+  exact setup ID/revision/digest through the injected durable lookup, then
+  acquires and compares the runtime session. Required capabilities are: observe repository
   `RepositoryMetadataRead`; observe PR `PullRequestsRead`; ensure draft PR
   `PullRequestsRead + DraftPullRequestWrite`; request reviewers
   `PullRequestsRead + ReviewsRead + ReviewRequestWrite`; observe checks
@@ -900,7 +952,7 @@ CredentialRevoked, CredentialExpired, CredentialScopeInsufficient,
 SensitiveCarrierRejected, IdempotencyConflict, ResourceBusy,
 GitOperationFailed, GitHubAuthenticationFailed, GitHubPermissionDenied,
 GitHubRateLimited, GitHubRequestFailed, ExternalResultTooLarge,
-OutcomeUnknown, ExternalReconciliationRequired
+OutcomeUnknown, InterruptedBeforeObservation, ExternalReconciliationRequired
 ```
 
 Dynamic pre-effect mapping is exact: missing/no accepted setup ->
@@ -959,6 +1011,12 @@ named M1-03 proofs:
    `RejectedBeforeIntent` with null action ID and no row/event. Structurally
    valid requests with stale/missing current binding/policy, lock, source fact,
    or remote record `Prepared -> Blocked` with exact mapped code and no effect.
+   Local Git and `FileRemote` actions persist a null setup tuple and reject a
+   non-local route mismatch. A partial setup tuple is rejected before intent;
+   a GitHub or `NetworkRemote` action with no tuple records
+   `Prepared -> Blocked/ExternalSetupUnavailable` without lookup/session, while
+   one with a tuple persists the exact values and performs only its scoped
+   dynamic lookup/session checks.
 4. A real temporary worktree proves observation uses exact refs/objects, reports
    clean/dirty honestly, and makes byte-for-byte no repository change.
 5. Real Git proves feature-branch creation is compare-and-set and idempotent;
@@ -1025,10 +1083,17 @@ named M1-03 proofs:
     Project Architect-recorded setup revision with Owner acceptance evidence;
     code does not self-heal authority.
 18. Kill/restart at every durable-before-effect/effect-before-result seam for
-    branch, commit, push, PR, and reviewer request. Startup expires due setup,
-    reloads the exact recorded ID/revision/digest, requires a no-broader fresh
-    session, and authoritative observation produces one safe terminal history
-    without blindly replaying an uncertain mutation.
+    branch, commit, push, PR, and reviewer request. A committed `Prepared` row
+    deterministically becomes `Blocked/InterruptedBeforeObservation` with one
+    blocked event/result, no observation, setup lookup, session, or external
+    effect; repeated startup returns the stored result with no second event.
+    An uncertain local branch/commit or `FileRemote` push uses only
+    authoritative local Git/bare-remote observation and proves zero setup
+    lookup/session calls. Only a GitHub or `NetworkRemote` action expires due
+    setup, reloads its exact recorded ID/revision/digest, and requires a
+    no-broader fresh session before read-only authoritative observation. Each
+    path produces one safe terminal history without blindly replaying an
+    uncertain mutation.
 19. All Alpha-01, Alpha-02, Alpha-03, M1-01, accepted M1-02, M1-03A/B unit and
     integration tests, JSON/schema consistency if extended, Python compileall,
     exact changed-path review, and repository artifact scan pass from the exact
@@ -1267,9 +1332,11 @@ including real external qualification, creates accepted M1-03.
   `external:owner-approved-m1-03-nonlive-github-repository` and
   `finite:owner-approved-m1-03-credential-session`. Developer -> Integration
   cumulative validate/assemble -> fresh exact-range independent review ->
-  Project Architect records the Owner-evidenced active setup -> attended proof
-  -> Integration validates exact final head/evidence -> reviewer confirms
-  coverage/evidence -> routine Project Architect integrated acceptance.
+  Project Architect records the exact head as code-ready (not B/M1-03
+  acceptance) -> Project Architect records the Owner-evidenced active setup ->
+  attended proof -> Integration validates exact final head/evidence -> reviewer
+  confirms coverage/evidence -> routine Project Architect integrated B/M1-03
+  acceptance.
 
 ## Status, stop, handoff, and acceptance
 

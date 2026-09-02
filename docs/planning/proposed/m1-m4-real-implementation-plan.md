@@ -160,15 +160,15 @@ records will be materialized and reviewed before release.
 | Resource locks | acquired only by the current serial slice; B external locks only during Owner-authorized attended qualification; see exact A/B nodes below |
 | Input contract version | accepted integrated M1-02 schema/API, expected schema `4` and `maestro-operational-state-v1`, reconciled at its exact accepted head before release |
 | Output contract version | Maestro operational schema version `5` and `maestro-repository-github-adapter-v1` |
-| Planning authorities | M0-D01, D02, D03, D05, D06, D11, D12, D14, D15; Master Plan; Agent Workforce Control Plane; original M1 roadmap; active `ai/handoffs/current.md`; planning source base `8a126be0a0fd57ff918954c6d5faeb10b0aab71d`. `sources/planning/current-handoff.md` is historical only; M0-D15 and the active handoff control conflicts. |
+| Planning authorities | M0-D01, D02, D03, D05, D06, D11, D12, D14, D15; Master Plan; Agent Workforce Control Plane; original M1 roadmap; active `ai/handoffs/current.md`; planning source base `47456aeda5b5c545396855fbb48124d96ef2877f`. `sources/planning/current-handoff.md` is historical only; M0-D15 and the active handoff control conflicts. |
 | Implementation base | unresolved until exact routine Project Architect acceptance of integrated M1-02C; any schema/API difference from the packet assumption returns for planning reconciliation |
 | Required checks | Alpha-01, Alpha-02, Alpha-03, accepted M1-01/M1-02 and M1-03 suites; Python compileall; schema consistency; exact changed-path/API-absence/artifact review; real local bare remote and credential-gated dedicated non-live GitHub qualification |
 | Integration route | Integration Agent, `validate-only` unless assembly is required; cumulative validation repeats after external qualification |
 | Review route | fresh Independent Implementation Reviewer over each exact slice and correction range, cumulative final-head coverage, and real-evidence fidelity |
 | Resource envelope | two serial 150-minute Developer slices, one attempt and at most one eligible correction each; separate attended 90-minute external qualification; no overlapping writer or undeclared network action |
 | Approval state | `MaterializedCandidate`, `DependencyBlocked`, and `PendingDecisionFidelity`; no lease, dispatch, external setup, or network operation is authorized |
-| Dispatchable transition | umbrella never becomes runtime `Dispatchable`; after dependency satisfaction, packet Decision Fidelity approval, and Project Architect release, only A may be released; B code waits for A acceptance and B qualification waits for the active Project Architect-recorded setup authority; routine code acceptance remains Project Architect-owned |
-| Approval boundary | Project Architect for routine code/slice/integrated acceptance; new or expanded credential, external-access, security, spending, production, merge, or deployment authority returns through the Project Architect to Owner |
+| Dispatchable transition | umbrella never becomes runtime `Dispatchable`; after dependency satisfaction, packet Decision Fidelity approval, and Project Architect release, only A may be released; B code waits for A acceptance, reviewed B is recorded by the Project Architect as code-ready but not accepted, and B qualification waits for the active Project Architect-recorded setup authority |
+| Approval boundary | Project Architect for routine A acceptance, the non-accepting B code-ready record, and post-real-qualification integrated B/M1-03 acceptance; new or expanded credential, external-access, security, spending, production, merge, or deployment authority returns through the Project Architect to Owner |
 
 #### M1-03 serial slice nodes
 
