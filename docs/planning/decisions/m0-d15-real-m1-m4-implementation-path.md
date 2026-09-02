@@ -1,8 +1,8 @@
 # M0-D15 — Real M1–M4 Implementation and Non-Live Proving Path
 
-**Status:** Accepted by the Owner on 2026-09-01  
+**Status:** Accepted by the Owner on 2026-09-01
 **Scope:** Reconciliation of the already designed M1–M4 implementation path
-with the proving-project and approval boundaries  
+with the proving-project and approval boundaries
 **Source:** [Owner direction — complete the real M1–M4 build path](../../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md)
 
 ## Decision

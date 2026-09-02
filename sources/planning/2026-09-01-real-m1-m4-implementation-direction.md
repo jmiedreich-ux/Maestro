@@ -1,7 +1,7 @@
 # Owner Direction — Complete the Real M1–M4 Build Path
 
-**Date:** 2026-09-01  
-**Status:** Accepted Owner direction  
+**Date:** 2026-09-01
+**Status:** Accepted Owner direction
 **Scope:** Maestro implementation sequencing, proving boundary, and delegated approval
 
 ## Direction

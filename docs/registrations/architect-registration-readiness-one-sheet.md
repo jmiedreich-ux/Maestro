@@ -59,4 +59,4 @@ Registration is not implementation approval. The project repository remains auth
 
 ## Recommended architect handoff line
 
-> **[Project] graph [revision] at [source SHA] is owner-approved and ready for Maestro registration discovery.** Authority paths: [paths]. Binding facts: complete / gaps listed. Open questions affecting registration: none / [IDs]. First implementation milestone remains unreleased until registration, dry run, and separate owner approval.
+> **[Project] graph [revision] at [source SHA] is Project-Architect-approved and ready for Maestro registration discovery.** Authority paths: [paths]. Binding facts: complete / gaps listed. Open questions affecting registration: none / [IDs]. First implementation milestone remains unreleased until registration, dry run, and Project Architect approval, plus Owner approval only for any M0-D15 reserved choice.

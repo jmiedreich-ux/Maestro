@@ -100,10 +100,16 @@
 | Independent later queue work may run while a prior item awaits Integration | Control Plane §§7.2–7.4 |
 | Atlas provides top-level routing/model visibility without becoming an authority fork | Control Plane §10; Atlas Transition Assessment |
 | SOP and proportionate independent review govern every coding packet | Control Plane §9; `docs/agents/coding-agent-sop.md`; `docs/agents/independent-review-agent.md` |
-| M0 remains design-only and V1 remains a deliberately narrow, owner-gated loop | Master Plan §9; Control Plane §13 |
+| M0 remains historical design-only work; M0-D15 now authorizes the narrow real M1–M4 build and Project-Architect-gated proving loop | Master Plan §9; Control Plane §13; M0-D15 |
 | Historical synthetic qualification and its later real proving supersession | M0-D13; M0-D15; Master Plan §9; Control Plane §13 |
-| Allowance, context, and token reporting starts in that synthetic loop without provider scraping or false precision | M0-D14; Alpha-04 proposal; Usage & Observability proposal; Control Plane §§10–13 |
+| Allowance, context, and token reporting starts in the real attempt path without provider scraping or false precision | M0-D14; M0-D15; Usage & Observability proposal; Control Plane §§10–13 |
 
-## Current M0 next action
+## Current implementation action
 
-The independent [planning capture audit](agent-workforce-capture-audit.md) has passed. Resolve or explicitly defer every remaining open implementation decision, prepare the M0 acceptance record, then obtain the project’s required M0 implementation authorization. Do not implement coordinator, database, worker, Atlas migration, VennueSign adapter, or specialist dispatch merely because this record is complete.
+M0-D15 records the Owner's M1–M4 implementation authorization. Materialize
+each exact packet from the existing roadmap, obtain fresh Decision Fidelity
+approval over its exact planning range, record routine Project Architect
+release, and dispatch the dedicated Maestro Developer only in a clean isolated
+worktree. Preserve the packet's Integration, independent implementation review,
+M0-D05 correction, complete final-head coverage, and Project Architect/Owner
+return boundaries.

@@ -408,9 +408,13 @@ Integration/review routing, recovery, and delegated acceptance boundary. The
 attended proving target is a newly created non-live project, not a live product
 repository.
 
-### V2 — controlled agent workforce
+### V2 — controlled agent workforce expansion
 
-V2 adds formal role contracts, specialist planned queues, packet ownership/path enforcement, model routing, an Integration Agent, and limited parallel dispatch for explicitly independent work. Atlas gains live queue, routing, capacity, and evidence views backed by Maestro state.
+M4 already provides the minimum single-project, single-milestone queue and real
+Integration/review path required for the proving run. V2 expands that proven
+path into multi-packet specialist planned queues, configurable model routing,
+and limited parallel dispatch for explicitly independent work. Atlas expands
+its queue, routing, capacity, and evidence views over the same Maestro state.
 
 ### V3 — mature parallel operations
 

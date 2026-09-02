@@ -47,7 +47,10 @@ The Alpha-02 packet carries bounded quality contracts for:
 
 Each contract specifies its protected outcome, operating model, exclusions, assurance level, sufficient proof, permitted implementation boundary, proportionality ceiling, and stop/escalation rule under M0-D12.
 
-## Completion boundary and next gate
+## Historical Alpha completion boundary — no longer the next gate
+
+The material in this section preserves the Alpha closeout history. M0-D15 and
+the current continuation section above supersede its successor instructions.
 
 Alpha-02's exact implementation range received fresh Independent Implementation
 Review **APPROVE** and is complete. The wrapper stops after recording its
@@ -99,16 +102,15 @@ release.
 ## Guardrails
 
 - Preserve Alpha-01's bounded M0-D11 assurance; do not re-open excluded post-directory-FD same-UID/root containment.
-- Keep Alpha synthetic-only. Foundry and VennueSign remain untouched.
-- Project registration is explicitly post-Alpha work.
-- Live Foundry V1 execution is blocked until the M0-D13/M0-D14 synthetic
-  control-loop qualification is independently approved, accepted, implemented,
-  reviewed, and merged.
-- Alpha-04 is not V2: it may not create a production scheduler, real worker
-  route, multi-project queue, or parallel execution.
-- Atlas remains strictly read-only and absent from this increment.
-- Alpha-04 uses allowance/context/usage fixtures only; live provider-account
-  sources, retention, warnings, enforcement, and UI implementation remain
-  later decisions.
+- Execute M1–M4 from exact reviewed packets; do not dispatch the retired
+  synthetic Alpha-04 packet or use Foundry/VennueSign as the proving target.
+- Use a newly created non-live project and real role/repository actions for the
+  attended end-to-end proof.
+- Atlas remains strictly read-only through the Maestro service.
+- Routine acceptance and architecture returns stay with the Project Architect;
+  only M0-D15 reserved material choices involve the Owner.
+- Keep multi-project parallelism, webhooks, Murphy, automatic merge,
+  production deployment, and autonomous successors outside M1–M4 readiness.
+- Keep USB provisioning deferred and outside the functional test-readiness gate.
 - M0-D05 allows one targeted correction only; a missing quality model or new failure class returns to Architecture/Owner, not another worker loop.
 - Follow-up review is targeted to named findings and directly affected consistency unless a documented reopening reason applies.

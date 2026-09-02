@@ -236,9 +236,11 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 ### V2 — controlled delegation
 
-- Enforce work-packet ownership and routing.
-- Dispatch suitable bounded tasks to local models.
-- Add formal role definitions, specialist planned queues, Integration routing, and model-routing configuration.
+- Expand M4's minimum single-project, single-milestone queue and real
+  Integration/review route into multi-packet specialist planned queues.
+- Enforce work-packet ownership and configurable model routing across those
+  expanded queues.
+- Dispatch suitable bounded tasks to additional approved local/model routes.
 - Allow limited parallel dispatch only for explicitly independent packets with non-conflicting locks and project-adapter approval.
 - Add live Atlas queue, routing, capacity, and evidence views from Maestro state.
 
