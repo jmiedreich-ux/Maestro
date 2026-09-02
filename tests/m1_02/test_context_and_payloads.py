@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import copy
+import json
+import math
+import re
 import unittest
 
+from maestro import operational_state as state
 from maestro.operational_state import (
     InvalidRecord,
     OperationalStateStore,
@@ -29,6 +33,128 @@ def measurement(value, quality="RuntimeReported", confidence="Exact", source="ru
         "source_reference": source,
         "observed_at": NOW,
     }
+
+
+class ClosedValidatorManifestTests(unittest.TestCase):
+    def assert_closed_error(self, error_type, message, command):
+        with self.assertRaisesRegex(error_type, f"^{re.escape(message)}$"):
+            command()
+
+    def test_ar_p04_app_v01_through_v16_positive_negative_and_canonical_edges(self) -> None:
+        self.assertEqual(state._closed_mapping({"a": 1}, {"a"}, "value"), {"a": 1})
+        self.assert_closed_error(InvalidRecord, "value has an invalid closed shape", lambda: state._closed_mapping({"a": 1, "b": 2}, {"a"}, "value"))
+
+        self.assertEqual(state._text("é" * 256, "field"), "é" * 256)
+        self.assert_closed_error(InvalidRecord, "field must be non-empty UTF-8 text up to 512 bytes", lambda: state._text("x" * 513, "field"))
+        self.assert_closed_error(InvalidRecord, "field contains a control character", lambda: state._text("bad\x00", "field"))
+        self.assertIsNone(state._optional_text(None, "field"))
+        self.assert_closed_error(InvalidRecord, "field must be non-empty UTF-8 text up to 512 bytes", lambda: state._optional_text("", "field"))
+
+        self.assertEqual(state._commit("a" * 40, "commit"), "a" * 40)
+        self.assert_closed_error(InvalidRecord, "commit must be a lowercase full Git commit", lambda: state._commit("A" * 40, "commit"))
+        self.assertEqual(state._digest("a" * 64, "digest"), "a" * 64)
+        self.assert_closed_error(InvalidRecord, "digest must be a lowercase SHA-256 digest", lambda: state._digest("A" * 64, "digest"))
+
+        self.assertEqual(state._provider("openai-api"), "openai-api")
+        self.assert_closed_error(state.SensitiveMaterialRejected, "provider must match the closed non-secret grammar", lambda: state._provider("OpenAI"))
+        self.assertEqual(state._reference_name("GITHUB_APP_PRIVATE_KEY"), "GITHUB_APP_PRIVATE_KEY")
+        self.assert_closed_error(state.SensitiveMaterialRejected, "reference_name must match the closed non-secret grammar", lambda: state._reference_name("ghp_secret-carrier"))
+
+        self.assertEqual(state._timestamp(NOW, "time"), NOW)
+        self.assert_closed_error(InvalidRecord, "time must be a canonical UTC timestamp", lambda: state._timestamp("2026-09-02T12:00:00Z", "time"))
+        self.assertIsNone(state._optional_timestamp(None, "time"))
+        self.assert_closed_error(InvalidRecord, "time must be a valid UTC timestamp", lambda: state._optional_timestamp("2026-99-99T12:00:00.000000Z", "time"))
+
+        self.assertEqual(state._positive_int(1, "count"), 1)
+        self.assert_closed_error(InvalidRecord, "count must be a positive integer", lambda: state._positive_int(True, "count"))
+        self.assertEqual(state._nonnegative_int(0, "count"), 0)
+        self.assert_closed_error(InvalidRecord, "count must be a non-negative integer", lambda: state._nonnegative_int(False, "count"))
+        self.assertEqual(state._sorted_unique_text(["a", "b"], "items"), ["a", "b"])
+        self.assert_closed_error(InvalidRecord, "items must be sorted and unique", lambda: state._sorted_unique_text(["b", "a"], "items"))
+
+        canonical = {"array": [1, True, None], "object": {"é": 1}}
+        self.assertEqual(canonical_json(canonical), '{"array":[1,true,null],"object":{"é":1}}')
+        json_failures = (
+            ("JSON root has the wrong type", lambda: state.canonical_json([], root_type=dict), InvalidRecord),
+            ("JSON object keys must be strings", lambda: state.canonical_json({1: "bad"}), InvalidRecord),
+            ("unsupported JSON value type", lambda: state.canonical_json({"value": object()}), InvalidRecord),
+            ("NaN and infinity are not canonical operational facts", lambda: state.canonical_json({"value": math.inf}), InvalidRecord),
+            ("structured sensitive/raw field is rejected", lambda: state.canonical_json({"secret": "x"}), state.SensitiveMaterialRejected),
+            ("value is not canonical JSON", lambda: state.canonical_json({"value": "\ud800"}), InvalidRecord),
+            ("canonical JSON exceeds the one MiB row limit", lambda: state.canonical_json({"value": "x" * (1024 * 1024)}), InvalidRecord),
+        )
+        for message, command, error_type in json_failures:
+            with self.subTest(case="APP-V13", message=message):
+                self.assert_closed_error(error_type, message, command)
+        self.assertEqual(state._json_object({"a": 1}, "object"), {"a": 1})
+        self.assert_closed_error(InvalidRecord, "object must be an object", lambda: state._json_object([], "object"))
+        self.assertEqual(state._decimal_text("0", "decimal"), "0")
+        self.assertEqual(state._decimal_text("1.25", "decimal"), "1.25")
+        self.assert_closed_error(InvalidRecord, "decimal is not normalized", lambda: state._decimal_text("1.250", "decimal"))
+
+        policy = {
+            "minimum_context_tokens": 32768, "output_reserve_tokens": 8192,
+            "warning_remaining_tokens": 16384, "checkpoint_remaining_tokens": 12288,
+            "stop_remaining_tokens": 8192,
+        }
+        self.assertEqual(validate_context_policy(policy, configured_context_limit=40960, starting_input_tokens=32768), policy)
+        policy_failures = (
+            (dict(policy, extra=1), 40960, 32768, "context policy has an invalid closed shape"),
+            (dict(policy, stop_remaining_tokens=0), 40960, 32768, "stop_remaining_tokens must be a positive integer"),
+            (dict(policy, checkpoint_remaining_tokens=16384), 40960, 32768, "context policy thresholds are not strictly ordered"),
+            (policy, 40959, 32768, "configured context limit does not satisfy the materialized policy"),
+            (policy, 40960, 32769, "starting input plus output reserve does not fit"),
+        )
+        for value, configured, starting, message in policy_failures:
+            with self.subTest(case="APP-V16", message=message):
+                self.assert_closed_error(InvalidRecord, message, lambda value=value, configured=configured, starting=starting: validate_context_policy(value, configured_context_limit=configured, starting_input_tokens=starting))
+
+    def test_ar_p04_app_v17_through_v22_positive_negative_and_canonical_edges(self) -> None:
+        payloads = (
+            {"kind": "state", "entity_type": "Packet", "entity_id": "packet-1", "state": "Planned", "version": 1},
+            {"kind": "claim", "packet_id": "packet-1", "lease_id": "lease-1", "lock_ids": ["lock-a"]},
+            {"kind": "reference", "provider": "openai", "reference_name": "API_KEY_REFERENCE"},
+            {"kind": "evidence-reference", "evidence_id": "evidence-1", "digest": "a" * 64, "source_reference": None},
+            {"kind": "measurement-reference", "record_id": "usage-1", "measurement_kind": "tokens"},
+            {"kind": "redacted-text", "text": "safe", "redaction_status": "Redacted", "redaction_receipt_reference": "receipt-1"},
+            {"kind": "notification", "event_id": 1, "audience": "ProjectArchitect", "severity": "ActionNeeded", "subject_reference": "packet-1", "evidence_references": [], "next_action_reference": "review"},
+            {"kind": "reason", "reason_code": "READY", "detail_reference": None},
+        )
+        for payload in payloads:
+            with self.subTest(case="APP-V17", kind=payload["kind"]):
+                self.assertEqual(validate_payload(payload), payload)
+                self.assertEqual(json.loads(canonical_json(payload)), payload)
+        self.assert_closed_error(InvalidRecord, "reason payload has an invalid closed shape", lambda: validate_payload({**payloads[-1], "extra": True}))
+
+        exact = measurement(0)
+        unavailable = measurement(None, "Unavailable", "Unavailable", None)
+        self.assertEqual(validate_measurement(exact), exact)
+        self.assertEqual(validate_measurement(unavailable), unavailable)
+        self.assert_closed_error(InvalidRecord, "unavailable measurement must retain null value/source", lambda: validate_measurement(dict(unavailable, value=0)))
+        self.assert_closed_error(InvalidRecord, "reported/tokenizer measurement requires exact or high confidence", lambda: validate_measurement(measurement(1, "TokenizerCounted", "Low", "tokenizer")))
+
+        costs = (
+            {"status": "Billed", "amount": "1.25", "currency": "USD", "quality": "ProviderReported", "confidence": "Exact", "source_reference": "bill", "observed_at": NOW},
+            {"status": "Estimated", "amount": "0", "currency": "USD", "quality": "Estimated", "confidence": "Medium", "source_reference": "estimate", "observed_at": NOW},
+            {"status": "NotBilled", "amount": None, "currency": None, "quality": "RuntimeReported", "confidence": "High", "source_reference": "runtime", "observed_at": NOW},
+            {"status": "Unknown", "amount": None, "currency": None, "quality": "Unavailable", "confidence": "Unavailable", "source_reference": None, "observed_at": NOW},
+        )
+        for cost in costs:
+            self.assertEqual(validate_cost_measurement(cost), cost)
+        self.assert_closed_error(InvalidRecord, "unknown cost retains no amount, currency, or source", lambda: validate_cost_measurement(dict(costs[-1], amount="0")))
+
+        estimated = measurement(1, "Estimated", "Medium", "estimate")
+        runtime = measurement(2)
+        self.assertEqual(preferred_measurement(estimated, runtime), runtime)
+        self.assert_closed_error(InvalidRecord, "lower-quality measurement cannot replace the retained value", lambda: preferred_measurement(runtime, estimated))
+        tokens = {name: measurement(index) for index, name in enumerate(("input", "output", "cached_input", "reasoning", "total"), start=1)}
+        self.assertEqual(state._token_measurements(tokens), {name: tokens[name] for name in sorted(tokens)})
+        self.assert_closed_error(InvalidRecord, "token measurements has an invalid closed shape", lambda: state._token_measurements({name: value for name, value in tokens.items() if name != "total"}))
+
+        actor = {"actor_type": "Developer", "actor_id": "developer-1", "correlation_id": "correlation-1", "causation_event_id": 1}
+        self.assertEqual(state._actor(actor), actor)
+        self.assert_closed_error(InvalidRecord, "actor has an invalid closed shape", lambda: state._actor({**actor, "extra": True}))
+        self.assert_closed_error(InvalidRecord, "causation_event_id must be a positive integer", lambda: state._actor(dict(actor, causation_event_id=0)))
 
 
 class ContextPolicyTests(unittest.TestCase):

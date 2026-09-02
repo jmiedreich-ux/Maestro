@@ -627,6 +627,8 @@ class OperationalStateStore:
         row["manifest_digest"] = _digest(row["manifest_digest"], "manifest_digest")
         row["merge_delegation_reference"] = _optional_text(row["merge_delegation_reference"], "merge_delegation_reference")
         row["binding_json"] = _json_object(row["binding_json"], "binding_json")
+        for field in ("activated_at", "superseded_at"):
+            row[field] = _optional_timestamp(row[field], field)
         if row["state"] not in {"Candidate", "Blocked"}:
             raise InvalidRecord("record_binding accepts Candidate or Blocked only")
         if row["acceptance_authority"] not in {"ProjectArchitect", "Owner"}:
@@ -708,7 +710,7 @@ class OperationalStateStore:
             "candidate_head_source_reference", "state", "acceptance_boundary",
         }
         row = _closed_mapping(value, fields, "run")
-        for field in {"run_id", "project_id", "binding_id", "graph_projection_id", "milestone_ref", "approved_authority_reference"}:
+        for field in {"run_id", "project_id", "binding_id", "graph_projection_id", "milestone_ref", "approved_authority_reference", "state", "acceptance_boundary"}:
             row[field] = _text(row[field], field)
         row["run_fingerprint"] = _digest(row["run_fingerprint"], "run_fingerprint")
         for field in {"branch_name", "pull_request_reference", "current_head_source_reference", "candidate_head_source_reference"}:
@@ -745,6 +747,7 @@ class OperationalStateStore:
             raise InvalidRecord("checks_json must be an array")
         canonical_json(row["checks_json"], root_type=list)
         row["context_policy_json"] = validate_context_policy(row["context_policy_json"])
+        row["correction_count"] = _nonnegative_int(row["correction_count"], "correction_count")
         if row["state"] != "Planned" or row["correction_count"] != 0:
             raise InvalidRecord("materialized packet starts Planned with correction count zero")
         if row["current_head"] is not None:

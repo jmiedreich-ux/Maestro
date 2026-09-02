@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import re
 import sqlite3
 import tempfile
 import threading
@@ -9,7 +11,9 @@ import time
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest import mock
 
+from maestro import operational_state as operational_state
 from maestro.config import DEFAULT_RUNTIME_DIR, REPOSITORY_ROOT, RuntimeConfig, RuntimePathError
 from maestro.operational_state import (
     Actor,
@@ -87,6 +91,19 @@ def _inventory(connection: sqlite3.Connection):
     return schema, rows
 
 
+def _durable_state(connection: sqlite3.Connection):
+    schema = connection.execute(
+        "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"
+    ).fetchall()
+    tables = [row[0] for row in connection.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    )]
+    return schema, {
+        table: connection.execute(f'SELECT * FROM "{table}" ORDER BY 1').fetchall()
+        for table in tables
+    }
+
+
 def _measurement(value, quality="RuntimeReported", confidence="Exact", source="runtime"):
     return {"value": value, "quality": quality, "confidence": confidence, "source_reference": source, "observed_at": NOW}
 
@@ -96,6 +113,51 @@ def _redacted(text):
 
 
 class MigrationTests(unittest.TestCase):
+    def test_ar_p02_static_schema_oracle_is_exact(self) -> None:
+        runtime = Runtime()
+        names = (
+            "events", "project_bindings", "secret_reference_observations", "graph_projections",
+            "work_items", "runs", "packets", "leases", "attempts", "resource_locks",
+            "evidence", "waits", "reviews", "notifications", "acceptance_records",
+            "merge_observations", "worker_progress_observations", "attempt_context_usage",
+            "provider_allowance_windows", "usage_reconciliations",
+            "one_active_binding_per_project", "one_active_graph_per_project",
+            "one_active_lease_per_packet", "one_active_lease_per_worktree",
+            "one_active_resource_key", "one_open_wait_per_packet_gate",
+            "events_require_v4_metadata", "events_validate_v4_shape", "events_closed_event_type",
+            "events_no_update", "events_no_delete", "evidence_no_update", "evidence_no_delete",
+            "reviews_no_update", "reviews_no_delete", "secret_reference_observations_no_update",
+            "secret_reference_observations_no_delete", "worker_progress_observations_no_update",
+            "worker_progress_observations_no_delete", "provider_allowance_windows_no_update",
+            "provider_allowance_windows_no_delete", "usage_reconciliations_no_update",
+            "usage_reconciliations_no_delete", "acceptance_records_no_update",
+            "acceptance_records_no_delete", "merge_observations_no_update",
+            "merge_observations_no_delete",
+        )
+        try:
+            runtime.path.mkdir()
+            database = runtime.path / "maestro.sqlite3"
+            with closing(sqlite3.connect(database)) as connection:
+                _schema_three(connection)
+            SQLiteFoundation(runtime.config()).health()
+            with closing(sqlite3.connect(database)) as connection:
+                rows = []
+                for name in names:
+                    row = connection.execute(
+                        "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name=?", (name,)
+                    ).fetchone()
+                    self.assertIsNotNone(row, name)
+                    rows.append({"type": row[0], "name": row[1], "table": row[2], "sql": row[3]})
+            encoded = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            self.assertEqual(len(rows), 47)
+            self.assertEqual(len(encoded), 36914)
+            self.assertEqual(
+                hashlib.sha256(encoded).hexdigest(),
+                "3bf7930f669752d89590a7590cc580bbaf08dd21ff36ddcbe4042fa30a2084af",
+            )
+        finally:
+            runtime.close()
+
     def test_schema_three_upgrades_additively_and_preserves_every_original_value(self) -> None:
         runtime = Runtime()
         try:
@@ -321,6 +383,302 @@ class RecordRouteTests(unittest.TestCase):
             attempt, "command-attempt", ACTOR, NOW
         )
         return expected
+
+    def test_ar_p05_closed_mock_wiring_and_relation_carriers_are_exact(self) -> None:
+        expected_maps = {
+            "APP-MAP-01": "_actor: V02[actor_type,actor_id,correlation_id]; V10?[causation_event_id]; R17",
+            "APP-MAP-02": "_binding: V02[binding_id,project_id,binding_revision,adapter_version,process_version,authority_reference,merge_policy,acceptance_authority,merge_execution_authority,state]; V04[source_commit]; V05[manifest_digest]; V03[merge_delegation_reference]; V14[binding_json]; V09[activated_at,superseded_at]; V08[now]; R01",
+            "APP-MAP-03": "_secret_reference: V02[id,project_id,binding_id,owner_reference]; V06[provider]; V07[reference_name]; V09[rotation_at,expires_at]; V08[observed_at]; R02; id=secret_reference_observation_id",
+            "APP-MAP-04": "_graph: V02[id,project_id,binding_id,graph_revision,authority_reference,state]; V04[source_base_sha]; V05[source_hash]; V08[observed_at,now]; R03; id=graph_projection_id",
+            "APP-MAP-05": "_work_item: V02[id,graph_projection_id,architecture_node_id,task_reference,workstream_ref,milestone_ref,title,priority,specialist_role,planning_state]; V11[planned_rank]; V12[execution_classes_json,dependencies_json,change_domains_json]; V14[input_contract_json,output_contract_json]; V08[now]; R04; id=work_item_id",
+            "APP-MAP-06": "_run: V02[run_id,project_id,binding_id,graph_projection_id,milestone_ref,approved_authority_reference,state,acceptance_boundary]; V05[run_fingerprint]; V03[branch_name,pull_request_reference,current_head_source_reference,candidate_head_source_reference]; V04?[current_head,candidate_head]; V08[now]; R05",
+            "APP-MAP-07": "_packet: V02[packet_id,run_id,work_item_id,packet_revision,authority_reference,expected_branch,role_contract_reference,sop_reference,executor_class,integration_route,reviewer_route,state]; V04[base_commit]; V04?[current_head]; V12[owned_paths_json,forbidden_paths_json,resource_claims_json]; V13[checks_json]; V16[context_policy_json]; V11[correction_count]; V08[now]; R06",
+            "APP-MAP-08": "_attempt: V02[attempt_id,packet_id,lease_id,executor_class,model_identity,runtime_identity]; V10[attempt_number]; V03[correction_for_review_id]; V04?[result_commit]; V09[started_at,finished_at]; V08[now]; R06",
+            "APP-MAP-09": "_evidence: V02[evidence_id,idempotency_key,run_id,packet_id,evidence_kind]; V03[attempt_id,source_reference]; V17[payload_json]; V05[content_digest]; V08[created_at]; R07",
+            "APP-MAP-10": "_wait: V02[wait_id,run_id,gate_type,awaited_role,awaited_reference,expected_result,next_permitted_action,state]; V03[packet_id]; V09[timeout_at]; V08[now]; R08[resolution_reason_payload_json,state]",
+            "APP-MAP-11": "_review: V02[review_id,packet_id,reviewer_role,reviewer_instance]; V03[attempt_id]; V04[base_commit,head_commit]; V17[findings_json items]; V14[coverage_json]; V11[correction_number]; V08[created_at]; R09",
+            "APP-MAP-12": "_notification: V02[notification_id,run_id,destination_reference,audience,message_type,grouping_key]; V10[event_id]; V03[packet_id]; V09[escalation_at]; V17[payload_json]; V08[now]; R10[channel,severity,state,attempt_count,last_error_payload_json,next_attempt_at]",
+            "APP-MAP-13": "_worker_progress: V02[progress_id,attempt_id,next_permitted_action]; V17[plan_payload_json,current_step_payload_json,blocker_payload_json]; V08[observed_at,received_at]; R11[eta_text,confidence,status_request_state]",
+            "APP-MAP-14": "_context_usage: V02[context_usage_id,attempt_id,model_identity,runtime_identity]; V03[quantization]; V10?[configured_context_limit]; V05[context_policy_digest]; V18[starting_input_measurement_json]; V21[token_measurements_json]; V19[cost_measurement_json]; V08[observed_at,now]; R12[future_growth_estimate_json,counting_method,availability_state]",
+            "APP-MAP-15": "_allowance: V02[allowance_observation_id,account_reference,native_window_type,native_unit?]; V06[provider]; V15?[used_value,remaining_value]; V09[reset_at]; V08[observed_at]; R13[native_unit null relation,precision,measurement_quality,freshness]",
+            "APP-MAP-16": "_reconciliation: V02[usage_reconciliation_id,allowance_observation_id,native_unit]; V15[window_change_value,tracked_controlled_value,registered_coarse_value,unattributed_value]; V08[observed_at]; R14[measurement_quality,balance]",
+            "APP-MAP-17": "_acceptance: V02[acceptance_id,subject_id,authority_reference]; V03[packet_id,run_id,supersedes_acceptance_id]; V10[sequence_number]; V04[exact_head]; V14[review_coverage_json]; V17[reason_payload_json]; V08[created_at]; R15[subject_type,required_authority,decision]",
+            "APP-MAP-18": "_merge_observation: V02[merge_observation_id,run_id,packet_id,repository_reference,default_branch,source_reference,performed_by_reference]; V03[acceptance_id,delegation_reference]; V04[accepted_head,merge_commit]; V14?[review_coverage_json]; V08[observed_at]; R16[source_kind,performed_by_authority]",
+            "APP-MAP-19": "update_context_usage: V02[attempt_id]; V10[expected_version]; V01[update keys]; V21[token_measurements]; V19[cost_measurement]; V22[actor]; V08[observed_at,now]; R12[availability,version,precedence]",
+            "APP-MAP-20": "snapshot/events_after: V02[entity_type,entity_id]; V11[event_id]; R19[entity allowlist,limit 1..1000]",
+            "APP-MAP-21": "shared append: V02[idempotency_key]; V22[actor]; V08[now]; V23[replay/conflict]; V24[constraint mapping]; V25[busy exhaustion]",
+        }
+        expected_relations = {
+            "APP-REL-01": "binding Candidate|Blocked, acceptance authority, merge delegation, null lifecycle times",
+            "APP-REL-02": "secret status enum",
+            "APP-REL-03": "graph Active-only and sorted unique work IDs",
+            "APP-REL-04": "work graph identity and planning-state enum",
+            "APP-REL-05": "run Planned-only, acceptance boundary, four initial head/source nulls",
+            "APP-REL-06": "packet Planned/count-zero/head-null; attempt number/kind/correction/result/time",
+            "APP-REL-07": "evidence digest, redaction enum, redacted-prose relation",
+            "APP-REL-08": "wait Open and unresolved creation",
+            "APP-REL-09": "review kind/result/correction and findings payload array",
+            "APP-REL-10": "notification enums, source-event equality, pending unsent values",
+            "APP-REL-11": "progress redacted payloads, ETA alternatives, confidence/request enums",
+            "APP-REL-12": "context policy digest/fit, growth keys/quality/source/time/order, availability/precedence",
+            "APP-REL-13": "allowance quality labels and available/unavailable value relation",
+            "APP-REL-14": "reconciliation FK/unit/quality and exact decimal balance",
+            "APP-REL-15": "acceptance Packet|Run identity/exactly-one, sequence/authority/decision/reason",
+            "APP-REL-16": "merge source and performer/delegation relation",
+            "APP-REL-17": "event legacy exception, metadata/shape/type/causation, append-only",
+            "APP-REL-18": "public append FK/unique/check mapping plus replay/conflict",
+            "APP-REL-19": "snapshot entity allowlist and events-after limit",
+        }
+        self.assertEqual(tuple(expected_maps), tuple(f"APP-MAP-{number:02d}" for number in range(1, 22)))
+        self.assertEqual(tuple(expected_relations), tuple(f"APP-REL-{number:02d}" for number in range(1, 20)))
+        self.assertEqual(
+            canonical_digest({"maps": expected_maps, "relations": expected_relations}),
+            "75f9d38db650cfeffdaf14731052f49c4e8f7dae449a90f030b4369a980e8521",
+        )
+
+        helper_names = (
+            "_closed_mapping", "_text", "_optional_text", "_commit", "_digest",
+            "_provider", "_reference_name", "_timestamp", "_optional_timestamp",
+            "_positive_int", "_nonnegative_int", "_sorted_unique_text", "canonical_json",
+            "_json_object", "_decimal_text", "validate_context_policy", "validate_payload",
+            "validate_measurement", "validate_cost_measurement", "preferred_measurement",
+            "_token_measurements", "_actor",
+        )
+        patches = {
+            name: mock.patch.object(operational_state, name, wraps=getattr(operational_state, name))
+            for name in helper_names
+        }
+        started = {name: patch.start() for name, patch in patches.items()}
+        try:
+            self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        finally:
+            for patch in reversed(tuple(patches.values())):
+                patch.stop()
+        for name, wrapped in started.items():
+            with self.subTest(helper=name):
+                self.assertGreater(wrapped.call_count, 0)
+
+    def test_ar_p05_high_risk_builder_wiring_matches_the_frozen_map(self) -> None:
+        binding, _, _, _, run, packet = self._records()
+        with mock.patch.object(
+            operational_state, "_optional_timestamp", wraps=operational_state._optional_timestamp
+        ) as optional_timestamp:
+            OperationalStateStore._binding(binding, NOW)
+        self.assertEqual(
+            [(call.args[1], call.args[0]) for call in optional_timestamp.call_args_list],
+            [("activated_at", None), ("superseded_at", None)],
+        )
+
+        with mock.patch.object(operational_state, "_text", wraps=operational_state._text) as text_validator:
+            OperationalStateStore._run(run, NOW)
+        self.assertEqual(
+            {call.args[1] for call in text_validator.call_args_list},
+            {
+                "run_id", "project_id", "binding_id", "graph_projection_id", "milestone_ref",
+                "approved_authority_reference", "state", "acceptance_boundary",
+            },
+        )
+
+        with mock.patch.object(
+            operational_state, "_nonnegative_int", wraps=operational_state._nonnegative_int
+        ) as nonnegative_int:
+            OperationalStateStore._packet(packet, NOW)
+        self.assertEqual(
+            [(call.args[1], call.args[0]) for call in nonnegative_int.call_args_list],
+            [("correction_count", 0)],
+        )
+        with self.assertRaisesRegex(
+            InvalidRecord, "^correction_count must be a non-negative integer$"
+        ):
+            OperationalStateStore._packet(dict(packet, correction_count=False), NOW)
+
+    def test_ar_p05_app_rel_01_through_19_exact_negative_edges(self) -> None:
+        builder_names = (
+            "_binding", "_secret_reference", "_graph", "_work_item", "_run", "_packet",
+            "_attempt", "_evidence", "_wait", "_review", "_notification",
+            "_worker_progress", "_context_usage", "_allowance", "_reconciliation",
+            "_acceptance", "_merge_observation",
+        )
+        originals = {name: getattr(OperationalStateStore, name) for name in builder_names}
+        captured = {name: [] for name in builder_names}
+        patches = []
+        for name in builder_names:
+            def side_effect(*args, _name=name, **kwargs):
+                captured[_name].append(copy.deepcopy(args[0]))
+                return originals[_name](*args, **kwargs)
+            patch = mock.patch.object(OperationalStateStore, name, side_effect=side_effect)
+            patch.start()
+            patches.append(patch)
+        try:
+            self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        finally:
+            for patch in reversed(patches):
+                patch.stop()
+
+        valid = {name: values[-1] for name, values in captured.items()}
+
+        def changed(name, **changes):
+            return dict(valid[name], **changes)
+
+        def invalid(case_id, message, command):
+            with self.subTest(case=case_id, message=message), self.assertRaisesRegex(
+                InvalidRecord, f"^{re.escape(message)}$"
+            ):
+                command()
+
+        binding_cases = (
+            ("record_binding accepts Candidate or Blocked only", {"state": "Active"}),
+            ("binding acceptance authority is invalid", {"acceptance_authority": "Other"}),
+            ("owner-performed merge cannot carry delegation", {"merge_delegation_reference": "policy"}),
+            ("delegated merge requires its reviewed policy reference", {"merge_execution_authority": "PolicyDelegated", "merge_delegation_reference": None}),
+            ("merge execution authority is invalid", {"merge_execution_authority": "Other"}),
+            ("candidate/blocked binding has no activation/supersession time", {"activated_at": NOW}),
+        )
+        for message, changes in binding_cases:
+            invalid("APP-REL-01", message, lambda changes=changes: OperationalStateStore._binding(changed("_binding", **changes), NOW))
+        invalid("APP-REL-02", "secret reference status is invalid", lambda: OperationalStateStore._secret_reference(changed("_secret_reference", status="Other")))
+        invalid("APP-REL-03", "record_graph_projection creates Active projections only", lambda: OperationalStateStore._graph(changed("_graph", state="Stale"), NOW))
+        work = valid["_work_item"]
+        invalid("APP-REL-03", "work_items must be sorted and unique by work_item_id", lambda: self.store.record_graph_projection(changed("_graph", graph_projection_id="graph-ar-rel03", graph_revision="graph-ar-rel03", source_hash="c" * 64), [dict(work, graph_projection_id="graph-ar-rel03", work_item_id="z"), dict(work, graph_projection_id="graph-ar-rel03", work_item_id="a", architecture_node_id="node-a")], "ar-rel03", ACTOR, NOW))
+        invalid("APP-REL-04", "work item belongs to a different graph projection", lambda: OperationalStateStore._work_item(changed("_work_item", graph_projection_id="other"), "graph-1", NOW))
+        invalid("APP-REL-04", "work-item planning state is invalid", lambda: OperationalStateStore._work_item(changed("_work_item", planning_state="Other"), "graph-1", NOW))
+
+        run_cases = [
+            ("create_run creates Planned runs only", {"state": "Running"}),
+            ("run acceptance boundary is invalid", {"acceptance_boundary": "Other"}),
+        ] + [("planned run cannot begin with observed/candidate head", {field: COMMIT_B if field in {"current_head", "candidate_head"} else "source"}) for field in ("current_head", "current_head_source_reference", "candidate_head", "candidate_head_source_reference")]
+        for message, changes in run_cases:
+            invalid("APP-REL-05", message, lambda changes=changes: OperationalStateStore._run(changed("_run", **changes), NOW))
+
+        packet_cases = (
+            ("materialized packet starts Planned with correction count zero", {"state": "Ready"}),
+            ("materialized packet starts Planned with correction count zero", {"correction_count": 1}),
+            ("materialized packet has no current head", {"current_head": COMMIT_B}),
+        )
+        for message, changes in packet_cases:
+            invalid("APP-REL-06", message, lambda changes=changes: OperationalStateStore._packet(changed("_packet", **changes), NOW))
+        attempt_cases = (
+            ("attempt number is invalid", {"attempt_number": 3}),
+            ("attempt creation facts are invalid", {"attempt_kind": "TargetedCorrection"}),
+            ("initial attempt cannot reference a correction review", {"correction_for_review_id": "review-1"}),
+            ("targeted correction requires a review reference", {"attempt_number": 2, "attempt_kind": "TargetedCorrection", "correction_for_review_id": None}),
+            ("planned attempt has no result/start/finish facts", {"result_commit": COMMIT_B}),
+            ("planned attempt has no result/start/finish facts", {"started_at": NOW}),
+            ("planned attempt has no result/start/finish facts", {"finished_at": NOW}),
+        )
+        for message, changes in attempt_cases:
+            invalid("APP-REL-06", message, lambda changes=changes: OperationalStateStore._attempt(changed("_attempt", **changes), NOW))
+
+        evidence = valid["_evidence"]
+        invalid("APP-REL-07", "evidence digest does not cover its canonical payload", lambda: OperationalStateStore._evidence(dict(evidence, content_digest="b" * 64)))
+        invalid("APP-REL-07", "evidence redaction state is invalid", lambda: OperationalStateStore._evidence(dict(evidence, redaction_state="Other")))
+        redacted = _redacted("safe")
+        invalid("APP-REL-07", "redacted prose evidence must be marked Redacted", lambda: OperationalStateStore._evidence(dict(evidence, payload_json=redacted, content_digest=canonical_digest(redacted), redaction_state="NotRequired")))
+        invalid("APP-REL-08", "open_wait creates unresolved Open waits only", lambda: OperationalStateStore._wait(changed("_wait", state="Resolved"), NOW))
+        invalid("APP-REL-08", "open_wait creates unresolved Open waits only", lambda: OperationalStateStore._wait(changed("_wait", resolution_reason_payload_json={"kind": "reason", "reason_code": "DONE", "detail_reference": None}), NOW))
+        review_cases = (
+            ("review kind is invalid", {"review_kind": "Other"}),
+            ("review result is invalid", {"result": "Other"}),
+            ("review findings must be an array", {"findings_json": {}}),
+            ("review correction number is invalid", {"correction_number": 2}),
+        )
+        for message, changes in review_cases:
+            invalid("APP-REL-09", message, lambda changes=changes: OperationalStateStore._review(changed("_review", **changes)))
+        notification_cases = (
+            ("notification channel or severity is invalid", {"channel": "Other"}),
+            ("notification channel or severity is invalid", {"severity": "Other"}),
+            ("notification payload must reference its source event", {"payload_json": dict(valid["_notification"]["payload_json"], event_id=999)}),
+            ("record_notification stores a pending unsent record", {"state": "Delivered"}),
+            ("record_notification stores a pending unsent record", {"attempt_count": 1}),
+            ("record_notification stores a pending unsent record", {"last_error_payload_json": {"kind": "reason", "reason_code": "X", "detail_reference": None}}),
+            ("record_notification stores a pending unsent record", {"next_attempt_at": LATER}),
+        )
+        for message, changes in notification_cases:
+            invalid("APP-REL-10", message, lambda changes=changes: OperationalStateStore._notification(changed("_notification", **changes), NOW))
+        progress_cases = (
+            ("worker progress prose must be pre-redacted with a receipt", {"plan_payload_json": {"kind": "reason", "reason_code": "X", "detail_reference": None}}),
+            ("worker ETA must be unknown, UTC time, or ISO-8601 duration", {"eta_text": "soon"}),
+            ("worker progress confidence/status request state is invalid", {"confidence": "Other"}),
+            ("worker progress confidence/status request state is invalid", {"status_request_state": "Other"}),
+        )
+        for message, changes in progress_cases:
+            invalid("APP-REL-11", message, lambda changes=changes: OperationalStateStore._worker_progress(changed("_worker_progress", **changes)))
+
+        context = valid["_context_usage"]
+        growth = context["future_growth_estimate_json"]
+        context_cases = (
+            ("future growth estimate has an invalid closed shape", {"future_growth_estimate_json": dict(growth, extra=True)}),
+            ("future growth bounds must be explicit estimates", {"future_growth_estimate_json": dict(growth, lower_bound=_measurement(1))}),
+            ("future growth bounds must share source and time", {"future_growth_estimate_json": dict(growth, upper_bound=_measurement(200, "Estimated", "Medium", "other"))}),
+            ("future growth lower bound exceeds upper bound", {"future_growth_estimate_json": {"lower_bound": _measurement(300, "Estimated", "Medium", "estimate"), "upper_bound": _measurement(200, "Estimated", "Medium", "estimate")}}),
+            ("context availability is invalid", {"availability_state": "Other"}),
+        )
+        for message, changes in context_cases:
+            invalid("APP-REL-12", message, lambda changes=changes: OperationalStateStore._context_usage(dict(context, **changes), NOW))
+        allowance_cases = (
+            ("allowance quality state is invalid", {"precision": "Other"}),
+            ("unavailable allowance values must remain null", {"precision": "Unavailable", "measurement_quality": "Unavailable", "freshness": "Unavailable"}),
+            ("unavailable allowance labels must agree", {"precision": "Unavailable", "measurement_quality": "ProviderReported", "freshness": "Fresh", "used_value": None, "remaining_value": None, "native_unit": None, "reset_at": None}),
+            ("available allowance needs a used or remaining value", {"used_value": None, "remaining_value": None}),
+        )
+        for message, changes in allowance_cases:
+            invalid("APP-REL-13", message, lambda changes=changes: OperationalStateStore._allowance(changed("_allowance", **changes)))
+        invalid("APP-REL-14", "reconciliation quality is invalid", lambda: OperationalStateStore._reconciliation(changed("_reconciliation", measurement_quality="Other")))
+        invalid("APP-REL-14", "usage reconciliation does not balance exactly", lambda: OperationalStateStore._reconciliation(changed("_reconciliation", unattributed_value="1")))
+        acceptance_cases = (
+            ("acceptance closed enum is invalid", {"subject_type": "Other"}),
+            ("acceptance closed enum is invalid", {"sequence_number": 3}),
+            ("acceptance closed enum is invalid", {"required_authority": "Other"}),
+            ("acceptance closed enum is invalid", {"decision": "Other"}),
+            ("packet acceptance relation is invalid", {"subject_id": "other"}),
+            ("packet acceptance relation is invalid", {"run_id": "run-1"}),
+            ("acceptance reason must be a reason payload", {"reason_payload_json": {"kind": "state", "entity_type": "Packet", "entity_id": "packet-1", "state": "Planned", "version": 1}}),
+        )
+        for message, changes in acceptance_cases:
+            invalid("APP-REL-15", message, lambda changes=changes: OperationalStateStore._acceptance(changed("_acceptance", **changes)))
+        merge_cases = (
+            ("merge source kind is invalid", {"source_kind": "Other"}),
+            ("owner observation cannot carry delegation", {"performed_by_authority": "Owner", "delegation_reference": "policy"}),
+            ("delegated observation requires delegation reference", {"delegation_reference": None}),
+            ("merge performer authority is invalid", {"performed_by_authority": "Other"}),
+        )
+        for message, changes in merge_cases:
+            invalid("APP-REL-16", message, lambda changes=changes: OperationalStateStore._merge_observation(changed("_merge_observation", **changes)))
+
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database)) as connection:
+            trigger_names = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='trigger'"
+            )}
+            self.assertTrue({"events_require_v4_metadata", "events_validate_v4_shape", "events_closed_event_type", "events_no_update", "events_no_delete"} <= trigger_names)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM events WHERE entity_type!='ProjectRegistrationRun' AND "
+                "(correlation_id IS NULL OR actor_type IS NULL OR actor_id IS NULL OR "
+                "command_fingerprint IS NULL OR observed_at IS NULL)"
+            ).fetchone()[0], 0)
+            before_event_rows = connection.execute("SELECT * FROM events ORDER BY event_id").fetchall()
+            with self.subTest(case="APP-REL-17"), self.assertRaisesRegex(
+                sqlite3.IntegrityError, "^events are append-only$"
+            ):
+                connection.execute("UPDATE events SET reason=reason WHERE event_id=(SELECT MIN(event_id) FROM events)")
+            connection.rollback()
+            self.assertEqual(connection.execute("SELECT * FROM events ORDER BY event_id").fetchall(), before_event_rows)
+
+        with closing(sqlite3.connect(database)) as connection:
+            before_append = _durable_state(connection)
+        with self.subTest(case="APP-REL-18"), self.assertRaisesRegex(
+            InvalidRecord, "^record violates a durable schema constraint$"
+        ) as raised:
+            self.store.record_binding(
+                changed("_binding", binding_id="ar-rel18-duplicate"), "ar-rel18", ACTOR, NOW
+            )
+        self.assertEqual(raised.exception.__cause__.sqlite_errorname, "SQLITE_CONSTRAINT_UNIQUE")
+        with closing(sqlite3.connect(database)) as connection:
+            self.assertEqual(_durable_state(connection), before_append)
+
+        invalid("APP-REL-19", "entity_type is not snapshot-readable", lambda: self.store.snapshot("Other", "id"))
+        invalid("APP-REL-19", "event limit must be between 1 and 1000", lambda: self.store.events_after(0, 0))
+        invalid("APP-REL-19", "event limit must be between 1 and 1000", lambda: self.store.events_after(0, 1001))
 
     def test_all_a_record_append_routes_persist_reopen_and_events_are_ordered(self) -> None:
         expected = self._seed_through_packet_and_attempt()
@@ -921,6 +1279,165 @@ class RecordRouteTests(unittest.TestCase):
                 connection.rollback()
                 self.assertEqual(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], before_rows)
                 self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], before_events)
+
+    def test_ar_p03_p06_closed_database_constraint_manifest_is_durable(self) -> None:
+        update_cases = (
+            ("DB-R01", "leases", {"expires_at": NOW}),
+            ("DB-R02", "attempts", {"attempt_number": 0}),
+            ("DB-R03", "attempts", {"attempt_kind": "Other"}),
+            ("DB-R04", "attempts", {"correction_for_review_id": "review-1"}),
+            ("DB-R05", "attempts", {"attempt_number": 2, "attempt_kind": "TargetedCorrection", "correction_for_review_id": None}),
+            ("DB-R15/graph_projections", "graph_projections", {"version": 0}),
+            ("DB-R15/work_items", "work_items", {"version": 0}),
+            ("DB-R15/runs", "runs", {"version": 0}),
+            ("DB-R15/packets", "packets", {"version": 0}),
+            ("DB-R15/leases", "leases", {"version": 0}),
+            ("DB-R15/attempts", "attempts", {"version": 0}),
+            ("DB-R15/resource_locks", "resource_locks", {"version": 0}),
+            ("DB-R15/waits", "waits", {"version": 0}),
+            ("DB-R15/notifications", "notifications", {"version": 0}),
+            ("DB-R15/attempt_context_usage", "attempt_context_usage", {"version": 0}),
+            ("DB-R16", "packets", {"correction_count": 2}),
+            ("DB-R17", "notifications", {"attempt_count": -1}),
+            ("DB-R18", "work_items", {"planned_rank": -1}),
+            ("DB-R20", "attempt_context_usage", {"configured_context_limit": 0}),
+        )
+        insert_cases = (
+            ("DB-R06", "acceptance_records", "acceptance_id", "ar-r06", {"subject_type": "Other", "subject_id": "other"}),
+            ("DB-R07", "acceptance_records", "acceptance_id", "ar-r07", {"subject_id": "other-packet"}),
+            ("DB-R08", "acceptance_records", "acceptance_id", "ar-r08", {"run_id": "run-1"}),
+            ("DB-R09", "acceptance_records", "acceptance_id", "ar-r09", {"subject_type": "Run", "subject_id": "other-run", "packet_id": None, "run_id": "run-1"}),
+            ("DB-R10", "acceptance_records", "acceptance_id", "ar-r10", {"subject_type": "Run", "subject_id": "run-1", "packet_id": "packet-1", "run_id": "run-1"}),
+            ("DB-R11", "acceptance_records", "acceptance_id", "ar-r11", {"sequence_number": 0}),
+            ("DB-R12", "merge_observations", "merge_observation_id", "ar-r12", {"performed_by_authority": "Other"}),
+            ("DB-R13", "merge_observations", "merge_observation_id", "ar-r13", {"performed_by_authority": "Owner", "delegation_reference": "unexpected"}),
+            ("DB-R14", "merge_observations", "merge_observation_id", "ar-r14", {"performed_by_authority": "DelegatedIdentity", "delegation_reference": None}),
+            ("DB-R19", "reviews", "review_id", "ar-r19", {"correction_number": 2}),
+        )
+        primary_key_cases = (
+            ("DB-PK01", "notifications"),
+            ("DB-PK02", "merge_observations"),
+            ("DB-PK03", "worker_progress_observations"),
+            ("DB-PK04", "provider_allowance_windows"),
+            ("DB-PK05", "usage_reconciliations"),
+        )
+
+        def fresh_seed():
+            self.runtime.close()
+            self.setUp()
+            self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+            with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                connection.execute(
+                    "INSERT INTO resource_locks(lock_id,resource_key,lock_kind,packet_id,lease_id,state,acquired_at,expires_at,version) "
+                    "VALUES ('ar-lock','ar:lock','SharedBoundary','packet-1','lease-1','Released',?,?,1)",
+                    (NOW, LATER),
+                )
+                connection.commit()
+
+        def prove(case_id, expected_error, operation):
+            fresh_seed()
+            database = self.runtime.path / "maestro.sqlite3"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                before = _durable_state(connection)
+                with self.subTest(case=case_id), self.assertRaises(sqlite3.IntegrityError) as raised:
+                    operation(connection)
+                    connection.commit()
+                self.assertEqual(raised.exception.sqlite_errorname, expected_error)
+                connection.rollback()
+            reopened = OperationalStateStore(self.runtime.config())
+            self.assertEqual(reopened.health().schema_version, 4)
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+                self.assertEqual(connection.execute("PRAGMA journal_mode").fetchone()[0], "wal")
+                self.assertEqual(_durable_state(connection), before, case_id)
+            artifacts = {path.name for path in self.runtime.path.iterdir()}
+            self.assertIn("maestro.sqlite3", artifacts)
+            self.assertLessEqual(
+                artifacts, {"maestro.sqlite3", "maestro.sqlite3-wal", "maestro.sqlite3-shm"}
+            )
+
+        for case_id, table, changes in update_cases:
+            def operation(connection, table=table, changes=changes):
+                assignments = ",".join(f'"{name}"=?' for name in changes)
+                connection.execute(
+                    f'UPDATE "{table}" SET {assignments} WHERE rowid=(SELECT rowid FROM "{table}" ORDER BY rowid LIMIT 1)',
+                    list(changes.values()),
+                )
+            prove(case_id, "SQLITE_CONSTRAINT_CHECK", operation)
+
+        for case_id, table, primary_key, primary_value, changes in insert_cases:
+            def operation(connection, table=table, primary_key=primary_key, primary_value=primary_value, changes=changes):
+                cursor = connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid LIMIT 1')
+                columns = [item[0] for item in cursor.description]
+                values = dict(zip(columns, cursor.fetchone()))
+                values.update(changes)
+                values[primary_key] = primary_value
+                connection.execute(
+                    f'INSERT INTO "{table}" ({",".join(columns)}) VALUES ({",".join("?" for _ in columns)})',
+                    [values[column] for column in columns],
+                )
+            prove(case_id, "SQLITE_CONSTRAINT_CHECK", operation)
+
+        for case_id, table in primary_key_cases:
+            def operation(connection, table=table):
+                cursor = connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid LIMIT 1')
+                columns = [item[0] for item in cursor.description]
+                values = cursor.fetchone()
+                connection.execute(
+                    f'INSERT INTO "{table}" ({",".join(columns)}) VALUES ({",".join("?" for _ in columns)})',
+                    values,
+                )
+            prove(case_id, "SQLITE_CONSTRAINT_PRIMARYKEY", operation)
+
+    def test_ar_p04_app_v23_v24_replay_conflict_and_constraint_mapping_are_durable(self) -> None:
+        binding = self._records()[0]
+        first = self.store.record_binding(binding, "ar-v23", ACTOR, NOW)
+        reopened = OperationalStateStore(self.runtime.config())
+        self.assertEqual(reopened.record_binding(binding, "ar-v23", ACTOR, LATER), first)
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database)) as connection:
+            before_conflict = _durable_state(connection)
+        with self.assertRaisesRegex(
+            IdempotencyConflict,
+            "^idempotency key was already used for different command facts$",
+        ):
+            reopened.record_binding(
+                dict(binding, authority_reference="other-authority"), "ar-v23", ACTOR, NOW
+            )
+        with closing(sqlite3.connect(database)) as connection:
+            self.assertEqual(_durable_state(connection), before_conflict)
+
+        with self.assertRaisesRegex(
+            InvalidRecord, "^record violates a durable schema constraint$"
+        ) as raised:
+            reopened.record_binding(
+                dict(binding, binding_id="ar-v24", binding_revision="ar-v24", project_id="missing"),
+                "ar-v24", ACTOR, NOW,
+            )
+        self.assertIsInstance(raised.exception.__cause__, sqlite3.IntegrityError)
+        self.assertEqual(raised.exception.__cause__.sqlite_errorname, "SQLITE_CONSTRAINT_FOREIGNKEY")
+        with closing(sqlite3.connect(database)) as connection:
+            self.assertEqual(_durable_state(connection), before_conflict)
+
+    def test_ar_p04_app_v25_busy_exhaustion_has_no_partial_mutation(self) -> None:
+        binding = self._records()[0]
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database, timeout=0)) as holder:
+            holder.execute("PRAGMA journal_mode=WAL")
+            holder.execute("BEGIN IMMEDIATE")
+            before = _durable_state(holder)
+            started = time.monotonic()
+            with self.assertRaisesRegex(ResourceBusy, "^SQLite busy timeout exhausted$"):
+                self.store.record_binding(binding, "ar-v25", ACTOR, NOW)
+            self.assertGreaterEqual(time.monotonic() - started, 4.5)
+            self.assertEqual(_durable_state(holder), before)
+            holder.rollback()
+        reopened = OperationalStateStore(self.runtime.config())
+        self.assertIsNone(reopened.snapshot("ProjectBinding", "binding-1"))
+        self.assertEqual(reopened.events_after(0, 1000), [])
 
     def test_store_construction_and_public_reads_reject_forged_or_swapped_runtime_before_artifacts(self) -> None:
         outside_parent = Path(tempfile.mkdtemp())
