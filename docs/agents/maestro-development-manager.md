@@ -24,6 +24,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - specialist queue projection and readiness recomputation;
 - dispatchable-work selection, leases, worktree/run request creation, routing, timeouts, retries, and resource reservations;
 - operational event history, notification state, recovery after duplicate events or restart;
+- collection and durable recording of each assigned role's packet-read plan
+  before its substantive execution, with exact proof coverage, paths/commands,
+  risks/stops, and intended handoff;
 - M0-D16 completion-manifest enforcement, collection of terminal Integration
   and full-review findings before the normal combined correction, M0-D17 final-
   correction eligibility routing to the Project Architect, and durable process
@@ -45,6 +48,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 
 - alter a project's design, work graph, code, PR review, merge, or deployment authority;
 - dispatch a blocked, unauthorized, conflicting, or stale-base packet;
+- treat an agent's receipt of a packet as evidence that it read or understood
+  its frozen requirements/proofs, or silently change the packet while resolving
+  the returned plan;
 - silently override an owner priority, shared lock, model/security constraint, or project SOP;
 - use Atlas state as an independent source of project truth;
 - scrape a provider UI, convert tokens into an unsupported weekly-allowance
