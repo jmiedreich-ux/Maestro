@@ -492,6 +492,190 @@ class RecordRouteTests(unittest.TestCase):
         ):
             OperationalStateStore._packet(dict(packet, correction_count=False), NOW)
 
+    def test_ar_p05_app_map_01_through_21_have_exact_per_route_mock_traces(self) -> None:
+        builder_names = (
+            "_binding", "_secret_reference", "_graph", "_work_item", "_run", "_packet",
+            "_attempt", "_evidence", "_wait", "_review", "_notification",
+            "_worker_progress", "_context_usage", "_allowance", "_reconciliation",
+            "_acceptance", "_merge_observation",
+        )
+        originals = {name: getattr(OperationalStateStore, name) for name in builder_names}
+        captured = {name: [] for name in builder_names}
+        capture_patches = []
+        for name in builder_names:
+            def side_effect(*args, _name=name, **kwargs):
+                captured[_name].append(copy.deepcopy(args[0]))
+                return originals[_name](*args, **kwargs)
+            patch = mock.patch.object(OperationalStateStore, name, side_effect=side_effect)
+            patch.start()
+            capture_patches.append(patch)
+        try:
+            self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        finally:
+            for patch in reversed(capture_patches):
+                patch.stop()
+        valid = {name: values[-1] for name, values in captured.items()}
+
+        helper_codes = {
+            "_closed_mapping": "V01", "_text": "V02", "_optional_text": "V03",
+            "_commit": "V04", "_digest": "V05", "_provider": "V06",
+            "_reference_name": "V07", "_timestamp": "V08",
+            "_optional_timestamp": "V09", "_positive_int": "V10",
+            "_nonnegative_int": "V11", "_sorted_unique_text": "V12",
+            "canonical_json": "V13", "_json_object": "V14", "_decimal_text": "V15",
+            "validate_context_policy": "V16", "validate_payload": "V17",
+            "validate_measurement": "V18", "validate_cost_measurement": "V19",
+            "_token_measurements": "V21", "_actor": "V22", "_replay": "V23",
+        }
+        aliases = {
+            "APP-MAP-03": {"secret_reference_observation_id": "id"},
+            "APP-MAP-04": {"graph_projection_id": "id"},
+            "APP-MAP-05": {"work_item_id": "id"},
+            "APP-MAP-19": {"context update observed_at": "observed_at"},
+        }
+        queued_labels = {
+            "APP-MAP-07": {"V13": ["checks_json"], "V16": ["context_policy_json"]},
+            "APP-MAP-09": {"V17": ["payload_json"]},
+            "APP-MAP-11": {"V17": ["findings_json items"]},
+            "APP-MAP-12": {"V17": ["payload_json"]},
+            "APP-MAP-13": {"V17": ["plan_payload_json", "current_step_payload_json", "blocker_payload_json"]},
+            "APP-MAP-14": {
+                "V18": ["starting_input_measurement_json", None, None],
+                "V21": ["token_measurements_json"], "V19": ["cost_measurement_json"],
+            },
+            "APP-MAP-17": {"V17": ["reason_payload_json"]},
+            "APP-MAP-19": {
+                "V01": ["update keys"], "V21": ["token_measurements"],
+                "V19": ["cost_measurement"], "V22": ["actor"],
+            },
+            "APP-MAP-21": {"V22": ["actor"], "V23": ["replay/conflict"]},
+        }
+
+        def fields(code, *names):
+            return {(code, name) for name in names}
+
+        expected = {
+            "APP-MAP-01": fields("V02", "actor_type", "actor_id", "correlation_id") | fields("V10", "causation_event_id") | {("R17", "")},
+            "APP-MAP-02": fields("V02", "binding_id", "project_id", "binding_revision", "adapter_version", "process_version", "authority_reference", "merge_policy", "acceptance_authority", "merge_execution_authority", "state") | fields("V04", "source_commit") | fields("V05", "manifest_digest") | fields("V03", "merge_delegation_reference") | fields("V14", "binding_json") | fields("V09", "activated_at", "superseded_at") | fields("V08", "now") | {("R01", "")},
+            "APP-MAP-03": fields("V02", "id", "project_id", "binding_id", "owner_reference") | fields("V06", "provider") | fields("V07", "reference_name") | fields("V09", "rotation_at", "expires_at") | fields("V08", "observed_at") | {("R02", "")},
+            "APP-MAP-04": fields("V02", "id", "project_id", "binding_id", "graph_revision", "authority_reference", "state") | fields("V04", "source_base_sha") | fields("V05", "source_hash") | fields("V08", "observed_at", "now") | {("R03", "")},
+            "APP-MAP-05": fields("V02", "id", "graph_projection_id", "architecture_node_id", "task_reference", "workstream_ref", "milestone_ref", "title", "priority", "specialist_role", "planning_state") | fields("V11", "planned_rank") | fields("V12", "execution_classes_json", "dependencies_json", "change_domains_json") | fields("V14", "input_contract_json", "output_contract_json") | fields("V08", "now") | {("R04", "")},
+            "APP-MAP-06": fields("V02", "run_id", "project_id", "binding_id", "graph_projection_id", "milestone_ref", "approved_authority_reference", "state", "acceptance_boundary") | fields("V05", "run_fingerprint") | fields("V03", "branch_name", "pull_request_reference", "current_head_source_reference", "candidate_head_source_reference") | fields("V08", "now") | {("R05", "")},
+            "APP-MAP-07": fields("V02", "packet_id", "run_id", "work_item_id", "packet_revision", "authority_reference", "expected_branch", "role_contract_reference", "sop_reference", "executor_class", "integration_route", "reviewer_route", "state") | fields("V04", "base_commit") | fields("V12", "owned_paths_json", "forbidden_paths_json", "resource_claims_json") | fields("V13", "checks_json") | fields("V16", "context_policy_json") | fields("V11", "correction_count") | fields("V08", "now") | {("R06", "")},
+            "APP-MAP-08": fields("V02", "attempt_id", "packet_id", "lease_id", "executor_class", "model_identity", "runtime_identity") | fields("V10", "attempt_number") | fields("V03", "correction_for_review_id") | fields("V09", "started_at", "finished_at") | fields("V08", "now") | {("R06", "")},
+            "APP-MAP-09": fields("V02", "evidence_id", "idempotency_key", "run_id", "packet_id", "evidence_kind") | fields("V03", "attempt_id", "source_reference") | fields("V17", "payload_json") | fields("V05", "content_digest") | fields("V08", "created_at") | {("R07", "")},
+            "APP-MAP-10": fields("V02", "wait_id", "run_id", "gate_type", "awaited_role", "awaited_reference", "expected_result", "next_permitted_action", "state") | fields("V03", "packet_id") | fields("V09", "timeout_at") | fields("V08", "now") | {("R08", "")},
+            "APP-MAP-11": fields("V02", "review_id", "packet_id", "reviewer_role", "reviewer_instance") | fields("V03", "attempt_id") | fields("V04", "base_commit", "head_commit") | fields("V17", "findings_json items") | fields("V14", "coverage_json") | fields("V11", "correction_number") | fields("V08", "created_at") | {("R09", "")},
+            "APP-MAP-12": fields("V02", "notification_id", "run_id", "destination_reference", "audience", "message_type", "grouping_key") | fields("V10", "event_id") | fields("V03", "packet_id") | fields("V09", "escalation_at") | fields("V17", "payload_json") | fields("V08", "now") | {("R10", "")},
+            "APP-MAP-13": fields("V02", "progress_id", "attempt_id", "next_permitted_action") | fields("V17", "plan_payload_json", "current_step_payload_json", "blocker_payload_json") | fields("V08", "observed_at", "received_at") | {("R11", "")},
+            "APP-MAP-14": fields("V02", "context_usage_id", "attempt_id", "model_identity", "runtime_identity") | fields("V03", "quantization") | fields("V10", "configured_context_limit") | fields("V05", "context_policy_digest") | fields("V18", "starting_input_measurement_json") | fields("V21", "token_measurements_json") | fields("V19", "cost_measurement_json") | fields("V08", "observed_at", "now") | {("R12", "")},
+            "APP-MAP-15": fields("V02", "allowance_observation_id", "account_reference", "native_window_type", "native_unit") | fields("V06", "provider") | fields("V15", "used_value", "remaining_value") | fields("V09", "reset_at") | fields("V08", "observed_at") | {("R13", "")},
+            "APP-MAP-16": fields("V02", "usage_reconciliation_id", "allowance_observation_id", "native_unit") | fields("V15", "window_change_value", "tracked_controlled_value", "registered_coarse_value", "unattributed_value") | fields("V08", "observed_at") | {("R14", "")},
+            "APP-MAP-17": fields("V02", "acceptance_id", "subject_id", "authority_reference") | fields("V03", "packet_id", "run_id", "supersedes_acceptance_id") | fields("V10", "sequence_number") | fields("V04", "exact_head") | fields("V14", "review_coverage_json") | fields("V17", "reason_payload_json") | fields("V08", "created_at") | {("R15", "")},
+            "APP-MAP-18": fields("V02", "merge_observation_id", "run_id", "packet_id", "repository_reference", "default_branch", "source_reference", "performed_by_reference") | fields("V03", "acceptance_id", "delegation_reference") | fields("V04", "accepted_head", "merge_commit") | fields("V14", "review_coverage_json") | fields("V08", "observed_at") | {("R16", "")},
+            "APP-MAP-19": fields("V02", "attempt_id") | fields("V10", "expected_version") | fields("V01", "update keys") | fields("V21", "token_measurements") | fields("V19", "cost_measurement") | fields("V22", "actor") | fields("V08", "observed_at", "now") | {("R12", "")},
+            "APP-MAP-20": fields("V02", "entity_type", "entity_id") | fields("V11", "event_id") | {("R19", "")},
+            "APP-MAP-21": fields("V02", "idempotency_key") | fields("V22", "actor") | fields("V08", "now") | fields("V23", "replay/conflict") | {("V24", "constraint mapping"), ("V25", "busy exhaustion")},
+        }
+        relation_internal = {
+            "APP-MAP-19": {
+                ("V02", "idempotency_key"), ("V02", "measurement source"),
+                ("V08", "measurement observed_at"),
+            },
+        }
+
+        def trace(route_id, command, relation=None, extra=()):
+            calls = set()
+            depth = [0]
+            queues = {code: list(values) for code, values in queued_labels.get(route_id, {}).items()}
+            active_patches = []
+            expected_codes = {code for code, _ in expected[route_id] if code.startswith("V")}
+
+            def label_for(name, code, args):
+                if code in queues:
+                    return queues[code].pop(0) if queues[code] else None
+                if name == "_provider":
+                    return "provider"
+                if name == "_reference_name":
+                    return "reference_name"
+                if len(args) > 1 and isinstance(args[1], str):
+                    return aliases.get(route_id, {}).get(args[1], args[1])
+                return None
+
+            for name, code in helper_codes.items():
+                if code not in expected_codes:
+                    continue
+                target = OperationalStateStore if name == "_replay" else operational_state
+                original = getattr(target, name)
+
+                def wrapper(*args, _name=name, _code=code, _original=original, **kwargs):
+                    top = depth[0] == 0
+                    depth[0] += 1
+                    try:
+                        result = _original(*args, **kwargs)
+                    finally:
+                        depth[0] -= 1
+                    if top:
+                        label = label_for(_name, _code, args)
+                        if label is not None:
+                            calls.add((_code, label))
+                    return result
+
+                patch = mock.patch.object(target, name, side_effect=wrapper)
+                patch.start()
+                active_patches.append(patch)
+            try:
+                command()
+            finally:
+                for patch in reversed(active_patches):
+                    patch.stop()
+            if relation is not None:
+                calls.add((relation, ""))
+            calls.update(extra)
+            internal = relation_internal.get(route_id, set())
+            self.assertEqual(calls, expected[route_id] | internal, route_id)
+            self.assertEqual(calls - internal, expected[route_id], route_id)
+
+        trace("APP-MAP-01", lambda: operational_state._actor({"actor_type": "Developer", "actor_id": "developer-1", "correlation_id": "correlation-1", "causation_event_id": 1}), "R17")
+        trace("APP-MAP-02", lambda: OperationalStateStore._binding(valid["_binding"], NOW), "R01")
+        trace("APP-MAP-03", lambda: OperationalStateStore._secret_reference(valid["_secret_reference"]), "R02")
+        trace("APP-MAP-04", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._graph(valid["_graph"], NOW)), "R03")
+        trace("APP-MAP-05", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._work_item(valid["_work_item"], valid["_work_item"]["graph_projection_id"], NOW)), "R04")
+        trace("APP-MAP-06", lambda: OperationalStateStore._run(valid["_run"], NOW), "R05")
+        trace("APP-MAP-07", lambda: OperationalStateStore._packet(valid["_packet"], NOW), "R06")
+        trace("APP-MAP-08", lambda: OperationalStateStore._attempt(valid["_attempt"], NOW), "R06")
+        trace("APP-MAP-09", lambda: OperationalStateStore._evidence(valid["_evidence"]), "R07")
+        trace("APP-MAP-10", lambda: OperationalStateStore._wait(valid["_wait"], NOW), "R08")
+        review = dict(valid["_review"], findings_json=[{"kind": "reason", "reason_code": "NONE", "detail_reference": None}])
+        trace("APP-MAP-11", lambda: OperationalStateStore._review(review), "R09")
+        trace("APP-MAP-12", lambda: OperationalStateStore._notification(valid["_notification"], NOW), "R10")
+        trace("APP-MAP-13", lambda: OperationalStateStore._worker_progress(valid["_worker_progress"]), "R11")
+        trace("APP-MAP-14", lambda: OperationalStateStore._context_usage(valid["_context_usage"], NOW), "R12")
+        trace("APP-MAP-15", lambda: OperationalStateStore._allowance(valid["_allowance"]), "R13")
+        trace("APP-MAP-16", lambda: OperationalStateStore._reconciliation(valid["_reconciliation"]), "R14")
+        trace("APP-MAP-17", lambda: OperationalStateStore._acceptance(valid["_acceptance"]), "R15")
+        trace("APP-MAP-18", lambda: OperationalStateStore._merge_observation(valid["_merge_observation"]), "R16")
+
+        context = self.store.snapshot("AttemptContextUsage", "context-1")
+        update = {
+            "token_measurements": {name: dict(value, value=value["value"] + 1) for name, value in context["token_measurements_json"].items()},
+            "cost_measurement": context["cost_measurement_json"], "availability_state": "Available",
+            "observed_at": LATER,
+        }
+        trace("APP-MAP-19", lambda: self.store.update_context_usage("attempt-1", 2, update, "trace-map-19", ACTOR, LATER), "R12")
+        trace("APP-MAP-20", lambda: (self.store.snapshot("ProjectBinding", "binding-1"), self.store.events_after(0, 1)), "R19")
+
+        append_row = OperationalStateStore._binding(dict(valid["_binding"], binding_id="trace-binding", binding_revision="trace-revision"), NOW)
+        trace(
+            "APP-MAP-21",
+            lambda: self.store._append(
+                "record_project_bindings", append_row, "ProjectBinding", "trace-binding",
+                "ProjectBindingRecorded", "trace-map-21", ACTOR, NOW,
+                lambda connection: self.store._insert(connection, "project_bindings", append_row),
+            ),
+            extra={("V24", "constraint mapping"), ("V25", "busy exhaustion")},
+        )
+
     def test_ar_p05_app_rel_01_through_19_exact_negative_edges(self) -> None:
         builder_names = (
             "_binding", "_secret_reference", "_graph", "_work_item", "_run", "_packet",
@@ -679,6 +863,172 @@ class RecordRouteTests(unittest.TestCase):
         invalid("APP-REL-19", "entity_type is not snapshot-readable", lambda: self.store.snapshot("Other", "id"))
         invalid("APP-REL-19", "event limit must be between 1 and 1000", lambda: self.store.events_after(0, 0))
         invalid("APP-REL-19", "event limit must be between 1 and 1000", lambda: self.store.events_after(0, 1001))
+
+    def test_ar_p06_every_named_app_negative_edge_is_public_route_durable(self) -> None:
+        builder_names = (
+            "_binding", "_secret_reference", "_graph", "_work_item", "_run", "_packet",
+            "_attempt", "_evidence", "_wait", "_review", "_notification",
+            "_worker_progress", "_context_usage", "_allowance", "_reconciliation",
+            "_acceptance", "_merge_observation",
+        )
+        originals = {name: getattr(OperationalStateStore, name) for name in builder_names}
+        captured = {name: [] for name in builder_names}
+        capture_patches = []
+        for name in builder_names:
+            def side_effect(*args, _name=name, **kwargs):
+                captured[_name].append(copy.deepcopy(args[0]))
+                return originals[_name](*args, **kwargs)
+            patch = mock.patch.object(OperationalStateStore, name, side_effect=side_effect)
+            patch.start()
+            capture_patches.append(patch)
+        try:
+            self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        finally:
+            for patch in reversed(capture_patches):
+                patch.stop()
+        valid = {name: values[-1] for name, values in captured.items()}
+
+        def record(name, **changes):
+            return dict(valid[name], **changes)
+
+        def no_prepare(store):
+            return None
+
+        def prepare_binding(store, key="durable-binding"):
+            return store.record_binding(valid["_binding"], key, ACTOR, NOW)
+
+        def prepare_context(store):
+            self._seed_through_packet_and_attempt()
+            return store.record_context_usage(
+                valid["_context_usage"], "durable-context", ACTOR, NOW
+            )
+
+        def prepare_allowance(store):
+            return store.record_allowance_window(
+                valid["_allowance"], "durable-allowance", ACTOR, NOW
+            )
+
+        def busy_binding(store):
+            database = self.runtime.path / "maestro.sqlite3"
+            with closing(sqlite3.connect(database, timeout=0)) as holder:
+                holder.execute("PRAGMA journal_mode=WAL")
+                holder.execute("BEGIN IMMEDIATE")
+                store.record_binding(valid["_binding"], "durable-v25", ACTOR, NOW)
+
+        unavailable_bad = copy.deepcopy(valid["_context_usage"])
+        unavailable_bad["starting_input_measurement_json"] = _measurement(
+            0, "Unavailable", "Unavailable", None
+        )
+        missing_token = copy.deepcopy(valid["_context_usage"])
+        missing_token["token_measurements_json"].pop("total")
+        growth_bad = copy.deepcopy(valid["_context_usage"])
+        growth_bad["future_growth_estimate_json"]["lower_bound"] = _measurement(
+            300, "Estimated", "Medium", "estimate"
+        )
+        context_policy_bad = copy.deepcopy(valid["_packet"])
+        context_policy_bad["context_policy_json"].pop("stop_remaining_tokens")
+        payload_bad = copy.deepcopy(valid["_evidence"])
+        payload_bad["payload_json"]["extra"] = True
+
+        def lower_quality_update(store):
+            current = store.snapshot("AttemptContextUsage", "context-1")
+            proposed = {
+                name: _measurement(value["value"], "Estimated", "Medium", "estimate")
+                for name, value in current["token_measurements_json"].items()
+            }
+            return store.update_context_usage(
+                "attempt-1", 1,
+                {
+                    "token_measurements": proposed,
+                    "cost_measurement": current["cost_measurement_json"],
+                    "availability_state": "Available", "observed_at": NOW,
+                },
+                "durable-v20", ACTOR, NOW,
+            )
+
+        cases = (
+            ("APP-V01", InvalidRecord, "project binding has an invalid closed shape", no_prepare, lambda store: store.record_binding({**valid["_binding"], "extra": True}, "durable-v01", ACTOR, NOW)),
+            ("APP-V02", InvalidRecord, "binding_id must be non-empty UTF-8 text up to 512 bytes", no_prepare, lambda store: store.record_binding(record("_binding", binding_id=""), "durable-v02", ACTOR, NOW)),
+            ("APP-V03", InvalidRecord, "merge_delegation_reference must be non-empty UTF-8 text up to 512 bytes", no_prepare, lambda store: store.record_binding(record("_binding", merge_delegation_reference=""), "durable-v03", ACTOR, NOW)),
+            ("APP-V04", InvalidRecord, "source_commit must be a lowercase full Git commit", no_prepare, lambda store: store.record_binding(record("_binding", source_commit="A" * 40), "durable-v04", ACTOR, NOW)),
+            ("APP-V05", InvalidRecord, "manifest_digest must be a lowercase SHA-256 digest", no_prepare, lambda store: store.record_binding(record("_binding", manifest_digest="A" * 64), "durable-v05", ACTOR, NOW)),
+            ("APP-V06", operational_state.SensitiveMaterialRejected, "provider must match the closed non-secret grammar", no_prepare, lambda store: store.record_secret_reference(record("_secret_reference", provider="OpenAI"), "durable-v06", ACTOR, NOW)),
+            ("APP-V07", operational_state.SensitiveMaterialRejected, "reference_name must match the closed non-secret grammar", no_prepare, lambda store: store.record_secret_reference(record("_secret_reference", reference_name="ghp_value-carrier"), "durable-v07", ACTOR, NOW)),
+            ("APP-V08", InvalidRecord, "now must be a canonical UTC timestamp", no_prepare, lambda store: store.record_binding(valid["_binding"], "durable-v08", ACTOR, "now")),
+            ("APP-V09", InvalidRecord, "activated_at must be a canonical UTC timestamp", no_prepare, lambda store: store.record_binding(record("_binding", activated_at="now"), "durable-v09", ACTOR, NOW)),
+            ("APP-V10", InvalidRecord, "attempt_number must be a positive integer", no_prepare, lambda store: store.record_attempt(record("_attempt", attempt_number=True), "durable-v10", ACTOR, NOW)),
+            ("APP-V11", InvalidRecord, "correction_count must be a non-negative integer", no_prepare, lambda store: store.materialize_packet(record("_packet", correction_count=False), "durable-v11", ACTOR, NOW)),
+            ("APP-V12", InvalidRecord, "owned_paths_json must be sorted and unique", no_prepare, lambda store: store.materialize_packet(record("_packet", owned_paths_json=["z", "a"]), "durable-v12", ACTOR, NOW)),
+            ("APP-V13", operational_state.SensitiveMaterialRejected, "structured sensitive/raw field is rejected", no_prepare, lambda store: store.record_binding(record("_binding", binding_json={"secret": "value"}), "durable-v13", ACTOR, NOW)),
+            ("APP-V14", InvalidRecord, "binding_json must be an object", no_prepare, lambda store: store.record_binding(record("_binding", binding_json=[]), "durable-v14", ACTOR, NOW)),
+            ("APP-V15", InvalidRecord, "window_change_value is not normalized", no_prepare, lambda store: store.record_usage_reconciliation(record("_reconciliation", window_change_value="10.50"), "durable-v15", ACTOR, NOW)),
+            ("APP-V16", InvalidRecord, "context policy has an invalid closed shape", no_prepare, lambda store: store.materialize_packet(context_policy_bad, "durable-v16", ACTOR, NOW)),
+            ("APP-V17", InvalidRecord, "state payload has an invalid closed shape", no_prepare, lambda store: store.append_evidence(payload_bad, ACTOR)),
+            ("APP-V18", InvalidRecord, "unavailable measurement must retain null value/source", no_prepare, lambda store: store.record_context_usage(unavailable_bad, "durable-v18", ACTOR, NOW)),
+            ("APP-V19", InvalidRecord, "unknown cost retains no amount, currency, or source", no_prepare, lambda store: store.record_context_usage(record("_context_usage", cost_measurement_json=dict(valid["_context_usage"]["cost_measurement_json"], amount="0")), "durable-v19", ACTOR, NOW)),
+            ("APP-V20", InvalidRecord, "lower-quality measurement cannot replace the retained value", prepare_context, lower_quality_update),
+            ("APP-V21", InvalidRecord, "token measurements has an invalid closed shape", no_prepare, lambda store: store.record_context_usage(missing_token, "durable-v21", ACTOR, NOW)),
+            ("APP-V22", InvalidRecord, "actor has an invalid closed shape", no_prepare, lambda store: store.record_binding(valid["_binding"], "durable-v22", {"actor_type": "Developer", "actor_id": "developer-1"}, NOW)),
+            ("APP-V23", IdempotencyConflict, "idempotency key was already used for different command facts", lambda store: prepare_binding(store, "durable-v23"), lambda store: store.record_binding(record("_binding", authority_reference="other"), "durable-v23", ACTOR, NOW)),
+            ("APP-V24", InvalidRecord, "record violates a durable schema constraint", prepare_binding, lambda store: store.record_binding(record("_binding", binding_id="durable-v24"), "durable-v24", ACTOR, NOW)),
+            ("APP-V25", ResourceBusy, "SQLite busy timeout exhausted", no_prepare, busy_binding),
+            ("APP-REL-01", InvalidRecord, "record_binding accepts Candidate or Blocked only", no_prepare, lambda store: store.record_binding(record("_binding", state="Active"), "durable-r01", ACTOR, NOW)),
+            ("APP-REL-02", InvalidRecord, "secret reference status is invalid", no_prepare, lambda store: store.record_secret_reference(record("_secret_reference", status="Other"), "durable-r02", ACTOR, NOW)),
+            ("APP-REL-03", InvalidRecord, "record_graph_projection creates Active projections only", no_prepare, lambda store: store.record_graph_projection(record("_graph", state="Stale"), [valid["_work_item"]], "durable-r03", ACTOR, NOW)),
+            ("APP-REL-04", InvalidRecord, "work item belongs to a different graph projection", no_prepare, lambda store: store.record_graph_projection(valid["_graph"], [record("_work_item", graph_projection_id="other")], "durable-r04", ACTOR, NOW)),
+            ("APP-REL-05", InvalidRecord, "create_run creates Planned runs only", no_prepare, lambda store: store.create_run(record("_run", state="Running"), "durable-r05", ACTOR, NOW)),
+            ("APP-REL-06", InvalidRecord, "materialized packet starts Planned with correction count zero", no_prepare, lambda store: store.materialize_packet(record("_packet", correction_count=1), "durable-r06", ACTOR, NOW)),
+            ("APP-REL-07", InvalidRecord, "evidence digest does not cover its canonical payload", no_prepare, lambda store: store.append_evidence(record("_evidence", content_digest="b" * 64), ACTOR)),
+            ("APP-REL-08", InvalidRecord, "open_wait creates unresolved Open waits only", no_prepare, lambda store: store.open_wait(record("_wait", state="Resolved"), "durable-r08", ACTOR, NOW)),
+            ("APP-REL-09", InvalidRecord, "review kind is invalid", no_prepare, lambda store: store.record_review(record("_review", review_kind="Other"), "durable-r09", ACTOR, NOW)),
+            ("APP-REL-10", InvalidRecord, "notification channel or severity is invalid", no_prepare, lambda store: store.record_notification(record("_notification", channel="Other"), "durable-r10", ACTOR, NOW)),
+            ("APP-REL-11", InvalidRecord, "worker progress prose must be pre-redacted with a receipt", no_prepare, lambda store: store.record_worker_progress(record("_worker_progress", plan_payload_json={"kind": "reason", "reason_code": "X", "detail_reference": None}), "durable-r11", ACTOR, NOW)),
+            ("APP-REL-12", InvalidRecord, "future growth lower bound exceeds upper bound", no_prepare, lambda store: store.record_context_usage(growth_bad, "durable-r12", ACTOR, NOW)),
+            ("APP-REL-13", InvalidRecord, "unavailable allowance values must remain null", no_prepare, lambda store: store.record_allowance_window(record("_allowance", precision="Unavailable", measurement_quality="Unavailable", freshness="Unavailable"), "durable-r13", ACTOR, NOW)),
+            ("APP-REL-14", InvalidRecord, "reconciliation must retain the allowance native unit", prepare_allowance, lambda store: store.record_usage_reconciliation(record("_reconciliation", native_unit="tokens"), "durable-r14", ACTOR, NOW)),
+            ("APP-REL-15", InvalidRecord, "packet acceptance relation is invalid", no_prepare, lambda store: store.record_acceptance(record("_acceptance", subject_id="other"), "durable-r15", ACTOR, NOW)),
+            ("APP-REL-16", InvalidRecord, "owner observation cannot carry delegation", no_prepare, lambda store: store.record_merge_observation(record("_merge_observation", performed_by_authority="Owner", delegation_reference="policy"), "durable-r16", ACTOR, NOW)),
+            ("APP-REL-17", InvalidRecord, "record violates a durable schema constraint", no_prepare, lambda store: store.record_binding(valid["_binding"], "durable-r17", {"actor_type": "Developer", "actor_id": "developer-1", "correlation_id": "correlation-1", "causation_event_id": 999}, NOW)),
+            ("APP-REL-18", InvalidRecord, "record violates a durable schema constraint", prepare_binding, lambda store: store.record_binding(record("_binding", binding_id="durable-r18"), "durable-r18", ACTOR, NOW)),
+            ("APP-REL-19", InvalidRecord, "entity_type is not snapshot-readable", no_prepare, lambda store: store.snapshot("Other", "id")),
+        )
+        self.assertEqual(
+            {case[0] for case in cases},
+            {f"APP-V{number:02d}" for number in range(1, 26)}
+            | {f"APP-REL-{number:02d}" for number in range(1, 20)},
+        )
+
+        for case_id, error_type, message, prepare, command in cases:
+            self.runtime.close()
+            self.setUp()
+            prepare(self.store)
+            database = self.runtime.path / "maestro.sqlite3"
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                before = _durable_state(connection)
+                before_events = connection.execute(
+                    "SELECT COUNT(*),COALESCE(MAX(event_id),0) FROM events"
+                ).fetchone()
+            with self.subTest(case=case_id), self.assertRaisesRegex(
+                error_type, f"^{re.escape(message)}$"
+            ):
+                command(self.store)
+            reopened = OperationalStateStore(self.runtime.config())
+            self.assertEqual(reopened.health().schema_version, 4)
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+                self.assertEqual(connection.execute("PRAGMA journal_mode").fetchone()[0], "wal")
+                self.assertEqual(_durable_state(connection), before, case_id)
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*),COALESCE(MAX(event_id),0) FROM events").fetchone(),
+                    before_events,
+                )
+            artifacts = {path.name for path in self.runtime.path.iterdir()}
+            self.assertIn("maestro.sqlite3", artifacts)
+            self.assertLessEqual(
+                artifacts, {"maestro.sqlite3", "maestro.sqlite3-wal", "maestro.sqlite3-shm"}
+            )
 
     def test_all_a_record_append_routes_persist_reopen_and_events_are_ordered(self) -> None:
         expected = self._seed_through_packet_and_attempt()
