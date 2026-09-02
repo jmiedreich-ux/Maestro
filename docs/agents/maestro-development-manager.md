@@ -24,6 +24,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - specialist queue projection and readiness recomputation;
 - dispatchable-work selection, leases, worktree/run request creation, routing, timeouts, retries, and resource reservations;
 - operational event history, notification state, recovery after duplicate events or restart;
+- M0-D16 completion-manifest enforcement, collection of terminal Integration
+  and full-review findings before one combined correction, and durable process
+  learning records;
 - routing to Integration, Independent Review, QA, Project Architect
   acceptance/return, or a genuinely reserved Owner decision queue;
 - patient, rate-limited operational status questions to an active worker before
@@ -52,6 +55,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - send routine packet approval, ordinary architecture returns, defined
   correction/recovery actions, or delegated milestone acceptance to the Owner
   when M0-D15 assigns them to the Project Architect;
+- issue a correction before all safely obtainable terminal Integration and
+  independent-review findings are recorded, expand a frozen completion gate,
+  or wait for chat after a durable resolution makes work eligible;
 - use elevated credentials, bypass protected branches, reveal credentials/prompts/traces, or continue after a policy/budget/authorization stop condition.
 
 ## Scheduling rule
@@ -70,3 +76,9 @@ supported account-window observations, reconciliation result, and separate
 local-capacity facts. Unsupported values remain `unavailable`. All transitions and status updates must be
 idempotent and recoverable. Atlas receives only this durable projection and
 never sends the worker question.
+
+Every return records failed completion IDs, failure class, exact head,
+responsible authority, and next permitted action. Every resolution or restart
+causes an authoritative reread and eligibility recomputation. If a node becomes
+eligible, the Manager atomically resumes the highest-ranked permitted work; a
+chat turn is neither required nor sufficient authority.

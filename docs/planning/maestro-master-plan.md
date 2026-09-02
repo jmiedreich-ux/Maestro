@@ -42,6 +42,12 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
     account allowance window and reset separately from attempt token counts;
     it never derives weekly allowance from tokens. Local capacity remains
     separate, and unsupported facts are `unavailable`.
+16. Every executable packet has a frozen, finite definition-of-done manifest
+    and complete requirement-to-proof coverage under
+    [M0-D16](decisions/m0-d16-closed-completion-and-learning-loop.md).
+    Integration and full-review findings are collected before the one eligible
+    combined correction; new out-of-contract improvements become successor
+    learning items rather than moving the current gate.
 
 ## 3. System shape
 
@@ -107,6 +113,12 @@ Every feature then uses the same constrained records:
 | Packet / task | Plain subject, outcome, owned paths, interfaces, invariants, behavior paths, checks, executor route, reviewer route, and a complete bounded quality contract for every material quality requirement |
 | Coverage | Every required path mapped to a check or `UNTESTED` with a reason |
 
+Before dispatch, M0-D16 requires the packet compiler to freeze a numbered
+definition-of-done manifest and prove complete two-way coverage between its
+atomic requirements and proof items. Universal words require a finite list or
+an exact authoritative enumeration rule and digest. Structurally separable or
+uncorrectably broad work is split before release.
+
 The planning intake process is mandatory:
 
 1. Register every supplied document, archive, existing record, issue, and planning-session capture.
@@ -155,6 +167,12 @@ After an initial full review, M0-D05 requires correction follow-ups to verify
 only the named findings, the correction-only diff, and directly affected
 consistency. Full review restarts only for a recorded range, scope, contract,
 evidence, or independence change.
+
+For a committed, in-scope result that can safely be inspected, M0-D16 requires
+the Coordinator to collect terminal Integration and independent-review findings
+before creating the one combined correction. Passing the frozen completion
+manifest is the definition of enough. A later out-of-contract improvement is a
+successor learning record, not a new gate for the active packet.
 
 The merge gate verifies that the exact final head is completely covered by the
 full reviewed range plus every targeted-reviewed correction diff. Uncovered
@@ -214,6 +232,9 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Run a real agent through an executor adapter in a clean Git worktree.
 - Enforce scope, commits, named checks, context/usage preflight, evidence, and
   M0-D05's one bounded correction.
+- Compile and freeze M0-D16 completion/coverage manifests, reject structurally
+  oversized or infeasible packets, and combine Integration/review findings
+  before the single eligible correction.
 
 ### M4 — complete the persistent Development Manager loop
 
@@ -224,6 +245,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
   lease expiry; update Atlas and durable notifications.
 - Use the Project Architect as the normal acceptance/return authority and the
   Owner only for an M0-D15 reserved choice.
+- Persist return/resolution and learning events, then reread authority and
+  resume eligible work after resolution or restart without a chat wake-up.
 
 ### V1 — attended real non-live proving run
 

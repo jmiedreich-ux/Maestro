@@ -18,6 +18,7 @@
 | S-10 | `origin/docs/agent-usage-observability` at `bb4a35a` and [context/usage direction, 2026-08-31](../../sources/planning/2026-08-31-context-and-token-reporting.md) | Earlier allowance/usage design plus Owner direction to begin context, token, and ChatGPT/Codex weekly-allowance reporting with the control loop | Early bounded subset reconciled into M0-D14 and Alpha-04; broader proposal remains unresolved |
 | S-11 | [Alpha-03 Owner closeout, 2026-09-01](../../sources/planning/2026-09-01-alpha-03-owner-closeout.md) | Owner confirmation that the official first Qwen Alpha-03 result was signed off, acceptance of its recorded fixture-only limitation, and direction to pause Alpha-04 | Reconciled into the Alpha-03 done record, current handoff, and Architecture continuity |
 | S-12 | [Real M1–M4 implementation direction, 2026-09-01](../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md) | Owner direction to complete the already designed M1–M4 roadmap, prove it through a new non-live project with real actors/actions, delegate routine approval to the Project Architect, and preserve the USB deferral | Reconciled into M0-D15, the Master Plan, and the current handoff |
+| S-13 | [Closed completion and learning direction, 2026-09-02](../../sources/planning/2026-09-02-closed-completion-and-learning-direction.md) | Owner direction to make completion finite before dispatch, collect one complete review/correction set, route returns durably, resume without chat, and turn rework into reusable policy | Reconciled into M0-D16, the Master Plan, Control Plane, role contracts, and current handoff |
 
 ## Original M0 agreements retained
 
@@ -49,7 +50,7 @@
 | C-24 | Murphy receives environment, deployed version, and scoped credentials; it returns report, issues, and structured run result. | Master Plan §8 |
 | C-25 | M0 is planning/consolidation only; it does not build the runner. | Master Plan §9 / Control Plane §13 |
 
-## Agent-workforce agreements added by S-08
+## Agent-workforce and later implementation agreements
 
 | ID | Agreement | Destination / status |
 |---|---|---|
@@ -77,6 +78,10 @@
 | C-47 | The Project Architect resolves and approves routine planning/architecture work under delegated authority; only genuinely material reserved choices return to the Owner. | S-12 / M0-D15 / role contracts |
 | C-48 | The dedicated Maestro Developer implements Maestro product features. The Coordinator performs bootstrap orchestration until the runtime Development Manager exists. | S-12 / M0-D15 / current handoff |
 | C-49 | The USB provisioning deferral remains and is not a gate for M1–M4 completion or the attended non-live end-to-end proving run. | S-12 / M0-D07 / M0-D15 |
+| C-50 | Every executable packet freezes a finite requirement/proof manifest before dispatch; ambiguous universal claims, incomplete coverage, infeasible ownership, and structurally oversized work are rejected by compilation. | S-13 / M0-D16 / Master Plan §§5, 7 / Control Plane §§6, 9 |
+| C-51 | For safely reviewable committed work, Integration and the first full independent review complete their finding sets before the one combined correction. Passing the frozen contract defines enough; later out-of-contract improvements are successor learning items. | S-13 / M0-D16 / M0-D05 / review roles |
+| C-52 | Returns and resolutions are durable events. Routine contract/exhaustion returns go to the Project Architect, reserved choices to the Owner, and resolution/restart triggers authoritative reread and eligibility recomputation without a chat wake. | S-13 / M0-D16 / M0-D15 / Manager role |
+| C-53 | Maestro records cycle/wait/gate time, review/correction/escalation counts, late-requirement causes, and the reusable policy/template/invariant change learned from rework. | S-13 / M0-D16 / Control Plane §§7, 10 |
 
 ## Required diagram concepts retained
 
@@ -86,6 +91,7 @@
 | Authority flow: project/GitHub facts → operational projection ← worker execution state; Atlas reads live state | Control Plane §§3–4 and §10 |
 | Planning gate: foundation → feature discovery/design → approved milestone/packet → implementation | Master Plan §5 |
 | Wrapper loop: author → compile constraints → dispatch → grade → one targeted rework → evidence → invariant improvement | Master Plan §7 / Coding Agent SOP |
+| Closed learning loop: frozen completion manifest → real execution → Integration plus review → one combined correction or architecture return → durable resolution → automatic eligibility resume → reusable rule | M0-D16 / Master Plan §§5, 7, 9 / Control Plane §§6–9 |
 | Planned specialist queue versus dispatchable subset and integration unblocking | Control Plane §7 |
 | Full target packet lifecycle | Control Plane §8.4 |
 | Usage and capacity: account window → attempt usage/coarse activity → reconciliation → read-only Atlas, with local capacity separate | Control Plane §§7.5, 10–11 / M0-D14 |

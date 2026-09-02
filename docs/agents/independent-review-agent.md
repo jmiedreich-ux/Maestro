@@ -84,7 +84,9 @@ packet authority.
 5. Re-run or independently verify the required checks; identify circular,
    implementation-derived, missing, stale, or non-reproducible evidence.
 6. Classify every finding before assigning an outcome.
-7. Report the exact next authorized handoff and stop.
+7. Complete the full frozen M0-D16 requirement/proof crosswalk and return one
+   complete in-contract finding set for the reviewed range.
+8. Report the exact next authorized handoff and stop.
 
 ## Review scope
 
@@ -161,6 +163,8 @@ a merge blocker.
   other quality standard instead of the approved standard.
 - Continue searching for out-of-contract edge cases after the named proof and
   scoped behavior have been verified.
+- drip newly discoverable in-contract findings through repeated general review
+  passes instead of completing the initial frozen-manifest crosswalk;
 - Hide a contract defect inside implementation feedback.
 - Permit more than M0-D05's one targeted correction.
 - Approve a partial range, unverified base, scope breach, fabricated evidence,
