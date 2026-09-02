@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import copy
+import importlib.metadata
 import json
+import re
 import unittest
 from pathlib import Path
 
+import yaml
 from jsonschema import Draft202012Validator
 
 from maestro.project_authority import _manifest_facts
@@ -25,9 +27,11 @@ class ProjectManifestTests(unittest.TestCase):
     def test_complete_manifest_matches_python_and_json_schema_carriers(self) -> None:
         manifest = complete_manifest()
         parsed = parse_project_manifest(dump_manifest(manifest))
+        schema = self.schema()
 
         self.assertEqual(parsed, manifest)
-        Draft202012Validator(self.schema()).validate(parsed)
+        Draft202012Validator.check_schema(schema)
+        Draft202012Validator(schema).validate(parsed)
 
     def test_python_and_json_schema_agree_on_shared_closed_shape_examples(self) -> None:
         validator = Draft202012Validator(self.schema())
@@ -56,6 +60,77 @@ class ProjectManifestTests(unittest.TestCase):
                 with self.assertRaises(ProjectManifestError):
                     parse_project_manifest(dump_manifest(value))
                 self.assertTrue(list(validator.iter_errors(value)))
+
+    def test_schema_carrier_matches_python_for_utf8_paths_and_work_graph_membership(self) -> None:
+        schema = self.schema()
+        validator = Draft202012Validator(schema)
+        rejected: dict[str, dict] = {}
+
+        manifest = complete_manifest()
+        manifest["identity"]["name"] = "é" * 257
+        rejected["over_512_utf8_bytes"] = manifest
+        for name, path in (
+            ("absolute_path", "/absolute"),
+            ("traversal_path", "../escape"),
+            ("dot_git_component", ".git/config"),
+        ):
+            manifest = complete_manifest()
+            manifest["authority"]["handoff_path"] = path
+            rejected[name] = manifest
+        manifest = complete_manifest()
+        manifest["authority"]["work_graph_path"] = "docs/planning/not-declared.yaml"
+        rejected["work_graph_not_in_plan_paths"] = manifest
+
+        for name, value in rejected.items():
+            with self.subTest(name=name):
+                with self.assertRaises(ProjectManifestError):
+                    parse_project_manifest(dump_manifest(value))
+
+        # These two constraints are Python semantic rules because plain Draft
+        # 2020-12 cannot express them faithfully. The repository-path rules
+        # are schema-expressible and must agree across both carriers.
+        self.assertTrue(validator.is_valid(rejected["over_512_utf8_bytes"]))
+        self.assertTrue(validator.is_valid(rejected["work_graph_not_in_plan_paths"]))
+        self.assertFalse(validator.is_valid(rejected["absolute_path"]))
+        self.assertFalse(validator.is_valid(rejected["traversal_path"]))
+        self.assertFalse(validator.is_valid(rejected["dot_git_component"]))
+
+        accepted = []
+        manifest = complete_manifest()
+        manifest["identity"]["name"] = "a" * 512
+        accepted.append(manifest)
+        manifest = complete_manifest()
+        manifest["identity"]["name"] = "é" * 256
+        accepted.append(manifest)
+        manifest = complete_manifest()
+        manifest["identity"]["name"] = "a" * 510 + "é"
+        accepted.append(manifest)
+        manifest = complete_manifest()
+        manifest["authority"]["handoff_path"] = "docs/.hidden/current.md"
+        accepted.append(manifest)
+
+        for index, value in enumerate(accepted):
+            with self.subTest(accepted=index):
+                parsed = parse_project_manifest(dump_manifest(value))
+                validator.validate(parsed)
+
+    def test_imported_pyyaml_version_satisfies_packet_range(self) -> None:
+        imported_version = yaml.__version__
+        distribution_version = importlib.metadata.version("PyYAML")
+        self.assertEqual(imported_version, distribution_version)
+        match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:[^0-9].*)?", imported_version)
+        self.assertIsNotNone(match, f"cannot evaluate imported PyYAML version {imported_version!r}")
+        numeric = tuple(int(part) for part in match.groups())
+        self.assertGreaterEqual(
+            numeric,
+            (6, 0, 2),
+            f"imported PyYAML {imported_version} does not satisfy required range >=6.0.2,<7",
+        )
+        self.assertLess(
+            numeric,
+            (7, 0, 0),
+            f"imported PyYAML {imported_version} does not satisfy required range >=6.0.2,<7",
+        )
 
     def test_every_missing_required_leaf_has_one_exact_missing_fact(self) -> None:
         for dotted in manifest_leaf_paths():

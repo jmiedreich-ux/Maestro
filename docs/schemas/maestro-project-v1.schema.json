@@ -23,11 +23,11 @@
       "type": "object", "additionalProperties": false,
       "required": ["architecture_paths", "plan_paths", "work_graph_path", "handoff_path", "rules_sop_path", "task_issue_convention"],
       "properties": {
-        "architecture_paths": {"$ref": "#/$defs/nonemptyUniqueStrings"},
-        "plan_paths": {"$ref": "#/$defs/nonemptyUniqueStrings"},
-        "work_graph_path": {"$ref": "#/$defs/scalar"},
-        "handoff_path": {"$ref": "#/$defs/scalar"},
-        "rules_sop_path": {"$ref": "#/$defs/scalar"},
+        "architecture_paths": {"$ref": "#/$defs/nonemptyUniqueRepositoryPaths"},
+        "plan_paths": {"$ref": "#/$defs/nonemptyUniqueRepositoryPaths"},
+        "work_graph_path": {"$ref": "#/$defs/repositoryPath"},
+        "handoff_path": {"$ref": "#/$defs/repositoryPath"},
+        "rules_sop_path": {"$ref": "#/$defs/repositoryPath"},
         "task_issue_convention": {"$ref": "#/$defs/scalar"}
       }
     },
@@ -75,7 +75,19 @@
   "$defs": {
     "scalar": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!\\s)(?:[^\\x00-\\x1f\\x7f]*[^\\s])?$"},
     "uniqueStrings": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/scalar"}},
-    "nonemptyUniqueStrings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/scalar"}}
+    "nonemptyUniqueStrings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/scalar"}},
+    "repositoryPath": {
+      "allOf": [
+        {"$ref": "#/$defs/scalar"},
+        {"pattern": "^(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.|\\.git)(?:/|$))(?!.*//)(?!.*\\\\)[^\\x00-\\x1f\\x7f]+$"}
+      ]
+    },
+    "nonemptyUniqueRepositoryPaths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/repositoryPath"}
+    }
   },
   "allOf": [
     {"if": {"properties": {"exceptions": {"properties": {"disposition": {"const": "none"}}}}}, "then": {"properties": {"exceptions": {"properties": {"items": {"maxItems": 0}}}}}},

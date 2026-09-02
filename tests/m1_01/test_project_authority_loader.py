@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import copy
 import sqlite3
-import threading
 import unittest
-from pathlib import Path
+from contextlib import closing
 
 from maestro.git_repository import GitRepositoryError
 from maestro.project_authority import ProjectAuthorityLoader
@@ -32,7 +30,7 @@ class ProjectAuthorityLoaderTests(unittest.TestCase):
         return ProjectAuthorityLoader(self.runtime.foundation())
 
     def database_counts(self) -> tuple[int, int, int]:
-        with sqlite3.connect(self.runtime.path / "maestro.sqlite3") as connection:
+        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
             return tuple(
                 connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                 for table in ("projects", "project_registration_runs", "events")
@@ -57,7 +55,7 @@ class ProjectAuthorityLoaderTests(unittest.TestCase):
         self.assertEqual(self.database_counts(), (1, 1, 1))
         self.assertEqual(before, after)
 
-        with sqlite3.connect(self.runtime.path / "maestro.sqlite3") as connection:
+        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
             project = connection.execute(
                 "SELECT registration_state, active_binding_revision FROM projects"
             ).fetchone()

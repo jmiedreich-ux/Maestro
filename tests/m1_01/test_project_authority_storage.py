@@ -5,6 +5,7 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from maestro.project_authority import ProjectAuthorityLoader, _idempotency_key
@@ -18,7 +19,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
         try:
             runtime.path.mkdir(parents=True)
             database = runtime.path / "maestro.sqlite3"
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 connection.executescript(
                     """
                     CREATE TABLE schema_versions(
@@ -60,7 +61,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
             health = runtime.foundation().health()
 
             self.assertEqual(health.schema_version, SCHEMA_VERSION)
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 self.assertEqual(
                     connection.execute("SELECT version FROM schema_versions ORDER BY version").fetchall(),
                     [(2,), (3,)],
@@ -79,7 +80,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
     def test_failed_migration_rolls_back_schema_version_and_created_tables(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "migration.sqlite3"
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 connection.execute(
                     "CREATE TABLE schema_versions("
                     "version INTEGER PRIMARY KEY, "
@@ -132,7 +133,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
 
                     with self.subTest(stage=failure_stage), self.assertRaises(RuntimeError):
                         foundation.record_project_authority_load(result, key, failure_injector=fail)
-                    with sqlite3.connect(runtime.path / "maestro.sqlite3") as connection:
+                    with closing(sqlite3.connect(runtime.path / "maestro.sqlite3")) as connection:
                         counts = [
                             connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                             for table in ("projects", "project_registration_runs", "events")
@@ -157,7 +158,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
                 repository.path, repository.commit, "owner/example-project"
             )
             self.assertEqual(second, first)
-            with sqlite3.connect(runtime.path / "maestro.sqlite3") as connection:
+            with closing(sqlite3.connect(runtime.path / "maestro.sqlite3")) as connection:
                 counts = [
                     connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                     for table in ("projects", "project_registration_runs", "events")
@@ -223,7 +224,7 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
             self.assertEqual(errors, [])
             self.assertEqual(len(results), 2)
             self.assertEqual(results[0], results[1])
-            with sqlite3.connect(runtime.path / "maestro.sqlite3") as connection:
+            with closing(sqlite3.connect(runtime.path / "maestro.sqlite3")) as connection:
                 counts = [
                     connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                     for table in ("projects", "project_registration_runs", "events")
