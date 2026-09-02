@@ -86,10 +86,20 @@ which they are measured.
 Returns and resumption follow this exact route:
 
 - a preflight or infrastructure failure returns to the Coordinator;
+- an initial delivery with no scoped diff or required commit, an initial scope
+  breach, or a dependency, configuration, or placeholder violation is rejected
+  without correction and returns to the Coordinator for an authorized
+  reassignment or takeover;
 - committed in-scope work failing a named gate receives at most one exact
   Coordinator correction;
+- a correction that makes no source change, misses its required commit, or is
+  out of scope ends correction immediately and escalates through the
+  Coordinator;
 - a missing/infeasible contract, architecture defect, new failure class after
   correction, or exhausted correction returns to the Project Architect;
+- an R3/R4 architecture-contract correction renews the required review and
+  records the reusable invariant or packet-template improvement before another
+  packet with the same pattern is issued;
 - the Project Architect resolves or rematerializes the bounded packet and
   releases it after required Decision Fidelity review;
 - only an M0-D15 reserved material choice is routed by the Project Architect to
