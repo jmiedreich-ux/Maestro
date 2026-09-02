@@ -212,9 +212,11 @@ The combined review-coverage record is exact:
    ranges and returned `REQUEST_CHANGES` for the new acceptance-authority
    failure class after the M1-01 correction was exhausted;
 4. the new full remediation review range
-   `4e213b10d2bfd709e43a9073c41cc986e78a0fcd..M1-01R-final-head`; and
-5. if used, the single M1-01R correction-only diff from its initial committed
-   head to its corrected final head.
+   `4e213b10d2bfd709e43a9073c41cc986e78a0fcd..M1-01R-initial-head`; when no
+   correction is used, `M1-01R-initial-head == M1-01R-final-head`; and
+5. if correction is used, the single targeted M1-01R correction-only range
+   `M1-01R-initial-head..M1-01R-corrected-final-head`, where the corrected head
+   becomes the exact final head.
 
 The Developer and Integration handoffs and final acceptance record must list
 that union, the disposition for each review, and mechanically confirm that
