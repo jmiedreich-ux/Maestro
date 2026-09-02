@@ -4,8 +4,10 @@
 Qwen implementation is accepted at exact corrected head
 `f21e4a2ff25cead8b972b4433da33f0e9910efc5` by explicit Owner closeout on
 2026-09-01. The later Qwen rerun is benchmark evidence only. Alpha-04 planning
-and its reporting amendment are merged, but Alpha-04 is paused by the Owner and
-has no execution packet or implementation release. No real worker, API/UI,
+and its reporting amendment are merged. On 2026-09-01 the Owner resumed
+readiness and authorized exact execution-packet drafting with explicit Project
+Architect return routes. The resulting packet remains a draft with no Decision
+Fidelity approval or implementation release. No real worker, API/UI,
 provider-account access, Foundry, VennueSign, real project registration,
 project-adapter, GitHub automation, or USB-recovery implementation is
 authorized by this handoff.
@@ -24,7 +26,7 @@ preserves that explicit Owner acceptance exception and the exact trusted-fixture
 limitation. The benchmark head `e9a0a0196a019962f2f15095b8f492f62643e95e`
 is not the accepted implementation.
 
-**Alpha-04 paused:** On 2026-08-31, the Owner agreed that
+**Alpha-04 readiness active; implementation unreleased:** On 2026-08-31, the Owner agreed that
 Maestro must qualify its core assignment/control loop synthetically before a
 real Foundry packet becomes the first whole-loop proving subject. Accepted
 [M0-D13](../../docs/planning/decisions/m0-d13-synthetic-control-loop-qualification.md)
@@ -49,9 +51,12 @@ usage, keep local Qwen capacity separate, and report unsupported facts as
 `unavailable` without scraping. The combined amendment merged in PR #12 at
 `b2594d9ab4cad528cd6272622f68162850a0584e`. The broader multi-provider,
 live-adapter, UI, retention, threshold, and enforcement proposal remains
-unresolved. No Alpha-04 execution packet exists. On 2026-09-01 the Owner
-explicitly paused Alpha-04; do not draft, review, release, or implement it until
-the Owner provides new direction.
+unresolved. On 2026-09-01 the Owner first paused Alpha-04 and later supplied new
+direction to proceed with readiness. The draft
+[Alpha-04 execution packet](../../docs/planning/packets/alpha-04-synthetic-control-loop-qualification.md)
+materializes exact fixture schemas, paths, commands, state transitions, proof,
+and `ProjectArchitectReturn` outcomes. It is not yet Decision-Fidelity reviewed,
+accepted, merged, or released for implementation.
 
 **Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
 
@@ -80,7 +85,7 @@ The current M0 expansion is captured in:
 6. Every coding agent follows the project-bound Maestro SOP. Independent review is proportional to risk but required for every mergeable PR and high-risk shared boundaries before downstream use.
 7. V1 remains one approved milestone, one hosted worker, one draft PR, and owner acceptance/merge. Agent-workforce queues and limited parallel dispatch begin no earlier than V2.
 8. Before Maestro executes a plan, milestone, packet, or build instruction, a separate Maestro Decision Fidelity Reviewer must trace every accepted governing choice into that proposal. Missing, changed, assumed, conflicting, or unapproved-deferred choices block execution. This review occurs before plan approval, before build instructions, and before milestone acceptance; it does not replace independent code review.
-9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
+9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract returns explicitly to the Project Architecture Agent, which involves the Owner when material judgment is required; it is not an unlimited worker-correction loop.
 10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
 11. Every default-branch merge must have complete current review coverage: one exact full reviewed range plus every targeted-reviewed correction-only diff covering the exact final head. Uncovered or materially stale changes block merge.
 12. Before live Foundry V1 execution, Maestro must pass the M0-D13 fixture-only control-loop qualification. Alpha-04 may prove one synthetic assignment, patient worker-status inquiry, and role-separated handoffs, but production queues, real actor/model routing, and limited parallel dispatch remain V2 work. Atlas reports recorded worker status and never initiates the inquiry.
@@ -138,11 +143,13 @@ available to the future Alpha-04 qualification. The done record preserves the
 review outcomes and accepted malformed-conflict limitation without claiming an
 independent-review approval.
 
-There is no executable successor packet. Alpha-04 is explicitly paused and
-requires new Owner direction before any packet drafting, review, release, or
-implementation. Do not start Alpha-04, real worker dispatch, Atlas/API/UI,
-project registration or integration, GitHub automation, or USB recovery work
-from this handoff.
+The Alpha-04 packet is a readiness draft, not an executable release. Route it
+next to independent Decision Fidelity Review only after the Owner accepts the
+packet for that review. Do not start implementation, real worker dispatch,
+Atlas/API/UI, project registration or integration, GitHub automation, or USB
+recovery work from this handoff. A planning or architecture defect returns to
+the Project Architecture Agent with exact evidence and safe stop; it is never a
+bare escalation or another worker correction.
 
 ## Open implementation decisions
 

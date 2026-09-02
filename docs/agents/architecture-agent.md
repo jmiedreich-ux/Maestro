@@ -49,9 +49,11 @@ Turn an approved project architecture direction and current-source evidence into
   routing, bounded correction, supported weekly-window reconciliation,
   context/token reporting, separate local capacity, and recovery, but it
   authorizes no provider scraping/account access, production scheduler, real
-  actor dispatch, implementation, or Foundry access. The Owner paused Alpha-04
-  on 2026-09-01; do not create or release its execution packet without new
-  direction.
+  actor dispatch, implementation, or Foundry access. On 2026-09-01 the Owner
+  resumed readiness and authorized exact execution-packet drafting with
+  explicit Project Architect return routes. Readiness does not approve the
+  packet or release implementation; Decision Fidelity approval, planning
+  merge, and an explicit Owner implementation release remain required.
 
 ## May do
 

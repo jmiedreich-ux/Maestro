@@ -80,9 +80,12 @@ window observation, distinct attempt context/token/cost facts, controlled/
 coarse/unattributed reconciliation, separate local-Qwen capacity, honest
 `unavailable` states, and checkpoint behavior at context pressure. No provider
 UI scraping, token-to-allowance conversion, live account access, enforcement,
-or broader multi-provider proposal is approved. This combined amendment awaits
-fresh review and merge. There is no Alpha-04 execution packet or implementation
-release.
+or broader multi-provider proposal is approved. The combined amendment merged
+in PR #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`. After an initial
+pause, the Owner resumed readiness on 2026-09-01 and authorized an exact draft
+execution packet with explicit Project Architect return routes. The packet is
+not yet Decision-Fidelity reviewed, accepted, merged, or released for
+implementation.
 
 ## Guardrails
 
@@ -98,5 +101,7 @@ release.
 - Alpha-04 uses allowance/context/usage fixtures only; live provider-account
   sources, retention, warnings, enforcement, and UI implementation remain
   later decisions.
-- M0-D05 allows one targeted correction only; a missing quality model or new failure class returns to Architecture/Owner, not another worker loop.
+- M0-D05 allows one targeted correction only; a missing quality model, new
+  failure class, or ambiguous next action returns explicitly to the Project
+  Architecture Agent with evidence and a safe stop, not another worker loop.
 - Follow-up review is targeted to named findings and directly affected consistency unless a documented reopening reason applies.

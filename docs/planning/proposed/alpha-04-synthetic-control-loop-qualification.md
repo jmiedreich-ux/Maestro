@@ -2,8 +2,9 @@
 
 - **Status:** Planning release and reporting amendment are merged through PR
   #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`; Alpha-03 predecessor is
-  complete; Owner paused Alpha-04 on 2026-09-01; no execution packet or
-  implementation release
+  complete by explicit Owner acceptance; on 2026-09-01 the Owner resumed
+  readiness and authorized exact execution-packet drafting; the draft packet
+  remains unreviewed and there is no implementation release
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
 - **Graph revision:** `maestro-alpha-04-plan-r2`
@@ -20,8 +21,11 @@
   [2026-08-31 context and token reporting direction](../../../sources/planning/2026-08-31-context-and-token-reporting.md)
   plus the captured
   [Usage & Observability proposal](agent-usage-observability.md)
-- **Predecessor:** Alpha-03 must be implemented, independently approved,
-  accepted, and merged before Alpha-04 can be released
+- **Predecessor:** Alpha-03 is implemented and merged through
+  `8aa4cb517dcb902060cf5acd1d58806787e03841`; the Owner explicitly accepted
+  corrected head `f21e4a2ff25cead8b972b4433da33f0e9910efc5` despite independent
+  implementation-review `REQUEST_CHANGES`, with the fixture-only limitation
+  recorded in its done record
 - **Execution class:** one fixture-only, single-process qualification increment
 - **Planned implementation route:** Local Qwen in a clean isolated worktree
   after an exact packet is approved and explicitly released
@@ -60,13 +64,33 @@ remain controlling:
 - M0-D11's bounded filesystem assurance is unchanged; and
 - passing the named packet proof will be sufficient under M0-D12.
 
+## Project Architect return clarification
+
+Per the Owner's
+[2026-09-01 readiness direction](../../../sources/planning/2026-09-01-alpha-04-readiness-direction.md),
+every Alpha-04 reference to an Architecture or Architecture/Owner escalation
+means an explicit return to the **Project Architecture Agent**. The return must
+state the exact reason, evidence, required decision, whether material Owner
+judgment is required, and the safe no-further-assignment/no-further-mutation
+disposition. It may not be recorded as a bare `escalate` outcome.
+
+Routine waiting, lock contention, patient pre-timeout silence, duplicate/stale
+event rejection, and the first eligible targeted correction remain with the
+Coordinator because their next action is already defined. Missing or
+contradictory authority, ambiguous eligibility, Integration `replan`, an
+architecture-contract defect, scope change, exhausted correction, new failure
+class, stronger-isolation need, external-access need, or absent continuation
+policy returns to the Project Architecture Agent. The Architect then resolves
+within existing authority or brings a material choice to the Owner. Successful
+qualification still uses `AwaitingOwner` solely for the final acceptance stop.
+
 ## Proposed work-graph node
 
 | Field | Value |
 | --- | --- |
 | Stable node | `MAESTRO-ALPHA-04-CONTROL-LOOP-QUALIFICATION` |
 | Rank / serial order | First Alpha-04 node; serial after accepted Alpha-03 |
-| Hard dependency | Alpha-03 complete, accepted, independently reviewed, and merged at an exact recorded head |
+| Hard dependency | Alpha-03 complete by explicit Owner acceptance, independently reviewed with the recorded `REQUEST_CHANGES` exception, and merged at an exact recorded head |
 | Authority dependency | This plan and its future execution packet each receive fresh Decision Fidelity APPROVE and the packet receives explicit Owner implementation release |
 | Change domains / locks | Synthetic graph/actor/model-usage fixtures, coordinator eligibility and transition logic, service-owned operational schema/evidence, Alpha-04 tests; one exclusive Alpha control-loop/schema lock |
 | Planned route | One bounded local implementation worker after release; exact model and reviewer routes belong in the execution packet |
@@ -522,15 +546,20 @@ must not compensate by building V2 infrastructure.
 
 ## Gates and handoff
 
-1. Fresh Decision Fidelity Review must approve this complete planning range.
-2. The reviewed plan must receive Owner acceptance and merge as a planning-only
-   graph release.
-3. Alpha-03 must complete its own release, implementation, independent review,
-   Owner acceptance, and merge path.
-4. Architecture may then draft a separate Alpha-04 execution packet with exact
-   schemas, paths, commands, routes, and checks.
-5. That packet requires fresh Decision Fidelity APPROVE and explicit Owner
-   implementation release before any build begins.
+1. **Complete:** fresh Decision Fidelity Review approved the original planning
+   range and the reporting amendment merged through PR #12.
+2. **Complete:** the reviewed plan received Owner acceptance and merged as a
+   planning-only graph release.
+3. **Complete by recorded exception:** Alpha-03 completed its release,
+   implementation, independent reviews, explicit Owner acceptance, and merge;
+   the review outcome remains `REQUEST_CHANGES`, not relabeled approval.
+4. **Readiness draft created:** the separate
+   [Alpha-04 execution packet](../packets/alpha-04-synthetic-control-loop-qualification.md)
+   materializes exact schemas, paths, commands, routes, checks, and Project
+   Architect returns.
+5. **Next gate:** that exact packet requires fresh Decision Fidelity `APPROVE`,
+   planning acceptance/merge, and explicit Owner implementation release before
+   any build begins.
 
 This proposal creates no executable packet or operational queue state and does
 not authorize implementation, dispatch, Foundry access, review execution, or
