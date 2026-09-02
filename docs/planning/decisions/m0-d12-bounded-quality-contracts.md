@@ -36,7 +36,8 @@ Each material quality requirement must state:
    the packet's value and milestone.
 8. **Stop and escalation rule:** the exact condition that ends implementation
    work and returns a missing assumption, infeasible guarantee, or newly
-   discovered risk to Architecture and the Owner.
+   discovered risk to the Project Architect. The Project Architect involves
+   the Owner only when resolution requires an M0-D15 reserved material choice.
 
 All eight elements are required. If an element is genuinely inapplicable, the
 contract must state the reason and carry an explicit owner-approved
