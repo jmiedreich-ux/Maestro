@@ -157,6 +157,28 @@ class MeasurementTests(unittest.TestCase):
         invalid["value"] = 0
         with self.assertRaises(InvalidRecord):
             validate_measurement(invalid)
+
+    def test_runtime_precedes_tokenizer_and_estimate_for_every_token_category(self) -> None:
+        for index, category in enumerate(
+            ("input", "output", "cached_input", "reasoning", "total"), start=1
+        ):
+            runtime = measurement(index * 100, "RuntimeReported", "Exact", "runtime:counters")
+            tokenizer = measurement(
+                index * 90, "TokenizerCounted", "High", "tokenizer:gpt-5"
+            )
+            estimated = measurement(
+                index * 80, "Estimated", "Medium", "estimate:bounded"
+            )
+            with self.subTest(category=category, quality="TokenizerCounted"):
+                self.assertEqual(validate_measurement(tokenizer), tokenizer)
+                self.assertEqual(preferred_measurement(tokenizer, runtime), runtime)
+                with self.assertRaises(InvalidRecord):
+                    preferred_measurement(runtime, tokenizer)
+            with self.subTest(category=category, quality="Estimated"):
+                self.assertEqual(validate_measurement(estimated), estimated)
+                self.assertEqual(preferred_measurement(estimated, runtime), runtime)
+                with self.assertRaises(InvalidRecord):
+                    preferred_measurement(runtime, estimated)
         invalid = measurement(2, "TokenizerCounted", "Low", "tokenizer:model")
         with self.assertRaises(InvalidRecord):
             validate_measurement(invalid)

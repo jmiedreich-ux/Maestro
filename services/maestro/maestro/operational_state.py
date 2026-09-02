@@ -297,7 +297,10 @@ class OperationalStateStore:
         self._foundation = SQLiteFoundation(self.config)
 
     def health(self):
-        return self._foundation.health()
+        try:
+            return self._foundation.health()
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
 
     def record_binding(self, binding, idempotency_key, actor, now):
         row = self._binding(binding, now)
@@ -510,20 +513,25 @@ class OperationalStateStore:
         if entity_type not in _ENTITY_TABLES:
             raise InvalidRecord("entity_type is not snapshot-readable")
         table, key = _ENTITY_TABLES[entity_type]
-        with self._foundation._connection() as connection:
-            row = self._row(connection, table, key, entity_id)
-        return row
+        try:
+            with self._foundation._connection() as connection:
+                return self._row(connection, table, key, entity_id)
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
 
     def events_after(self, event_id: int, limit: int) -> list[dict[str, Any]]:
         event_id = _nonnegative_int(event_id, "event_id")
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
             raise InvalidRecord("event limit must be between 1 and 1000")
-        with self._foundation._connection() as connection:
-            cursor = connection.execute(
-                "SELECT * FROM events WHERE event_id>? ORDER BY event_id LIMIT ?", (event_id, limit)
-            )
-            columns = [item[0] for item in cursor.description]
-            return [_decode_row(dict(zip(columns, row))) for row in cursor.fetchall()]
+        try:
+            with self._foundation._connection() as connection:
+                cursor = connection.execute(
+                    "SELECT * FROM events WHERE event_id>? ORDER BY event_id LIMIT ?", (event_id, limit)
+                )
+                columns = [item[0] for item in cursor.description]
+                return [_decode_row(dict(zip(columns, row))) for row in cursor.fetchall()]
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
 
     def _append_one(self, table, primary_key, row, entity_type, event_type, idempotency_key, actor, now):
         return self._append(

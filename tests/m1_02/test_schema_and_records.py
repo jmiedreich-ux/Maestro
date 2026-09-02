@@ -5,6 +5,7 @@ import json
 import sqlite3
 import tempfile
 import threading
+import time
 import unittest
 from contextlib import closing
 from pathlib import Path
@@ -15,6 +16,7 @@ from maestro.operational_state import (
     IdempotencyConflict,
     InvalidRecord,
     OperationalStateStore,
+    ResourceBusy,
     canonical_digest,
     context_policy_digest,
 )
@@ -284,11 +286,24 @@ class RecordRouteTests(unittest.TestCase):
 
     def _seed_through_packet_and_attempt(self):
         binding, secret, graph, work, run, packet = self._records()
-        self.store.record_binding(binding, "command-binding", ACTOR, NOW)
-        self.store.record_secret_reference(secret, "command-secret", ACTOR, NOW)
-        self.store.record_graph_projection(graph, [work], "command-graph", ACTOR, NOW)
-        self.store.create_run(run, "command-run", ACTOR, NOW)
-        self.store.materialize_packet(packet, "command-packet", ACTOR, NOW)
+        expected = {}
+        expected[("ProjectBinding", "binding-1")] = self.store.record_binding(
+            binding, "command-binding", ACTOR, NOW
+        )
+        expected[("SecretReferenceObservation", "secret-observation-1")] = (
+            self.store.record_secret_reference(secret, "command-secret", ACTOR, NOW)
+        )
+        graph_result = self.store.record_graph_projection(
+            graph, [work], "command-graph", ACTOR, NOW
+        )
+        expected[("GraphProjection", "graph-1")] = graph_result["graph"]
+        expected[("WorkItem", "work-1")] = graph_result["work_items"][0]
+        expected[("Run", "run-1")] = self.store.create_run(
+            run, "command-run", ACTOR, NOW
+        )
+        expected[("Packet", "packet-1")] = self.store.materialize_packet(
+            packet, "command-packet", ACTOR, NOW
+        )
         with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
             connection.execute("PRAGMA foreign_keys=ON")
             connection.execute(
@@ -302,10 +317,13 @@ class RecordRouteTests(unittest.TestCase):
             "model_identity": "gpt-5", "runtime_identity": "codex", "state": "Planned",
             "result_commit": None, "correction_for_review_id": None, "started_at": None, "finished_at": None,
         }
-        self.store.record_attempt(attempt, "command-attempt", ACTOR, NOW)
+        expected[("Attempt", "attempt-1")] = self.store.record_attempt(
+            attempt, "command-attempt", ACTOR, NOW
+        )
+        return expected
 
     def test_all_a_record_append_routes_persist_reopen_and_events_are_ordered(self) -> None:
-        self._seed_through_packet_and_attempt()
+        expected = self._seed_through_packet_and_attempt()
         payload = {"kind": "state", "entity_type": "Attempt", "entity_id": "attempt-1", "state": "Planned", "version": 1}
         evidence = {
             "evidence_id": "evidence-1", "idempotency_key": "command-evidence", "run_id": "run-1",
@@ -326,9 +344,13 @@ class RecordRouteTests(unittest.TestCase):
             "findings_json": [], "coverage_json": {"base": COMMIT_A, "head": COMMIT_B},
             "correction_number": 0, "created_at": NOW,
         }
-        self.store.append_evidence(evidence, ACTOR)
-        self.store.open_wait(wait, "command-wait", ACTOR, NOW)
-        self.store.record_review(review, "command-review", ACTOR, NOW)
+        expected[("Evidence", "evidence-1")] = self.store.append_evidence(evidence, ACTOR)
+        expected[("Wait", "wait-1")] = self.store.open_wait(
+            wait, "command-wait", ACTOR, NOW
+        )
+        expected[("Review", "review-1")] = self.store.record_review(
+            review, "command-review", ACTOR, NOW
+        )
         first_event = self.store.events_after(0, 100)[0]["event_id"]
         notification_payload = {
             "kind": "notification", "event_id": first_event, "audience": "ProjectArchitect",
@@ -342,14 +364,18 @@ class RecordRouteTests(unittest.TestCase):
             "grouping_key": "run-1", "escalation_at": LATER, "payload_json": notification_payload,
             "state": "Pending", "attempt_count": 0, "last_error_payload_json": None, "next_attempt_at": None,
         }
-        self.store.record_notification(notification, "command-notification", ACTOR, NOW)
+        expected[("Notification", "notification-1")] = self.store.record_notification(
+            notification, "command-notification", ACTOR, NOW
+        )
         progress = {
             "progress_id": "progress-1", "attempt_id": "attempt-1", "plan_payload_json": _redacted("plan"),
             "current_step_payload_json": _redacted("step"), "blocker_payload_json": _redacted("none"),
             "eta_text": "unknown", "confidence": "Unknown", "status_request_state": "NotRequested",
             "next_permitted_action": "continue", "observed_at": NOW, "received_at": NOW,
         }
-        self.store.record_worker_progress(progress, "command-progress", ACTOR, NOW)
+        expected[("WorkerProgress", "progress-1")] = self.store.record_worker_progress(
+            progress, "command-progress", ACTOR, NOW
+        )
         token_measurements = {
             "input": _measurement(1000), "output": _measurement(0), "cached_input": _measurement(0),
             "reasoning": _measurement(0), "total": _measurement(1000),
@@ -372,7 +398,9 @@ class RecordRouteTests(unittest.TestCase):
                 dict(context, context_usage_id="bad-context", context_policy_digest="b" * 64),
                 "command-bad-context", ACTOR, NOW,
             )
-        self.store.record_context_usage(context, "command-context", ACTOR, NOW)
+        expected[("AttemptContextUsage", "context-1")] = self.store.record_context_usage(
+            context, "command-context", ACTOR, NOW
+        )
         upgraded_tokens = {
             name: dict(value, value=value["value"] + 1 if value["value"] is not None else None)
             for name, value in token_measurements.items()
@@ -386,6 +414,7 @@ class RecordRouteTests(unittest.TestCase):
         updated = self.store.update_context_usage(
             "attempt-1", 1, context_update, "command-context-update", ACTOR, LATER
         )
+        expected[("AttemptContextUsage", "context-1")] = updated
         self.assertEqual(updated["version"], 2)
         self.assertIsInstance(updated["starting_input_measurement_json"], dict)
         self.assertEqual(
@@ -409,7 +438,9 @@ class RecordRouteTests(unittest.TestCase):
             "native_unit": "requests", "reset_at": LATER, "precision": "Exact",
             "measurement_quality": "ProviderReported", "freshness": "Fresh", "observed_at": NOW,
         }
-        self.store.record_allowance_window(allowance, "command-allowance", ACTOR, NOW)
+        expected[("AllowanceWindow", "allowance-1")] = self.store.record_allowance_window(
+            allowance, "command-allowance", ACTOR, NOW
+        )
         reconciliation = {
             "usage_reconciliation_id": "reconciliation-1", "allowance_observation_id": "allowance-1",
             "window_change_value": "10.5", "tracked_controlled_value": "4",
@@ -421,7 +452,11 @@ class RecordRouteTests(unittest.TestCase):
                 dict(reconciliation, usage_reconciliation_id="bad-reconciliation", native_unit="tokens"),
                 "command-bad-reconciliation", ACTOR, NOW,
             )
-        self.store.record_usage_reconciliation(reconciliation, "command-reconciliation", ACTOR, NOW)
+        expected[("UsageReconciliation", "reconciliation-1")] = (
+            self.store.record_usage_reconciliation(
+                reconciliation, "command-reconciliation", ACTOR, NOW
+            )
+        )
         acceptance = {
             "acceptance_id": "acceptance-1", "subject_type": "Packet", "subject_id": "packet-1",
             "packet_id": "packet-1", "run_id": None, "sequence_number": 1,
@@ -430,7 +465,9 @@ class RecordRouteTests(unittest.TestCase):
             "review_coverage_json": {}, "reason_payload_json": {"kind": "reason", "reason_code": "CHANGES", "detail_reference": "review-1"},
             "created_at": NOW,
         }
-        self.store.record_acceptance(acceptance, "command-acceptance", ACTOR, NOW)
+        expected[("Acceptance", "acceptance-1")] = self.store.record_acceptance(
+            acceptance, "command-acceptance", ACTOR, NOW
+        )
         merge = {
             "merge_observation_id": "merge-1", "run_id": "run-1", "packet_id": "packet-1",
             "acceptance_id": None, "repository_reference": "owner/repo", "default_branch": "main",
@@ -439,20 +476,14 @@ class RecordRouteTests(unittest.TestCase):
             "performed_by_reference": "bot-1", "delegation_reference": "delegation-policy",
             "review_coverage_json": {}, "observed_at": NOW,
         }
-        self.store.record_merge_observation(merge, "command-merge", ACTOR, NOW)
+        expected[("MergeObservation", "merge-1")] = self.store.record_merge_observation(
+            merge, "command-merge", ACTOR, NOW
+        )
 
         reopened = OperationalStateStore(self.runtime.config())
-        for entity, identifier in (
-            ("ProjectBinding", "binding-1"), ("SecretReferenceObservation", "secret-observation-1"),
-            ("GraphProjection", "graph-1"), ("WorkItem", "work-1"), ("Run", "run-1"),
-            ("Packet", "packet-1"), ("Attempt", "attempt-1"), ("Evidence", "evidence-1"),
-            ("Wait", "wait-1"), ("Review", "review-1"), ("Notification", "notification-1"),
-            ("WorkerProgress", "progress-1"), ("AttemptContextUsage", "context-1"),
-            ("AllowanceWindow", "allowance-1"), ("UsageReconciliation", "reconciliation-1"),
-            ("Acceptance", "acceptance-1"), ("MergeObservation", "merge-1"),
-        ):
+        for (entity, identifier), exact_record in expected.items():
             with self.subTest(entity=entity):
-                self.assertIsNotNone(reopened.snapshot(entity, identifier))
+                self.assertEqual(reopened.snapshot(entity, identifier), exact_record)
         events = reopened.events_after(0, 1000)
         ids = [event["event_id"] for event in events]
         self.assertEqual(ids, sorted(ids))
@@ -484,6 +515,41 @@ class RecordRouteTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM project_bindings").fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM events WHERE idempotency_key='same-command'").fetchone()[0], 1)
 
+    def test_held_writer_returns_resource_busy_on_health_reads_and_mutation(self) -> None:
+        binding = self._records()[0]
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database, timeout=0)) as holder:
+            holder.execute("PRAGMA journal_mode=WAL")
+            holder.execute("BEGIN IMMEDIATE")
+            before = {
+                "bindings": holder.execute("SELECT COUNT(*) FROM project_bindings").fetchone()[0],
+                "events": holder.execute("SELECT COUNT(*) FROM events").fetchone()[0],
+            }
+            routes = (
+                ("health", self.store.health),
+                ("snapshot", lambda: self.store.snapshot("ProjectBinding", "binding-1")),
+                ("events_after", lambda: self.store.events_after(0, 1)),
+                (
+                    "record_binding",
+                    lambda: self.store.record_binding(
+                        binding, "held-writer-binding", ACTOR, NOW
+                    ),
+                ),
+            )
+            for name, route in routes:
+                started = time.monotonic()
+                with self.subTest(route=name), self.assertRaises(ResourceBusy):
+                    route()
+                self.assertGreaterEqual(time.monotonic() - started, 4.5)
+                self.assertEqual(
+                    holder.execute("SELECT COUNT(*) FROM project_bindings").fetchone()[0],
+                    before["bindings"],
+                )
+                self.assertEqual(
+                    holder.execute("SELECT COUNT(*) FROM events").fetchone()[0],
+                    before["events"],
+                )
+
     def test_fk_unique_partial_active_checks_and_invalid_records_fail_without_event(self) -> None:
         binding = self._records()[0]
         before = len(self.store.events_after(0, 1000))
@@ -499,6 +565,104 @@ class RecordRouteTests(unittest.TestCase):
                 {**secret, "secret_value": "github_pat_value"}, "secret-value", ACTOR, NOW
             )
         self.assertEqual(len(self.store.events_after(0, 1000)), before)
+
+    def test_all_declared_constraint_classes_reject_without_entity_or_event_mutation(self) -> None:
+        binding, secret, _, _, _, _ = self._records()
+        accepted = self.store.record_binding(binding, "constraint-seed", ACTOR, NOW)
+
+        cases = (
+            (
+                "foreign-key",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="binding-missing-project", project_id="missing"),
+                    "constraint-fk",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "check-enum",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="binding-bad-check", acceptance_authority="Nobody"),
+                    "constraint-check",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "unique",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="binding-duplicate-revision"),
+                    "constraint-unique",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "json-root",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="binding-json", binding_json=[]),
+                    "constraint-json",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "empty-id",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id=""), "constraint-empty-id", ACTOR, NOW
+                ),
+            ),
+            (
+                "utf8-id-size",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="é" * 257),
+                    "constraint-long-id",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "digest",
+                lambda: self.store.record_binding(
+                    dict(binding, binding_id="binding-digest", manifest_digest="A" * 64),
+                    "constraint-digest",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "timestamp",
+                lambda: self.store.record_secret_reference(
+                    dict(secret, secret_reference_observation_id="secret-time", observed_at="now"),
+                    "constraint-time",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+            (
+                "json-row-size",
+                lambda: self.store.record_binding(
+                    dict(
+                        binding,
+                        binding_id="binding-oversize",
+                        binding_revision="revision-oversize",
+                        binding_json={"value": "x" * (1024 * 1024)},
+                    ),
+                    "constraint-size",
+                    ACTOR,
+                    NOW,
+                ),
+            ),
+        )
+        for name, command in cases:
+            before_events = len(self.store.events_after(0, 1000))
+            before_record = self.store.snapshot("ProjectBinding", "binding-1")
+            with self.subTest(constraint=name), self.assertRaises(InvalidRecord):
+                command()
+            self.assertEqual(len(self.store.events_after(0, 1000)), before_events)
+            self.assertEqual(self.store.snapshot("ProjectBinding", "binding-1"), before_record)
+            self.assertEqual(before_record, accepted)
 
     def test_database_partial_active_constraints_reject_second_binding_and_graph_without_event(self) -> None:
         binding = self.store._binding(self._records()[0], NOW)
@@ -520,6 +684,243 @@ class RecordRouteTests(unittest.TestCase):
             with self.assertRaises(sqlite3.IntegrityError):
                 self.store._insert(connection, "graph_projections", second_graph)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], 0)
+
+    def test_remaining_partial_active_constraints_reject_without_partial_rows_or_events(self) -> None:
+        self._seed_through_packet_and_attempt()
+        wait = {
+            "wait_id": "wait-active", "run_id": "run-1", "packet_id": "packet-1",
+            "gate_type": "Review", "awaited_role": "Reviewer",
+            "awaited_reference": "review-route", "expected_result": "Approve",
+            "timeout_at": LATER, "next_permitted_action": "Wait", "state": "Open",
+            "resolution_reason_payload_json": None,
+        }
+        durable_wait = self.store.open_wait(wait, "partial-wait-seed", ACTOR, NOW)
+        baseline_events = len(self.store.events_after(0, 1000))
+        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
+            connection.execute("PRAGMA foreign_keys=ON")
+            packet = self.store.snapshot("Packet", "packet-1")
+            self.assertIsNotNone(packet)
+            self.store._insert(
+                connection,
+                "packets",
+                dict(packet, packet_id="packet-2", packet_revision="packet-r2"),
+            )
+
+            lease_insert = (
+                "INSERT INTO leases(lease_id,packet_id,run_id,claim_key,run_fingerprint,"
+                "base_commit,worktree_path,executor_route,holder_id,state,acquired_at,"
+                "expires_at,heartbeat_at,version) VALUES (?,?,?,?,?,?,?,?,?,'Active',?,?,?,1)"
+            )
+            before_leases = connection.execute("SELECT COUNT(*) FROM leases").fetchone()[0]
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    lease_insert,
+                    (
+                        "lease-packet-conflict", "packet-1", "run-1", "claim-packet-conflict",
+                        DIGEST_A, COMMIT_A, "/runtime/other-worktree", "executor", "holder-2",
+                        NOW, LATER, NOW,
+                    ),
+                )
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM leases").fetchone()[0], before_leases)
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    lease_insert,
+                    (
+                        "lease-worktree-conflict", "packet-2", "run-1", "claim-worktree-conflict",
+                        DIGEST_A, COMMIT_A, "/runtime/worktree", "executor", "holder-3",
+                        NOW, LATER, NOW,
+                    ),
+                )
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM leases").fetchone()[0], before_leases)
+
+            connection.execute(
+                "INSERT INTO resource_locks(lock_id,resource_key,lock_kind,packet_id,lease_id,state,acquired_at,expires_at,version) "
+                "VALUES ('lock-1','shared:sqlite-schema','SharedBoundary','packet-1','lease-1','Active',?,?,1)",
+                (NOW, LATER),
+            )
+            before_locks = connection.execute("SELECT COUNT(*) FROM resource_locks").fetchone()[0]
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO resource_locks(lock_id,resource_key,lock_kind,packet_id,lease_id,state,acquired_at,expires_at,version) "
+                    "VALUES ('lock-2','shared:sqlite-schema','SharedBoundary','packet-1','lease-1','Active',?,?,1)",
+                    (NOW, LATER),
+                )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM resource_locks").fetchone()[0],
+                before_locks,
+            )
+
+            before_waits = connection.execute("SELECT COUNT(*) FROM waits").fetchone()[0]
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.store._insert(
+                    connection,
+                    "waits",
+                    dict(durable_wait, wait_id="wait-active-duplicate"),
+                )
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM waits").fetchone()[0], before_waits)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], baseline_events)
+
+    def test_every_declared_operational_foreign_key_rejects_without_row_or_event(self) -> None:
+        # Populate one exact valid row for every A-owned record table, then
+        # clone it with each declared foreign-key column independently broken.
+        self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database)) as connection:
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute(
+                "INSERT INTO resource_locks(lock_id,resource_key,lock_kind,packet_id,lease_id,state,acquired_at,expires_at,version) "
+                "VALUES ('fk-lock-seed','fk:seed','Path','packet-1','lease-1','Released',?,?,1)",
+                (NOW, LATER),
+            )
+            connection.commit()
+
+        bases = {
+            "project_bindings": {"binding_id": "fk-binding", "binding_revision": "fk-revision"},
+            "secret_reference_observations": {
+                "secret_reference_observation_id": "fk-secret", "observed_at": LATER
+            },
+            "graph_projections": {
+                "graph_projection_id": "fk-graph", "graph_revision": "fk-graph-r",
+                "source_hash": "c" * 64, "state": "Superseded",
+            },
+            "work_items": {"work_item_id": "fk-work", "architecture_node_id": "fk-node"},
+            "runs": {"run_id": "fk-run", "run_fingerprint": "c" * 64},
+            "packets": {"packet_id": "fk-packet", "packet_revision": "fk-packet-r"},
+            "leases": {
+                "lease_id": "fk-lease", "claim_key": "fk-claim",
+                "worktree_path": "/runtime/fk-worktree", "state": "Released",
+            },
+            "attempts": {"attempt_id": "fk-attempt", "attempt_number": 2},
+            "resource_locks": {
+                "lock_id": "fk-lock", "resource_key": "fk:resource", "state": "Released"
+            },
+            "evidence": {"evidence_id": "fk-evidence", "idempotency_key": "fk-evidence-key"},
+            "waits": {"wait_id": "fk-wait", "gate_type": "FK", "state": "Resolved"},
+            "reviews": {"review_id": "fk-review", "reviewer_instance": "fk-reviewer"},
+            "notifications": {"notification_id": "fk-notification"},
+            "acceptance_records": {"acceptance_id": "fk-acceptance", "sequence_number": 2},
+            "merge_observations": {"merge_observation_id": "fk-merge"},
+            "worker_progress_observations": {"progress_id": "fk-progress"},
+            "attempt_context_usage": {"context_usage_id": "fk-context"},
+            "usage_reconciliations": {"usage_reconciliation_id": "fk-reconciliation"},
+            "events": {"event_id": None, "idempotency_key": "fk-event"},
+        }
+        cases = (
+            ("project_bindings", "project_id"),
+            ("secret_reference_observations", "project_id"),
+            ("secret_reference_observations", "binding_id"),
+            ("graph_projections", "project_id"),
+            ("graph_projections", "binding_id"),
+            ("work_items", "graph_projection_id"),
+            ("runs", "project_id"),
+            ("runs", "binding_id"),
+            ("runs", "graph_projection_id"),
+            ("packets", "run_id"),
+            ("packets", "work_item_id"),
+            ("leases", "packet_id"),
+            ("leases", "run_id"),
+            ("attempts", "packet_id"),
+            ("attempts", "lease_id"),
+            ("attempts", "correction_for_review_id"),
+            ("resource_locks", "packet_id"),
+            ("resource_locks", "lease_id"),
+            ("evidence", "run_id"),
+            ("evidence", "packet_id"),
+            ("evidence", "attempt_id"),
+            ("waits", "run_id"),
+            ("waits", "packet_id"),
+            ("reviews", "packet_id"),
+            ("reviews", "attempt_id"),
+            ("notifications", "event_id"),
+            ("notifications", "run_id"),
+            ("notifications", "packet_id"),
+            ("acceptance_records", "packet_id"),
+            ("acceptance_records", "run_id"),
+            ("acceptance_records", "supersedes_acceptance_id"),
+            ("merge_observations", "run_id"),
+            ("merge_observations", "packet_id"),
+            ("merge_observations", "acceptance_id"),
+            ("worker_progress_observations", "attempt_id"),
+            ("attempt_context_usage", "attempt_id"),
+            ("usage_reconciliations", "allowance_observation_id"),
+            ("events", "causation_event_id"),
+        )
+        for index, (table, foreign_key) in enumerate(cases, start=1):
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                cursor = connection.execute(f"SELECT * FROM {table} LIMIT 1")
+                columns = [item[0] for item in cursor.description]
+                values = dict(zip(columns, cursor.fetchone()))
+                values.update(bases[table])
+                if table == "acceptance_records" and foreign_key == "run_id":
+                    values.update(subject_type="Run", subject_id="missing-fk", packet_id=None)
+                elif table == "acceptance_records" and foreign_key == "packet_id":
+                    values.update(subject_type="Packet", subject_id="missing-fk", run_id=None)
+                values[foreign_key] = 999999 if foreign_key in {"event_id", "causation_event_id"} else "missing-fk"
+                before_rows = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                before_events = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+                placeholders = ",".join("?" for _ in columns)
+                with self.subTest(table=table, foreign_key=foreign_key, case=index), self.assertRaises(
+                    sqlite3.IntegrityError
+                ):
+                    connection.execute(
+                        f"INSERT INTO {table} ({','.join(columns)}) VALUES ({placeholders})",
+                        [values[column] for column in columns],
+                    )
+                    connection.commit()
+                connection.rollback()
+                self.assertEqual(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], before_rows)
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], before_events)
+
+    def test_every_declared_nonpartial_unique_constraint_rejects_without_row_or_event(self) -> None:
+        self.test_all_a_record_append_routes_persist_reopen_and_events_are_ordered()
+        database = self.runtime.path / "maestro.sqlite3"
+        cases = (
+            ("project_bindings", {"binding_id": "unique-binding"}),
+            (
+                "secret_reference_observations",
+                {"secret_reference_observation_id": "unique-secret"},
+            ),
+            (
+                "graph_projections",
+                {"graph_projection_id": "unique-graph", "state": "Superseded"},
+            ),
+            ("work_items", {"work_item_id": "unique-work"}),
+            ("runs", {"run_id": "unique-run"}),
+            ("packets", {"packet_id": "unique-packet"}),
+            (
+                "leases",
+                {
+                    "lease_id": "unique-lease", "state": "Released",
+                    "worktree_path": "/runtime/unique-worktree",
+                },
+            ),
+            ("attempts", {"attempt_id": "unique-attempt"}),
+            ("evidence", {"evidence_id": "unique-evidence"}),
+            ("reviews", {"review_id": "unique-review"}),
+            ("acceptance_records", {"acceptance_id": "unique-acceptance"}),
+            ("attempt_context_usage", {"context_usage_id": "unique-context"}),
+            ("events", {"event_id": None}),
+        )
+        for table, overrides in cases:
+            with closing(sqlite3.connect(database)) as connection:
+                connection.execute("PRAGMA foreign_keys=ON")
+                cursor = connection.execute(f"SELECT * FROM {table} LIMIT 1")
+                columns = [item[0] for item in cursor.description]
+                values = dict(zip(columns, cursor.fetchone()))
+                values.update(overrides)
+                before_rows = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                before_events = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+                placeholders = ",".join("?" for _ in columns)
+                with self.subTest(table=table), self.assertRaises(sqlite3.IntegrityError):
+                    connection.execute(
+                        f"INSERT INTO {table} ({','.join(columns)}) VALUES ({placeholders})",
+                        [values[column] for column in columns],
+                    )
+                    connection.commit()
+                connection.rollback()
+                self.assertEqual(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], before_rows)
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0], before_events)
 
     def test_store_construction_and_public_reads_reject_forged_or_swapped_runtime_before_artifacts(self) -> None:
         outside_parent = Path(tempfile.mkdtemp())

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator
@@ -13,6 +14,15 @@ from .config import RuntimeConfig
 
 
 SCHEMA_VERSION = 4
+SQLITE_BUSY_TIMEOUT_MS = 5000
+
+
+# SQLite serializes the database itself, but changing journal mode while a
+# second local thread is also bootstrapping the same new database can fail
+# before SQLite's busy handler is effective.  Maestro is one service process,
+# so serialize only connection preparation and migration.  Logical commands
+# remain single-attempt transactions and are never retried here.
+_INITIALIZATION_LOCK = threading.RLock()
 
 
 @dataclass(frozen=True)
@@ -52,8 +62,9 @@ class SQLiteFoundation:
         with self.config.open_runtime_dir_fd() as runtime_fd:
             connection = self._connect(runtime_fd)
             try:
-                journal_mode, foreign_keys_enabled = self._prepare_connection(connection)
-                self._apply_migrations(connection)
+                with _INITIALIZATION_LOCK:
+                    journal_mode, foreign_keys_enabled = self._prepare_connection(connection)
+                    self._apply_migrations(connection)
                 version = int(connection.execute("SELECT MAX(version) FROM schema_versions").fetchone()[0])
                 connection.commit()
             finally:
@@ -325,18 +336,30 @@ class SQLiteFoundation:
         with self.config.open_runtime_dir_fd() as runtime_fd:
             connection = self._connect(runtime_fd)
             try:
-                self._prepare_connection(connection)
-                self._apply_migrations(connection)
+                with _INITIALIZATION_LOCK:
+                    self._prepare_connection(connection)
+                    self._apply_migrations(connection)
                 yield connection
             finally:
                 connection.close()
 
     @staticmethod
     def _connect(runtime_fd: int) -> sqlite3.Connection:
-        return sqlite3.connect(f"/proc/self/fd/{runtime_fd}/maestro.sqlite3", timeout=10.0)
+        return sqlite3.connect(
+            f"/proc/self/fd/{runtime_fd}/maestro.sqlite3",
+            timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
+        )
 
     @staticmethod
     def _apply_migrations(
+        connection: sqlite3.Connection,
+        failure_injector: Callable[[str], None] | None = None,
+    ) -> None:
+        with _INITIALIZATION_LOCK:
+            SQLiteFoundation._apply_migrations_locked(connection, failure_injector)
+
+    @staticmethod
+    def _apply_migrations_locked(
         connection: sqlite3.Connection,
         failure_injector: Callable[[str], None] | None = None,
     ) -> None:
@@ -493,15 +516,16 @@ class SQLiteFoundation:
 
     @staticmethod
     def _prepare_connection(connection: sqlite3.Connection) -> tuple[str, bool]:
-        connection.execute("PRAGMA busy_timeout=5000")
-        journal_mode = str(connection.execute("PRAGMA journal_mode").fetchone()[0]).lower()
-        if journal_mode != "wal":
-            journal_mode = str(connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
-        connection.execute("PRAGMA foreign_keys=ON")
-        foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys").fetchone()[0])
-        if journal_mode != "wal":
-            raise RuntimeError(f"SQLite WAL mode is unavailable: {journal_mode}")
-        return journal_mode, foreign_keys_enabled
+        with _INITIALIZATION_LOCK:
+            connection.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
+            journal_mode = str(connection.execute("PRAGMA journal_mode").fetchone()[0]).lower()
+            if journal_mode != "wal":
+                journal_mode = str(connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]).lower()
+            connection.execute("PRAGMA foreign_keys=ON")
+            foreign_keys_enabled = bool(connection.execute("PRAGMA foreign_keys").fetchone()[0])
+            if journal_mode != "wal":
+                raise RuntimeError(f"SQLite WAL mode is unavailable: {journal_mode}")
+            return journal_mode, foreign_keys_enabled
 
     @staticmethod
     def _record_evidence(
