@@ -61,10 +61,11 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
             health = runtime.foundation().health()
 
             self.assertEqual(health.schema_version, SCHEMA_VERSION)
+            self.assertEqual(health.schema_version, 4)
             with closing(sqlite3.connect(database)) as connection:
                 self.assertEqual(
                     connection.execute("SELECT version FROM schema_versions ORDER BY version").fetchall(),
-                    [(2,), (3,)],
+                    [(2,), (3,), (4,)],
                 )
                 self.assertEqual(
                     connection.execute("SELECT packet_id, status FROM packet_runs").fetchall(),
