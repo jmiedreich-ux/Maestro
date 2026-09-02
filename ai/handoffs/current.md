@@ -15,6 +15,8 @@ Owner.
 
 The accepted source is
 [2026-09-01 real M1–M4 implementation direction](../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md).
+The completion/rework lesson is controlling through
+[M0-D16](../../docs/planning/decisions/m0-d16-closed-completion-and-learning-loop.md).
 
 - Execute the already documented M1–M4 roadmap; do not redesign it.
 - Do not use Foundry, VennueSign, or another live product project as the proving
@@ -30,6 +32,10 @@ The accepted source is
   Only an M0-D15 reserved material choice goes to the Owner.
 - The USB provisioning deferral remains and is not a readiness gate for the
   attended non-live proving run.
+- Every dispatch uses a frozen finite completion manifest. Integration and the
+  first full review finish their finding sets before one combined correction;
+  later out-of-contract improvements do not move the gate. Durable resolution
+  or restart triggers reread and eligibility recomputation without chat.
 
 ## Active build path
 
@@ -53,7 +59,9 @@ SQLite path.
 Materialize approved graph nodes into exact packets; use a real executor adapter
 and clean Git worktree; enforce owned paths, commits, named checks, context and
 usage preflight, time/resource policy, evidence, M0-D05 rejection rules, and one
-eligible targeted correction.
+eligible targeted correction. Compile and freeze M0-D16 requirement/proof
+coverage, reject infeasible or structurally oversized packets, and combine
+terminal Integration/review findings before correction.
 
 ### M4 — Complete the persistent Development Manager loop
 
@@ -61,7 +69,9 @@ Poll and reconcile authority and executor/GitHub facts, atomically select and
 claim eligible work, create the branch/draft PR, route real Integration and
 independent review, recover from restart/duplicates/stale results/timeouts/lease
 expiry, notify the correct authority, and stop at Project Architect acceptance
-unless a genuinely reserved Owner decision is required.
+unless a genuinely reserved Owner decision is required. Persist return and
+resolution events, reread authority, and resume eligible work without a chat
+wake-up.
 
 ## Role and approval chain
 
@@ -105,6 +115,8 @@ Before a Maestro Developer packet is dispatched:
 3. the Project Architect must record routine release under M0-D15; and
 4. the Coordinator must create a clean isolated worktree from the approved
    implementation base.
+5. its M0-D16 completion manifest and requirement/proof coverage must be closed,
+   frozen, feasible, and structurally cohesive.
 
 Implementation then follows the Coding Agent SOP, M0-D05 correction cap,
 Integration route, independent implementation review, and exact final-head

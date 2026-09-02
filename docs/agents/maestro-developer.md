@@ -28,6 +28,8 @@ worktree at the packet's exact base.
 - implementation choices explicitly left inside the packet's bounded design;
 - changes only within packet-owned paths;
 - exact required checks and complete implementation evidence;
+- one result for every frozen M0-D16 completion-manifest item, without changing
+  the manifest or its enumeration set;
 - one commit/result handoff to Integration; and
 - one correction-only commit when M0-D05 authorizes it.
 
@@ -42,7 +44,9 @@ worktree at the packet's exact base.
 - merge, deploy, write the default branch, bypass branch protection, or treat a
   review result as acceptance authority;
 - perform a second correction, hide an `UNTESTED` result, or retain secrets,
-  prompts, or traces outside the approved evidence boundary.
+  prompts, or traces outside the approved evidence boundary;
+- redefine done, add unapproved proof obligations, or treat a later improvement
+  as permission to enlarge the active packet.
 
 ## Required handoff
 
