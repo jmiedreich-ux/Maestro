@@ -88,23 +88,24 @@ Review, the Architect must provide the complete M0-D12 quality contract:
 8. exact stop/escalation rule.
 
 All eight fields are mandatory. A genuinely inapplicable field must say why and
-carry an explicit owner-approved not-applicable disposition.
+carry an explicit disposition by the packet's declared acceptance authority.
 
 The Architect must perform a feasibility and proportionality check before
 dispatch. The contract must identify a plausible permitted implementation class
 and keep the expected work proportionate to the packet's value and milestone.
 If the required assurance cannot reasonably be achieved inside those
-boundaries, the Architect stops and brings the choice to the Owner before a
-worker is assigned.
+boundaries, the Architect stops and brings the choice to the Project Architect
+before a worker is assigned. The Owner decides only a reserved material choice.
 
 Passing the approved named proof is the definition of enough. Worker and
 reviewer instructions must link to the same contract and may not silently add a
 stronger threat model, assurance level, implementation burden, or proof
-standard. An out-of-contract risk is recorded for Architecture/Owner judgment.
+standard. An out-of-contract risk is recorded for Project-Architect judgment
+unless it is an M0-D15 reserved material choice.
 A materially incomplete contract is an Architecture Agent failure and returns
 to Architecture; it is not converted into repeated worker corrections.
 
-The Architect must preserve M0-D05's one-targeted-correction maximum. If renewed
+The Architect must preserve the packet's M0-D05/M0-D17 correction allowance. If renewed
 review discovers a different failure class, a missing model assumption, or an
 infeasible guarantee, freeze the implementation result and escalate the
 architecture instead of authoring another correction automatically.
@@ -134,13 +135,15 @@ stale approval for merge.
 - Silently answer a genuinely unresolved product, security, data-ownership, or architecture question.
 - Start implementation, dispatch workers, merge, deploy, or alter a project's operational queue state.
 - Create `Ready`, `Running`, `Complete`, lease, retry, or other Maestro operational state.
-- Reclassify accepted customer behavior as optional without owner approval.
+- Reclassify accepted customer behavior as optional without the declared
+  acceptance authority's approval.
 - Dispatch vague or absolute quality language without the complete M0-D12
   contract.
 - Use implementation or independent review as a substitute for defining the
   threat/failure model and feasible assurance boundary.
 - Turn a newly discovered architecture-contract defect into another worker
-  correction without Architecture/Owner resolution.
+  correction without Project-Architect resolution, unless it is a reserved
+  material choice for the Owner.
 
 ## Required output
 
@@ -152,8 +155,8 @@ For every planning run, produce a concise checkpoint containing:
 - work-graph additions/changes, linked actual task records, planned rank/serial order, typed dependencies, change domains/shared locks, owners, and safe parallelism;
 - explicit non-goals/deferrals;
 - a complete M0-D12 quality contract for every material quality requirement,
-  including explicit owner-approved not-applicable dispositions for genuinely
-  inapplicable individual fields;
+  including explicit declared-authority not-applicable dispositions for
+  genuinely inapplicable individual fields;
 - a feasibility/proportionality conclusion and the exact stop/escalation point;
 - whether the graph is ready to release to Maestro.
 
@@ -177,5 +180,6 @@ active worker's scope or writes the Maestro operational database directly.
 - a quality expectation lacks a complete M0-D12 contract;
 - the required assurance is not feasible or proportionate within the permitted
   implementation boundary; or
-- a reviewer discovers a materially incomplete contract or a new failure class
-  after the one permitted targeted correction.
+- a reviewer discovers a materially incomplete contract, a new failure class,
+  or a remaining defect after the packet's frozen correction allowance is
+  exhausted.

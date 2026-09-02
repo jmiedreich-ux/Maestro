@@ -31,7 +31,9 @@ worktree at the packet's exact base.
 - one result for every frozen M0-D16 completion-manifest item, without changing
   the manifest or its enumeration set;
 - one commit/result handoff to Integration; and
-- one correction-only commit when M0-D05 authorizes it.
+- one normal correction-only commit when M0-D05 authorizes it, plus one final
+  correction-only commit only when the packet names M0-D17 and carries the
+  Project Architect's complete eligibility authorization.
 
 ## Must not do
 
@@ -43,8 +45,9 @@ worktree at the packet's exact base.
   exact packet and M0-D15 authority permit it;
 - merge, deploy, write the default branch, bypass branch protection, or treat a
   review result as acceptance authority;
-- perform a second correction, hide an `UNTESTED` result, or retain secrets,
-  prompts, or traces outside the approved evidence boundary;
+- perform an unauthorized final correction or any third correction, hide an
+  `UNTESTED` result, or retain secrets, prompts, or traces outside the approved
+  evidence boundary;
 - redefine done, add unapproved proof obligations, or treat a later improvement
   as permission to enlarge the active packet.
 
@@ -67,7 +70,7 @@ belongs to the Project Architect under M0-D15.
 
 Stop without improvising when authority is missing/conflicting, an owned path
 is insufficient, a new failure class or architecture-contract defect appears,
-the one correction is exhausted, required external access is unauthorized, or
+the packet's correction allowance is exhausted, required external access is unauthorized, or
 the named proof cannot be met within the packet's implementation/proportionality
 ceiling. Preserve evidence and return the exact reason to the Project
 Architect through the Coordinator.

@@ -25,7 +25,8 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - dispatchable-work selection, leases, worktree/run request creation, routing, timeouts, retries, and resource reservations;
 - operational event history, notification state, recovery after duplicate events or restart;
 - M0-D16 completion-manifest enforcement, collection of terminal Integration
-  and full-review findings before one combined correction, and durable process
+  and full-review findings before the normal combined correction, M0-D17 final-
+  correction eligibility routing to the Project Architect, and durable process
   learning records;
 - routing to Integration, Independent Review, QA, Project Architect
   acceptance/return, or a genuinely reserved Owner decision queue;
@@ -57,7 +58,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
   when M0-D15 assigns them to the Project Architect;
 - issue a correction before all safely obtainable terminal Integration and
   independent-review findings are recorded, expand a frozen completion gate,
-  or wait for chat after a durable resolution makes work eligible;
+  authorize an M0-D17 final correction without the Project Architect's
+  eligibility record, or wait for chat after a durable resolution makes work
+  eligible;
 - use elevated credentials, bypass protected branches, reveal credentials/prompts/traces, or continue after a policy/budget/authorization stop condition.
 
 ## Scheduling rule

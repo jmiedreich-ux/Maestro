@@ -3,6 +3,8 @@
 **Status:** Accepted  
 **Scope:** Maestro work packets, independent review, rework, and coordinator takeover  
 **Supersedes:** The earlier generic "two-round" escalation proposal
+**Amended by:** [M0-D17](m0-d17-discretionary-final-correction.md) for packets
+released under its explicit authority
 
 ## Decision
 
@@ -13,10 +15,13 @@ or a packet that is invalid before review.
 1. **No scoped diff or no required commit:** reject immediately. There is no
    correction round. Reassign the packet to the proven local Qwen workflow or
    escalate it to coordinator ownership.
-2. **Committed, in-scope work fails a named gate:** allow one targeted
-   correction only. The packet must state the exact defect to correct.
-3. **The correction makes no source change, misses its commit, or remains out
-   of scope:** escalate immediately. Do not loop further corrections.
+2. **Committed, in-scope work fails a named gate:** allow the normal targeted
+   correction. The packet must state the exact defect to correct.
+3. **The correction makes no source change, misses its commit, or is out of
+   scope:** escalate immediately. It is never eligible for a final correction.
+   When the correction is committed/in-scope but the same named defect remains,
+   M0-D17 permits one Project-Architect-authorized final correction only if all
+   of its closed eligibility conditions pass.
 4. **Independent review finds an R3/R4 contract defect:** correct it, renew
    independent review, and add the finding to the shared invariant or template
    before another similar packet is issued.
@@ -127,7 +132,9 @@ tests, the comparable evidence supports an approximately 20% forecast.
 ## Operating consequences
 
 - A diff and commit are delivery prerequisites, not review feedback items.
-- Named-gate feedback is the only path that permits one correction round.
+- Named-gate feedback is the only correction path. M0-D17 permits one normal
+  correction plus one discretionary final correction under its closed Project
+  Architect gate; no packet may receive a third.
 - Review findings that reveal a contract weakness improve the shared packet
   design before that pattern is repeated.
 - Maestro records the decision, routing, gate result, and escalation reason in

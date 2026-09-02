@@ -67,8 +67,10 @@ quality contract, or another choice explicitly reserved by project policy.
   operational state and observed projections.
 - Maestro's Linux service is the only SQLite writer; Atlas is read-only and
   accesses state through the service.
-- M0-D05's one-targeted-correction maximum and complete final-head review
-  coverage remain mandatory.
+- M0-D05's normal targeted correction, M0-D17's optional Project-Architect-
+  authorized final correction for later explicitly governed packets, and
+  complete final-head review coverage remain mandatory. Already released
+  packets keep their frozen correction allowance.
 - M0-D11 and M0-D12 continue to bound filesystem and quality assurance.
 - Automatic merge, production deployment, autonomous successor milestones,
   live-product testing, multi-project parallelism, Murphy, and webhook
@@ -84,4 +86,3 @@ decision. The dedicated Maestro Developer performs Maestro feature
 implementation. The Coordinator manages bootstrap handoffs until the real
 Development Manager can take them over. A separate Owner release is required
 only when a packet crosses one of the reserved boundaries above.
-

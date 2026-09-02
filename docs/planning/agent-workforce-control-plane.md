@@ -31,7 +31,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-09 | Every coding agent follows one project-bound Coding Agent SOP. A specialist overlay may add rules but may never weaken the SOP. |
 | AW-10 | Independent review occurs at meaningful merge boundaries and before a high-risk shared boundary becomes a dependency; it is not required after every microscopic internal step. Every mergeable PR remains independently reviewed by someone other than its author. |
 | AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control Project Architect/Owner acceptance, merge, and next-milestone authority; M0-D15 delegates routine acceptance to the Project Architect but grants no automatic merge. |
-| AW-12 | M0-D16 makes packet completion closed before dispatch: a frozen requirement/proof manifest defines enough, Integration and full-review findings form one correction set, later improvements become successor learning records, and durable resolution events wake eligibility recomputation without chat. |
+| AW-12 | M0-D16 makes packet completion closed before dispatch: a frozen requirement/proof manifest defines enough, Integration and full-review findings form the normal correction set, M0-D17 allows one recorded final correction only when its eligibility test passes, later improvements become successor learning records, and durable resolution events wake eligibility recomputation without chat. |
 
 ## 3. Authority and source-of-truth model
 
@@ -315,10 +315,11 @@ Small scaffolding work may fold into the next substantive review unit. The syste
 The first full reviewer returns one complete finding set against the frozen
 M0-D16 manifest. For committed, in-scope work that can safely be reviewed, the
 Coordinator collects terminal Integration and independent-review results before
-issuing one combined M0-D05 correction. Follow-up review is limited to that
-named set, the correction-only diff/evidence, and directly affected
-consistency. Out-of-contract improvements are recorded for successor planning
-and do not prolong the active packet.
+issuing the normal combined M0-D05 correction. M0-D17 permits one additional
+final correction only after the Project Architect records every eligibility
+fact. Each follow-up review is limited to its named set, correction-only
+diff/evidence, and directly affected consistency. Out-of-contract improvements
+are recorded for successor planning and do not prolong the active packet.
 
 ## 10. Atlas live reporting
 
@@ -435,7 +436,7 @@ its queue, routing, capacity, and evidence views over the same Maestro state.
 
 ### V3 — mature parallel operations
 
-V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters. M0-D05/M0-D16 review and correction limits remain controlling.
+V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters. M0-D05/M0-D16/M0-D17 review and correction limits remain controlling.
 
 ### Later explicit authority decision — continuous operation
 

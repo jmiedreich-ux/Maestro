@@ -45,9 +45,10 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 16. Every executable packet has a frozen, finite definition-of-done manifest
     and complete requirement-to-proof coverage under
     [M0-D16](decisions/m0-d16-closed-completion-and-learning-loop.md).
-    Integration and full-review findings are collected before the one eligible
-    combined correction; new out-of-contract improvements become successor
-    learning items rather than moving the current gate.
+    Integration and full-review findings are collected before the normal
+    combined correction. M0-D17 permits one discretionary final correction only
+    under a closed Project Architect gate; new out-of-contract improvements
+    become successor learning items rather than moving the current gate.
 
 ## 3. System shape
 
@@ -150,9 +151,12 @@ Approved project work is projected into ordered specialist queues. A queue conta
 A local-worker packet follows the tested escalation and routing rule in
 [M0-D05](decisions/m0-d05-rework-review-and-escalation.md). A missing scoped
 diff or required commit is an immediate rejection, not rework. Only committed,
-in-scope work that fails a named gate receives one targeted correction. Further
-non-delivery, missed commit, or scope breach escalates immediately. Dependency,
-configuration, and placeholder violations are rejected before review.
+in-scope work that fails a named gate receives the normal targeted correction.
+M0-D17 permits one discretionary final correction only for the same frozen
+findings under its complete Project Architect eligibility gate. Further
+non-delivery, missed commit, scope breach, or failure after that hard maximum
+escalates immediately. Dependency, configuration, and placeholder violations
+are rejected before review.
 
 [M0-D12](decisions/m0-d12-bounded-quality-contracts.md) governs every material
 quality requirement. Security, reliability, performance, concurrency, recovery,
@@ -171,7 +175,8 @@ evidence, or independence change.
 
 For a committed, in-scope result that can safely be inspected, M0-D16 requires
 the Coordinator to collect terminal Integration and independent-review findings
-before creating the one combined correction. Passing the frozen completion
+before creating the normal combined correction. A later final correction
+requires M0-D17's explicit Project Architect record. Passing the frozen completion
 manifest is the definition of enough. A later out-of-contract improvement is a
 successor learning record, not a new gate for the active packet.
 
@@ -231,8 +236,8 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 
 - Materialize approved graph nodes as exact packets.
 - Run a real agent through an executor adapter in a clean Git worktree.
-- Enforce scope, commits, named checks, context/usage preflight, evidence, and
-  M0-D05's one bounded correction.
+- Enforce scope, commits, named checks, context/usage preflight, evidence,
+  M0-D05's normal correction, and M0-D17's gated final-correction hard maximum.
 - Compile and freeze M0-D16 completion/coverage manifests, reject structurally
   oversized or infeasible packets, and combine Integration/review findings
   before the single eligible correction.

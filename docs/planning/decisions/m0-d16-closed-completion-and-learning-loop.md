@@ -49,8 +49,8 @@ when:
 - required work crosses incompatible owners, permission boundaries, execution
   routes, resource/lock lifetimes, or independent review units;
 - a proof inventory cannot be closed from the named authority;
-- the one permitted correction could not remain inside the packet's owned
-  paths and proportionality ceiling; or
+- the permitted correction allowance could not remain inside the packet's
+  owned paths and proportionality ceiling; or
 - dependencies, configuration, environment, or external authority needed for
   the named proof are unavailable.
 
@@ -58,7 +58,7 @@ The Project Architect splits or rematerializes rejected work. Packet size is
 therefore controlled by structural cohesion and correctability, not an
 arbitrary line or file count.
 
-### 3. Bounded first review and one combined correction
+### 3. Bounded first review and governed correction
 
 The initial Independent Implementation Review examines the full exact range and
 returns one complete set of findings against the frozen manifest and governing
@@ -68,17 +68,18 @@ reviews.
 
 For a committed, in-scope result that can safely be reviewed,
 the Coordinator obtains terminal Integration and independent-review results
-before it issues M0-D05's single correction. Their named findings are combined
-into one correction record. A no-diff/no-commit, scope, dependency,
+before it issues M0-D05's normal correction. Their named findings are combined
+into one correction record. After its targeted results, M0-D17 permits one
+Project-Architect-authorized final correction only when every remaining finding
+and eligibility fact satisfies that decision. A no-diff/no-commit, scope, dependency,
 configuration, or placeholder rejection remains an immediate M0-D05 rejection
 and need not wait for review. A result that cannot safely enter review records
 that reason as its terminal gate.
 
-The correction follow-up verifies only the combined named findings, the
-correction-only diff/evidence, and directly affected consistency. A different
-failure class after correction, a failed or out-of-scope correction, or an
-exhausted correction ends implementation and returns through the exact M0-D05
-route.
+Each correction follow-up verifies only its named findings, correction-only
+diff/evidence, and directly affected consistency. A different failure class,
+failed/out-of-scope correction, failed final correction, or exhausted allowance
+ends implementation and returns through the exact M0-D05/M0-D17 route.
 
 ### 4. Fixed completion and later improvements
 
@@ -174,16 +175,16 @@ authority, quality thresholds, model routing, or acceptance.
    inseparable packet that cannot fit the supported boundary returns to the
    Project Architect before dispatch.
 
-### Q2 — Complete first review and combined correction
+### Q2 — Complete first review and governed correction
 
-1. **Protected outcome:** the single correction is not spent before all named
-   Integration and initial full-review defects are known, and follow-up does not
-   restart general discovery.
+1. **Protected outcome:** the normal correction is not spent before all named
+   Integration and initial full-review defects are known, a final correction is
+   never granted by optimism alone, and follow-up does not restart discovery.
 2. **Operating/failure model:** every committed, in-scope delivery not rejected
    by M0-D05's no-diff/no-commit, scope, dependency, configuration, or
    placeholder classes is reviewable. Integration/review success or failure in
    either arrival order, duplicate/stale results, restart between results, and
-   correction follow-up are in scope.
+   correction follow-up and every M0-D17 eligibility outcome are in scope.
 3. **Explicit exclusions:** an immediate M0-D05 rejection receives neither a
    correction nor a forced independent review; an architecture-contract return
    is not converted into implementation correction; reviewer perfection beyond
@@ -194,19 +195,21 @@ authority, quality thresholds, model routing, or acceptance.
 5. **Sufficient acceptance proof:** M3/M4 tests must prove both arrival orders;
    both-pass, Integration-only-fail, review-only-fail, and both-fail outcomes;
    process restart after either first result; duplicate/stale result rejection;
-   exactly one combined correction containing the union of unique finding IDs;
-   no correction for each immediate M0-D05 rejection class; and a targeted
-   follow-up limited to the named set, correction diff/evidence, and directly
-   affected consistency.
+   exactly one normal combined correction containing the union of unique
+   finding IDs; one case for each M0-D17 eligibility condition passing/failing;
+   final correction granted exactly once only when all pass; no correction for
+   each immediate M0-D05 rejection class; no third correction; and each
+   targeted follow-up limited to its named set, correction diff/evidence, and
+   directly affected consistency.
 6. **Implementation boundary:** Integration/review result records, correction
    aggregator, lifecycle transitions, immutable evidence links, and role
    contracts; no reviewer-authored implementation fix.
-7. **Proportionality ceiling:** two initial terminal gate results and one
-   correction record for the packet; no repeated general review or second
-   correction.
+7. **Proportionality ceiling:** two initial terminal gate results, one normal
+   correction, and at most one Project-Architect-authorized final correction;
+   no repeated general review or third correction.
 8. **Stop/escalation:** missing/unverifiable evidence, a new failure class after
    correction, failed/out-of-scope correction, contract defect, or exhausted
-   correction follows M0-D05/M0-D15 to the Project Architect.
+   correction follows M0-D05/M0-D17/M0-D15 to the Project Architect.
 
 ### Q3 — Durable return, restart, and automatic resume
 

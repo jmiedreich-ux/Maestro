@@ -28,4 +28,4 @@ This SOP applies to every implementation agent. Project policy comes first; this
 
 ## 4. Rework and escalation
 
-One targeted, reviewer-requested rework cycle is allowed unless project policy says otherwise. Its follow-up review is limited to the named finding, correction-only diff/evidence, and directly affected consistency. A different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.
+One normal targeted, reviewer-requested rework cycle is allowed. A packet explicitly governed by M0-D17 may receive one final correction only after the Project Architect records that every closed eligibility condition passes. Each follow-up review is limited to its named finding, correction-only diff/evidence, and directly affected consistency. A third correction, different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.
