@@ -1,11 +1,11 @@
 # M1–M4 Real Implementation Plan
 
 **Status:** Proposed implementation graph; not an execution packet or dispatch
-authorization  
-**Graph revision:** `maestro-m1-m4-real-r1`  
+authorization
+**Graph revision:** `maestro-m1-m4-real-r1`
 **Authority:** [M0-D15 — Real M1–M4 Implementation and Non-Live Proving
-Path](../decisions/m0-d15-real-m1-m4-implementation-path.md)  
-**Source base:** `b67c4e9d277905cb6637be6c2c1851ef4ccb023e`  
+Path](../decisions/m0-d15-real-m1-m4-implementation-path.md)
+**Source base:** `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4`
 **Proving target:** One newly created, non-live project with real repository
 operations, agents, work, checks, Integration, review, waits, corrections, and
 operational events
@@ -61,6 +61,36 @@ only the explicit dependencies below control release. The Coordinator may
 prepare a later packet while another is under review, but may not dispatch it
 until all listed dependencies are accepted.
 
+## Active graph node
+
+Only this node is dispatchable in graph revision `maestro-m1-m4-real-r1`.
+The remaining 21 implementation packets and E2E-01 are candidates whose exact
+node records will be materialized and reviewed before release.
+
+| Field | Value |
+|---|---|
+| Stable ID | `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER` |
+| Project / workstream / milestone | `maestro` / `project-registration` / `M1` |
+| Task link | `docs/planning/packets/m1-01-real-project-authority-loader.md` |
+| Outcome | Load strict project authority from one exact local Git commit and atomically record one candidate or blocked result. |
+| Non-goals | Public create/register CLI, repository or network write, GitHub, worker dispatch, active registration, Atlas, merge, or deployment. |
+| Priority / rank | `P0` / `1` |
+| Risk | `medium`: strict authority parsing and an additive shared SQLite migration, bounded by real-repository and rollback proof |
+| Planned location / role / model class | cloud collaboration worktree / dedicated Maestro Developer / session-inherited Codex model, with factual model and runtime recorded at preflight |
+| Execution class | `codex-cloud-maestro-developer` |
+| Hard dependencies | accepted Alpha-01, Alpha-02, Alpha-03; M0-D15; exact implementation base `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4` |
+| Soft dependencies | none |
+| Downstream unlock | M1-02 packet materialization after routine Project Architect acceptance |
+| Owned domains | manifest/schema; exact-commit Git reader; authority loader; minimal registration persistence; `tests/m1_01/` |
+| Resource locks | `path:maestro-registration-core`; `shared:sqlite-schema`; `file:services-maestro-pyproject` |
+| Input contract version | `maestro-project-authority-load-v1` |
+| Output contract version | `maestro-project-authority-load-result-v1` |
+| Required checks | Alpha-01, Alpha-02, Alpha-03, M1-01 unit suites; Python compileall; exact changed-path review |
+| Integration route | Integration Agent, `validate-only` unless assembly is required |
+| Review route | fresh Independent Implementation Reviewer over exact implementation base/head and any targeted correction diff |
+| Resource envelope | one isolated worktree; one Developer attempt; at most one eligible M0-D05 correction; no parallel writer in the locked domains |
+| Approval boundary | Project Architect for routine packet acceptance; Owner only for a reserved M0-D15 material choice |
+
 ## M1 — Build the core and register projects
 
 | Packet | Outcome | Dependencies | Owned path areas | Sufficient proof | Runtime role / acceptance authority |
@@ -70,7 +100,7 @@ until all listed dependencies are accepted.
 | **M1-03 · Connect real repository and GitHub operations** | Observe repository state and perform only policy-scoped branch, commit, push, draft-PR, check, and review operations; provide no merge or branch-protection bypass. | M1-01, M1-02 | Git/GitHub adapters, secret-reference boundary, tests | Real Git and non-live remote integration prove idempotent branch/PR behavior, redacted outcomes, visible expired/missing credentials, and no default-branch write. | Development Manager repository adapter; Project Architect accepts code. New credential authority returns to the Owner. |
 | **M1-04 · Create a new Maestro-bound project** | Implement `maestro project create`: create the project record, profile, foundation/templates, thin manifest, bootstrap branch/PR, pending state, and non-dispatching dry run. | M1-01, M1-02, M1-03 | CLI; project-create module; project templates; operations docs; tests | Create the dedicated non-live project with actual generated files and commit; registration remains pending until bootstrap merge and dry-run success; replay creates nothing twice. | Project adapter/Development Manager; Project Architect approves its foundation and accepts. |
 | **M1-05 · Register an existing project without changing discovery state** | Implement `maestro project register`: read-only discovery, fact/missing/conflict inventory, proposed binding, approved binding PR, dry run, and final registration. | M1-01, M1-02, M1-03 | CLI; production discovery and project-register modules; docs/tests | Discovery makes no repository change; incomplete authority blocks; the approved PR is binding-only; merge plus successful dry run registers exactly once. | Project adapter/Development Manager; Project Architect accepts. |
-| **M1-06 · Run Maestro as a restart-safe Linux service** | Add the persistent non-root service entry point, startup health, polling clock, orderly shutdown, and registration recovery; prove the created project survives restart. | M1-04, M1-05 | Service entry points and Linux service/install files; CLI health; operations docs/tests | Kill/restart preserves database and binding, creates no duplicate project/dry-run/branch/PR, stays under the physical `var/` boundary, and has no Windows dependency. | Development Manager service; Project Architect accepts M1. |
+| **M1-06 · Run Maestro as a restart-safe Linux service** | Add the persistent non-root service entry point, startup health, polling clock, orderly shutdown, and registration recovery; prove the created project survives service and machine restart. | M1-04, M1-05 | Service entry points and Linux service/install files; CLI health; operations docs/tests | Kill/restart and a controlled Linux host reboot prove service-on-boot, preserve database and binding, create no duplicate project/dry-run/branch/PR, stay under the physical `var/` boundary, and have no Windows dependency. The disruptive host-reboot observation is performed only in the attended approved environment. | Development Manager service; Project Architect accepts M1. |
 
 ## M2 — Make Atlas the live read-only reporting application
 
@@ -107,20 +137,20 @@ until all listed dependencies are accepted.
 
 ### E2E-01 · Run one real non-live milestone through Maestro
 
-**Dependency:** M4-07  
+**Dependency:** M4-07
 **Owned paths:** Only the Project Architect-approved paths in the non-live
 project plus Maestro operational state; no Maestro implementation expansion is
-implicit.  
+implicit.
 **Runtime chain:** Project Architect release → Development Manager claim → real
 Specialist Agent → real Integration Agent → different real Independent
-Reviewer → Project Architect acceptance.  
+Reviewer → Project Architect acceptance.
 **Sufficient proof:** Maestro creates the real branch/worktree, obtains real
 code, checks, commit, and evidence, creates or updates the real draft PR,
 reports live state in Atlas, delivers durable notifications, applies no more
 than one eligible M0-D05 correction, routes an architecture-contract defect
 back to the Project Architect, and stops at the correct acceptance boundary.
 No scripted actor, fixture review result, fabricated observation, or
-live-product repository can satisfy this proof.  
+live-product repository can satisfy this proof.
 **Acceptance authority:** Project Architect for the normal result; Owner only
 if the run exposes a reserved material decision.
 

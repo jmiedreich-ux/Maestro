@@ -1,22 +1,59 @@
 # M1-01 — Load and Record a Real Project Authority Bundle
 
-**Status:** Draft for independent Decision Fidelity Review; not yet released  
-**Packet ID:** `maestro-m1-01-real-project-authority-loader`  
-**Graph node:** `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER`  
-**Graph revision:** `maestro-m1-m4-real-r1`  
-**Planning source base:** `b67c4e9d277905cb6637be6c2c1851ef4ccb023e`  
+**Status:** Corrected draft for targeted Decision Fidelity Review; not yet released
+**Packet ID:** `maestro-m1-01-real-project-authority-loader`
+**Graph node:** `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER`
+**Graph revision:** `maestro-m1-m4-real-r1`
+**Planning authority:** `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4`
+**Implementation base:** `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4`
+**Expected implementation branch:** `implementation/m1-01-real-project-authority-loader`
+**Expected worktree:** `/home/jeremy/Development/Maestro-m1-01-implementation`
 **Decision authority:** [M0-D02](../decisions/m0-d02-project-registration.md),
 [M0-D06](../decisions/m0-d06-project-manifest-contract.md), and
-[M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md)  
-**Roadmap authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1  
-**Implementation role:** dedicated Maestro Developer  
-**Bootstrap coordinator:** Maestro Coordinator  
-**Decision Fidelity route:** fresh independent Decision Fidelity Reviewer  
+[M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md)
+**Roadmap authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1
+**Implementation role:** dedicated Maestro Developer
+**Execution route:** cloud collaboration worktree / dedicated Maestro
+Developer / `codex-cloud-maestro-developer` / session-inherited Codex model;
+factual model/runtime identity is recorded at dispatch preflight
+**Role/SOP versions:** `docs/agents/maestro-developer.md`,
+`docs/agents/coding-agent-sop.md`, `docs/agents/integration-agent.md`, and
+`docs/agents/independent-review-agent.md` at planning authority
+`c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4`; bootstrap Coordinator authority
+is M0-D15 plus `sources/planning/current-handoff.md` at the same revision
+**Bootstrap coordinator:** Maestro Coordinator
+**Decision Fidelity route:** fresh independent Decision Fidelity Reviewer
 **Integration route:** Integration Agent, `validate-only` unless integration
-changes are required  
+changes are required
 **Independent implementation-review route:** fresh Independent Implementation
-Reviewer  
+Reviewer
 **Routine acceptance authority:** Project Architect under M0-D15
+
+## Exact dispatch controls
+
+- Use one isolated worktree at the exact implementation base and the expected
+  branch above. Do not share it with another writer.
+- Acquire `path:maestro-registration-core`, `shared:sqlite-schema`, and
+  `file:services-maestro-pyproject` before implementation. No parallel packet
+  may write these domains until handoff or cancellation releases the locks.
+- One initial Developer attempt is allowed. One M0-D05 correction attempt is
+  available only after committed in-scope work fails a named gate. There is no
+  automatic retry; infrastructure failure or a new failure class stops to the
+  Coordinator and Project Architect respectively.
+- The implementation attempt has a 90-minute ceiling. After 10 minutes with no
+  visible update, the Coordinator may request one bounded factual status; later
+  requests must be at least 10 minutes apart and allow a 2-minute response
+  window. No role invents an ETA.
+- Preflight requires at least 32,768 available context tokens with an 8,192
+  token output/handoff reserve. Record the actual model, runtime, context
+  capacity, and available usage counters. Checkpoint at 16,384 remaining,
+  prepare handoff at 12,288, and stop new implementation work at 8,192.
+  Unsupported counters are recorded as `unavailable`; do not scrape provider
+  state, convert weekly quotas, or treat an unavailable counter as a budget.
+- Handoff must state the exact base and head, changed paths, commands and full
+  outcomes, repository non-mutation evidence, migration/rollback/idempotency/
+  restart/concurrency evidence, model/runtime/context and honest usage facts,
+  released locks, and every known gap or untested item.
 
 ## Outcome
 
@@ -128,9 +165,16 @@ exceptions:
   as a blocked material return and does not resolve it.
 - `exceptions.disposition` is `none` or `declared`. `none` requires an empty
   `items`; `declared` requires at least one unique item.
-- `secret_references` stores names only. Keys or values resembling secret
-  material (`secret_value`, `token`, `password`, `private_key`, credential
-  payloads, or unknown secret-bearing fields) are rejected.
+- `secret_references` stores reference identifiers only. Each list member must
+  match `[A-Z][A-Z0-9_]{2,127}`; for example `GITHUB_APP_PRIVATE_KEY` and
+  `SLACK_BOT_TOKEN` are valid identifiers, not secret values. Mappings,
+  multiline strings, control characters, values over 128 characters, and
+  strings outside that grammar are rejected. The closed schema rejects
+  `secret_values` and every other unknown field. Representative credential
+  payloads beginning `ghp_` or `xoxb-`, and PEM material beginning
+  `-----BEGIN`, are therefore rejected structurally. Words such as `TOKEN`,
+  `PASSWORD`, or `KEY` inside a valid reference identifier are not themselves
+  evidence of secret material.
 
 The implementation adds
 `docs/schemas/maestro-project-v1.schema.json` as the canonical normalized JSON
@@ -153,8 +197,10 @@ ProjectAuthorityLoader.load(
 The loader:
 
 1. verifies `repository_path` is an existing Git worktree and never writes it;
-2. resolves `source_revision` to exactly one commit object and records its full
-   SHA;
+2. requires `source_revision` to be a full 40-hex object ID, resolves it to
+   exactly one commit object, rejects symbolic, abbreviated, ambiguous,
+   missing, malformed, tag, tree, and blob inputs, and records its lowercase
+   full SHA;
 3. reads the manifest and every authority path from that commit's Git tree,
    not from the index or mutable working tree;
 4. verifies the declared default-branch ref exists locally and contains the
@@ -319,8 +365,10 @@ The M1-01 suite must prove:
    overflow, unknown keys, duplicate YAML keys, aliases/anchors/merge/tags,
    invalid types, duplicate values, and malformed exceptions are rejected
    before mutation;
-7. secret reference names are accepted and secret-bearing values/fields are
-   rejected;
+7. valid secret-reference identifiers are accepted; mappings, multiline or
+   control-bearing strings, overlength/grammar-invalid identifiers,
+   `secret_values`, unknown fields, and representative GitHub, Slack, and PEM
+   credential payloads are rejected before mutation;
 8. empty `architecture_paths` or `plan_paths`, including the Alpha-03 accepted
    malformed-array case, is rejected before mutation;
 9. repeated identical invocation returns one durable result and event;
@@ -330,6 +378,14 @@ The M1-01 suite must prove:
 13. repository files, refs, index, config, and status are byte-for-byte or
     semantically unchanged after success and every failure class; and
 14. all Alpha regression suites remain green.
+15. missing, ambiguous, invalid, and non-commit `source_revision` inputs are
+    rejected before mutation;
+16. an injected failure between candidate, run, and event writes rolls the
+    complete transaction back;
+17. closing and reopening storage after a successful commit returns the exact
+    original durable result without another project, run, or event; and
+18. two concurrent identical loads produce one candidate, run, and event and
+    both callers observe the same durable result.
 
 ## Complete M0-D12 quality contracts
 
@@ -346,7 +402,7 @@ The M1-01 suite must prove:
   Git hosting credentials, and live product repositories.
 - **Assurance level:** deterministic read-only Git object access at one full
   commit SHA with before/after repository mutation evidence.
-- **Sufficient proof:** required tests 1, 2, 4, 5, 6, and 13 pass using real
+- **Sufficient proof:** required tests 1, 2, 4, 5, 6, 13, and 15 pass using real
   temporary Git repositories and actual Git commands.
 - **Implementation boundary:** standard library plus argument-array Git
   subprocesses; no shell, Git library, checkout, network, or repository write.
@@ -390,8 +446,9 @@ The M1-01 suite must prove:
   USB restore, long-term retention, and later registration/queue transitions.
 - **Assurance level:** ordered migration, foreign-key/unique/check constraints,
   `BEGIN IMMEDIATE`, canonical JSON, and transactionally atomic rows/events.
-- **Sufficient proof:** required tests 1 and 9 through 12 pass, including an
-  upgrade database containing representative Alpha rows.
+- **Sufficient proof:** required tests 1, 9 through 12, and 16 through 18 pass,
+  including an upgrade database containing representative Alpha rows,
+  transaction rollback, reopen-after-commit, and concurrent identical loads.
 - **Implementation boundary:** additive SQLite schema and service-owned writer
   methods; no ORM, migration framework, database split, or direct client.
 - **Proportionality ceiling:** three production tables and the minimal methods
