@@ -53,8 +53,10 @@ unbounded edge cases.
 A reviewer may record an out-of-contract risk as a non-blocking observation or
 architecture follow-up. If the risk shows that the approved contract itself is
 materially incomplete, the reviewer must identify an **architecture-contract
-defect** and stop the packet. The finding returns to Architecture and the Owner;
-it is not sent through repeated worker corrections.
+defect** and stop the packet. The finding returns to the Project Architect. The
+Project Architect involves the Owner only when resolution requires an M0-D15
+reserved material choice; the defect is not sent through repeated worker
+corrections.
 
 M0-D05 still permits only one targeted correction for committed, in-scope work
 that fails a named gate. A later finding from a different failure class, a

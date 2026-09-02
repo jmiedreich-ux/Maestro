@@ -465,7 +465,7 @@ The following remain implementation design questions for later approved stages:
 - numeric concurrency, cost, and queue-aging policy thresholds;
 - exact supported provider-account observation sources, usage retention,
   allowance warning thresholds, and any budget-enforcement action policy;
-- project-specific specialist-role set and model mapping beyond their versioned adapters.
-- review-round cap/escalation policy and the future auto-merge/autonomous-next-work delegation boundary.
+- project-specific specialist-role set and model mapping beyond their versioned adapters; and
+- the future auto-merge/autonomous-next-work delegation boundary.
 
 These deferrals do not weaken the behavioral contract above.

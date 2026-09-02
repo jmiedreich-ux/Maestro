@@ -220,8 +220,9 @@ where applicable.
 
 It must not continue expanding the threat model or assurance target after those
 conditions are satisfied. A new material risk outside the contract is returned
-to Architecture/Owner or recorded as non-blocking; it is not pursued through
-unlimited implementation corrections.
+to the Project Architect or recorded as non-blocking. The Project Architect
+involves the Owner only for an M0-D15 reserved material choice; the risk is not
+pursued through unlimited implementation corrections.
 
 ## Escalate when
 

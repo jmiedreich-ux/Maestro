@@ -160,8 +160,9 @@ and similar language must define its protected outcome, operating/threat/failure
 model, explicit exclusions, practical assurance level, sufficient acceptance
 proof, permitted implementation boundary and complexity, proportionality
 ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough. A newly
-discovered material gap in that contract returns to Architecture and the Owner;
-it does not create an unlimited worker/review loop.
+discovered material gap in that contract returns to the Project Architect. The
+Owner is involved only for an M0-D15 reserved material choice; the gap does not
+create an unlimited worker/review loop.
 
 After an initial full review, M0-D05 requires correction follow-ups to verify
 only the named findings, the correction-only diff, and directly affected

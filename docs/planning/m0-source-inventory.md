@@ -81,7 +81,7 @@
 | C-50 | Every executable packet freezes a finite requirement/proof manifest before dispatch; ambiguous universal claims, incomplete coverage, infeasible ownership, and structurally oversized work are rejected by compilation. | S-13 / M0-D16 / Master Plan §§5, 7 / Control Plane §§6, 9 |
 | C-51 | For safely reviewable committed work, Integration and the first full independent review complete their finding sets before the one combined correction. Passing the frozen contract defines enough; later out-of-contract improvements are successor learning items. | S-13 / M0-D16 / M0-D05 / review roles |
 | C-52 | Returns and resolutions are durable events. Routine contract/exhaustion returns go to the Project Architect, reserved choices to the Owner, and resolution/restart triggers authoritative reread and eligibility recomputation without a chat wake. | S-13 / M0-D16 / M0-D15 / Manager role |
-| C-53 | Maestro records cycle/wait/gate time, review/correction/escalation counts, late-requirement causes, and the reusable policy/template/invariant change learned from rework. | S-13 / M0-D16 / Control Plane §§7, 10 |
+| C-53 | Maestro records elapsed and active cycle time, queue/wait/gate time, review/correction/escalation counts, correction cause linked to finding IDs/classification, late-requirement causes, and the reusable compiler/template/invariant/role-policy change learned from rework. | S-13 / M0-D16 / Control Plane §§7, 10 |
 
 ## Required diagram concepts retained
 
