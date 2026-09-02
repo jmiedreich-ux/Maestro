@@ -841,8 +841,13 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   `services/maestro/maestro/operational_state.py`,
   `tests/m1_02/test_schema_and_records.py`, and
   `tests/m1_02/test_context_and_payloads.py`.
-- **Proof group:** final proofs 1-9 for A-owned schema/record routes and 23-29;
-  all Alpha/M1-01 regressions and compileall also run.
+- **Proof group:** final proofs 1-9 for A-owned schema/record routes; proof 23
+  only for A-owned `OperationalStateStore` constructors/factories and public
+  record/read routes; proof 24 only for closed policy validation, digest,
+  arithmetic, starting-input fit, and both representative policies without a
+  lifecycle transition; and proofs 25-29. All Alpha/M1-01 regressions and
+  compileall also run. `RecoveryService`, transition/claim/recovery entry-route
+  containment, and enforcement before `Running` are B proof, not A proof.
 - **Routes:** dedicated Maestro Developer -> Integration Agent
   `validate-only` unless assembly is required -> fresh Independent
   Implementation Reviewer over exact M1-01-base/A-head -> routine Project
@@ -873,8 +878,10 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   `tests/m1_02/test_transitions_and_claims.py`,
   `tests/m1_02/test_recovery.py`, and
   `tests/m1_02/test_acceptance_and_notifications.py`.
-- **Proof group:** final proofs 7-22 and 30-31 plus all accepted A proofs,
-  Alpha/M1-01 regressions, and compileall.
+- **Proof group:** final proofs 7-22 and 30-31; the remainder of proof 23 for
+  every transition/claim/recovery route and `RecoveryService`; and proof 24's
+  binding to the materialized packet policy plus rejection before `Running`.
+  All accepted A proofs, Alpha/M1-01 regressions, and compileall also run.
 - **Routes:** dedicated Maestro Developer -> Integration Agent
   `validate-only` unless assembly is required -> fresh Independent
   Implementation Reviewer over exact accepted-A-base/B-head -> routine Project
