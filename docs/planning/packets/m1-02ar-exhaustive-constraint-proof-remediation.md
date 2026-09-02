@@ -176,11 +176,11 @@ APP-MAP-11 _review: V02[review_id,packet_id,reviewer_role,reviewer_instance]; V0
 APP-MAP-12 _notification: V02[notification_id,run_id,destination_reference,audience,message_type,grouping_key]; V10[event_id]; V03[packet_id]; V09[escalation_at]; V17[payload_json]; V08[now]; R10[channel,severity,state,attempt_count,last_error_payload_json,next_attempt_at]
 APP-MAP-13 _worker_progress: V02[progress_id,attempt_id,next_permitted_action]; V17[plan_payload_json,current_step_payload_json,blocker_payload_json]; V08[observed_at,received_at]; R11[eta_text,confidence,status_request_state]
 APP-MAP-14 _context_usage: V02[context_usage_id,attempt_id,model_identity,runtime_identity]; V03[quantization]; V10?[configured_context_limit]; V05[context_policy_digest]; V18[starting_input_measurement_json]; V21[token_measurements_json]; V19[cost_measurement_json]; V08[observed_at,now]; R12[future_growth_estimate_json,counting_method,availability_state]
-APP-MAP-15 _allowance: V02[allowance_observation_id,account_reference,native_window_type]; V06[provider]; V15?[used_value,remaining_value]; V03[native_unit]; V09[reset_at]; V08[observed_at]; R13[precision,measurement_quality,freshness]
+APP-MAP-15 _allowance: V02[allowance_observation_id,account_reference,native_window_type,native_unit?]; V06[provider]; V15?[used_value,remaining_value]; V09[reset_at]; V08[observed_at]; R13[native_unit null relation,precision,measurement_quality,freshness]
 APP-MAP-16 _reconciliation: V02[usage_reconciliation_id,allowance_observation_id,native_unit]; V15[window_change_value,tracked_controlled_value,registered_coarse_value,unattributed_value]; V08[observed_at]; R14[measurement_quality,balance]
 APP-MAP-17 _acceptance: V02[acceptance_id,subject_id,authority_reference]; V03[packet_id,run_id,supersedes_acceptance_id]; V10[sequence_number]; V04[exact_head]; V14[review_coverage_json]; V17[reason_payload_json]; V08[created_at]; R15[subject_type,required_authority,decision]
 APP-MAP-18 _merge_observation: V02[merge_observation_id,run_id,packet_id,repository_reference,default_branch,source_reference,performed_by_reference]; V03[acceptance_id,delegation_reference]; V04[accepted_head,merge_commit]; V14?[review_coverage_json]; V08[observed_at]; R16[source_kind,performed_by_authority]
-APP-MAP-19 update_context_usage: V02[attempt_id]; V10[expected_version]; V01[update keys]; V21[token_measurements]; V19[cost_measurement]; V08[observed_at,now]; R12[availability,version,precedence]
+APP-MAP-19 update_context_usage: V02[attempt_id]; V10[expected_version]; V01[update keys]; V21[token_measurements]; V19[cost_measurement]; V22[actor]; V08[observed_at,now]; R12[availability,version,precedence]
 APP-MAP-20 snapshot/events_after: V02[entity_type,entity_id]; V11[event_id]; R19[entity allowlist,limit 1..1000]
 APP-MAP-21 shared append: V02[idempotency_key]; V22[actor]; V08[now]; V23[replay/conflict]; V24[constraint mapping]; V25[busy exhaustion]
 ```
@@ -238,14 +238,14 @@ stress; `AR-R07` scope and handoff; `AR-R08` combined gates/one correction;
 | `AR-P09` | Integration: one terminal full crosswalk result with one finding set |
 | `AR-P10` | fresh reviewer: one full base-to-initial-head review and finding set |
 | `AR-P11` | Coordinator/Developer/gates: no correction needed, or one union correction and targeted follow-up |
-| `AR-P12` | Project Architect: AR-R10 learning/return record complete |
+| `AR-P12` | Project Architect: AR-R10 learning record is complete; if a return trigger occurred, its exact immutable return record is complete, otherwise terminal P01..P11 evidence proves and records `PASS:NoReturnRequired` |
 | `AR-P13` | Project Architect: AR-R09 exact-head combined M1-02A+AR acceptance |
 
 Coverage is fixed: `AR-R01->AR-P01`; `AR-R02->AR-P02`;
-`AR-R03->AR-P03,AR-P06`; `AR-R04->AR-P04,AR-P05`;
+`AR-R03->AR-P03`; `AR-R04->AR-P04,AR-P05`;
 `AR-R05->AR-P06`; `AR-R06->AR-P07`; `AR-R07->AR-P08`;
-`AR-R08->AR-P09,AR-P10,AR-P11`; `AR-R09->AR-P10,AR-P13`; and
-`AR-R10->AR-P08,AR-P12`.
+`AR-R08->AR-P09,AR-P10,AR-P11`; `AR-R09->AR-P13`; and
+`AR-R10->AR-P12`.
 Allowed states are `PASS|FAIL`, review `APPROVE|REQUEST_CHANGES`, and acceptance
 `Accepted|Returned`; no `N/A` or `UNTESTED`. Technical completion means P01..P12
 pass at one exact head and P13 records `Accepted`. A later improvement cannot
@@ -290,18 +290,25 @@ Bootstrap return evidence is immutable and content-digested:
 M1_02AR_RETURN_V1={packet_id,implementation_base,exact_head,terminal_gate,
 failed_proof_ids[],classification,responsible_authority,next_permitted_action,
 idempotency_key,evidence_references[],observed_at}
-M1_02AR_LEARNING_V1={packet_id,H0,H1,active_seconds,queue_seconds,gate_seconds,
-first_pass_result,integration_count,full_review_count,followup_count,
-correction_count,hard_escalation,findings[{proof_ids,class,compiler_discoverable,
-gate}],late_requirement,absence_reason,reusable_rule,reusable_authority,
-recorded_at,evidence_references[]}
+M1_02AR_LEARNING_V1={packet_id,H0,H1,elapsed_seconds,active_seconds,
+queue_seconds,wait_seconds,gate_seconds,first_pass_result,integration_count,
+full_review_count,followup_count,correction_count,correction_cause,
+hard_escalation,findings[{finding_ids[],proof_ids[],class,
+compiler_discoverable,gate}],late_requirement,absence_reason,
+reusable_change_category,reusable_rule,reusable_authority,
+no_general_change_reason,recorded_at,evidence_references[]}
 ```
 
 Classification/next action use the closed M0-D16/M0-D05 values. The known late
 requirement is “proof 4 lacked a finite assurance carrier”; absence reason is
 “ambiguous universal wording”; `compiler_discoverable=true`; reusable rule is
 “static identity plus finite high-risk behavior and proportional validator
-wiring replaces a general declaration parser”; authority is `M0-D16@c5a3326`.
+wiring replaces a general declaration parser”; category is `Compiler`;
+authority is `M0-D16@c5a3326`; and `no_general_change_reason=null`.
+`correction_cause` is null only when no correction occurs; otherwise it names
+the combined finding IDs and classifications. P12 passes either by recording
+the exact triggered return or by recording `PASS:NoReturnRequired` after
+P01..P11 prove no return trigger exists; this is a positive branch, not `N/A`.
 Chat is not a wake mechanism. Only committed authority/environment change,
 terminal gate, recorded resolution, expiry, or restart causes reread. No B work,
 merge, deploy, project registration, external access, or live action is unlocked
@@ -329,7 +336,8 @@ weaken an assertion.
 behavior or move done. Model: exact ranges, environment, regressions, combined
 gates, one correction. Excludes B/C, dependencies, external/live systems,
 merge/deploy. Assurance: bounded regression and complete listed-ID crosswalk.
-Proof: P01,P07..P13. Boundary: owned paths/roles above. Ceiling: 150 minutes and
-one correction. Stop: unsupported environment, scope/contract defect, reserved
-choice, or new post-correction class returns Project-Architect-first; Owner is
-consulted only through M0-D15.
+Proof: P01,P07..P11, P12's exact return-or-`PASS:NoReturnRequired` branch, and
+P13. Boundary: owned paths/roles above. Ceiling: 150 minutes and one correction.
+Stop: unsupported environment, scope/contract defect, reserved choice, or new
+post-correction class returns Project-Architect-first; Owner is consulted only
+through M0-D15.
