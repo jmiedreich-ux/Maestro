@@ -64,8 +64,10 @@ The reviewer accepts only a completed, verified implementation awaiting
 independent review. It does not claim implementation work, reprioritize queues,
 or select another packet.
 
-The result returns to the Coordinator/Architecture/Owner route named by the
-packet. Approval advances only to the next already authorized acceptance gate.
+The result returns to the Coordinator/Project Architecture route named by the
+packet. Under M0-D15, routine acceptance and architecture-contract disposition
+belong to the Project Architect; only a reserved material choice proceeds to
+the Owner. Approval advances only to the next already authorized acceptance gate.
 It does not itself grant merge, deployment, owner acceptance, or successor
 packet authority.
 
@@ -140,9 +142,10 @@ stop/escalation rule—or when satisfying it requires a new owner choice. A fiel
 is genuinely inapplicable only when its rationale and explicit owner approval
 are recorded.
 
-Freeze the implementation result and return the defect to the Architecture
-Agent and Owner. Do not direct the implementor to solve missing architecture,
-and do not create repeated correction rounds.
+Freeze the implementation result and return the defect to the Project
+Architecture Agent. The Architect involves the Owner only if resolving it
+requires an M0-D15 reserved material choice. Do not direct the implementor to
+solve missing architecture, and do not create repeated correction rounds.
 
 ### Non-blocking observation
 

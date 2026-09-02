@@ -1,6 +1,7 @@
 # M0-D13 — Synthetic Control-Loop Qualification Before Foundry V1
 
-- **Status:** Accepted by the Owner on 2026-08-31
+- **Status:** Accepted historically; mandatory synthetic Alpha-04 prerequisite
+  superseded by [M0-D15](m0-d15-real-m1-m4-implementation-path.md)
 - **Planning release:** Original decision and Alpha-04 plan received Decision
   Fidelity APPROVE at `0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged
   in PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`; the later
@@ -21,6 +22,14 @@ Alpha-03 proposes a synthetic project binding and explicitly excludes queues,
 scheduling, and dispatch. The prior roadmap therefore made a real Foundry
 packet the first whole-loop proving subject while reserving the full agent
 workforce for V2.
+
+## Later direction
+
+M0-D15 removes this fixture-only qualification as a prerequisite and directs
+the already designed real M1–M4 implementation path. The eligibility,
+idempotency, patient-status, bounded-correction, recovery, and acceptance-stop
+semantics below remain requirements, but scripted actors and fabricated
+observations cannot satisfy end-to-end acceptance.
 
 ## Decision
 

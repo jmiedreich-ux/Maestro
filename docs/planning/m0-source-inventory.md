@@ -17,6 +17,7 @@
 | S-09 | [Synthetic control-loop qualification direction, 2026-08-31](../../sources/planning/2026-08-31-synthetic-control-loop-qualification.md) | Owner direction to prove assignment and role handoffs synthetically before the first live Foundry packet | Reconciled into M0-D13, the Master Plan, the Control Plane, and the Alpha-04 proposal |
 | S-10 | `origin/docs/agent-usage-observability` at `bb4a35a` and [context/usage direction, 2026-08-31](../../sources/planning/2026-08-31-context-and-token-reporting.md) | Earlier allowance/usage design plus Owner direction to begin context, token, and ChatGPT/Codex weekly-allowance reporting with the control loop | Early bounded subset reconciled into M0-D14 and Alpha-04; broader proposal remains unresolved |
 | S-11 | [Alpha-03 Owner closeout, 2026-09-01](../../sources/planning/2026-09-01-alpha-03-owner-closeout.md) | Owner confirmation that the official first Qwen Alpha-03 result was signed off, acceptance of its recorded fixture-only limitation, and direction to pause Alpha-04 | Reconciled into the Alpha-03 done record, current handoff, and Architecture continuity |
+| S-12 | [Real M1–M4 implementation direction, 2026-09-01](../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md) | Owner direction to complete the already designed M1–M4 roadmap, prove it through a new non-live project with real actors/actions, delegate routine approval to the Project Architect, and preserve the USB deferral | Reconciled into M0-D15, the Master Plan, and the current handoff |
 
 ## Original M0 agreements retained
 
@@ -43,7 +44,7 @@
 | C-19 | Known pending work immediately records worker, start, expected result, next allowed action, timeout/retry policy, and blocking gate. | Master Plan §§3–4 |
 | C-20 | Completion advances through polling first; webhooks are a later optimization. | Master Plan §4 / Control Plane §12 |
 | C-21 | Transitions are idempotent and recoverable after restart, duplicate poll, timeout, or stale completion. | Master Plan §4 / Control Plane §7.4 |
-| C-22 | One milestone is the initial boundary; a run stops for owner acceptance/merge. Multi-milestone autonomy requires later explicit approval. | Master Plan §9 / Control Plane §13 |
+| C-22 | One milestone is the initial boundary; a run stops for the project's declared acceptance/merge authority. M0-D15 delegates routine acceptance to the Project Architect and reserves material choices/owner-performed merge to the Owner. Multi-milestone autonomy still requires later explicit approval. | Master Plan §9 / Control Plane §13 / M0-D15 |
 | C-23 | Murphy is a distinct Azure/deployed-environment QA capability, manually triggered under project policy. | Master Plan §8 / Control Plane §4 |
 | C-24 | Murphy receives environment, deployed version, and scoped credentials; it returns report, issues, and structured run result. | Master Plan §8 |
 | C-25 | M0 is planning/consolidation only; it does not build the runner. | Master Plan §9 / Control Plane §13 |
@@ -69,9 +70,13 @@
 | C-40 | Current VennueSign policy permits only one active milestone. Parallelism is limited to independent packets inside that milestone until its project policy changes. | Control Plane §12 |
 | C-41 | Actual VennueSign work remains GitHub Issues/PRs. Architecture graph nodes link by stable ID; Maestro and Atlas never maintain a competing task tracker. | Control Plane §§3, 6, 12 |
 | C-42 | Eventual Maestro merge and autonomous next-work selection require a separately reviewed delegation policy. This document merge does not grant product-code merge authority. | Control Plane §13 |
-| C-43 | Before Foundry V1 executes a live packet, Maestro must qualify one fixture-only control loop covering eligibility, one assignment, patient worker-status inquiry, Integration/review routing, bounded correction, restart/duplicate safety, and the Owner stop. Worker timing may remain honestly unknown; Atlas reports the durable response but never asks the worker. Alpha-03 remains unchanged; real specialist queues and parallel dispatch remain V2. | M0-D13 / Master Plan §9 / Control Plane §§7, 10, 13 / Alpha-04 proposal |
+| C-43 | Historical M0-D13 introduced a fixture-only control-loop prerequisite. M0-D15 supersedes that proving method and Foundry-first sequence while preserving eligibility, one assignment, patient worker-status inquiry, Integration/review routing, bounded correction, restart/duplicate safety, honest unknown timing, and the applicable acceptance stop as real M1–M4 requirements. | M0-D13 / M0-D15 / Master Plan §9 / Control Plane §§7, 10, 13 |
 | C-44 | Context and usage reporting begins at preflight. Supported ChatGPT/Codex weekly allowance observations remain distinct from attempt tokens; controlled usage, coarse registered activity, and unattributed remainder reconcile to account change; local Qwen capacity stays separate; unsupported facts are `unavailable` and Atlas is read-only. | M0-D14 / Master Plan §§2, 9 / Control Plane §§7, 10–13 / Alpha-04 proposal |
-| C-45 | Alpha-03 is complete at official corrected head `f21e4a2`; its remaining malformed authority-conflict limitation is explicitly accepted only for trusted Alpha fixtures. The later Qwen rerun is benchmark-only, and Alpha-04 remains paused pending new Owner direction. | S-11 / Alpha-03 done record / current handoff |
+| C-45 | Alpha-03 is complete at official corrected head `f21e4a2`; its remaining malformed authority-conflict limitation is explicitly accepted only for trusted Alpha fixtures. The later Qwen rerun is benchmark-only. M0-D15 subsequently retired synthetic Alpha-04 as an implementation prerequisite. | S-11 / S-12 / Alpha-03 done record / M0-D15 |
+| C-46 | The existing M1–M4 roadmap is the active implementation path. The proving target is a newly created non-live project; runtime actors, work, repository operations, Integration, review, and evidence are real rather than scripted. | S-12 / M0-D15 / Master Plan §9 |
+| C-47 | The Project Architect resolves and approves routine planning/architecture work under delegated authority; only genuinely material reserved choices return to the Owner. | S-12 / M0-D15 / role contracts |
+| C-48 | The dedicated Maestro Developer implements Maestro product features. The Coordinator performs bootstrap orchestration until the runtime Development Manager exists. | S-12 / M0-D15 / current handoff |
+| C-49 | The USB provisioning deferral remains and is not a gate for M1–M4 completion or the attended non-live end-to-end proving run. | S-12 / M0-D07 / M0-D15 |
 
 ## Required diagram concepts retained
 
@@ -96,7 +101,7 @@
 | Atlas provides top-level routing/model visibility without becoming an authority fork | Control Plane §10; Atlas Transition Assessment |
 | SOP and proportionate independent review govern every coding packet | Control Plane §9; `docs/agents/coding-agent-sop.md`; `docs/agents/independent-review-agent.md` |
 | M0 remains design-only and V1 remains a deliberately narrow, owner-gated loop | Master Plan §9; Control Plane §13 |
-| A synthetic whole-loop qualification occurs after Alpha-03 and before live Foundry V1 | M0-D13; Alpha-04 proposal; Master Plan §9; Control Plane §13 |
+| Historical synthetic qualification and its later real proving supersession | M0-D13; M0-D15; Master Plan §9; Control Plane §13 |
 | Allowance, context, and token reporting starts in that synthetic loop without provider scraping or false precision | M0-D14; Alpha-04 proposal; Usage & Observability proposal; Control Plane §§10–13 |
 
 ## Current M0 next action

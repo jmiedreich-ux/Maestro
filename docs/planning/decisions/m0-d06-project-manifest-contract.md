@@ -52,7 +52,9 @@ its bootstrap PR.
 
 ## First application
 
-Foundry is the first existing repository to receive a proposed
-`maestro.project.yaml`, after its read-only registration discovery is reviewed.
-VennueSign follows later, after its registration discovery identifies the work
-needed to make it safe for Maestro dispatch.
+Per [M0-D15](m0-d15-real-m1-m4-implementation-path.md), the first manifest is
+created for a new non-live project through `maestro project create`. Foundry
+may later receive a proposed `maestro.project.yaml` only after its read-only
+registration discovery is reviewed. VennueSign follows later, after its
+registration discovery identifies the work needed to make it safe for Maestro
+dispatch.

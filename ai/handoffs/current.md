@@ -1,156 +1,129 @@
 # Maestro — Current Project Handoff
 
-**Status:** Alpha-01 through Alpha-03 are complete. Alpha-03's official Local
-Qwen implementation is accepted at exact corrected head
-`f21e4a2ff25cead8b972b4433da33f0e9910efc5` by explicit Owner closeout on
-2026-09-01. The later Qwen rerun is benchmark evidence only. Alpha-04 planning
-and its reporting amendment are merged, but Alpha-04 is paused by the Owner and
-has no execution packet or implementation release. No real worker, API/UI,
-provider-account access, Foundry, VennueSign, real project registration,
-project-adapter, GitHub automation, or USB-recovery implementation is
-authorized by this handoff.
+**Status:** M1–M4 real implementation is authorized under
+[M0-D15](../../docs/planning/decisions/m0-d15-real-m1-m4-implementation-path.md).
+Alpha-01 through Alpha-03 remain completed historical foundation work. The
+synthetic Alpha-04 prerequisite and Foundry-first proving target are
+superseded. The active objective is to complete M1–M4 and prepare a newly
+created non-live project for an attended, real-agent end-to-end test with the
+Owner.
 
-**Alpha-03 complete:** The fixture-only [Alpha-03 architecture plan](../../docs/planning/proposed/alpha-03-synthetic-project-discovery.md)
-and [R2 execution packet](../../docs/planning/packets/alpha-03-synthetic-project-discovery.md)
-received their required planning approvals and merges. The official Local Qwen
-implementation completed at `e3929c46882dbd0512bac377bdef1440d4e17cff`
-with its targeted correction at
-`f21e4a2ff25cead8b972b4433da33f0e9910efc5`. The full and targeted
-implementation reviews returned `REQUEST_CHANGES`; all named commands passed,
-but a conflicting empty required authority-path array remained accepted. On
-2026-09-01 the Owner confirmed the official run was signed off and directed
-closeout at `f21e4a2`. The [Alpha-03 done record](../../docs/planning/done/alpha-03-synthetic-project-discovery.md)
-preserves that explicit Owner acceptance exception and the exact trusted-fixture
-limitation. The benchmark head `e9a0a0196a019962f2f15095b8f492f62643e95e`
-is not the accepted implementation.
+**Planning base:** `8aa4cb517dcb902060cf5acd1d58806787e03841`
+(`origin/master` when the M1 readiness branch was created)
 
-**Alpha-04 paused:** On 2026-08-31, the Owner agreed that
-Maestro must qualify its core assignment/control loop synthetically before a
-real Foundry packet becomes the first whole-loop proving subject. Accepted
-[M0-D13](../../docs/planning/decisions/m0-d13-synthetic-control-loop-qualification.md)
-and the proposed
-[Alpha-04 architecture plan](../../docs/planning/proposed/alpha-04-synthetic-control-loop-qualification.md)
-preserve Alpha-03 unchanged and insert one fixture-only qualification after
-Alpha-03 acceptance and before Foundry V1. The original plan received fresh
-Decision Fidelity **APPROVE** at exact head
-`0b416ac204a07285f2f5fe1f6e000c40a6f323b3` and merged in PR #11 at
-`dcca2174dd919aa204707961f1b33ad15de9af41`.
+## Current Owner direction
 
-The Owner then clarified that the Coordinator must make a patient bounded
-request for a non-terminal worker's reported plan/current
-step/blocker/ETA-or-unknown before assuming a stall or taking timeout/retry
-action. Atlas may later report the durable status but never asks the worker.
-The Owner also identified the earlier Usage & Observability proposal and
-approved beginning its bounded allowance/context/usage subset under
-[M0-D14](../../docs/planning/decisions/m0-d14-context-and-token-reporting.md):
-record a supported ChatGPT/Codex weekly window when available, keep attempt
-tokens distinct from allowance units, reconcile controlled/coarse/unattributed
-usage, keep local Qwen capacity separate, and report unsupported facts as
-`unavailable` without scraping. The combined amendment merged in PR #12 at
-`b2594d9ab4cad528cd6272622f68162850a0584e`. The broader multi-provider,
-live-adapter, UI, retention, threshold, and enforcement proposal remains
-unresolved. No Alpha-04 execution packet exists. On 2026-09-01 the Owner
-explicitly paused Alpha-04; do not draft, review, release, or implement it until
-the Owner provides new direction.
+The accepted source is
+[2026-09-01 real M1–M4 implementation direction](../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md).
 
-**Alpha pre-build review:** [Maestro Alpha Decision-Fidelity Review](../../docs/planning/maestro-alpha-decision-fidelity-review.md) records the owner-approved synthetic-only Alpha layout and mandatory `maestro run-packet` boundary. M0-D01 now explicitly removes Atlas command requests: Atlas is strictly read-only and never a command caller. M0-D07 records an approved USB physical-provisioning deferral: Alpha may build backup-health support, but Alpha recovery acceptance remains blocked until the documented mount convention and real backup/restore evidence exist. The review itself authorizes no application code.
+- Execute the already documented M1–M4 roadmap; do not redesign it.
+- Do not use Foundry, VennueSign, or another live product project as the proving
+  target.
+- Use `maestro project create` to establish a new non-live project.
+- End-to-end actors, work, Git operations, commits, checks, Integration,
+  independent review, waits, corrections, and failures are real—not scripted
+  fixture judgments or fabricated observations.
+- The dedicated Maestro Developer implements Maestro product features. The
+  Coordinator manages bootstrap handoffs until the runtime Development Manager
+  exists.
+- The Project Architect handles routine approval and architecture returns.
+  Only an M0-D15 reserved material choice goes to the Owner.
+- The USB provisioning deferral remains and is not a readiness gate for the
+  attended non-live proving run.
 
-## What is now established
+## Active build path
 
-Maestro remains a standalone, project-neutral development-operations system. It will coordinate an agent-driven specialist workforce from project-approved architecture/work graphs, while keeping repository/GitHub as the project’s design/code/task authority and Maestro’s database as operational state.
+### M1 — Build the core and create/register projects
 
-The current M0 expansion is captured in:
+Implement production operational records, migrations, the project manifest,
+exact authority loader, `project create`, `project register`, the
+binding/bootstrap PR flow, non-dispatching dry run, leases, idempotent
+transitions, the persistent Linux service, and restart reconciliation.
 
-- [Master Plan](../../docs/planning/maestro-master-plan.md)
-- [Agent Workforce Control Plane](../../docs/planning/agent-workforce-control-plane.md)
-- [M0 Source Inventory and Capture Register](../../docs/planning/m0-source-inventory.md)
-- [Agent-workforce planning source capture](../../sources/planning/2026-08-29-agent-workforce-conversation.md)
-- [Independent planning capture audit](../../docs/planning/agent-workforce-capture-audit.md)
-- [Atlas Transition Assessment](../../docs/planning/atlas-transition-assessment.md)
-- [Usage & Observability proposal](../../docs/planning/proposed/agent-usage-observability.md)
-- [Agent Role Library](../../docs/agents/)
+### M2 — Merge Atlas into Maestro reporting
 
-## Decisions to preserve
+Provide a service-mediated snapshot/event API and local read-only Atlas views
+for projects, work graphs, queues, agents, waits, evidence, Integration/review,
+architecture returns, notifications, usage/capacity, and acceptance boundaries.
+Atlas has no write, route, approval, retry, merge, provider-query, or direct
+SQLite path.
 
-1. A fresh project Architecture Agent reads a project handoff and approved authority, proposes a versioned work-graph release, and never directly dispatches or implements work.
-2. Maestro is the development manager. It projects approved graph nodes into specialist planned queues, calculates the dispatchable subset, leases compatible work, and moves results through Integration, independent review, and the project’s acceptance/merge policy.
-3. The planned queue is visible even when entries are future, blocked, or waiting. A later item may run before a blocked earlier one only when the approved graph and locks explicitly permit it.
-4. Integration is a first-class queue and may be promoted when it safely unlocks capacity. If it changes code, a different reviewer reviews the integrated result.
-5. Atlas is a live read/projection interface—not a controller, editable plan, task tracker, code editor, or direct database client.
-6. Every coding agent follows the project-bound Maestro SOP. Independent review is proportional to risk but required for every mergeable PR and high-risk shared boundaries before downstream use.
-7. V1 remains one approved milestone, one hosted worker, one draft PR, and owner acceptance/merge. Agent-workforce queues and limited parallel dispatch begin no earlier than V2.
-8. Before Maestro executes a plan, milestone, packet, or build instruction, a separate Maestro Decision Fidelity Reviewer must trace every accepted governing choice into that proposal. Missing, changed, assumed, conflicting, or unapproved-deferred choices block execution. This review occurs before plan approval, before build instructions, and before milestone acceptance; it does not replace independent code review.
-9. Every material quality requirement must be bounded before dispatch under [M0-D12](../../docs/planning/decisions/m0-d12-bounded-quality-contracts.md): protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Passing the named proof is enough. A materially incomplete quality contract is an Architecture/Owner issue, not an unlimited worker-correction loop.
-10. Independent review is full once. After a correction, the same independent reviewer normally performs a targeted follow-up limited to the named findings, correction-only diff, and directly affected consistency. Full review restarts only for a recorded base/range, unrelated-scope, shared-contract, evidence, or independence change.
-11. Every default-branch merge must have complete current review coverage: one exact full reviewed range plus every targeted-reviewed correction-only diff covering the exact final head. Uncovered or materially stale changes block merge.
-12. Before live Foundry V1 execution, Maestro must pass the M0-D13 fixture-only control-loop qualification. Alpha-04 may prove one synthetic assignment, patient worker-status inquiry, and role-separated handoffs, but production queues, real actor/model routing, and limited parallel dispatch remain V2 work. Atlas reports recorded worker status and never initiates the inquiry.
-13. Under M0-D14, every attempt begins with honest context/usage preflight.
-    Supported hosted weekly-window observations remain separate from tokens;
-    controlled usage, coarse registered activity, and unattributed remainder
-    reconcile visibly; local capacity stays separate; and Atlas only reports
-    durable facts.
+### M3 — Build real packet dispatch and enforcement
 
-## VennueSign adapter guardrails
+Materialize approved graph nodes into exact packets; use a real executor adapter
+and clean Git worktree; enforce owned paths, commits, named checks, context and
+usage preflight, time/resource policy, evidence, M0-D05 rejection rules, and one
+eligible targeted correction.
 
-- The current VennueSign handoff summarizes Architecture Renewal Sessions 1–2; its complete versioned renewal authority must be landed in VennueSign before related implementation nodes become dispatchable.
-- GitHub Issues/PRs remain its actual task and delivery records. The graph uses stable node links; Maestro does not create a competing backlog.
-- Current policy permits parallelism only among independent packets within one active milestone. Shared contracts, DI, migrations, fixtures, workflows, tracker/status, and handoff retain their declared ownership/locks.
-- An AI-friendly source-affordance refactor may be proposed as planning work first. M0 does not change VennueSign source to make it agent-friendly.
+### M4 — Complete the persistent Development Manager loop
 
-## Alpha-01 through Alpha-03 completion
+Poll and reconcile authority and executor/GitHub facts, atomically select and
+claim eligible work, create the branch/draft PR, route real Integration and
+independent review, recover from restart/duplicates/stale results/timeouts/lease
+expiry, notify the correct authority, and stop at Project Architect acceptance
+unless a genuinely reserved Owner decision is required.
 
-[Alpha-01 — Establish Local Foundation](../../docs/planning/packets/alpha-01-local-foundation.md)
-is complete and merged to `master` at
-`4cc8e6fa899574e27515f225be1976c9f9f1a6ff`. The accepted implementation is branch
-`alpha-01-r2-complete-foundation` at exact head
-`3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`, based on verified R1 commit
-`e2c8a08f06fc887abc07e2dc5341f88346b9b8f9`. Its R2 diff changed only
-`services/maestro/maestro/storage.py` and
-`tests/alpha_01/test_local_foundation.py`. Fresh Independent Implementation
-Review returned **APPROVE** for that exact head. All 11 tests and both repeated
-health checks passed with foreign keys enabled, WAL active, and schema version
-`1`. Generated runtime/test artifacts were cleaned only inside the isolated R2
-worktree afterward.
+## Role and approval chain
 
-The [Alpha-01 Done Record](../../docs/planning/done/alpha-01-local-foundation.md)
-preserves the acceptance evidence and bounded exclusions. In particular, Alpha
-makes no post-directory-FD same-UID/root containment claim under M0-D11/M0-D12.
+1. Project Architect materializes and routinely approves faithful graph/packet
+   releases.
+2. A fresh Decision Fidelity Reviewer verifies each exact planning range.
+3. The Coordinator creates isolated implementation work and hands it to the
+   dedicated Maestro Developer until the Development Manager can self-host
+   those operations.
+4. Integration verifies or assembles the result.
+5. A fresh Independent Implementation Reviewer verifies the exact result.
+6. The Project Architect accepts routine results and releases the next packet.
+7. The Owner receives only an M0-D15 reserved material choice.
 
-[Alpha-02 — Establish Synthetic `maestro run-packet` Lifecycle Wrapper](../../docs/planning/packets/alpha-02-run-packet-lifecycle-wrapper.md)
-is complete and merged through exact implementation head
-`4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe` on verified base
-`06c81b8030140cca6001bc1514aabb8152c77dca`. Fresh Independent
-Implementation Review returned **APPROVE** for that complete exact range and
-confirmed all 16 changed paths were packet-owned. All 11 Alpha-01 tests, all 7
-Alpha-02 tests, and the required successful `maestro run-packet` command
-passed. Review artifacts were cleaned inside the isolated implementation
-worktree and the branch remained clean.
+No role may treat review approval as merge, deployment, automatic successor,
+or production authority.
 
-The [Alpha-02 Done Record](../../docs/planning/done/alpha-02-run-packet-lifecycle-wrapper.md)
-preserves the exact review, scope, check, and exclusion evidence. The wrapper
-records its independent-review handoff and stops; it does not perform review,
-merge, automatic correction, or successor selection.
+## Existing implementation to preserve
 
-[Alpha-03 — Synthetic Project Discovery and Binding Proposal](../../docs/planning/done/alpha-03-synthetic-project-discovery.md)
-is complete by explicit Owner acceptance at exact official corrected head
-`f21e4a2ff25cead8b972b4433da33f0e9910efc5`. Its fixture-only binding result is
-available to the future Alpha-04 qualification. The done record preserves the
-review outcomes and accepted malformed-conflict limitation without claiming an
-independent-review approval.
+- Alpha-01 provides the bounded Linux runtime directory and SQLite/WAL
+  foundation. Its accepted implementation head is
+  `3124378f3ba885cb066d1426b1a0ed5a5d0ccb6f`.
+- Alpha-02 provides the fixture-only `maestro run-packet` wrapper foundation.
+  Its accepted implementation head is
+  `4a0ccc7d8bdaad6a8ac58fc9e3e6cd6e208a00fe`.
+- Alpha-03 provides fixture discovery/schema lessons only. Its Owner-accepted
+  official head is `f21e4a2ff25cead8b972b4433da33f0e9910efc5`, with the
+  trusted-fixture limitation recorded in its done record.
+- Existing bounded filesystem, one-correction, review-coverage, secret,
+  read-only Atlas, and honest context/usage contracts remain controlling.
 
-There is no executable successor packet. Alpha-04 is explicitly paused and
-requires new Owner direction before any packet drafting, review, release, or
-implementation. Do not start Alpha-04, real worker dispatch, Atlas/API/UI,
-project registration or integration, GitHub automation, or USB recovery work
-from this handoff.
+Synthetic paths may remain as unit/regression fixtures, but they cannot serve
+as the M1–M4 end-to-end acceptance route.
 
-## Open implementation decisions
+## Current implementation gate
 
-- SQLite schema, backup, recovery, and retention mechanics.
-- Post-Alpha project registration/bootstrap mechanics.
-- Atlas read-only presentation and service-mediated API implementation.
-- Least-privilege service-account/GitHub App/cloud-provider credential and webhook-security policy.
-- Notification/acknowledgement model and measurable concurrency/cost thresholds.
-- Supported provider-account observation sources, usage retention, allowance
-  warning thresholds, and any budget-enforcement policy.
-- Future delegation boundary for auto-merge and autonomous selection of subsequent approved work.
+Before a Maestro Developer packet is dispatched:
+
+1. its exact graph/packet authority must be committed;
+2. a fresh Decision Fidelity Reviewer must approve the exact base/head range;
+3. the Project Architect must record routine release under M0-D15; and
+4. the Coordinator must create a clean isolated worktree from the approved
+   implementation base.
+
+Implementation then follows the Coding Agent SOP, M0-D05 correction cap,
+Integration route, independent implementation review, and exact final-head
+coverage gate.
+
+## Explicit non-goals for M1–M4 test readiness
+
+- Foundry, VennueSign, or another live product proving run.
+- Synthetic/scripted end-to-end actors or review judgments.
+- USB provisioning or recovery acceptance.
+- Multiple-project parallel dispatch or mature resource optimization.
+- Webhook transport; polling/reconciliation is the recovery authority.
+- Murphy/Azure QA, production deployment, automatic merge, or autonomous
+  successor milestones.
+
+## External setup boundary
+
+Adapter code and tests may be completed under Project Architect authority.
+Activating a new GitHub, executor/provider, Slack, secret-provider, or other
+external credential/scope remains an M0-D15 reserved Owner action. The final
+attended proving run cannot begin until its specifically scoped non-live
+repository and agent/notification identities are configured and verified.

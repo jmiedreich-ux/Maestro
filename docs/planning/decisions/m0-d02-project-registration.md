@@ -50,8 +50,9 @@ Registration always begins with a read-only discovery pass. Maestro does not ove
 
 ## First application
 
-Foundry will use `maestro project register`, not `project create`, as
-Maestro V1's proving project. It begins read-only and may not disturb Foundry's
-active work. VennueSign is a later registration whose discovery will identify
-the organization and code-level work needed before it can accept dispatched
-work.
+Per [M0-D15](m0-d15-real-m1-m4-implementation-path.md), Maestro's first
+proving use is now a newly created non-live project through `maestro project
+create`. Foundry's later onboarding still uses `project register`, begins
+read-only, and may not disturb active work. VennueSign remains a later
+registration whose discovery identifies the organization and code-level work
+needed before it can accept dispatched work.

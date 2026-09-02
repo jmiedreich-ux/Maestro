@@ -13,6 +13,13 @@ Turn an approved project architecture direction and current-source evidence into
 
 ## Maestro-specific continuity — read before planning Alpha successors
 
+- **M0-D15 now controls implementation sequencing.** The existing M1–M4
+  roadmap is active; the proving target is a newly created non-live project and
+  all end-to-end actors/actions are real. The Project Architect holds routine
+  delegated approval and involves the Owner only for M0-D15 reserved material
+  choices. The synthetic Alpha-04 prerequisite and Foundry-first proving
+  choice are superseded.
+
 - **M0-D11** now carries the Owner-approved M0-D12 bounded Alpha assurance
   profile: trusted local Linux identity; reject invalid, outside, source-tree,
   and pre-acquisition symlinked paths; exclude malicious concurrent same-UID/root
@@ -38,8 +45,9 @@ Turn an approved project architecture direction and current-source evidence into
   fixture-only authority-array limitation. Alpha remains synthetic-only; Atlas
   is read-only; Foundry/VennueSign stay untouched; project registration remains
   post-Alpha; and M0-D07's USB gate remains unchanged.
-- **M0-D13 / M0-D14 / Alpha-04** record the Owner-approved requirement to qualify one
-  whole synthetic control loop after Alpha-03 and before live Foundry V1. The
+- **M0-D13 / M0-D14 / Alpha-04** historically recorded a requirement to
+  qualify one whole synthetic control loop after Alpha-03 and before live
+  Foundry V1. M0-D15 supersedes that prerequisite and proving target. The
   original planning release received Decision Fidelity APPROVE and merged in
   PR #11 at `dcca2174dd919aa204707961f1b33ad15de9af41`. A later
   patient-worker and allowance/context/usage amendment merged in PR #12 at
@@ -49,16 +57,19 @@ Turn an approved project architecture direction and current-source evidence into
   routing, bounded correction, supported weekly-window reconciliation,
   context/token reporting, separate local capacity, and recovery, but it
   authorizes no provider scraping/account access, production scheduler, real
-  actor dispatch, implementation, or Foundry access. The Owner paused Alpha-04
-  on 2026-09-01; do not create or release its execution packet without new
-  direction.
+  actor dispatch, implementation, or Foundry access. Do not create or release
+  its execution packet; proceed through the real M1–M4 path instead.
 
 ## May do
 
 - Mine records and current source before asking an owner to repeat a known fact.
 - Produce decision proposals, question records, source maps, work-graph nodes, dependency edges, packet candidates, deferrals, and planned parallel slices. Every graph release names its project, graph revision, authority reference, and source base SHA.
 - Identify unsafe architectural overlap and declare a required contract, migration, integration, or review gate.
-- After required owner approval, propose a planning-only project branch/PR; only its required project approval and merge makes the graph revision active. Link each source item to an outcome, decision, task, question, deferral, or N/A record.
+- After the required approval, propose a planning-only project branch/PR; the
+  Project Architect supplies routine delegated approval under M0-D15, while a
+  reserved material choice requires the Owner. Only required project approval
+  and merge make the graph revision active. Link each source item to an
+  outcome, decision, task, question, deferral, or N/A record.
 
 ## Quality-contract accountability
 
@@ -148,7 +159,14 @@ For every planning run, produce a concise checkpoint containing:
 
 ## Handoff
 
-An owner-approved graph release is committed to the joined project at an exact revision. Maestro's adapter ingests that release, projects it to operational state, and populates planned specialist queues. Exact packet paths and validation commands are materialized only after that release. A material change to an active node creates a superseding node/task record; the Architecture Agent never silently expands an active worker's scope or writes the Maestro operational database directly.
+An approved graph release is committed to the joined project at an exact
+revision. Routine releases may be approved by the Project Architect under
+M0-D15; reserved material choices require the Owner. Maestro's adapter ingests
+that release, projects it to operational state, and populates planned
+specialist queues. Exact packet paths and validation commands are materialized
+only after that release. A material change to an active node creates a
+superseding node/task record; the Architecture Agent never silently expands an
+active worker's scope or writes the Maestro operational database directly.
 
 ## Escalate when
 

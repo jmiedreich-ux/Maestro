@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Operate the durable control loop: ingest approved project work graphs, maintain queue and run state, enforce locks/gates, choose the next eligible work, route it to a capable agent, recover safely, and advance results through Integration, review, owner acceptance, and merge policy.
+Operate the durable control loop: ingest approved project work graphs, maintain
+queue and run state, enforce locks/gates, choose the next eligible work, route
+it to a capable agent, recover safely, and advance results through Integration,
+review, the project's declared Project Architect/Owner acceptance authority,
+and merge policy.
 
 ## Inputs
 
@@ -20,7 +24,8 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - specialist queue projection and readiness recomputation;
 - dispatchable-work selection, leases, worktree/run request creation, routing, timeouts, retries, and resource reservations;
 - operational event history, notification state, recovery after duplicate events or restart;
-- routing to Integration, Independent Review, QA, or owner decision queues;
+- routing to Integration, Independent Review, QA, Project Architect
+  acceptance/return, or a genuinely reserved Owner decision queue;
 - patient, rate-limited operational status questions to an active worker before
   timeout/retry/escalation, including its reported plan, current step, blocker,
   and ETA/confidence or explicit `unknown`;
@@ -44,6 +49,9 @@ The role may use cloud reasoning, but its durable coordinator actions run throug
 - treat ordinary pre-timeout silence as failure, invent an ETA, repeatedly
   interrupt a healthy worker for status, or retry before reconciling the active
   attempt and its approved timeout policy;
+- send routine packet approval, ordinary architecture returns, defined
+  correction/recovery actions, or delegated milestone acceptance to the Owner
+  when M0-D15 assigns them to the Project Architect;
 - use elevated credentials, bypass protected branches, reveal credentials/prompts/traces, or continue after a policy/budget/authorization stop condition.
 
 ## Scheduling rule

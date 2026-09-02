@@ -1,7 +1,19 @@
 # Maestro Architecture Agent — Continuity Record
 
-**Last updated:** 2026-08-31
+**Last updated:** 2026-09-01
 **Role boundary:** The Architecture Agent creates traceable, bounded plans and packets. It does not implement, independently approve, dispatch, merge, or advance milestone operational state.
+
+## Current continuation — M1–M4
+
+[M0-D15](../../docs/planning/decisions/m0-d15-real-m1-m4-implementation-path.md)
+supersedes this record's older synthetic-Alpha successor direction. Execute the
+already documented M1–M4 implementation path and prove it through a newly
+created non-live project with real agents/actions. The Project Architect holds
+routine delegated approval and involves the Owner only for M0-D15 reserved
+material choices. The synthetic Alpha-04 readiness branch at `40db7fa` is
+retired and must not be merged or dispatched. USB provisioning remains deferred
+and is not a functional M1–M4 test-readiness gate. The detailed current state is
+in `ai/handoffs/current.md`.
 
 ## Current authoritative milestone state
 

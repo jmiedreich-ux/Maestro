@@ -22,7 +22,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-00 | The development organization is agent-driven. Human involvement is for owner approval, policy, and delegated authority—not routine staffing of each specialist lane. |
 | AW-01 | Every role has a versioned role contract. A role contract is an operating brief for a fresh agent instance; it is not a permanent chat personality. |
 | AW-02 | Generic control roles live in Maestro. Project-specific specialist overlays live with, or are referenced by, the joined project. |
-| AW-03 | A project's Architecture Agent reads its approved architecture, current source, handoff, and decision records; after owner approval it updates the project's versioned architecture/work-graph records. It does not silently authorize product code. |
+| AW-03 | A project's Architecture Agent reads its approved architecture, current source, handoff, and decision records; after the project's declared approval it updates the versioned architecture/work-graph records. Under M0-D15, routine approval belongs to the Project Architect and only reserved material choices require the Owner. It does not silently authorize product code. |
 | AW-04 | Each specialist has a planned, dependency-aware work queue. It contains ready, blocked, waiting, running, integration, review, complete, and replanning work—not only work that can run immediately. |
 | AW-05 | Maestro derives dispatchable work from specialist queues. It selects the highest-ranked eligible item; it does not require strict FIFO idling when a later item is independent. |
 | AW-06 | Parallelism is designed in from the beginning: run independent work in parallel and serialize only declared dependencies, shared boundaries, or finite resources. |
@@ -30,7 +30,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-08 | Atlas is the live reporting interface for queues, runs, routing, capacity, evidence, and approvals/status. It has no orchestration commands. |
 | AW-09 | Every coding agent follows one project-bound Coding Agent SOP. A specialist overlay may add rules but may never weaken the SOP. |
 | AW-10 | Independent review occurs at meaningful merge boundaries and before a high-risk shared boundary becomes a dependency; it is not required after every microscopic internal step. Every mergeable PR remains independently reviewed by someone other than its author. |
-| AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control owner acceptance, merge, and next-milestone authority. |
+| AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control Project Architect/Owner acceptance, merge, and next-milestone authority; M0-D15 delegates routine acceptance to the Project Architect but grants no automatic merge. |
 
 ## 3. Authority and source-of-truth model
 
@@ -128,7 +128,7 @@ Each role has a **planned queue**, not merely a list of currently executable job
 
 | State | Meaning |
 |---|---|
-| Planned | Owner-approved work already visible in the specialist's planned queue, but not released by a declared planning/serial gate. Unapproved or deferred proposals are outside the queue. |
+| Planned | Work approved by the project's declared authority is already visible in the specialist's planned queue, but not released by a declared planning/serial gate. Unapproved or deferred proposals are outside the queue. |
 | Waiting | Ordered work whose earlier same-role dependency or planned release gate has not opened. |
 | Blocked | Cannot start because a named hard dependency, contract, integration result, decision, required route, or environment is unavailable or invalid. A temporary WIP/resource-contention wait remains `Ready` but not `Dispatchable`. |
 | Ready | Its planning and hard-dependency gates are satisfied. It may await a currently free resource, WIP slot, or permitted execution route. |
@@ -138,7 +138,8 @@ Each role has a **planned queue**, not merely a list of currently executable job
 | AwaitingIntegration | Worker evidence is complete; an Integration Agent must assemble, validate, or explicitly sign off. |
 | AwaitingReview | A coherent merge unit is ready for independent review. |
 | MergeReady | Independent review and required gates passed; the result may proceed only through the project's branch/merge policy. |
-| AwaitingOwner | Project policy requires owner acceptance or an owner-performed merge action. |
+| AwaitingArchitect | Routine delegated Project Architect acceptance or architecture disposition is required. |
+| AwaitingOwner | Project policy or an M0-D15 reserved material choice requires Owner acceptance or an Owner-performed merge action. |
 | Merged | The merge is observed on the authoritative project/default branch and its result is reconciled. |
 | Complete | The required post-merge/downstream gate has passed and the result has been reconciled. |
 | NeedsReplan | A changed fact, failed architecture assumption, or irreconcilable conflict requires Architecture Agent or owner action. |
@@ -248,7 +249,9 @@ stateDiagram-v2
     Running --> AwaitingIntegration
     AwaitingIntegration --> AwaitingReview
     AwaitingReview --> MergeReady
-    MergeReady --> AwaitingOwner: "current owner-gated policy"
+    MergeReady --> AwaitingArchitect: "routine delegated acceptance"
+    MergeReady --> AwaitingOwner: "reserved choice or owner-performed merge"
+    AwaitingArchitect --> Merged: "only if project policy delegates merge"
     AwaitingOwner --> Merged
     MergeReady --> Merged: "only if policy delegates merge"
     Merged --> Complete
@@ -388,27 +391,22 @@ Before specialist queues become executable for a joined project, its Architectur
 
 M0 records this control-plane design, role-contract structure, queue/scheduler semantics, Atlas live-reporting implications, SOP hierarchy, adapter requirements, traceability, and independent planning review. It does **not** build the coordinator, queue database, Atlas live reporting, or workers.
 
-### Alpha qualification — one synthetic loop
+### Historical Alpha qualification
 
-After its synthetic binding exists, Alpha qualifies the control-plane's
-single-run decision semantics with one fixed work graph and scripted local
-actors/observations. It proves eligibility, one atomic assignment and lock set,
-patient worker-status inquiry, Integration/review routing, the M0-D05
-correction cap, supported weekly-window reconciliation, context/token/cost
-preflight and pressure reporting, separate local capacity, idempotent recovery,
-and the Owner stop. This bounded exception is governed by
-[M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) and
-[M0-D14](decisions/m0-d14-context-and-token-reporting.md); it is not a
-production scheduler, real provider/account connection, real agent dispatch,
-multiple-project queue, or parallel workforce.
+Alpha-01 through Alpha-03 remain historical bounded foundation evidence.
+[M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md) supersedes the
+mandatory fixture-only Alpha-04 prerequisite. Its control-loop semantics remain
+required, but scripted actors and fabricated observations cannot satisfy the
+end-to-end proving gate.
 
-### V1 — one live visible controlled loop
+### M1–M4 — implement the real controlled loop
 
-V1 begins only after the synthetic control-loop qualification is accepted and
-merged. It remains intentionally narrow: one registered project, one approved
-milestone, one hosted worker, one draft PR, verification, independent review,
-evidence, and an owner acceptance/merge point. It proves the live authority and
-recovery loop, not agent-workforce parallelism.
+M1 builds the durable core and project create/register authority loader. M2
+adds service-mediated, read-only Atlas reporting. M3 adds a real bounded agent
+executor and enforcement wrapper. M4 adds the persistent Development Manager,
+Integration/review routing, recovery, and delegated acceptance boundary. The
+attended proving target is a newly created non-live project, not a live product
+repository.
 
 ### V2 — controlled agent workforce
 

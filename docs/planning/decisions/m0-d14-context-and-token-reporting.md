@@ -1,7 +1,7 @@
 # M0-D14 — Allowance, Context, and Usage Reporting Starts at Run Preflight
 
-- **Status:** Accepted by the Owner on 2026-08-31; planning-only amendment
-  pending fresh Decision Fidelity Review and merge
+- **Status:** Accepted; reporting contract retained by M0-D15, while its
+  Alpha-04 fixture-only proving restriction is superseded
 - **Scope:** Project-neutral provider-account allowance observation, context
   budgeting, token/cost measurement, worker status, and Atlas reporting from
   preflight through terminal handoff

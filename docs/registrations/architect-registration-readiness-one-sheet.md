@@ -6,7 +6,11 @@
 
 ## The required handoff
 
-The architect hands Maestro an **owner-approved, versioned project foundation bundle at an exact repository revision**. The bundle may span several project files; it does not need to be one document or follow a Maestro folder layout.
+The architect hands Maestro an **approved, versioned project foundation bundle
+at an exact repository revision**. Under M0-D15 the Project Architect supplies
+routine delegated approval; a genuinely reserved material choice requires the
+Owner. The bundle may span several project files; it does not need to be one
+document or follow a Maestro folder layout.
 
 The bundle must let Maestro discover the project without guessing. It is the authoritative answer to:
 
@@ -29,7 +33,8 @@ The architect does **not** create Maestro operational state, dispatch workers, o
 
 The architect may label the graph **ready to release to Maestro** only when all of the following are true:
 
-- The project foundation and graph revision have explicit owner approval.
+- The project foundation and graph revision have explicit Project Architect
+  approval, plus Owner approval only for any M0-D15 reserved material choice.
 - Each authoritative fact has a stable repository path, record ID where applicable, and exact source revision.
 - Accepted behavior is separated from proposals, unresolved questions, and deferrals.
 - No unresolved question changes the project boundary, data ownership, security posture, delivery policy, or first approved milestone.
@@ -38,7 +43,8 @@ The architect may label the graph **ready to release to Maestro** only when all 
 - Dependencies, shared locks, integration gates, reviewer routes, and safe parallelism are explicit.
 - Material quality requirements have complete, feasible, proportionate quality contracts.
 - Existing project rules are preserved. A project binding may be stricter, but it cannot weaken project or Maestro safety, review, or approval requirements.
-- The handoff identifies the exact point where Maestro must stop for owner acceptance.
+- The handoff identifies the exact Project Architect acceptance point and any
+  M0-D15 reserved condition that instead requires the Owner.
 
 If any item fails, the architect records the gap, owner-readable impact, and next decision. The project is **not registration-ready**.
 
@@ -46,7 +52,7 @@ If any item fails, the architect records the gap, owner-readable impact, and nex
 
 | Project state | Maestro onboarding path |
 |---|---|
-| Existing repository | `maestro project register`: read-only discovery → fact/missing/conflict inventory → proposed binding → owner-reviewed binding PR → non-dispatching dry run → registered only after merge and successful dry run. |
+| Existing repository | `maestro project register`: read-only discovery → fact/missing/conflict inventory → proposed binding → binding PR reviewed by the project's declared authority → non-dispatching dry run → registered only after merge and successful dry run. |
 | New repository | `maestro project create`: create the project record → generate the minimum repository-side binding in a bootstrap PR → run the same non-dispatching dry run → registered only after merge and success. |
 
 Registration is not implementation approval. The project repository remains authoritative for architecture, plans, rules, code, PRs, reviews, and CI. Maestro stores only the operational binding and observed execution state needed to coordinate safely; Atlas reports that state but does not edit policy or route work.

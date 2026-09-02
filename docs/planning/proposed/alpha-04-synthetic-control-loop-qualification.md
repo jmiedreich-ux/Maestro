@@ -1,9 +1,9 @@
 # Alpha-04 — Synthetic Control-Loop Qualification
 
-- **Status:** Planning release and reporting amendment are merged through PR
-  #12 at `b2594d9ab4cad528cd6272622f68162850a0584e`; Alpha-03 predecessor is
-  complete; Owner paused Alpha-04 on 2026-09-01; no execution packet or
-  implementation release
+- **Status:** Superseded by
+  [M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md); do not issue
+  or dispatch a synthetic Alpha-04 execution packet. Historical planning and
+  control-loop semantics remain evidence only.
 - **Project:** Maestro
 - **Owner:** Jeremy Miedreich
 - **Graph revision:** `maestro-alpha-04-plan-r2`

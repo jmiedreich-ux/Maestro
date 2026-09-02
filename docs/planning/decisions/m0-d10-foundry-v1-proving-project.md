@@ -1,10 +1,17 @@
 # M0-D10 — Foundry as the V1 Proving Project
 
-**Status:** Accepted  
+**Status:** Accepted historically; Foundry-first proving choice superseded by
+[M0-D15](m0-d15-real-m1-m4-implementation-path.md)
 **Scope:** Selection and safe entry conditions for Maestro's first live
 project registration and packet proof.
 
-## Decision
+## Later direction
+
+M0-D15 replaces Foundry as the first proving target with a newly created
+non-live project. The non-disruption and read-only registration protections in
+this record remain controlling if Foundry is registered later.
+
+## Historical decision
 
 Foundry, not VennueSign, is Maestro's first V1 proving project. Foundry is
 already structured around bounded packets, browser checks, independent review,

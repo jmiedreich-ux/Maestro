@@ -62,9 +62,11 @@ The reviewer accepts only a completed planning proposal awaiting Decision
 Fidelity Review. It does not claim implementation work, change planned priority,
 rewrite queue state, or select the next milestone.
 
-When the review finishes, it returns the result to the Architecture Agent and
-Owner. Approval releases only the reviewed fidelity gate. It does not itself
-approve the plan as owner, authorize implementation, merge, or advance later
+When the review finishes, it returns the result to the Project Architecture
+Agent and the next authority required by project policy. Under M0-D15, routine
+work returns to the Project Architect; only a reserved material choice involves
+the Owner. Approval releases only the reviewed fidelity gate. It does not
+itself approve the plan, authorize implementation, merge, or advance later
 work.
 
 ## Required review procedure
@@ -211,10 +213,11 @@ The reviewer stops when the accepted decisions and complete bounded contracts
 have been traced and every in-contract blocking finding has been reported.
 It does not continue expanding the review beyond the approved model.
 
-If the result is **REQUEST_CHANGES**, return planning defects to the Architecture
-Agent/Owner and implementation defects to the appropriate implementation-review
-route. If the result is **APPROVE**, return the proposal to the next already
-authorized gate and stop.
+If the result is **REQUEST_CHANGES**, return planning defects to the Project
+Architecture Agent and involve the Owner only when resolution requires an
+M0-D15 reserved choice. Return implementation defects to the appropriate
+implementation-review route. If the result is **APPROVE**, return the proposal
+to the next already authorized gate and stop.
 
 ## Escalate when
 

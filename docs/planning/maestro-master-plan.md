@@ -1,10 +1,16 @@
 # Maestro Master Plan
 
+**Current implementation direction:** [M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)
+reactivates the already designed M1–M4 build path. The proving run uses a new
+non-live project created by Maestro and real agents/actions throughout. The
+later fixture-only Alpha-04 prerequisite and Foundry-first proving choice are
+superseded in the scope stated by M0-D15.
+
 ## 1. Charter
 
 Maestro is a standalone, project-neutral development-operations system. It is not a product feature of Foundry, Vennue, or any other individual repository.
 
-Its job is to make AI-assisted engineering work visible, structured, recoverable, and governed. It turns one owner-approved milestone into a controlled result with explicit task ownership, evidence, independent review, and an owner acceptance point.
+Its job is to make AI-assisted engineering work visible, structured, recoverable, and governed. It turns one approved milestone into a controlled result with explicit task ownership, evidence, independent review, and the applicable Project Architect or reserved Owner acceptance point.
 
 Maestro does not replace a project's architecture, product decisions, or engineering rules. A project joins Maestro through an adapter and declares its own repository, environments, commands, exceptions, and authority policy.
 
@@ -28,7 +34,7 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 9. Parallelism is designed, not assumed: independent work may run together; dependencies, shared boundaries, and finite resources are explicitly serialized.
 10. Every coding agent follows the joined project's SOP plus the Maestro Coding Agent SOP. Specialist roles may add rules but cannot weaken either.
 11. Planned queue order and structural dependencies come from an approved project graph; Maestro derives operational eligibility and may never rewrite that backlog by itself.
-12. Any future auto-merge or autonomous next-work authority is explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
+12. The Project Architect is the normal delegated planning and architecture approval authority. Only genuinely material choices reserved by M0-D15 or project policy require the Owner. Any future auto-merge or autonomous next-work authority remains explicit, project-bound, reviewed, and revocable; it is not implied by scheduling.
 13. Every material quality requirement uses a bounded quality contract defining the protected outcome, operating/threat/failure model, explicit exclusions, practical assurance level, sufficient acceptance proof, permitted implementation boundary and complexity, proportionality ceiling, and exact stop/escalation rule. Vague quality language is not executable.
 14. Every default-branch merge has complete, current review coverage: one exact full reviewed range plus targeted-reviewed correction-only diffs covering the exact final head. Uncovered or materially stale changes block merge.
 15. Every hosted or local attempt begins with an honest context-and-usage
@@ -73,8 +79,11 @@ stateDiagram-v2
   Verified --> AwaitingReview
   AwaitingReview --> MergeReady
   AwaitingReview --> Executing: "targeted rework only when M0-D05 permits"
-  MergeReady --> OwnerAccepted
-  OwnerAccepted --> Merged
+  MergeReady --> ArchitectAccepted: "routine delegated acceptance"
+  MergeReady --> AwaitingOwner: "reserved material choice or owner-performed merge"
+  AwaitingOwner --> OwnerAccepted
+  ArchitectAccepted --> Merged: "only under project merge policy"
+  OwnerAccepted --> Merged: "only under project merge policy"
   Claimed --> Blocked
   Executing --> Blocked
   Verified --> Blocked
@@ -170,34 +179,60 @@ Its project policy is currently manual / owner-approved. A Murphy run receives t
 - Assess Atlas for migration into local operational reporting.
 - Independently audit completeness and obtain owner acceptance.
 
-### Alpha qualification — synthetic foundations and control-loop proof
+### Historical Alpha qualification — completed foundations, not the proving prerequisite
 
 - Build only separately approved, fixture-bound increments through the local
   `maestro run-packet` boundary.
 - Establish a synthetic project binding before qualifying orchestration.
-- Before Foundry V1, qualify one fixed synthetic work graph through eligibility,
-  one assignment, locks, scripted worker completion, Integration routing,
-  independent-review routing, patient worker-status inquiry, one bounded
-  correction, honest context/token reporting, supported weekly-allowance
-  observation and reconciliation, restart/duplicate safety, and the Owner
-  stop.
+- Alpha-01 through Alpha-03 remain historical foundation and fixture evidence.
 - Use scripted local actors and observations only. Alpha does not access a real
   repository, invoke a real agent/model, use GitHub/network/credentials, merge,
   or select successor work.
-- Treat [M0-D13](decisions/m0-d13-synthetic-control-loop-qualification.md) and
-  [M0-D14](decisions/m0-d14-context-and-token-reporting.md) as the controlling
-  boundaries for this pre-V1 qualification; production queues, real routing,
-  live provider access, and parallel execution remain later work.
+- M0-D15 supersedes the mandatory synthetic Alpha-04 qualification. Its useful
+  control-loop semantics are carried into the real M1–M4 implementation and
+  are not accepted through scripted end-to-end evidence.
 
-### V1 — prove one live control loop
+### M1 — build the core and create/register projects
 
-- Enter live proving only after the synthetic control-loop qualification is
-  independently approved, accepted, and merged.
-- Register Foundry through read-only discovery, a proposed binding, and a dry run.
-- Persist one Foundry run in the operational database.
-- Show the run in the fresh local reporting view.
-- Coordinate one explicitly released, unclaimed Foundry packet through a draft PR, verification, and review.
-- Stop for owner acceptance; no automatic merge.
+- Establish the persistent Linux service, production SQLite records, leases,
+  idempotent transitions, and restart reconciliation.
+- Implement `maestro project create` and `maestro project register`, the thin
+  manifest, exact authority loading, binding proposal/bootstrap PR, and real
+  non-dispatching dry run.
+
+### M2 — merge Atlas into service-mediated reporting
+
+- Move the approved Atlas reporting capability into Maestro.
+- Read snapshots and live events through the local Maestro service only.
+- Show registered projects, graph/queue state, agents, waits, evidence,
+  Integration/review, architecture returns, notifications, and acceptance
+  boundaries without creating a write/control path.
+
+### M3 — build real packet dispatch and enforcement
+
+- Materialize approved graph nodes as exact packets.
+- Run a real agent through an executor adapter in a clean Git worktree.
+- Enforce scope, commits, named checks, context/usage preflight, evidence, and
+  M0-D05's one bounded correction.
+
+### M4 — complete the persistent Development Manager loop
+
+- Poll and reconcile approved work, atomically claim it, create its branch and
+  draft PR, dispatch the real role, and perform only the next safe action once.
+- Route real results through Integration and independent implementation review.
+- Recover from restart, duplicate observation, stale completion, timeout, and
+  lease expiry; update Atlas and durable notifications.
+- Use the Project Architect as the normal acceptance/return authority and the
+  Owner only for an M0-D15 reserved choice.
+
+### V1 — attended real non-live proving run
+
+- Use `maestro project create` to establish a new non-live project.
+- Run one real approved milestone through real agents, repository actions,
+  checks, Integration, review, reporting, and recovery on Linux.
+- Stop at Project Architect acceptance unless a genuinely reserved Owner choice
+  arises. Do not use Foundry, VennueSign, scripted actors, fabricated
+  observations, automatic merge, or successor-milestone inference.
 
 ### V2 — controlled delegation
 
