@@ -33,8 +33,10 @@ The completion/rework lesson is controlling through
 - The USB provisioning deferral remains and is not a readiness gate for the
   attended non-live proving run.
 - Every dispatch uses a frozen finite completion manifest. Integration and the
-  first full review finish their finding sets before one combined correction;
-  later out-of-contract improvements do not move the gate. Durable resolution
+  first full review finish their finding sets before the normal combined
+  correction. M0-D17 permits one Project-Architect-authorized final correction
+  for later explicitly governed packets; later out-of-contract improvements do
+  not move the gate. Durable resolution
   or restart triggers reread and eligibility recomputation without chat.
 
 ## Active build path
@@ -100,7 +102,7 @@ or production authority.
 - Alpha-03 provides fixture discovery/schema lessons only. Its Owner-accepted
   official head is `f21e4a2ff25cead8b972b4433da33f0e9910efc5`, with the
   trusted-fixture limitation recorded in its done record.
-- Existing bounded filesystem, one-correction, review-coverage, secret,
+- Existing bounded filesystem, frozen correction-allowance, review-coverage, secret,
   read-only Atlas, and honest context/usage contracts remain controlling.
 
 Synthetic paths may remain as unit/regression fixtures, but they cannot serve
@@ -118,9 +120,13 @@ Before a Maestro Developer packet is dispatched:
 5. its M0-D16 completion manifest and requirement/proof coverage must be closed,
    frozen, feasible, and structurally cohesive.
 
-Implementation then follows the Coding Agent SOP, M0-D05 correction cap,
+Implementation then follows the Coding Agent SOP and the packet's frozen
+M0-D05/M0-D17 correction cap,
 Integration route, independent implementation review, and exact final-head
 coverage gate.
+
+M1-02AR was released before M0-D17 and explicitly retains its frozen one-
+correction allowance. Do not add a final correction to that active packet.
 
 ## Explicit non-goals for M1–M4 test readiness
 

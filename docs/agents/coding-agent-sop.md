@@ -9,7 +9,15 @@ This SOP applies to every implementation agent. Project policy comes first; this
 3. Read the project-required startup records and exact authority paths named by the packet.
 4. Confirm the packet is approved, its graph revision/authority reference/source base are current, dependencies are complete, required locks are leased, and environment/credential policy is satisfied.
 5. Confirm allowed/forbidden paths, acceptance behavior, validation commands, timeout, and handoff route.
-6. Record the preflight result; block rather than improvising when a fact is missing or contradictory.
+6. Return a concise packet-read plan to the dispatching Coordinator or, when
+   implemented, Development Manager before changing files:
+   named requirements/proofs in execution order, expected owned paths and
+   commands, likely risks/stop conditions, and the intended handoff. The
+   recorder records it once without approving or revising it. If it exposes a
+   missing or contradictory frozen fact, use the existing preflight
+   block/return route; otherwise substantive execution proceeds. It is not a
+   new design gate or permission to change the frozen packet.
+7. Record the preflight result; block rather than improvising when a fact is missing or contradictory.
 
 ## 2. Execute within scope
 
@@ -28,4 +36,4 @@ This SOP applies to every implementation agent. Project policy comes first; this
 
 ## 4. Rework and escalation
 
-One targeted, reviewer-requested rework cycle is allowed unless project policy says otherwise. Its follow-up review is limited to the named finding, correction-only diff/evidence, and directly affected consistency. A different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.
+One normal targeted, reviewer-requested rework cycle is allowed. A packet explicitly governed by M0-D17 may receive one final correction only after the Project Architect records that every closed eligibility condition passes. Each follow-up review is limited to its named finding, correction-only diff/evidence, and directly affected consistency. A third correction, different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.

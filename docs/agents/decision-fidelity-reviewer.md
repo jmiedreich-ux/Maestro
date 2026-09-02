@@ -154,7 +154,8 @@ the risk into a stronger implementation gate or repeated worker correction.
 - Reclassify an architecture-contract defect as an implementor failure.
 - Continue hunting edge cases after the approved named proof and model are
   faithfully carried.
-- Permit repeated corrections beyond M0-D05's one targeted correction.
+- Permit corrections beyond M0-D05/M0-D17's frozen packet allowance, or infer a
+  discretionary final correction without its Project Architect record.
 - Merge, dispatch work, start a successor packet, or imply that its review
   outcome grants those authorities.
 

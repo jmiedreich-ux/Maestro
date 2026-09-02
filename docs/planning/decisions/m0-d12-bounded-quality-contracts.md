@@ -62,10 +62,11 @@ Project Architect involves the Owner only when resolution requires an M0-D15
 reserved material choice; the defect is not sent through repeated worker
 corrections.
 
-M0-D05 still permits only one targeted correction for committed, in-scope work
-that fails a named gate. A later finding from a different failure class, a
-missing model assumption, or an infeasible guarantee is an architecture
-escalation, not another correction round.
+M0-D05 permits the normal targeted correction for committed, in-scope work that
+fails a named gate. M0-D17 permits one Project-Architect-authorized final
+correction only for the same frozen proof IDs/failure class under its complete
+eligibility test. A different failure class, missing model assumption, or
+infeasible guarantee is an architecture escalation, not another correction.
 
 ## Architecture accountability
 

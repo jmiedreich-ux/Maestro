@@ -19,6 +19,7 @@
 | S-11 | [Alpha-03 Owner closeout, 2026-09-01](../../sources/planning/2026-09-01-alpha-03-owner-closeout.md) | Owner confirmation that the official first Qwen Alpha-03 result was signed off, acceptance of its recorded fixture-only limitation, and direction to pause Alpha-04 | Reconciled into the Alpha-03 done record, current handoff, and Architecture continuity |
 | S-12 | [Real M1–M4 implementation direction, 2026-09-01](../../sources/planning/2026-09-01-real-m1-m4-implementation-direction.md) | Owner direction to complete the already designed M1–M4 roadmap, prove it through a new non-live project with real actors/actions, delegate routine approval to the Project Architect, and preserve the USB deferral | Reconciled into M0-D15, the Master Plan, and the current handoff |
 | S-13 | [Closed completion and learning direction, 2026-09-02](../../sources/planning/2026-09-02-closed-completion-and-learning-direction.md) | Owner direction to make completion finite before dispatch, collect one complete review/correction set, route returns durably, resume without chat, and turn rework into reusable policy | Reconciled into M0-D16, the Master Plan, Control Plane, role contracts, and current handoff |
+| S-14 | [Discretionary final correction direction, 2026-09-02](../../sources/planning/2026-09-02-discretionary-final-correction-direction.md) | Owner direction to retain one normal correction and permit one final correction only by closed Project Architect judgment when work is genuinely close | Reconciled into M0-D17, M0-D05/D12/D15/D16, roles, Master Plan, and current handoff |
 
 ## Original M0 agreements retained
 
@@ -82,6 +83,7 @@
 | C-51 | For safely reviewable committed work, Integration and the first full independent review complete their finding sets before the one combined correction. Passing the frozen contract defines enough; later out-of-contract improvements are successor learning items. | S-13 / M0-D16 / M0-D05 / review roles |
 | C-52 | Returns and resolutions are durable events. Routine contract/exhaustion returns go to the Project Architect, reserved choices to the Owner, and resolution/restart triggers authoritative reread and eligibility recomputation without a chat wake. | S-13 / M0-D16 / M0-D15 / Manager role |
 | C-53 | Maestro records elapsed and active cycle time, queue/wait/gate time, review/correction/escalation counts, correction cause linked to finding IDs/classification, late-requirement causes, and the reusable compiler/template/invariant/role-policy change learned from rework. | S-13 / M0-D16 / Control Plane §§7, 10 |
+| C-54 | A future packet receives one normal correction. The Project Architect may authorize one final correction only for the same frozen findings when all M0-D17 locality/scope/authority/evidence conditions pass; two is the hard maximum and active packets retain their frozen allowance. | S-14 / M0-D17 / M0-D05 / role contracts |
 
 ## Required diagram concepts retained
 

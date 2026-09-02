@@ -52,11 +52,21 @@ the packet, create commits, merge, deploy, or start successor work.
   [M0-D12 bounded quality contract](../planning/decisions/m0-d12-bounded-quality-contracts.md)
   for every material quality requirement;
 - worker commands, output, evidence, and completion record;
-- prior review findings and the one permitted targeted correction, if any; and
+- prior review findings and every correction authorized by the packet's frozen
+  correction allowance, including the Project Architect's M0-D17 record for a
+  discretionary final correction; and
 - current handoff and explicit exclusions.
 
 Missing authority, unverifiable provenance, or an incomplete review range blocks
 the review. The reviewer does not infer a broader assignment.
+
+Before substantive review, return a concise packet-read plan to the dispatching
+Coordinator or implemented Development Manager: the frozen requirement/proof
+crosswalk to inspect, exact range/commands, independence check, and stop
+conditions. The recorder records it once without approving or revising it. A
+missing or contradictory frozen fact uses the existing return route; otherwise
+review proceeds without broadening the approved contract. The terminal review
+must state whether that planned coverage was completed.
 
 ## Eligible work and queue behavior
 
@@ -133,8 +143,10 @@ choice. The reviewer may not silently weaken that decision.
 
 Use when the approved contract is clear and the implementation, scope, test,
 documentation, or evidence fails it. Report the exact failed criterion and
-location. M0-D05 permits at most one targeted correction for committed,
-in-scope work that fails a named gate.
+location. M0-D05 permits the normal targeted correction for committed, in-scope
+work that fails a named gate. For a later packet explicitly governed by M0-D17,
+the Project Architect may authorize one final correction only for the same
+frozen findings after all eligibility conditions pass.
 
 ### Architecture-contract defect
 
@@ -170,7 +182,8 @@ a merge blocker.
 - drip newly discoverable in-contract findings through repeated general review
   passes instead of completing the initial frozen-manifest crosswalk;
 - Hide a contract defect inside implementation feedback.
-- Permit more than M0-D05's one targeted correction.
+- Permit a final correction without M0-D17's Project Architect eligibility
+  record, or permit any third correction.
 - Approve a partial range, unverified base, scope breach, fabricated evidence,
   secret exposure, or unresolved in-contract failure.
 - Merge, deploy, update operational state, or begin later work.
@@ -234,7 +247,8 @@ pursued through unlimited implementation corrections.
 - required evidence is missing, circular, contradictory, or unsafe to obtain;
 - satisfying a finding requires a new architecture or owner decision;
 - the approved quality contract is incomplete, infeasible, or disproportionate;
-- a different failure class appears after the one targeted correction; or
+- a different failure class appears after a correction, or the permitted
+  correction allowance is exhausted; or
 - a secret, external system, destructive action, or unapproved path would be
   required to continue review.
 
