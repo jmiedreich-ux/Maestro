@@ -31,6 +31,7 @@ This design is project-neutral. A project supplies specialist overlays, architec
 | AW-09 | Every coding agent follows one project-bound Coding Agent SOP. A specialist overlay may add rules but may never weaken the SOP. |
 | AW-10 | Independent review occurs at meaningful merge boundaries and before a high-risk shared boundary becomes a dependency; it is not required after every microscopic internal step. Every mergeable PR remains independently reviewed by someone other than its author. |
 | AW-11 | The long-term target is for Maestro to select the next approved work and, where a project explicitly delegates it, merge a fully gated result. Current project policies continue to control Project Architect/Owner acceptance, merge, and next-milestone authority; M0-D15 delegates routine acceptance to the Project Architect but grants no automatic merge. |
+| AW-12 | M0-D16 makes packet completion closed before dispatch: a frozen requirement/proof manifest defines enough, Integration and full-review findings form one correction set, later improvements become successor learning records, and durable resolution events wake eligibility recomputation without chat. |
 
 ## 3. Authority and source-of-truth model
 
@@ -118,7 +119,7 @@ An active node's packet scope is immutable. A material source, contract, priorit
 
 A packet is the execution form of one graph node or an intentionally cohesive group of small dependent steps. A packet is large enough to be a meaningful review unit and small enough to have a clear ownership boundary.
 
-A packet materializes an active graph node for one isolated run. It includes the graph revision and authority reference, project SOP version, role-contract version, base commit, expected branch, exact allowed/forbidden paths, task-specific context, acceptance behavior, validation commands, evidence format, timeout, retry policy, model route, resource claims, and independent reviewer route.
+A packet materializes an active graph node for one isolated run. It includes the graph revision and authority reference, project SOP version, role-contract version, base commit, expected branch, exact allowed/forbidden paths, task-specific context, acceptance behavior, validation commands, evidence format, timeout, retry policy, model route, resource claims, and independent reviewer route. Under [M0-D16](decisions/m0-d16-closed-completion-and-learning-loop.md), it also includes a frozen, ordered definition-of-done manifest with complete two-way requirement/proof coverage. Universal claims carry a finite list or exact authoritative enumeration rule and digest. The compiler rejects structurally separable, infeasible, or uncorrectably broad packets before dispatch.
 
 ## 7. Dependency-aware specialist queues
 
@@ -176,7 +177,7 @@ It may elevate an Integration Agent item because it unblocks several specialists
 
 ### 7.4 Eligibility, leases, and recovery
 
-Maestro recomputes the projection on an approved graph revision, a poll/reconciliation observation, a worker/CI/review event, or a lock or lease expiry. A packet is Dispatchable only when its graph and linked task are active, every hard/review gate is passed, its base and required interface are compatible, no hold/budget policy blocks it, its route is allowed, and its WIP/resource/path/shared-boundary claims are available.
+Maestro recomputes the projection on an approved graph revision, a poll/reconciliation observation, a worker/CI/review/architecture-resolution event, a lock or lease expiry, or service restart. A packet is Dispatchable only when its graph and linked task are active, every hard/review gate is passed, its base and required interface are compatible, no hold/budget policy blocks it, its route is allowed, and its WIP/resource/path/shared-boundary claims are available. Recomputed eligibility—not a chat message—is the wake mechanism.
 
 Lease creation reserves the packet's lease and all required locks atomically and idempotently. A lease records its base commit, run fingerprint, worktree, TTL, and heartbeat. On restart, timeout, duplicate event, or stale completion, Maestro rereads repository and operational facts before making another transition; an expired lease never blindly creates a duplicate run.
 
@@ -197,6 +198,9 @@ M0 defines the record boundaries, not their database implementation. The operati
 | Lease and resource reservation | Atomic claim, worktree, TTL/heartbeat, path/shared-boundary/resource locks, and recovery history |
 | Dispatch decision | Scheduler inputs, selected work, skipped higher-ranked work, and transparent reason |
 | Integration batch / review unit | Compatible inputs, integration branch, verification, reviewer route, gate result, and findings |
+| Closed completion manifest | Frozen requirement/proof IDs, authority and enumeration digests, checks, expected results, evidence requirements, owners, and coverage closure |
+| Return / resolution | Failure class, failed manifest IDs, exact head, responsible authority, next permitted action, resolution event, and resume disposition |
+| Process learning | Cycle/wait/gate time, first-pass result, review/correction/escalation counts, late requirement cause, and reusable rule/template/invariant update |
 | Coordinator event audit | Observed or coordinator-performed transition, idempotency key, before/after state, scope, result, and reason |
 
 `project create` bootstraps a new project against a versioned central-process binding. `project register` is non-destructive: it binds an existing project to that process, records its declared exceptions, and proves repository/branch/PR/check/report behavior with a dry run before any real dispatch.
@@ -308,6 +312,14 @@ Workers self-check internal steps. Independent review is required:
 
 Small scaffolding work may fold into the next substantive review unit. The system must never claim independent review happened when only the author or integrator checked it.
 
+The first full reviewer returns one complete finding set against the frozen
+M0-D16 manifest. For committed, in-scope work that can safely be reviewed, the
+Coordinator collects terminal Integration and independent-review results before
+issuing one combined M0-D05 correction. Follow-up review is limited to that
+named set, the correction-only diff/evidence, and directly affected
+consistency. Out-of-contract improvements are recorded for successor planning
+and do not prolong the active packet.
+
 ## 10. Atlas live reporting
 
 Atlas becomes the live owner-facing reporting interface over Maestro state. It remains a projection only, not a controller or a second source of project design or code truth.
@@ -408,6 +420,11 @@ Integration/review routing, recovery, and delegated acceptance boundary. The
 attended proving target is a newly created non-live project, not a live product
 repository.
 
+M0-D16 is implemented across that same path: M1 stores completion/return/
+learning records, M2 reports them, M3 compiles and grades the closed manifest,
+and M4 performs restart-safe return, reread, eligibility recomputation, and
+automatic resume without a chat wake-up.
+
 ### V2 — controlled agent workforce expansion
 
 M4 already provides the minimum single-project, single-milestone queue and real
@@ -418,7 +435,7 @@ its queue, routing, capacity, and evidence views over the same Maestro state.
 
 ### V3 — mature parallel operations
 
-V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, review/escalation limits, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters.
+V3 adds measured concurrency policies, resource-aware scheduling, full live operational reporting views, QA hooks, metrics/retrospectives, and Linux-native disposable verification required by project adapters. M0-D05/M0-D16 review and correction limits remain controlling.
 
 ### Later explicit authority decision — continuous operation
 
@@ -448,7 +465,7 @@ The following remain implementation design questions for later approved stages:
 - numeric concurrency, cost, and queue-aging policy thresholds;
 - exact supported provider-account observation sources, usage retention,
   allowance warning thresholds, and any budget-enforcement action policy;
-- project-specific specialist-role set and model mapping beyond their versioned adapters.
-- review-round cap/escalation policy and the future auto-merge/autonomous-next-work delegation boundary.
+- project-specific specialist-role set and model mapping beyond their versioned adapters; and
+- the future auto-merge/autonomous-next-work delegation boundary.
 
 These deferrals do not weaken the behavioral contract above.

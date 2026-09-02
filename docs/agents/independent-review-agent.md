@@ -84,7 +84,9 @@ packet authority.
 5. Re-run or independently verify the required checks; identify circular,
    implementation-derived, missing, stale, or non-reproducible evidence.
 6. Classify every finding before assigning an outcome.
-7. Report the exact next authorized handoff and stop.
+7. Complete the full frozen M0-D16 requirement/proof crosswalk and return one
+   complete in-contract finding set for the reviewed range.
+8. Report the exact next authorized handoff and stop.
 
 ## Review scope
 
@@ -109,8 +111,9 @@ independent gate required by the approved graph before downstream use.
 
 ## M0-D12 review boundary
 
-The implementation reviewer judges quality only against the complete,
-owner-approved bounded quality contract. It must not silently strengthen the
+The implementation reviewer judges quality only against the complete bounded
+quality contract approved by the project's declared acceptance authority. It
+must not silently strengthen the
 threat/failure model, assurance level, implementation boundary, complexity
 budget, or proof burden.
 
@@ -119,9 +122,10 @@ negative, race, adversarial, load, recovery, compatibility, or independent-
 oracle testing is blocking only when the approved model and assurance level
 place it in scope.
 
-An existing binding decision such as M0-D11 continues to control until
-Architecture and the Owner explicitly reconcile it. The reviewer may not
-silently weaken that decision.
+An existing binding decision such as M0-D11 continues to control until the
+Project Architect explicitly reconciles it within accepted authority. The
+Project Architect involves the Owner only for an M0-D15 reserved material
+choice. The reviewer may not silently weaken that decision.
 
 ## Finding classification
 
@@ -138,14 +142,16 @@ Use when a material quality expectation lacks any of M0-D12's eight fields:
 protected outcome; operating/threat/failure model; explicit exclusions;
 practical assurance level; sufficient acceptance proof; permitted
 implementation boundary and complexity; proportionality ceiling; or exact
-stop/escalation rule—or when satisfying it requires a new owner choice. A field
-is genuinely inapplicable only when its rationale and explicit owner approval
-are recorded.
+stop/escalation rule—or when satisfying it requires a new authority choice. A
+field is genuinely inapplicable only when its rationale and the disposition of
+the project's declared acceptance authority are recorded. Under M0-D15, Owner
+involvement is required only for a reserved material choice.
 
 Freeze the implementation result and return the defect to the Project
-Architecture Agent. The Architect involves the Owner only if resolving it
-requires an M0-D15 reserved material choice. Do not direct the implementor to
-solve missing architecture, and do not create repeated correction rounds.
+Architect. The Project Architect may assign rematerialization to the Project
+Architecture Agent and involves the Owner only if resolution requires an
+M0-D15 reserved material choice. Do not direct the implementor to solve missing
+architecture, and do not create repeated correction rounds.
 
 ### Non-blocking observation
 
@@ -161,6 +167,8 @@ a merge blocker.
   other quality standard instead of the approved standard.
 - Continue searching for out-of-contract edge cases after the named proof and
   scoped behavior have been verified.
+- drip newly discoverable in-contract findings through repeated general review
+  passes instead of completing the initial frozen-manifest crosswalk;
 - Hide a contract defect inside implementation feedback.
 - Permit more than M0-D05's one targeted correction.
 - Approve a partial range, unverified base, scope breach, fabricated evidence,
@@ -216,8 +224,9 @@ where applicable.
 
 It must not continue expanding the threat model or assurance target after those
 conditions are satisfied. A new material risk outside the contract is returned
-to Architecture/Owner or recorded as non-blocking; it is not pursued through
-unlimited implementation corrections.
+to the Project Architect or recorded as non-blocking. The Project Architect
+involves the Owner only for an M0-D15 reserved material choice; the risk is not
+pursued through unlimited implementation corrections.
 
 ## Escalate when
 
