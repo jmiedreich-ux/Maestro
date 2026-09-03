@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03
-**Current development state:** stopped during M1-02B planning correction
+**Current development state:** M1-02B frozen; bootstrap convergence repair approved by Owner
 **Implementation authorization:** no new dispatch is authorized by this handoff
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -81,37 +81,15 @@ one complete review set, materiality classification, targeted-only follow-up,
 small packets, one canonical contract, independent reconstruction, and staged
 tracked-plus-untracked validation.
 
-## Exact safe resume sequence
+## Exact next action
 
-Resume only on explicit Owner instruction:
+1. Complete the bounded bootstrap-governance repair only.
+2. Obtain independent review of its exact final branch against the named
+   planning/review/execution contradictions.
+3. Merge the repair only after approval.
+4. Keep M1-02B and its interrupted files frozen throughout this change.
+5. After merge, the Project Architect may prepare one M1-02B qualification
+   slice under the controlling convergence policy; no B1 dispatch is implied.
 
-1. Inspect and preserve the two uncommitted M1-02B files at base `ab271ff`.
-2. Finish only the five named Decision Fidelity corrections, including the
-   already-identified return-routing clarification for failed M0-D17
-   eligibility.
-3. Independently reconstruct the contract and run negative, ordering,
-   allowlist, staged-diff, and repository-hygiene checks.
-4. Commit the one normal planning correction.
-5. Obtain one targeted review result from the same independent reviewer.
-6. If approved, the Project Architect may release only B1 from exact accepted
-   M1-02A head `d82164c2f3be2164ad6e66b022f645be5f61844b`.
-7. The dedicated Maestro Developer must return its B1 packet-read plan before
-   code changes. Coordinator reports must name the exact B1 item and current
-   live evidence.
-
-## Do not do from this handoff
-
-- Do not discard or silently complete the interrupted correction.
-- Do not dispatch B1 before targeted Decision Fidelity approval and Project
-  Architect release.
-- Do not merge side-branch planning or implementation merely because this
-  status record mentions it.
-- Do not start M1-02C, M1-03, M2, M3, M4, or end-to-end testing.
-- Do not access a live project, GitHub automation, provider account, Azure,
-  USB recovery, deployment, or production system.
-- Do not require Owner approval for routine Project Architect decisions, and
-  do not infer approval from silence.
-
-The priority after an explicit resume is to complete the bounded M1-02B
-planning correction and get the dedicated Maestro Developer onto B1. More
-general policy drafting is not the next deliverable.
+The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
+controls any conflicting older handoff or rule language.
