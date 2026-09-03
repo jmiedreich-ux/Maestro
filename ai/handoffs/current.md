@@ -48,37 +48,27 @@ The Meastro Architecture Agent performing the Project Architect role was
 interrupted. No M1 correction worker is running. Do not describe an assignment,
 conversation, lock, or stale message as active execution.
 
+## Completed governance repair
+
+The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
+received independent full review, one bounded three-finding correction set, and
+targeted independent `APPROVE` at exact candidate head
+`ea7483ab3963e8b465e3533ab0dd9d09f6adde3c`. PR #16 merged to `master`
+at `a8f389682c98500981cd828a2028ec56b5782705`.
+
+M1-02B remains frozen. The governance merge did not edit or dispatch it.
+
 ## Next authorized action
 
-Read the [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md).
-This governance repair must receive independent review on its exact final branch
-before merge. It does not resume or dispatch M1-02B.
-
-### Frozen M1-02B slice identity and counters
-
-- **Slice ID:** `MB-SLICE-M1-02B-REPLACEMENT-01`
-- **Earlier first M1-02B packet:** terminal `returned` history at `a9af23a`;
-  it is not this slice and creates no reusable allowance.
-- **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
-- **Complete Decision Fidelity review:** 1, consumed
-- **Planning correction:** 1 authorized and interrupted; allowance consumed
-- **Targeted planning verification:** 0, pending after the preserved correction
-- **Implementation review:** 0, unused
-- **Implementation correction:** 0, unused
-- **Current state:** frozen administrative pause, not a new slice and not a
-  counter reset
-
-Completion of the preserved correction may proceed only to the one targeted
-Decision Fidelity verification. It cannot receive another complete fidelity
-review or another planning correction. A failed targeted verification
-terminally returns this slice.
-
-After the repair merges, the Project Architect may resume only
+The Project Architect may resume only
 `MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
-recorded counters. It completes the consumed planning correction allowance and
-proceeds only to the pending targeted Decision Fidelity verification; it may
-not create a fresh slice or repeat complete review. Later implementation uses
-the frozen canonical contract, one implementation review, non-resetting
-correction budgets, learning quarantine, and terminal targeted follow-up. A delegated-worker failure may route to bounded Coordinator takeover
-under the same contract. Routine materiality and acceptance remain with the
-Project Architect; reserved decisions alone return to the Owner.
+recorded counters. It completes the already-consumed planning correction
+allowance and proceeds only to the pending targeted Decision Fidelity
+verification. It may not create a fresh slice, repeat complete review, or
+receive another planning correction.
+
+If targeted verification approves, the Architect may release only B1 under the
+frozen contract. Later implementation has one full independent implementation
+review and at most one targeted correction/verification. Routine materiality
+and acceptance remain with the Project Architect; only reserved decisions
+return to the Owner.
