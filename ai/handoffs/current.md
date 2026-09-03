@@ -73,10 +73,12 @@ Decision Fidelity verification. It cannot receive another complete fidelity
 review or another planning correction. A failed targeted verification
 terminally returns this slice.
 
-After the repair merges, the Project Architect may prepare one M1-02B
-qualification slice from the preserved evidence. The slice uses one canonical
-contract, one pre-execution Decision Fidelity review, one implementation review,
-non-resetting correction budgets, learning quarantine, and terminal targeted
-follow-up. A delegated-worker failure may route to bounded Coordinator takeover
+After the repair merges, the Project Architect may resume only
+`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
+recorded counters. It completes the consumed planning correction allowance and
+proceeds only to the pending targeted Decision Fidelity verification; it may
+not create a fresh slice or repeat complete review. Later implementation uses
+the frozen canonical contract, one implementation review, non-resetting
+correction budgets, learning quarantine, and terminal targeted follow-up. A delegated-worker failure may route to bounded Coordinator takeover
 under the same contract. Routine materiality and acceptance remain with the
 Project Architect; reserved decisions alone return to the Owner.
