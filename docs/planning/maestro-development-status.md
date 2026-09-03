@@ -235,7 +235,11 @@ the interim controls above and report their evidence explicitly.
 ## Bootstrap governance repair and next action
 
 The [Maestro Bootstrap Convergence Policy](bootstrap-convergence-policy.md) is
-the controlling repair for Maestro's own development. It replaces repeated
+the controlling repair for Maestro's own development. The Owner-approved repair
+received an independent full review, one bounded three-finding correction set,
+and targeted independent `APPROVE` at exact candidate head
+`ea7483ab3963e8b465e3533ab0dd9d09f6adde3c`. PR #16 merged to `master`
+at `a8f389682c98500981cd828a2028ec56b5782705`. It replaces repeated
 Decision Fidelity gates with one pre-execution review, freezes one canonical
 slice contract, preserves correction counts across replacement and takeover,
 authorizes bounded Coordinator completion under the same contract, quarantines
@@ -264,8 +268,7 @@ Decision Fidelity verification. It cannot receive another complete fidelity
 review or another planning correction. A failed targeted verification
 terminally returns this slice.
 
-After this repair is independently reviewed and merged, the next authorized
-planning action is for the Project Architect to resume only
+The next authorized planning action after that merge is for the Project Architect to resume only
 `MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
 recorded counters. It completes the already-authorized correction and proceeds
 only to the pending targeted Decision Fidelity verification. It does not create

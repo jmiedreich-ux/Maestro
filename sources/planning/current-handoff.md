@@ -81,18 +81,24 @@ one complete review set, materiality classification, targeted-only follow-up,
 small packets, one canonical contract, independent reconstruction, and staged
 tracked-plus-untracked validation.
 
+## Completed governance repair
+
+The Owner-approved Bootstrap Convergence Policy received independent full
+review, one bounded three-finding correction set, and targeted independent
+`APPROVE` at exact candidate head
+`ea7483ab3963e8b465e3533ab0dd9d09f6adde3c`. PR #16 merged to `master`
+at `a8f389682c98500981cd828a2028ec56b5782705`.
+
 ## Exact next action
 
-1. Complete the bounded bootstrap-governance repair only.
-2. Obtain independent review of its exact final branch against the named
-   planning/review/execution contradictions.
-3. Merge the repair only after approval.
-4. Keep M1-02B and its interrupted files frozen throughout this change.
-5. After merge, the Project Architect may resume only
-   `MB-SLICE-M1-02B-REPLACEMENT-01`, complete its already-authorized planning
-   correction, and obtain its sole targeted Decision Fidelity verification.
-   It may not create a fresh slice or repeat complete review; no B1 dispatch is
-   implied.
+1. Keep M1-02B and its interrupted files frozen until the Project Architect
+   verifies the preserved local evidence.
+2. Resume only `MB-SLICE-M1-02B-REPLACEMENT-01`; do not create a fresh slice.
+3. Complete its already-authorized planning correction.
+4. Obtain its sole targeted Decision Fidelity verification; do not repeat full
+   review or grant another planning correction.
+5. If approved, the Project Architect may release only B1. No later packet,
+   live-project action, external access, or automatic dispatch is authorized.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
 controls any conflicting older handoff or rule language.
@@ -110,8 +116,3 @@ controls any conflicting older handoff or rule language.
 - **Implementation correction:** 0, unused
 - **Current state:** frozen administrative pause, not a new slice and not a
   counter reset
-
-Completion of the preserved correction may proceed only to the one targeted
-Decision Fidelity verification. It cannot receive another complete fidelity
-review or another planning correction. A failed targeted verification
-terminally returns this slice.
