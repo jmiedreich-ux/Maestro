@@ -6,8 +6,9 @@
 **Graph revision:** `maestro-m1-m4-real-r1`
 **Planning source base:** `ed3d6cb2d2da03fbc5864f1727defcb2417f6e84`
 **Implementation base:** `56b4dfb5e4d4bef860616cde93d172affb0e4210`, routinely accepted by the Project Architect with schema version `3`, Integration `PASS`, and contiguous implementation-review coverage `c6eb7d83082a1ac75eb9b7798b6f2bdce74341c4..f44518c3144ae5bdc95fc73607cde7e9d58b8a5c`, `f44518c3144ae5bdc95fc73607cde7e9d58b8a5c..4e213b1` (`REQUEST_CHANGES`), and approved correction `4e213b1..56b4dfb5e4d4bef860616cde93d172affb0e4210`
-**Implementation shape:** three serial independently reviewed slices M1-02A,
-M1-02B, and M1-02C below; the umbrella node is never leased directly
+**Implementation shape:** M1-02A, one non-executable M1-02B0 canonical
+contract carrier, five serial independently reviewed M1-02B1-B5 slices, and
+M1-02C below; the umbrella and B0 nodes are never leased directly
 **Decision authority:** [M0-D01](../decisions/m0-d01-operational-database.md),
 [M0-D02](../decisions/m0-d02-project-registration.md),
 [M0-D03](../decisions/m0-d03-access-and-secrets.md),
@@ -17,7 +18,9 @@ M1-02B, and M1-02C below; the umbrella node is never leased directly
 [M0-D11](../decisions/m0-d11-linux-runtime-filesystem-boundary.md),
 [M0-D12](../decisions/m0-d12-bounded-quality-contracts.md),
 [M0-D14](../decisions/m0-d14-context-and-token-reporting.md), and
-[M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md)
+[M0-D15](../decisions/m0-d15-real-m1-m4-implementation-path.md),
+[M0-D16](../decisions/m0-d16-closed-completion-and-learning-loop.md), and
+[M0-D17](../decisions/m0-d17-discretionary-final-correction.md)
 **Roadmap authority:** `sources/planning/maestro-alpha-1-handoff.md`, M1; `docs/planning/maestro-master-plan.md`; and `docs/planning/agent-workforce-control-plane.md`
 **Typed hard dependency:** `MAESTRO-M1-01-REAL-PROJECT-AUTHORITY-LOADER @
 ProjectArchitectAccepted`, with exact final implementation head and complete
@@ -58,13 +61,15 @@ release.
 - Acquire that slice's declared locks. No parallel packet may write a locked
   schema, storage, state/recovery, documentation, or `tests/m1_02/` path until
   handoff/cancellation releases it.
-- Each slice has one initial Developer attempt and at most one M0-D05 correction
-  for committed in-scope work failing a named gate. There is no automatic retry
-  and no correction allowance shared or borrowed across slices. Infrastructure
-  failure stops to the Coordinator; a missing/infeasible contract returns to
-  the Project Architect.
-- Slice ceilings are 150 minutes for M1-02A, 150 minutes for M1-02B, and 120
-  minutes for M1-02C. After 10 minutes without visible update, the Coordinator
+- Each executable slice has one initial Developer attempt, one normal M0-D05
+  correction for eligible committed in-scope work, and only one M0-D17 final
+  correction when every Project Architect eligibility fact passes. There is no
+  automatic retry, third correction, or allowance shared across slices.
+  Infrastructure failure stops to the Coordinator; a missing/infeasible
+  contract returns to the Project Architect.
+- Slice ceilings are 150 minutes for M1-02A, 90 minutes for M1-02B1, 120
+  minutes each for M1-02B2-B5, and 120 minutes for M1-02C. After 10 minutes
+  without visible update, the Coordinator
   may request one bounded factual status; later requests are at least 10
   minutes apart with a 2-minute reply window. No role invents an ETA.
 - Preflight sets packet minimum context to 32,768 plus a separate 8,192-token
@@ -78,7 +83,10 @@ release.
 
 ## Outcome
 
-Advance the accepted M1-01 SQLite database additively from schema version `3` to `4` and add the production operational records and service-owned primitives required by later M1-M4 packets.
+Advance the accepted M1-01 SQLite database additively from schema version `3`
+to accepted M1-02A schema version `4`, then to M1-02B schema version `5` for
+the M0-D16/M0-D17 correction carriers, and add the production operational
+records and service-owned primitives required by later M1-M4 packets.
 
 M1-02 records projects/bindings, exact graph/work projections, milestone runs, materialized packets, leases, attempts, immutable evidence, waits, resource locks, durable notification state, review results, worker progress, context/usage and allowance observations, usage reconciliation, acceptance, and ordered events. It supplies atomic compare-and-transition, idempotent command replay, packet claim with all locks, heartbeat/release, stale-observation rejection, and startup/expired-lease reconciliation.
 
@@ -864,48 +872,72 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   `path:tests-m1-02`; one 150-minute attempt and at most one eligible targeted
   correction.
 
-### M1-02B — Atomic lifecycle, claims, and recovery
+### M1-02B0 — Canonical contract freeze
 
-- **Stable ID:** `MAESTRO-M1-02B-LIFECYCLE-CLAIMS-RECOVERY`.
-- **Typed dependency:**
-  `MAESTRO-M1-02A-SCHEMA-RECORDS-VALIDATION @ ProjectArchitectAccepted`.
-- **Branch/worktree:** `implementation/m1-02b-lifecycle-claims-recovery` at
-  `/home/jeremy/Development/Maestro-m1-02b-implementation`; the Coordinator
-  creates it only from the exact accepted A head. Any changed A head stops B
-  for base reconciliation.
-- **Outcome:** exact state/event transitions and guards, atomic claim/lease/
-  lock primitives, ordinary/non-claim rollback seams, notification and
-  acceptance/merge transitions, stale-observation handling, and conservative
-  startup reconciliation.
-- **Non-goals:** schema redesign, new workflow states/policies, final docs,
-  external action, or any umbrella exclusion.
-- **Owned paths:** `services/maestro/maestro/operational_state.py`,
-  `services/maestro/maestro/recovery.py`,
-  `services/maestro/maestro/storage.py`,
-  `tests/m1_02/test_transitions_and_claims.py`,
-  `tests/m1_02/test_recovery.py`, and
-  `tests/m1_02/test_acceptance_and_notifications.py`.
-- **Proof group:** final proofs 7-22 and 30-31; the remainder of proof 23 for
-  every transition/claim/recovery route and `RecoveryService`; and proof 24's
-  binding to the materialized packet policy plus rejection before `Running`.
-  All accepted A proofs, Alpha/M1-01 regressions, and compileall also run.
-- **Routes:** dedicated Maestro Developer -> Integration Agent
-  `validate-only` unless assembly is required -> fresh Independent
-  Implementation Reviewer over exact accepted-A-base/B-head -> routine Project
-  Architect slice acceptance.
-- **Locks/envelope:** `shared:sqlite-schema`,
-  `path:maestro-operational-state`, `path:maestro-recovery`,
-  `file:services-maestro-storage`, and `path:tests-m1-02`; one 150-minute
-  attempt and at most one eligible targeted correction.
+- **Stable ID:** `MAESTRO-M1-02B0-CANONICAL-CONTRACT-FREEZE`.
+- **Typed dependency:** exact accepted M1-02A+AR head
+  `d82164c2f3be2164ad6e66b022f645be5f61844b`.
+- **Outcome:** one non-executable machine-readable contract at
+  `docs/planning/contracts/m1-02b-contract.json` is the sole schema/API/event/
+  field/relation/quality/requirement/proof source for B1-B5. Packet documents
+  reference its stable IDs and reviewed planning head without copying its
+  inventories, counts, or digests.
+- **Gate:** two independent ephemeral standard-library validators reproduce
+  all canonical manifests/digests, check every relation/reference/coverage
+  edge and event cardinality, and pass isolated in-memory mutations before
+  Decision Fidelity and Project Architect release. B0 is never leased.
+
+Historical return glossary for the immutable failed packet:
+
+- `B-F01`: it had no legal `AwaitingReview -> execution` transition for an
+  authorized discretionary final correction.
+- `B-F02`: its schema-5 migration did not explicitly preserve the schema-4
+  inventory/trigger replacement, and its proof omitted equality, rollback,
+  concurrency, and reopen evidence.
+- `B-F03`: its carriers were not fully closed across enums, immutable
+  relations, JSON shapes, timing/arithmetic, and mutation-event mappings.
+- `B-F04`: its API/containment counts contradicted its listed methods, so
+  deterministic B-P03/B-P13 coverage and digest binding were impossible.
+
+The final targeted planning review found `B-F04` resolved while `B-F01..B-F03`
+remained in the narrower forms recorded by
+`docs/planning/proposed/m1-02b-return.md`: a two-event `record_return`, a
+non-reproducing schema digest, and omitted final-attempt/learning carrier
+relations. This glossary is historical context, not executable contract
+content; the canonical JSON defines all superseding work.
+
+### M1-02B1-B5 — Serial lifecycle, claims, recovery, and control
+
+All five implementation slices use the dedicated Maestro Developer,
+Integration `validate-only` unless assembly is required, a fresh exact-range
+Independent Implementation Reviewer, and routine Project Architect serial
+acceptance. Each starts only from the exact accepted predecessor head and uses
+the closed proof/quality rows in the canonical contract.
+
+| Slice | Typed dependency | Outcome | Exact owned implementation paths | Envelope / next gate |
+|---|---|---|---|---|
+| [M1-02B1](m1-02b1-schema5-carriers.md) `MAESTRO-M1-02B1-SCHEMA5-CARRIERS` | B0 Project Architect release; exact base `d82164c2f3be2164ad6e66b022f645be5f61844b` | additive schema-4-to-5 correction carriers, canonical validation and closed event-type trigger; preserve schema 4 except that trigger | `services/maestro/maestro/storage.py`; `services/maestro/maestro/operational_state.py`; `tests/m1_02/test_schema5_contract.py` | 90 minutes; schema/state/test locks; acceptance opens only B2 |
+| [M1-02B2](m1-02b2-guarded-lifecycle.md) `MAESTRO-M1-02B2-GUARDED-LIFECYCLE` | accepted exact B1 head | finite graph/run/packet/attempt/wait/notification transitions and review/acceptance/merge/head/context guards; one composite event per mutation | `services/maestro/maestro/operational_state.py`; `tests/m1_02/test_lifecycle_transitions.py`; `tests/m1_02/test_acceptance_and_notifications.py` | 120 minutes; state/test locks; acceptance opens only B3 |
+| [M1-02B3](m1-02b3-claims-leases-recovery.md) `MAESTRO-M1-02B3-CLAIMS-LEASES-RECOVERY` | accepted exact B2 head | atomic claim/lease/locks, seams/contention, finite startup recovery and stale observation; no redispatch/external action | `services/maestro/maestro/operational_state.py`; `services/maestro/maestro/recovery.py`; `tests/m1_02/test_claims_and_recovery.py` | 120 minutes; schema/state/recovery/test locks; acceptance opens only B4 |
+| [M1-02B4](m1-02b4-closed-completion-control.md) `MAESTRO-M1-02B4-CLOSED-COMPLETION-CONTROL` | accepted exact B3 head | completion/gate/finding aggregation, StandardCorrection #1, composite return/resolution, and complete learning | `services/maestro/maestro/operational_state.py`; `tests/m1_02/test_completion_control.py` | 120 minutes; state/test locks; acceptance opens only B5 |
+| [M1-02B5](m1-02b5-discretionary-final-correction.md) `MAESTRO-M1-02B5-DISCRETIONARY-FINAL-CORRECTION` | accepted exact B4 head | M0-D17 gate/authorization, atomic final resume/attempt, hard correction limit, and cumulative B proof | `services/maestro/maestro/operational_state.py`; `tests/m1_02/test_final_correction.py`; `tests/m1_02/test_b_cumulative_contract.py` | 120 minutes; state/test locks; only exact-head cumulative B acceptance opens C |
+
+Every B mutation emits exactly the one composite event named in its canonical
+API record, including a return event that contains its evidence, packet, and
+wait after-facts. Each slice receives its own M0-D05 normal correction and only
+an eligible M0-D17 final correction; there is no shared allowance, third
+correction, or general follow-up review restart.
 
 ### M1-02C — Cumulative integration, documentation, and proof
 
 - **Stable ID:** `MAESTRO-M1-02C-CUMULATIVE-INTEGRATION-PROOF`.
 - **Typed dependency:**
-  `MAESTRO-M1-02B-LIFECYCLE-CLAIMS-RECOVERY @ ProjectArchitectAccepted`.
+  `MAESTRO-M1-02B5-DISCRETIONARY-FINAL-CORRECTION @
+  ProjectArchitectAccepted`, which requires exact-head cumulative B1-B5 proof
+  and contiguous review coverage and also records the umbrella B outcome.
 - **Branch/worktree:** `implementation/m1-02c-cumulative-integration-proof` at
   `/home/jeremy/Development/Maestro-m1-02c-implementation`; the Coordinator
-  creates it only from the exact accepted B head. Any changed A/B head stops C
+  creates it only from the exact accepted B5/B head. Any changed A/B head stops C
   for base and review-coverage reconciliation.
 - **Outcome:** assemble the unchanged A+B contract, complete architecture and
   operations documentation, close cumulative test coverage, run all gates,
@@ -918,9 +950,13 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   `services/maestro/maestro/recovery.py`,
   `tests/m1_02/test_schema_and_records.py`,
   `tests/m1_02/test_context_and_payloads.py`,
-  `tests/m1_02/test_transitions_and_claims.py`,
-  `tests/m1_02/test_recovery.py`,
+  `tests/m1_02/test_schema5_contract.py`,
+  `tests/m1_02/test_lifecycle_transitions.py`,
   `tests/m1_02/test_acceptance_and_notifications.py`,
+  `tests/m1_02/test_claims_and_recovery.py`,
+  `tests/m1_02/test_completion_control.py`,
+  `tests/m1_02/test_final_correction.py`,
+  `tests/m1_02/test_b_cumulative_contract.py`,
   `tests/m1_02/test_cumulative_contract.py`,
   `docs/architecture/m1-02-operational-state-and-recovery-primitives.md`,
   `docs/operations/m1-02-operational-state-and-recovery-primitives.md`, and
@@ -930,7 +966,7 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
 - **Routes:** dedicated Maestro Developer -> Integration Agent for cumulative
   assembly/validation -> fresh Independent Implementation Reviewer over exact
   accepted-B-base/C-head, followed by final cumulative coverage verification
-  over accepted-M1-01-base through C-head and every A/B/C correction diff ->
+  over accepted-M1-01-base through C-head and every A/B1-B5/C correction diff ->
   routine Project Architect integrated M1-02 acceptance.
 - **Locks/envelope:** `shared:sqlite-schema`,
   `path:maestro-operational-state`, `path:maestro-recovery`,
@@ -940,8 +976,12 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
 
 Each slice releases its locks after its exact committed handoff. Integration
 or review-authored changes require the governing different-reviewer route.
-Project Architect acceptance of A or B records only a serial implementation
-gate. Only routine Project Architect acceptance of the exact integrated C head
+Project Architect acceptance of A or B1-B4 records only a serial implementation
+gate. Exact-head cumulative B5 acceptance creates the B dependency state but
+opens only C. The aggregate
+`MAESTRO-M1-02B-LIFECYCLE-CLAIMS-RECOVERY` state is a compatibility outcome,
+not C's typed dependency or another executable node. Only routine Project
+Architect acceptance of the exact integrated C head
 creates `MAESTRO-M1-02-OPERATIONAL-STATE-RECOVERY @ ProjectArchitectAccepted`
 and unlocks the downstream dependencies.
 
@@ -967,12 +1007,13 @@ dependencies, or any project repository.
 
 1. Verify exact accepted M1-01 base `56b4dfb5e4d4bef860616cde93d172affb0e4210` and schema version 3; stop on any mismatch.
 2. Release and implement only M1-02A; run A's proof group and all regressions.
-3. Complete A Integration, independent review, any one eligible correction, and routine Project Architect slice acceptance.
-4. Create M1-02B only from accepted A; implement B and run B plus all A/regression proofs.
-5. Complete B Integration, independent review, any one eligible correction, and routine Project Architect slice acceptance.
-6. Create M1-02C only from accepted B; complete cumulative integration/docs and run all gates/proofs 1-32.
-7. Complete C Integration, independent slice review, any one eligible correction, and final cumulative coverage verification over accepted M1-01 through C.
-8. The Project Architect accepts the exact integrated C head as M1-02; only then may the Coordinator expose its downstream dependency state.
+3. Complete A Integration, independent review, its frozen correction allowance, and routine Project Architect slice acceptance.
+4. Freeze and independently validate the non-executable B0 canonical contract; release only exact-base B1.
+5. Implement, integrate, independently review, and routinely accept B1 through B4 in strict serial order from each exact accepted predecessor head.
+6. Implement B5 from accepted B4, run cumulative B1-B5 proof, verify contiguous review coverage, and record exact-head routine B acceptance.
+7. Create M1-02C only from accepted B5/B; complete cumulative integration/docs and run all gates/proofs 1-32.
+8. Complete C Integration, independent slice review, its governed correction allowance, and final cumulative coverage verification over accepted M1-01 through C.
+9. The Project Architect accepts the exact integrated C head as M1-02; only then may the Coordinator expose its downstream dependency state.
 
 Stop if an accepted M1-01 row must be dropped/rewritten, an owned path is insufficient, a state/recovery meaning is absent or conflicting, external access is required, or bounded secret/SQLite assurance cannot be met.
 
@@ -991,9 +1032,9 @@ python -m compileall -q maestro
 
 Using real temporary SQLite files inside the physical test `var/` boundary, M1-02 must prove:
 
-1. a schema-3 database with representative Alpha and M1-01 rows upgrades to 4 with every original row byte-equivalent;
+1. a schema-3 database with representative Alpha and M1-01 rows upgrades through 4 to 5 with every original row byte-equivalent;
 2. injected DDL failure before version insertion rolls back tables/indexes/triggers/version/data exactly;
-3. reopen is no-op and concurrent migration callers yield one valid schema/one version-4 row;
+3. reopen is no-op and concurrent migration callers yield one valid schema with one row for each version through 5;
 4. every FK/check/unique/partial-active/JSON/ID/digest/timestamp/size constraint rejects without event;
 5. M1-01 `AuthorityLoaded` still writes/reads its exact nullable legacy event after version 4, while every non-legacy direct insert missing new event metadata is rejected;
 6. event ordering is monotonic and all declared append-only tables reject update/delete;
@@ -1002,7 +1043,7 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 9. same key/different facts raises `IdempotencyConflict` with no mutation;
 10. every allowed graph/run/packet/attempt/wait/notification transition satisfies its guards with one version increment and exact event, including Packet/Run entry to `AwaitingOwner` only after the same-subject/current-head Project Architect `ReservedChoice` and deterministic Run candidate-head snapshot;
 11. every prohibited, stale, terminal, missing/mismatched-context-policy, wrong-lease, premature-time, direct-to-`Merged`, or Packet/Run `AwaitingOwner` transition with a missing/wrong-subject/wrong-head/non-Project-Architect `ReservedChoice` fails without mutation;
-12. targeted correction is available once, requires a named review finding, and a second is rejected;
+12. one normal targeted correction requires the complete initial gate finding union; one final correction requires every M0-D17 fact and Project Architect authorization; a third is rejected;
 13. injected `after_entity_write` and `after_event_write` failures for representative ordinary record methods roll back row/event and remain absent after close/reopen;
 14. the same injected seams for graph, packet, and notification non-claim transitions restore original state/version/event history after reopen;
 15. claim creates one lease, all locks, one state change/event;
@@ -1048,7 +1089,7 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
   and transition failure injection, exact reopen state, and claim contention.
 - **Implementation boundary:** `BEGIN IMMEDIATE`, 5-second busy timeout, canonical fingerprints, constraints/indexes, no background retry.
 - **Proportionality ceiling:** one box/one logical Development Manager; no workflow engine/distributed lock service.
-- **Stop/return:** distributed coordination, auto-retry policy, new transition, or more than one correction returns to Project Architect.
+- **Stop/return:** distributed coordination, auto-retry policy, a new transition, an ineligible final correction, or any third correction returns to Project Architect.
 
 ### Q3 — Conservative lease expiry and restart recovery
 
@@ -1143,7 +1184,7 @@ M1-02 excludes:
 - USB backup/restore, daily backup implementation, retention deletion, Postgres, multi-coordinator operation, or live projects; and
 - machine reboot/service supervision proof, which belongs to M1-06.
 
-Architecture/public-contract, security/data/credential/external-access, material-risk, spending, production/deployment/merge, or infeasible-contract choices return through Project Architect to Owner. Routine findings, rollback, contention, waiting, recovery, Integration/review, and one correction do not.
+Architecture/public-contract, security/data/credential/external-access, material-risk, spending, production/deployment/merge, or infeasible-contract choices return through Project Architect to Owner. Routine findings, rollback, contention, waiting, recovery, Integration/review, the normal correction, and an eligible Project-Architect-authorized final correction do not.
 
 ## Handoff and acceptance
 
@@ -1154,14 +1195,15 @@ is the exact routinely accepted predecessor head, never merely a Developer or
 Integration head.
 
 Independent review covers each exact slice base/head and its declared proof
-group. One targeted correction per slice is available under M0-D05. Before
-final acceptance, cumulative coverage must prove the ordered accepted A, B,
-and C ranges plus every targeted correction exactly cover the accepted M1-01
+group. M0-D05's normal correction and only an eligible M0-D17 final correction
+are available per slice. Before final acceptance, cumulative coverage must
+prove the ordered accepted A, B1-B5, and C ranges plus every targeted correction exactly cover the accepted M1-01
 base through final C head with no gap, overlap ambiguity, unrelated commit, or
 stale result. Any uncovered commit, missing contract, new failure class, base
 change, or exhausted slice correction returns to the Project Architect.
 
-Project Architect acceptance of A/B only opens the next serial slice. After C
+Project Architect acceptance of A/B1-B4 only opens the next serial slice;
+cumulative B5 acceptance opens only C. After C
 approval and complete cumulative final-head coverage, routine integrated M1-02
 acceptance belongs to the Project Architect. Only that acceptance releases
 M1-03, M3-01, and M4-01 dependencies as their packets permit. It does not
