@@ -584,7 +584,105 @@ class RecordRouteTests(unittest.TestCase):
             },
         }
 
-        def trace(route_id, command, relation=None, extra=()):
+        def payloads_are_redacted(row):
+            return all(
+                row[field]["kind"] == "redacted-text"
+                and row[field]["redaction_status"] == "Redacted"
+                for field in (
+                    "plan_payload_json", "current_step_payload_json", "blocker_payload_json"
+                )
+            )
+
+        relation_observers = {
+            ("APP-MAP-01", "R17"): lambda row: row == {
+                "actor_type": "Developer", "actor_id": "developer-1",
+                "correlation_id": "correlation-1", "causation_event_id": 1,
+            },
+            ("APP-MAP-02", "R01"): lambda row: row["state"] in {"Candidate", "Blocked"}
+            and row["acceptance_authority"] in {"ProjectArchitect", "Owner"}
+            and row["merge_execution_authority"] == "OwnerPerformed"
+            and row["merge_delegation_reference"] is None
+            and row["activated_at"] is None and row["superseded_at"] is None,
+            ("APP-MAP-03", "R02"): lambda row: row["status"] in {
+                "Active", "Stale", "Revoked", "Unavailable"
+            },
+            ("APP-MAP-04", "R03"): lambda result: result[0] == NOW
+            and result[1]["state"] == "Active" and result[1]["version"] == 1,
+            ("APP-MAP-05", "R04"): lambda result: result[0] == NOW
+            and result[1]["graph_projection_id"] == valid["_work_item"]["graph_projection_id"]
+            and result[1]["planning_state"] in {"Active", "NeedsReplan", "Superseded"},
+            ("APP-MAP-06", "R05"): lambda row: row["state"] == "Planned"
+            and row["acceptance_boundary"] in {"ProjectArchitect", "Owner"}
+            and all(row[field] is None for field in (
+                "current_head", "current_head_source_reference", "candidate_head",
+                "candidate_head_source_reference",
+            )),
+            ("APP-MAP-07", "R06"): lambda row: row["state"] == "Planned"
+            and row["correction_count"] == 0 and row["current_head"] is None,
+            ("APP-MAP-08", "R06"): lambda row: row["attempt_number"] == 1
+            and row["attempt_kind"] == "Initial" and row["state"] == "Planned"
+            and row["correction_for_review_id"] is None
+            and all(row[field] is None for field in ("result_commit", "started_at", "finished_at")),
+            ("APP-MAP-09", "R07"): lambda row: row["content_digest"]
+            == canonical_digest(row["payload_json"])
+            and row["redaction_state"] in {"Redacted", "NotRequired"},
+            ("APP-MAP-10", "R08"): lambda row: row["state"] == "Open"
+            and row["resolution_reason_payload_json"] is None,
+            ("APP-MAP-11", "R09"): lambda row: row["review_kind"] in {
+                "Integration", "IndependentImplementation"
+            } and row["result"] in {
+                "ValidateOnly", "Assemble", "NeedsReplan", "Approve",
+                "RequestChanges", "Comment",
+            } and row["correction_number"] in {0, 1}
+            and isinstance(row["findings_json"], list),
+            ("APP-MAP-12", "R10"): lambda row: row["channel"] in {"LocalDurable", "Slack"}
+            and row["payload_json"]["event_id"] == row["event_id"]
+            and row["state"] == "Pending" and row["attempt_count"] == 0
+            and row["last_error_payload_json"] is None and row["next_attempt_at"] is None,
+            ("APP-MAP-13", "R11"): lambda row: payloads_are_redacted(row)
+            and row["eta_text"] == "unknown" and row["confidence"] == "Unknown"
+            and row["status_request_state"] == "NotRequested",
+            ("APP-MAP-14", "R12"): lambda row: row["counting_method"] in {
+                "Runtime", "Tokenizer", "Estimate", "Unavailable"
+            } and row["availability_state"] in {"Available", "Partial", "Unavailable"}
+            and row["future_growth_estimate_json"]["lower_bound"]["value"]
+            <= row["future_growth_estimate_json"]["upper_bound"]["value"],
+            ("APP-MAP-15", "R13"): lambda row: row["precision"] in {
+                "Exact", "Coarse", "Unavailable"
+            } and row["measurement_quality"] in {
+                "RuntimeReported", "ProviderReported", "Estimated", "Unavailable"
+            } and row["freshness"] in {"Fresh", "Stale", "Unavailable"}
+            and row["native_unit"] is not None,
+            ("APP-MAP-16", "R14"): lambda row: row["measurement_quality"] in {
+                "Exact", "Coarse", "Estimated"
+            } and row["window_change_value"] == "10.5"
+            and (row["tracked_controlled_value"], row["registered_coarse_value"], row["unattributed_value"])
+            == ("4", "5", "1.5"),
+            ("APP-MAP-17", "R15"): lambda row: row["subject_type"] == "Packet"
+            and row["subject_id"] == row["packet_id"] and row["run_id"] is None
+            and row["sequence_number"] in {1, 2}
+            and row["reason_payload_json"]["kind"] == "reason",
+            ("APP-MAP-18", "R16"): lambda row: row["source_kind"] in {"Git", "GitHub"}
+            and row["performed_by_authority"] == "DelegatedIdentity"
+            and row["delegation_reference"] is not None,
+            ("APP-MAP-19", "R12"): lambda row: row["version"] == 3
+            and row["availability_state"] == "Available"
+            and all(item["quality"] == "RuntimeReported" for item in row["token_measurements_json"].values()),
+            ("APP-MAP-20", "R19"): lambda result: result[0]["binding_id"] == "binding-1"
+            and len(result[1]) == 1 and result[1][0]["event_id"] > 0,
+        }
+        boundary_observers = {
+            "V24": lambda evidence: isinstance(evidence["error"], InvalidRecord)
+            and str(evidence["error"]) == "record violates a durable schema constraint"
+            and isinstance(evidence["error"].__cause__, sqlite3.IntegrityError)
+            and evidence["error"].__cause__.sqlite_errorname == "SQLITE_CONSTRAINT_UNIQUE"
+            and evidence["before"] == evidence["after"],
+            "V25": lambda evidence: isinstance(evidence["error"], ResourceBusy)
+            and str(evidence["error"]) == "SQLite busy timeout exhausted"
+            and evidence["elapsed"] >= 4.5 and evidence["before"] == evidence["after"],
+        }
+
+        def trace(route_id, command, boundary_evidence=None):
             calls = set()
             depth = [0]
             queues = {code: list(values) for code, values in queued_labels.get(route_id, {}).items()}
@@ -625,36 +723,52 @@ class RecordRouteTests(unittest.TestCase):
                 patch.start()
                 active_patches.append(patch)
             try:
-                command()
+                result = command()
             finally:
                 for patch in reversed(active_patches):
                     patch.stop()
-            if relation is not None:
-                calls.add((relation, ""))
-            calls.update(extra)
+            expected_relations = {
+                item for item in expected[route_id] if item[0].startswith("R")
+            }
+            observed_relations = {
+                item for item in expected_relations
+                if relation_observers[(route_id, item[0])](result)
+            }
+            self.assertEqual(observed_relations, expected_relations, route_id)
+            calls.update(observed_relations)
+            expected_boundaries = {
+                item for item in expected[route_id] if item[0] in boundary_observers
+            }
+            observed_boundaries = {
+                item for item in expected_boundaries
+                if boundary_evidence is not None
+                and boundary_observers[item[0]](boundary_evidence[item[0]])
+            }
+            self.assertEqual(observed_boundaries, expected_boundaries, route_id)
+            calls.update(observed_boundaries)
             internal = relation_internal.get(route_id, set())
             self.assertEqual(calls, expected[route_id] | internal, route_id)
             self.assertEqual(calls - internal, expected[route_id], route_id)
 
-        trace("APP-MAP-01", lambda: operational_state._actor({"actor_type": "Developer", "actor_id": "developer-1", "correlation_id": "correlation-1", "causation_event_id": 1}), "R17")
-        trace("APP-MAP-02", lambda: OperationalStateStore._binding(valid["_binding"], NOW), "R01")
-        trace("APP-MAP-03", lambda: OperationalStateStore._secret_reference(valid["_secret_reference"]), "R02")
-        trace("APP-MAP-04", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._graph(valid["_graph"], NOW)), "R03")
-        trace("APP-MAP-05", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._work_item(valid["_work_item"], valid["_work_item"]["graph_projection_id"], NOW)), "R04")
-        trace("APP-MAP-06", lambda: OperationalStateStore._run(valid["_run"], NOW), "R05")
-        trace("APP-MAP-07", lambda: OperationalStateStore._packet(valid["_packet"], NOW), "R06")
-        trace("APP-MAP-08", lambda: OperationalStateStore._attempt(valid["_attempt"], NOW), "R06")
-        trace("APP-MAP-09", lambda: OperationalStateStore._evidence(valid["_evidence"]), "R07")
-        trace("APP-MAP-10", lambda: OperationalStateStore._wait(valid["_wait"], NOW), "R08")
+        trace("APP-MAP-01", lambda: operational_state._actor({"actor_type": "Developer", "actor_id": "developer-1", "correlation_id": "correlation-1", "causation_event_id": 1}))
+        trace("APP-MAP-02", lambda: OperationalStateStore._binding(valid["_binding"], NOW))
+        trace("APP-MAP-03", lambda: OperationalStateStore._secret_reference(valid["_secret_reference"]))
+        trace("APP-MAP-04", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._graph(valid["_graph"], NOW)))
+        trace("APP-MAP-05", lambda: (operational_state._timestamp(NOW, "now"), OperationalStateStore._work_item(valid["_work_item"], valid["_work_item"]["graph_projection_id"], NOW)))
+        trace("APP-MAP-06", lambda: OperationalStateStore._run(valid["_run"], NOW))
+        trace("APP-MAP-07", lambda: OperationalStateStore._packet(valid["_packet"], NOW))
+        trace("APP-MAP-08", lambda: OperationalStateStore._attempt(valid["_attempt"], NOW))
+        trace("APP-MAP-09", lambda: OperationalStateStore._evidence(valid["_evidence"]))
+        trace("APP-MAP-10", lambda: OperationalStateStore._wait(valid["_wait"], NOW))
         review = dict(valid["_review"], findings_json=[{"kind": "reason", "reason_code": "NONE", "detail_reference": None}])
-        trace("APP-MAP-11", lambda: OperationalStateStore._review(review), "R09")
-        trace("APP-MAP-12", lambda: OperationalStateStore._notification(valid["_notification"], NOW), "R10")
-        trace("APP-MAP-13", lambda: OperationalStateStore._worker_progress(valid["_worker_progress"]), "R11")
-        trace("APP-MAP-14", lambda: OperationalStateStore._context_usage(valid["_context_usage"], NOW), "R12")
-        trace("APP-MAP-15", lambda: OperationalStateStore._allowance(valid["_allowance"]), "R13")
-        trace("APP-MAP-16", lambda: OperationalStateStore._reconciliation(valid["_reconciliation"]), "R14")
-        trace("APP-MAP-17", lambda: OperationalStateStore._acceptance(valid["_acceptance"]), "R15")
-        trace("APP-MAP-18", lambda: OperationalStateStore._merge_observation(valid["_merge_observation"]), "R16")
+        trace("APP-MAP-11", lambda: OperationalStateStore._review(review))
+        trace("APP-MAP-12", lambda: OperationalStateStore._notification(valid["_notification"], NOW))
+        trace("APP-MAP-13", lambda: OperationalStateStore._worker_progress(valid["_worker_progress"]))
+        trace("APP-MAP-14", lambda: OperationalStateStore._context_usage(valid["_context_usage"], NOW))
+        trace("APP-MAP-15", lambda: OperationalStateStore._allowance(valid["_allowance"]))
+        trace("APP-MAP-16", lambda: OperationalStateStore._reconciliation(valid["_reconciliation"]))
+        trace("APP-MAP-17", lambda: OperationalStateStore._acceptance(valid["_acceptance"]))
+        trace("APP-MAP-18", lambda: OperationalStateStore._merge_observation(valid["_merge_observation"]))
 
         context = self.store.snapshot("AttemptContextUsage", "context-1")
         update = {
@@ -662,10 +776,52 @@ class RecordRouteTests(unittest.TestCase):
             "cost_measurement": context["cost_measurement_json"], "availability_state": "Available",
             "observed_at": LATER,
         }
-        trace("APP-MAP-19", lambda: self.store.update_context_usage("attempt-1", 2, update, "trace-map-19", ACTOR, LATER), "R12")
-        trace("APP-MAP-20", lambda: (self.store.snapshot("ProjectBinding", "binding-1"), self.store.events_after(0, 1)), "R19")
+        trace("APP-MAP-19", lambda: self.store.update_context_usage("attempt-1", 2, update, "trace-map-19", ACTOR, LATER))
+        trace("APP-MAP-20", lambda: (self.store.snapshot("ProjectBinding", "binding-1"), self.store.events_after(0, 1)))
 
         append_row = OperationalStateStore._binding(dict(valid["_binding"], binding_id="trace-binding", binding_revision="trace-revision"), NOW)
+        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
+            constraint_before = _durable_state(connection)
+        try:
+            self.store.record_binding(
+                dict(valid["_binding"], binding_id="trace-constraint"),
+                "trace-map-21-constraint", ACTOR, NOW,
+            )
+        except InvalidRecord as error:
+            constraint_error = error
+        else:  # pragma: no cover - exact evidence assertion below
+            self.fail("MAP-21 constraint route unexpectedly succeeded")
+        with closing(sqlite3.connect(self.runtime.path / "maestro.sqlite3")) as connection:
+            constraint_after = _durable_state(connection)
+
+        database = self.runtime.path / "maestro.sqlite3"
+        with closing(sqlite3.connect(database, timeout=0)) as holder:
+            holder.execute("PRAGMA journal_mode=WAL")
+            holder.execute("BEGIN IMMEDIATE")
+            busy_before = _durable_state(holder)
+            started = time.monotonic()
+            try:
+                self.store.record_binding(
+                    dict(valid["_binding"], binding_id="trace-busy", binding_revision="trace-busy"),
+                    "trace-map-21-busy", ACTOR, NOW,
+                )
+            except ResourceBusy as error:
+                busy_error = error
+            else:  # pragma: no cover - exact evidence assertion below
+                self.fail("MAP-21 busy route unexpectedly succeeded")
+            busy_elapsed = time.monotonic() - started
+            busy_after = _durable_state(holder)
+            holder.rollback()
+        boundary_evidence = {
+            "V24": {
+                "error": constraint_error, "before": constraint_before,
+                "after": constraint_after,
+            },
+            "V25": {
+                "error": busy_error, "elapsed": busy_elapsed,
+                "before": busy_before, "after": busy_after,
+            },
+        }
         trace(
             "APP-MAP-21",
             lambda: self.store._append(
@@ -673,7 +829,7 @@ class RecordRouteTests(unittest.TestCase):
                 "ProjectBindingRecorded", "trace-map-21", ACTOR, NOW,
                 lambda connection: self.store._insert(connection, "project_bindings", append_row),
             ),
-            extra={("V24", "constraint mapping"), ("V25", "busy exhaustion")},
+            boundary_evidence=boundary_evidence,
         )
 
     def test_ar_p05_app_rel_01_through_19_exact_negative_edges(self) -> None:
