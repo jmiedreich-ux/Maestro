@@ -88,8 +88,11 @@ tracked-plus-untracked validation.
    planning/review/execution contradictions.
 3. Merge the repair only after approval.
 4. Keep M1-02B and its interrupted files frozen throughout this change.
-5. After merge, the Project Architect may prepare one M1-02B qualification
-   slice under the controlling convergence policy; no B1 dispatch is implied.
+5. After merge, the Project Architect may resume only
+   `MB-SLICE-M1-02B-REPLACEMENT-01`, complete its already-authorized planning
+   correction, and obtain its sole targeted Decision Fidelity verification.
+   It may not create a fresh slice or repeat complete review; no B1 dispatch is
+   implied.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
 controls any conflicting older handoff or rule language.
