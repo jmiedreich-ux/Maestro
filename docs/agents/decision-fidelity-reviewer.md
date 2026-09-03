@@ -239,3 +239,9 @@ Decision Fidelity Review occurs:
 It is distinct from independent implementation review. Decision Fidelity Review
 checks that the right, bounded work was planned. Independent implementation
 review checks whether the code and evidence satisfy that approved work.
+
+## Bootstrap convergence review — Owner-approved 2026-09-03
+
+The [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) controls during bootstrap. Decision Fidelity performs one complete review of the canonical slice contract before execution and returns one complete blocking set. One targeted planning follow-up checks only those findings and directly affected consistency.
+
+Mechanically derived build instructions and milestone acceptance do not receive additional Decision Fidelity reviews. Packet replacement does not reset the review or correction allowance. A follow-up may add a blocker only for one of the policy's exact critical exceptions; other concerns are non-blocking learning candidates. The Project Architect decides disputed routine materiality. This section overrides conflicting timing, reopening, owner-approval, or repeated-review language above.
