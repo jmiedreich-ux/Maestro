@@ -1,5 +1,15 @@
 # Maestro Master Plan
 
+## Current delivery checkpoint
+
+The authoritative current status and process-delay record is
+[Maestro Development Status and Process-Delay Record](maestro-development-status.md),
+dated 2026-09-03. Alpha-01 through Alpha-03 are the last work integrated on
+`master`. M1 planning and accepted implementation evidence currently remain on
+unmerged side branches; M1-02B is paused during a non-dispatchable planning
+correction. Nothing in those side branches is live-project, merge, or
+end-to-end-test authority.
+
 ## 1. Charter
 
 Maestro is a standalone, project-neutral development-operations system. It is not a product feature of Foundry, Vennue, or any other individual repository.
@@ -36,6 +46,21 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
     account allowance window and reset separately from attempt token counts;
     it never derives weekly allowance from tokens. Local capacity remains
     separate, and unsupported facts are `unavailable`.
+16. Work is `Running` only when Maestro can identify a current execution handle
+    or freshly verified active process. Assignment, intent, a lock, or chat is
+    not activity evidence and cannot drive a timeout, takeover, or success
+    report.
+17. Before editing, an assigned role returns one short packet-read plan tied to
+    exact packet items, paths, proofs, and stop conditions. Coordinator status
+    names the role, completed item, current item, next item, latest evidence,
+    blocker, and ETA/confidence or `unknown`.
+18. A review observation blocks only when it cites frozen authority,
+    reproducible evidence, a material in-scope consequence, and the smallest
+    correction. The first review returns one complete finding set; targeted
+    follow-up cannot restart open-ended discovery or require optional polish.
+19. Pre-review and pre-commit validation covers the actual candidate union,
+    including untracked files. Exact allowlist comparison and staged
+    `git diff --cached --check` are required before a clean-candidate claim.
 
 ## 3. System shape
 
