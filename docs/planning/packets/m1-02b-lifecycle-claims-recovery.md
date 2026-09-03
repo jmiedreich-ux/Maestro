@@ -117,10 +117,11 @@ B-A25 RecoveryService(store); B-A26 RecoveryService.reconcile_startup
 B-A27 RecoveryService.record_attempt_observation
 ```
 
-Serialize the 27 exact trimmed `B-Axx name` members above in ascending ID
-order, separating members with one ASCII `|`, using UTF-8 and no final newline.
-Its SHA-256 is
-`a946252eae2d4767a870fac2d6b46832c08dd525ebbb695b0453a8aae18a3cf1`.
+The canonical signature manifest is the 27 exact `B-Axx` IDs above with their
+fully qualified signatures from the Closed APIs block, normalized as
+`B-Axx FullyQualifiedName(signature)` in ascending ID order, joined with one
+ASCII `|`, UTF-8, no final newline. Its SHA-256 is
+`e31db01d1857760fe59833fecb262b7b20750f6b6a9bf4ea4b55189b2c54d5d9`.
 Missing, duplicate, reordered, renamed, or signature-changed members are a
 packet error; B-P03/B-P13 bind their finite sets to this digest.
 
@@ -235,8 +236,8 @@ transaction plus `after_final_attempt` and `after_resume_event` seams.
 `transition_final_correction_attempt` requires that exact current lease,
 packet `Running`, and matching committed context. Its success writes the result
 commit/evidence, changes the attempt to `Succeeded`, transitions packet
-`Running->AwaitingIntegration`, and appends
-`FinalCorrectionAttemptStateChanged`. Integration then records the exact
+`Running->AwaitingIntegration`, and appends one composite
+`FinalCorrectionAttemptTransitioned`. Integration then records the exact
 `I1..I2` range; the fresh reviewer verifies that same targeted range before the
 existing merge/Project-Architect acceptance path. Expiry/reopen applies the
 same single-writer lease recovery rules and must never create a duplicate final
@@ -352,7 +353,8 @@ The sole schema-4 object whose SQL may differ is
 `events_closed_event_type`. Its schema-5 replacement preserves its legacy and
 29 schema-4 accepted event types and adds exactly `CorrectionRecorded`,
 `DiscretionaryFinalCorrectionAuthorized`, `PacketFinalCorrectionResumed`, and
-`FinalCorrectionAttemptStateChanged`.
+`FinalCorrectionAttemptTransitioned`. Its normalized one-line replacement SQL
+has SHA-256 `68e826bbd9b66f10161fb6deee0babb08a68352a6919a4b67b00a067d1f64a82`.
 Every other schema-4 object has identical `type,name,tbl_name,sql` canonical
 bytes. B-P02 proves S4/S5 inventory/digests, all object equality except that
 trigger, failed DDL rollback, concurrent opener serialization, close/reopen,
@@ -373,15 +375,17 @@ records the exact first-correction range and intended second-correction base.
 All schema-5 shapes are closed. `correction_records` requires canonical text
 IDs, lowercase 40-hex `initial_head`/`base_head`, sorted unique frozen
 `finding_ids_json`/`proof_ids_json`, classification enum
-`ImplementationDefect|ArchitectureContractDefect|NewPostCorrectionFailureClass`,
+`ImplementationDefect`,
 and canonical object/array JSON <=1 MiB. #1 has number 1/type
 `StandardCorrection`, non-null initial Integration/review IDs, null targeted
 IDs/PA authorization/eligibility/diff, and its base equals initial head. #2 has
 number 2/type `DiscretionaryFinalCorrection`, non-null targeted Integration and
 independent-review IDs, PA evidence, eligibility object, and bounded diff;
 initial review IDs are null; its base equals the #1 final head. The two gate
-rows must be distinct roles, same packet/correction/base/head, terminal results
-`PASS|FAIL`, and a coverage object whose exact base/head and sorted proof/finding
+rows must be distinct roles, same packet/correction/base/head, and gate-kind
+dependent terminal results: `Integration` permits only `PASS|FAIL` and
+`IndependentReview` permits only `APPROVE|REQUEST_CHANGES`. Its coverage object
+has exact base/head and sorted proof/finding
 IDs equal the correction row.
 
 `eligibility_facts_json` has exactly `same_frozen_findings_and_class`,
@@ -395,29 +399,40 @@ path is packet-owned. The PA evidence's authority is `ProjectArchitect`, its
 head is I1, and its fields equal this object; a later mutable record cannot
 satisfy it.
 
-`final_correction_attempts` has closed canonical IDs, current lease/context
-references, state enum displayed above, version >=1, and null-by-state rules:
-Planned has null start/finish/result; Running has start only; Succeeded has
-finish/result/evidence; Failed|Cancelled|TimedOut|Stale has finish/reason/evidence
-and null result. `correction_gate_reviews`, `correction_records`, and their
+`final_correction_attempts` has closed canonical IDs, correction/packet/lease/
+`context_usage_id` FKs, executor/model/runtime IDs, `reason_payload_json`,
+`evidence_reference`, state enum displayed above, version >=1, and null-by-state
+rules: Planned has null start/finish/result/reason/evidence; Running has start
+only; Succeeded has finish/result/evidence and null reason; Failed|Cancelled|
+TimedOut|Stale has finish/reason/evidence and null result. Its context reference
+must name the exact committed policy-matching usage record from the resume event.
+`correction_gate_reviews`, `correction_records`, and their
 evidence are append-only by explicit update/delete triggers; final attempts are
 versioned only through the named transition API. Every API has a canonical
 command fingerprint and exact replay-before-stale behavior.
 
-`PacketLearning` has every displayed key and no others. Durations are null or
-nonnegative integers; if all interval facts are known,
+`PacketLearning` has every displayed key and no others: IDs/heads/references are
+canonical text; `elapsed_seconds`, `active_seconds`, `queue_seconds`, and
+`wait_seconds` are null or nonnegative integers; `gate_seconds` is sorted unique
+`{gate_id:canonical-text,seconds:null|nonnegative-integer,availability:
+"Known"|"Unavailable"}`; `first_pass_result` is
+`Pass|Fail|ImmediateReject|Returned`; `review_count` and `correction_count` are
+nonnegative integers; `hard_escalation`/`compiler_discoverable` are booleans;
+change kind is `Compiler|Template|Invariant|RolePolicy|NoGeneralChange` with a
+non-null reason only for `NoGeneralChange`. If every duration is Known,
 `elapsed_seconds=active_seconds+queue_seconds+wait_seconds+sum(gate_seconds)`;
-otherwise elapsed and every unavailable component are null and availability is
-recorded in the matching gate entry. `correction_count` equals correction-record
-rows; correction entries sort by number and each range/coverage/authorization
-matches its row. #1 has null final-only fields; #2 has non-null authorization and
-eligibility outcome. `terminal_return_evidence_id` is null only for the positive
-no-return branch. All FK, enum, null-conditional, array, range, arithmetic,
-append-only, and mutation/event failures reject before commit without residue.
+otherwise elapsed and each unavailable component are null. `correction_count`
+equals correction-record rows; correction entries sort by number and each
+range/coverage/authorization matches its row. #1 has null final-only fields; #2
+has non-null authorization and eligibility outcome. `terminal_return_evidence_id`
+is null only for positive `PASS:NoReturnRequired`; every actual return requires
+its matching immutable ID. All FK, enum, null-conditional, array, range,
+arithmetic, append-only, and mutation/event failures reject before commit with
+no residue.
 
 The migration adds only the four event types `CorrectionRecorded`,
 `DiscretionaryFinalCorrectionAuthorized`, `PacketFinalCorrectionResumed`, and
-`FinalCorrectionAttemptStateChanged`; each correction API writes its row,
+`FinalCorrectionAttemptTransitioned`; each correction API writes its row,
 matching append-only evidence, and event in one transaction. The existing
 packet count changes only for normal correction #1; the correction-record count
 is authoritative for the M0-D17 maximum. `CorrectionRecorded` never grants #2;
@@ -432,9 +447,10 @@ inserts correction #1/evidence and emits `CorrectionRecorded`;
 and emits `DiscretionaryFinalCorrectionAuthorized`;
 `resume_discretionary_final_correction` inserts final attempt+lease+locks,
 updates packet state/version, and emits `PacketFinalCorrectionResumed`;
-`transition_final_correction_attempt` updates
-only that attempt/version, writes its evidence, changes packet only on success,
-and emits `FinalCorrectionAttemptStateChanged` plus the applicable
+`transition_final_correction_attempt` atomically updates the attempt/version,
+writes its evidence, changes packet only on success, and emits one composite
+`FinalCorrectionAttemptTransitioned` whose after facts always contain the
+attempt and contain packet facts only when changed; it emits no
 `PacketStateChanged`; `record_return`, `record_resolution`, and `record_learning`
 retain their respective `EvidenceAppended` plus `PacketStateChanged`,
 `WaitStateChanged`, and `EvidenceAppended` mappings. Every mapped event after
@@ -538,7 +554,7 @@ B-R12 terminal gates and Project Architect routine B acceptance
 |---|---|---|---|
 | `B-P01` | B-R01 / exact accepted base and current authorities | Coordinator | preflight records `d82164c...`, D05/D12/D15/D16/D17, environment, locks, paths |
 | `B-P02` | B-R02 / frozen schema migration | Developer | B-S4/B-S5 inventory+digest match; only named trigger SQL differs; exact schema-5 DDL, failed-DDL rollback, concurrent opener, close/reopen/FK/WAL, and legacy/unknown-event rejection prove exactly as specified |
-| `B-P03` | B-R02 / B-A01..B-A27 API manifest | Developer | canonical API manifest equals `a946…3cf1`; every mutation has exact replay/conflict and named event mapping; missing/duplicate/reordered/signature-changed member rejects |
+| `B-P03` | B-R02 / B-A01..B-A27 API manifest | Developer | canonical signature manifest equals `e31d…d5d9`; every mutation in B-A01..B-A21 and B-A26..B-A27 has exact replay/conflict and named event mapping; missing/duplicate/reordered/signature-changed member rejects |
 | `B-P04` | B-R03 / finite matrix guards | Developer | each listed edge passes once; all complement/terminal/stale guards fail with unchanged reopened state |
 | `B-P05` | B-R03 / normal correction lifecycle | Developer | terminal initial gates create one StandardCorrection #1; it alone permits attempt #2/count 1; duplicates fail unchanged |
 | `B-P06` | B-R09 / closed final authorization fields | Developer | isolate every #2 eligibility, enum, ID/FK, head/range, owned-diff, conditional-null, append-only, and arithmetic failure; each rejects before commit/reopen residue |
@@ -559,8 +575,8 @@ B-R12 terminal gates and Project Architect routine B acceptance
 | `B-P21` | B-R12 / governed follow-up | Coordinator + gates | all initial findings unioned before #1; #2 only with P06--P08 authorization; no general restart/third correction |
 | `B-P22` | B-R12 / routine acceptance | Project Architect | final exact head has all proofs, Integration PASS, full coverage, clean handoff/learning, released locks, then records `Accepted` |
 
-The finite mutation inventory is B-A01..B-A21; the finite containment inventory
-is B-A01..B-A27. No source discovery enlarges either set.
+The finite mutation inventory is B-A01..B-A21 plus B-A26..B-A27; the finite
+containment inventory is B-A01..B-A27. No source discovery enlarges either set.
 
 Coverage is exact: `B-R01->B-P01`; `B-R02->B-P02,B-P03`;
 `B-R03->B-P04,B-P05`; `B-R04->B-P09,B-P10`; `B-R05->B-P11`;
