@@ -1,6 +1,6 @@
 # M1-02AR2 — Observable Wiring-Proof Remediation
 
-**Status:** draft only; not released or dispatchable  
+**Status:** withdrawn by Owner direction on 2026-09-02; never released or dispatchable
 **Packet / node:** `maestro-m1-02ar-observable-wiring-proof-remediation` /
 `MAESTRO-M1-02AR2-OBSERVABLE-WIRING-PROOF-REMEDIATION`  
 **Implementation base:** `27e924f2871c026e8befc236f46025e57a9a7a77` (`H1`)  

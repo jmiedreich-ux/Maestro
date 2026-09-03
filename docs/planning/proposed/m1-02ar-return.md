@@ -19,7 +19,7 @@ M1_02AR_RETURN_V1={
   failed_proof_ids:["AR-P05","AR-R04"],
   classification:"InContractProofFailure",
   responsible_authority:"ProjectArchitect",
-  next_permitted_action:"RematerializeSupersedingPacket",
+  next_permitted_action:"OwnerAuthorizedFinalCorrection",
   idempotency_key:"m1-02ar-return-h1-ar-p05",
   evidence_references:["targeted-integration-pass-h0-h1","fresh-adjudication-request-changes-h0-h1"],
   observed_at:"2026-09-02"
@@ -45,9 +45,8 @@ merge, external access, project registration, or live action.
 
 ## Required next action
 
-The Project Architect may materialize a narrow superseding packet only to
-complete the existing AR-P05 proof at exact H1. It must have fresh Decision
-Fidelity review, routine release, fresh implementation/Integration/review
-coverage, and its own frozen correction allowance. It may not weaken the
-frozen APP-MAP contract, inject labels as observations, broaden M1-02 scope,
-or revise AR-P06's accepted proof.
+The Owner subsequently authorized one direct, test-only final correction at
+exact H1 to complete the existing AR-P05 proof. The authority source is
+`sources/planning/2026-09-02-m1-02ar-final-correction-exception.md`. The
+unreleased superseding packet was withdrawn. No other correction, scope,
+production change, or general review is authorized.
