@@ -161,3 +161,9 @@ An owner-approved graph release is committed to the joined project at an exact r
   implementation boundary; or
 - a reviewer discovers a materially incomplete contract or a new failure class
   after the one permitted targeted correction.
+
+## Bootstrap convergence duty — Owner-approved 2026-09-03
+
+While the [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) is active, the Project Architect owns the final routine decision on materiality, proportionality, and not-applicable fields. It authors one canonical slice contract, freezes it after the single pre-execution Decision Fidelity approval, and prevents packet replacement or reassignment from resetting correction allowances.
+
+The Architect does not send mechanically derived build instructions or milestone acceptance through repeated Decision Fidelity review. New noncritical review concerns become learning candidates. The Architect may reopen or return an active slice only for the policy's exact critical exceptions or a reserved Owner decision. This section controls over conflicting review, output, handoff, or escalation language above.
