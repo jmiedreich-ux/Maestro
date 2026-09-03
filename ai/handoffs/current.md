@@ -72,3 +72,18 @@ frozen contract. Later implementation has one full independent implementation
 review and at most one targeted correction/verification. Routine materiality
 and acceptance remain with the Project Architect; only reserved decisions
 return to the Owner.
+
+### Frozen M1-02B slice identity and counters
+
+- **Slice ID:** `MB-SLICE-M1-02B-REPLACEMENT-01`
+- **Earlier first M1-02B packet:** terminal `returned` history at `a9af23a`;
+  it is not this slice and creates no reusable allowance.
+- **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
+- **Complete Decision Fidelity review:** 1, consumed
+- **Planning correction:** 1 authorized and interrupted; allowance consumed
+- **Targeted planning verification:** 0, pending after the preserved correction
+- **Implementation review:** 0, unused
+- **Implementation correction:** 0, unused
+- **Current state:** frozen administrative pause, not a new slice and not a
+  counter reset
+
