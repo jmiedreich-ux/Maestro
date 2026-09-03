@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-03
-**State:** stopped during a non-dispatchable M1-02B planning correction
+**State:** M1-02B frozen; bootstrap convergence repair approved by Owner
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -48,21 +48,16 @@ The Meastro Architecture Agent performing the Project Architect role was
 interrupted. No M1 correction worker is running. Do not describe an assignment,
 conversation, lock, or stale message as active execution.
 
-## Resume rule
+## Next authorized action
 
-Do nothing until the Owner explicitly resumes work. On resume:
+Read the [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md).
+This governance repair must receive independent review on its exact final branch
+before merge. It does not resume or dispatch M1-02B.
 
-1. Verify the exact committed base and uncommitted paths.
-2. Finish only the five frozen M1-02B findings and directly affected
-   consistency.
-3. Independently reproduce all contract checks and validate the staged
-   tracked-plus-untracked candidate.
-4. Commit once and obtain one targeted review over the correction-only range.
-5. If approved, Project Architect releases only B1.
-6. Obtain the dedicated Maestro Developer's packet-read plan before code work.
-7. Coordinator status reports the role, exact packet item, command evidence,
-   next item, blocker, and ETA/confidence or `unknown`.
-
-Do not restart full review, add optional polish, redesign the packet, dispatch
-B1 early, begin downstream work, access a live project/external service, merge,
-or infer Owner approval.
+After the repair merges, the Project Architect may prepare one M1-02B
+qualification slice from the preserved evidence. The slice uses one canonical
+contract, one pre-execution Decision Fidelity review, one implementation review,
+non-resetting correction budgets, learning quarantine, and terminal targeted
+follow-up. A delegated-worker failure may route to bounded Coordinator takeover
+under the same contract. Routine materiality and acceptance remain with the
+Project Architect; reserved decisions alone return to the Owner.
