@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-03
-**State:** stopped during a non-dispatchable M1-02B planning correction
+**State:** M1-02B frozen; bootstrap convergence repair approved by Owner
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -48,21 +48,37 @@ The Meastro Architecture Agent performing the Project Architect role was
 interrupted. No M1 correction worker is running. Do not describe an assignment,
 conversation, lock, or stale message as active execution.
 
-## Resume rule
+## Next authorized action
 
-Do nothing until the Owner explicitly resumes work. On resume:
+Read the [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md).
+This governance repair must receive independent review on its exact final branch
+before merge. It does not resume or dispatch M1-02B.
 
-1. Verify the exact committed base and uncommitted paths.
-2. Finish only the five frozen M1-02B findings and directly affected
-   consistency.
-3. Independently reproduce all contract checks and validate the staged
-   tracked-plus-untracked candidate.
-4. Commit once and obtain one targeted review over the correction-only range.
-5. If approved, Project Architect releases only B1.
-6. Obtain the dedicated Maestro Developer's packet-read plan before code work.
-7. Coordinator status reports the role, exact packet item, command evidence,
-   next item, blocker, and ETA/confidence or `unknown`.
+### Frozen M1-02B slice identity and counters
 
-Do not restart full review, add optional polish, redesign the packet, dispatch
-B1 early, begin downstream work, access a live project/external service, merge,
-or infer Owner approval.
+- **Slice ID:** `MB-SLICE-M1-02B-REPLACEMENT-01`
+- **Earlier first M1-02B packet:** terminal `returned` history at `a9af23a`;
+  it is not this slice and creates no reusable allowance.
+- **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
+- **Complete Decision Fidelity review:** 1, consumed
+- **Planning correction:** 1 authorized and interrupted; allowance consumed
+- **Targeted planning verification:** 0, pending after the preserved correction
+- **Implementation review:** 0, unused
+- **Implementation correction:** 0, unused
+- **Current state:** frozen administrative pause, not a new slice and not a
+  counter reset
+
+Completion of the preserved correction may proceed only to the one targeted
+Decision Fidelity verification. It cannot receive another complete fidelity
+review or another planning correction. A failed targeted verification
+terminally returns this slice.
+
+After the repair merges, the Project Architect may resume only
+`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
+recorded counters. It completes the consumed planning correction allowance and
+proceeds only to the pending targeted Decision Fidelity verification; it may
+not create a fresh slice or repeat complete review. Later implementation uses
+the frozen canonical contract, one implementation review, non-resetting
+correction budgets, learning quarantine, and terminal targeted follow-up. A delegated-worker failure may route to bounded Coordinator takeover
+under the same contract. Routine materiality and acceptance remain with the
+Project Architect; reserved decisions alone return to the Owner.

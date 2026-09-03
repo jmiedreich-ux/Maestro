@@ -85,3 +85,9 @@ That delay is recorded as an Architecture Agent failure. It is not assigned to
 the implementors or independent reviewers that correctly applied the approved
 language. Alpha-01 remains paused until M0-D11 is reconciled with this decision;
 no merge or Alpha-02 action is authorized by M0-D12.
+
+## Bootstrap convergence amendment — Owner-approved 2026-09-03
+
+The [Maestro Bootstrap Convergence Policy](../bootstrap-convergence-policy.md) controls Maestro's own development until the durable loop completes its accepted qualification run. Its slice-wide identity, frozen-contract rule, bounded review sequence, correction budgets, terminal return behavior, Coordinator takeover, and learning quarantine override any conflicting earlier language in this decision.
+
+The eight fields are authored once in the slice's canonical contract and referenced rather than recopied into every carrier. The Project Architect approves routine materiality and not-applicable dispositions. Owner approval is reserved for the policy's named material choices. After Decision Fidelity approval, the contract is frozen; an ordinary later concern cannot strengthen it or reopen planning for the active slice.

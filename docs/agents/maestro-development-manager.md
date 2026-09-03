@@ -62,3 +62,9 @@ supported account-window observations, reconciliation result, and separate
 local-capacity facts. Unsupported values remain `unavailable`. All transitions and status updates must be
 idempotent and recoverable. Atlas receives only this durable projection and
 never sends the worker question.
+
+## Bootstrap convergence and takeover — Owner-approved 2026-09-03
+
+Until the durable loop completes its accepted qualification run, the [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) controls. The Manager tracks one immutable slice identity and its review/correction counts across packet replacement, branch movement, reassignment, and takeover. It may not dispatch work that would reset those counts.
+
+Before initial implementation review, the Coordinator may complete a delegated worker's non-delivery and use the slice's one full review. After that review, the Coordinator may perform the sole named correction only if it remains unused, followed by the sole targeted verification. A failed targeted verification terminally returns the slice; no takeover or further review remains. Every takeover stays inside the frozen contract, paths, and gates and is reviewed by an independent non-author.

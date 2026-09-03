@@ -131,7 +131,7 @@ The planning intake process is mandatory:
 4. Run an independent completeness audit before the plan is ready.
 5. Require every source item to link to a requirement, decision, task, question, explicit deferral, or not-applicable record.
 
-Before any approved plan, milestone, packet, or build instruction becomes executable, an independent [Decision Fidelity Reviewer](../agents/decision-fidelity-reviewer.md) must compare it against the accepted choices that govern it. The reviewer produces a durable traceability table marking each choice `included`, `missing`, `changed`, `new assumption`, or `approved deferral`. Maestro may not execute while a missing/changed choice, new assumption, unresolved source conflict, or unapproved deferral remains. The same review occurs before plan approval, before conversion to build instructions, and before milestone acceptance. This is separate from independent implementation/PR review.
+During Maestro bootstrap, the [Bootstrap Convergence Policy](bootstrap-convergence-policy.md) controls. Each work slice receives one complete Decision Fidelity review of its canonical contract before execution. A mechanically derived build instruction does not repeat that review, and milestone acceptance verifies the existing reviewed evidence rather than reopening fidelity discovery. This remains separate from the one independent implementation review of the exact final candidate.
 
 ## 6. Task presentation and routing
 
@@ -163,9 +163,7 @@ quality requirement. Security, reliability, performance, concurrency, recovery,
 and similar language must define its protected outcome, operating/threat/failure
 model, explicit exclusions, practical assurance level, sufficient acceptance
 proof, permitted implementation boundary and complexity, proportionality
-ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough. A newly
-discovered material gap in that contract returns to Architecture and the Owner;
-it does not create an unlimited worker/review loop.
+ceiling, and exact stop/escalation rule before dispatch. Passing the named proof is the definition of enough. During bootstrap, a later ordinary contract concern becomes a quarantined learning candidate. Only the exact critical exceptions in the Bootstrap Convergence Policy may interrupt the frozen slice; reserved decisions return to the Owner.
 
 After an initial full review, M0-D05 requires correction follow-ups to verify
 only the named findings, the correction-only diff, and directly affected

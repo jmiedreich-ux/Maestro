@@ -14,8 +14,8 @@ it. Alpha-01 through Alpha-03 are complete on `master`. Later M1 planning and
 implementation work exists only on local side branches and worktrees; it has
 not been merged to `master`.
 
-The immediate work item is M1-02B planning correction, not Maestro Developer
-implementation. Its replacement B0/B1-B5 planning set received a full Decision
+The Owner approved a bootstrap-governance repair on 2026-09-03. M1-02B remains
+frozen and no implementation is authorized by that repair. Its replacement B0/B1-B5 planning set received a full Decision
 Fidelity `REQUEST_CHANGES` with five material contract findings. The Project
 Architect accepted those findings as one complete set and authorized the one
 normal planning correction. The correction was interrupted by the Owner's
@@ -232,24 +232,43 @@ The recurring failures are not considered solved until Maestro itself can:
 Until those capabilities are implemented and tested, the Coordinator must use
 the interim controls above and report their evidence explicitly.
 
-## Exact safe resume sequence
+## Bootstrap governance repair and next action
 
-1. Inspect and preserve the two interrupted M1-02B correction files in
-   `/home/jeremy/Development/Maestro-m1-packets` at committed base `ab271ff`.
-2. Reconcile the current return-routing edit so failed M0-D17 eligibility still
-   produces a valid Project Architect return and cannot authorize correction
-   number two.
-3. Complete only the five named correction findings and the directly required
-   staged/untracked hygiene invariant.
-4. Run independent contract reconstruction, negative mutation cases, exact
-   allowlist/cached-diff checks, and commit the one normal planning correction.
-5. Have the same independent reviewer perform one targeted verification of the
-   five findings and correction-only diff.
-6. If approved, the Project Architect may release only B1 from exact accepted
-   M1-02A head `d82164c2f3be2164ad6e66b022f645be5f61844b`.
-7. Before editing code, the dedicated Maestro Developer returns its B1
-   packet-read plan. The Coordinator then reports progress by exact B1 items
-   and live evidence.
+The [Maestro Bootstrap Convergence Policy](bootstrap-convergence-policy.md) is
+the controlling repair for Maestro's own development. It replaces repeated
+Decision Fidelity gates with one pre-execution review, freezes one canonical
+slice contract, preserves correction counts across replacement and takeover,
+authorizes bounded Coordinator completion under the same contract, quarantines
+new policy learning, and makes targeted follow-up terminal.
 
-No step here authorizes merge, live-project access, external access, M1-02C,
-M1-03, M2, M3, M4, or end-to-end testing.
+M1-02B and its interrupted local files remain preserved and frozen. This rules
+repair does not accept, discard, or complete those files and does not dispatch
+B1.
+
+### Frozen M1-02B slice identity and counters
+
+- **Slice ID:** `MB-SLICE-M1-02B-REPLACEMENT-01`
+- **Earlier first M1-02B packet:** terminal `returned` history at `a9af23a`;
+  it is not this slice and creates no reusable allowance.
+- **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
+- **Complete Decision Fidelity review:** 1, consumed
+- **Planning correction:** 1 authorized and interrupted; allowance consumed
+- **Targeted planning verification:** 0, pending after the preserved correction
+- **Implementation review:** 0, unused
+- **Implementation correction:** 0, unused
+- **Current state:** frozen administrative pause, not a new slice and not a
+  counter reset
+
+Completion of the preserved correction may proceed only to the one targeted
+Decision Fidelity verification. It cannot receive another complete fidelity
+review or another planning correction. A failed targeted verification
+terminally returns this slice.
+
+After this repair is independently reviewed and merged, the next authorized
+planning action is for the Project Architect to resume only
+`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
+recorded counters. It completes the already-authorized correction and proceeds
+only to the pending targeted Decision Fidelity verification. It does not create
+or reconstruct a slice, repeat complete review, or receive a fresh planning
+correction. The Owner is not required for routine materiality or acceptance
+decisions.

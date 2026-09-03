@@ -133,3 +133,9 @@ tests, the comparable evidence supports an approximately 20% forecast.
 - Maestro records the decision, routing, gate result, and escalation reason in
   its live operational state. Atlas may display that live state but has no
   authority to change routing or escalation.
+
+## Bootstrap convergence amendment — Owner-approved 2026-09-03
+
+The [Maestro Bootstrap Convergence Policy](../bootstrap-convergence-policy.md) controls Maestro's own development until the durable loop completes its accepted qualification run. Its slice-wide identity, frozen-contract rule, bounded review sequence, correction budgets, terminal return behavior, Coordinator takeover, and learning quarantine override any conflicting earlier language in this decision.
+
+For one bootstrap slice, packet replacement, branch movement, reassignment, or takeover does not reset the one planning-correction or one implementation-correction allowance. R3/R4 findings are learning candidates and do not amend shared invariants or templates during the active slice. A new ordinary finding after the complete set is non-blocking; only the policy's named critical exceptions may interrupt the frozen slice.
