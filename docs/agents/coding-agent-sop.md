@@ -34,4 +34,4 @@ One targeted, reviewer-requested rework cycle is allowed unless project policy s
 
 The [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) controls Maestro's own development. A packet rewrite, branch move, worker reassignment, or Coordinator takeover remains the same slice and does not reset its correction allowances. The worker implements the frozen contract and named proof; it does not absorb later ordinary review preferences.
 
-After the one implementation correction, the candidate is approved or terminally returned. If the Coordinator takes over, it uses the same paths, contract, and gates and records the role change for independent review.
+Coordinator takeover may complete non-delivery before the full implementation review, or may perform the slice's sole named correction if that correction remains unused. After targeted verification, the candidate is approved or terminally returned; no takeover, correction, or renewed review remains.
