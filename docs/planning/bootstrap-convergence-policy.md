@@ -82,33 +82,47 @@ Architect and does not return to the Owner.
 A failed targeted planning follow-up returns the slice; it does not create a
 replacement packet with a fresh planning correction.
 
-A failed targeted implementation follow-up returns the slice or activates the
-bootstrap Coordinator takeover below. It does not create another worker
-correction.
+A failed targeted implementation verification returns the slice. No worker,
+Coordinator takeover, additional correction, renewed full review, or additional
+targeted verification remains for that slice.
 
-A new failure class discovered after an allowed correction is recorded with
-evidence and makes the current slice terminal unless it meets the critical
-exception above. The next separately approved slice may address it without
-rewriting the completed episode's history.
+Any critical exception immediately stops the current slice and records one
+terminal state: `returned` for a proof/contract or candidate-integrity defect,
+`cancelled` when the authorized work is withdrawn, or `owner-stopped` when
+the Owner ends the slice. Safety or contract remediation requires a separately
+approved slice with a new identity. It cannot resume, reclassify, or reset the
+terminal slice or its exhausted allowances.
+
+A new ordinary failure class discovered after an allowed correction is recorded
+as a learning candidate and the current slice is approved or returned solely
+against its frozen contract and named proof.
 
 ## Bootstrap Coordinator takeover
 
-When a delegated implementation worker returns no usable commit, exceeds the
-approved attempt boundary, or fails its one targeted correction, the
-Coordinator may complete the remaining implementation under the same frozen
-contract, exact writable paths, and named gates.
+Coordinator takeover is available only while an implementation review allowance
+still exists:
+
+- Before the initial implementation review, the Coordinator may complete a
+  delegated worker's non-delivery and submit the resulting exact candidate to
+  the slice's one full implementation review.
+- After the full review, but only while the sole implementation correction is
+  unused, the Coordinator may perform that one named correction and submit its
+  correction-only diff to the slice's one targeted verification.
+- After the targeted verification fails, no takeover, correction, or review
+  remains. The slice is `returned`.
 
 The takeover:
 
 - is recorded as a role change within the same slice;
 - does not reset review or correction counts;
 - may not change product behavior, architecture, scope, or the quality contract;
-- must produce a new exact candidate and rerunnable evidence; and
-- receives independent implementation review by an agent that did not author
-  the takeover.
+- must produce the candidate appropriate to the remaining review phase and
+  rerunnable evidence; and
+- is reviewed by an independent agent that did not author the takeover.
 
 If completion requires a contract or reserved decision change, the Coordinator
-returns the slice to the Project Architect instead of improvising.
+terminally returns the slice instead of improvising. Any remediation is a new,
+separately approved slice and cannot renew the returned episode.
 
 ## Learning quarantine
 
