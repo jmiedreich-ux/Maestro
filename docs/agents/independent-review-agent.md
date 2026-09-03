@@ -236,3 +236,9 @@ The implementation reviewer may identify an architecture-contract defect, but
 it does not perform the Architecture Agent's correction or approve the revised
 planning contract. That work returns through the Decision Fidelity gate before
 another implementation run.
+
+## Bootstrap convergence review — Owner-approved 2026-09-03
+
+The [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) controls during bootstrap. Review the exact final implementation candidate against the frozen canonical slice contract and return one complete finding set. At most one implementation correction and one targeted verification are available across the slice, including replacement packets, reassignments, and Coordinator takeover.
+
+A contract preference or newly imagined ordinary risk is a learning candidate, not an architecture-contract defect for the active slice. A new blocker after the complete set is permitted only under the policy's exact critical exceptions. After targeted verification the result is terminal: approve the exact covered candidate or return the slice. This section overrides conflicting reopening, owner-approval, or repeated-correction language above.
