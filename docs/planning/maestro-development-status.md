@@ -14,8 +14,8 @@ it. Alpha-01 through Alpha-03 are complete on `master`. Later M1 planning and
 implementation work exists only on local side branches and worktrees; it has
 not been merged to `master`.
 
-The immediate work item is M1-02B planning correction, not Maestro Developer
-implementation. Its replacement B0/B1-B5 planning set received a full Decision
+The Owner approved a bootstrap-governance repair on 2026-09-03. M1-02B remains
+frozen and no implementation is authorized by that repair. Its replacement B0/B1-B5 planning set received a full Decision
 Fidelity `REQUEST_CHANGES` with five material contract findings. The Project
 Architect accepted those findings as one complete set and authorized the one
 normal planning correction. The correction was interrupted by the Owner's
@@ -232,24 +232,22 @@ The recurring failures are not considered solved until Maestro itself can:
 Until those capabilities are implemented and tested, the Coordinator must use
 the interim controls above and report their evidence explicitly.
 
-## Exact safe resume sequence
+## Bootstrap governance repair and next action
 
-1. Inspect and preserve the two interrupted M1-02B correction files in
-   `/home/jeremy/Development/Maestro-m1-packets` at committed base `ab271ff`.
-2. Reconcile the current return-routing edit so failed M0-D17 eligibility still
-   produces a valid Project Architect return and cannot authorize correction
-   number two.
-3. Complete only the five named correction findings and the directly required
-   staged/untracked hygiene invariant.
-4. Run independent contract reconstruction, negative mutation cases, exact
-   allowlist/cached-diff checks, and commit the one normal planning correction.
-5. Have the same independent reviewer perform one targeted verification of the
-   five findings and correction-only diff.
-6. If approved, the Project Architect may release only B1 from exact accepted
-   M1-02A head `d82164c2f3be2164ad6e66b022f645be5f61844b`.
-7. Before editing code, the dedicated Maestro Developer returns its B1
-   packet-read plan. The Coordinator then reports progress by exact B1 items
-   and live evidence.
+The [Maestro Bootstrap Convergence Policy](bootstrap-convergence-policy.md) is
+the controlling repair for Maestro's own development. It replaces repeated
+Decision Fidelity gates with one pre-execution review, freezes one canonical
+slice contract, preserves correction counts across replacement and takeover,
+authorizes bounded Coordinator completion under the same contract, quarantines
+new policy learning, and makes targeted follow-up terminal.
 
-No step here authorizes merge, live-project access, external access, M1-02C,
-M1-03, M2, M3, M4, or end-to-end testing.
+M1-02B and its interrupted local files remain preserved and frozen. This rules
+repair does not accept, discard, or complete those files and does not dispatch
+B1.
+
+After this repair is independently reviewed and merged, the next authorized
+planning action is for the Project Architect to construct one qualification
+slice from the preserved M1-02B evidence under the new policy. That slice must
+name its immutable ID, canonical contract, exact base and paths, existing
+correction counts, live actor, and terminal conditions before execution. The
+Owner is not required for routine materiality or acceptance decisions.
