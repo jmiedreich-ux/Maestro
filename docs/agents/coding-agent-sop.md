@@ -29,3 +29,9 @@ This SOP applies to every implementation agent. Project policy comes first; this
 ## 4. Rework and escalation
 
 One targeted, reviewer-requested rework cycle is allowed unless project policy says otherwise. Its follow-up review is limited to the named finding, correction-only diff/evidence, and directly affected consistency. A different failure class, uncovered or materially stale change, ownership conflict, missing decision, unexpected shared boundary, or unsafe resource condition becomes a blocked/escalated event with preserved evidence.
+
+## Bootstrap convergence boundary — Owner-approved 2026-09-03
+
+The [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) controls Maestro's own development. A packet rewrite, branch move, worker reassignment, or Coordinator takeover remains the same slice and does not reset its correction allowances. The worker implements the frozen contract and named proof; it does not absorb later ordinary review preferences.
+
+After the one implementation correction, the candidate is approved or terminally returned. If the Coordinator takes over, it uses the same paths, contract, and gates and records the role change for independent review.
