@@ -265,8 +265,10 @@ review or another planning correction. A failed targeted verification
 terminally returns this slice.
 
 After this repair is independently reviewed and merged, the next authorized
-planning action is for the Project Architect to construct one qualification
-slice from the preserved M1-02B evidence under the new policy. That slice must
-name its immutable ID, canonical contract, exact base and paths, existing
-correction counts, live actor, and terminal conditions before execution. The
-Owner is not required for routine materiality or acceptance decisions.
+planning action is for the Project Architect to resume only
+`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
+recorded counters. It completes the already-authorized correction and proceeds
+only to the pending targeted Decision Fidelity verification. It does not create
+or reconstruct a slice, repeat complete review, or receive a fresh planning
+correction. The Owner is not required for routine materiality or acceptance
+decisions.
