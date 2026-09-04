@@ -166,9 +166,12 @@ a merge blocker.
 
 ## Targeted correction follow-up
 
-After an initial full review, verify only the named implementation findings,
-the correction-only diff, the evidence rerun required by those corrections, and
-directly affected consistency. Stop when those findings are resolved.
+After an initial full review, verify only the findings dispositioned `correct
+now`, the correction-only diff, the evidence rerun required by those
+corrections, and directly affected consistency. Stop when those corrected
+findings are resolved. For a finding dispositioned `accept known limitation`,
+verify only the required linked backlog evidence, rationale, revisit trigger,
+and exact-head integrity; do not require the unchanged defect to be resolved.
 
 Do not re-review unchanged code or reopen general defect discovery. A new
 unrelated observation is non-blocking unless the correction introduced it or it
