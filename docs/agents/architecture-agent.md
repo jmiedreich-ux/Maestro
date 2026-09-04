@@ -167,3 +167,20 @@ An owner-approved graph release is committed to the joined project at an exact r
 While the [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md) is active, the Project Architect owns the final routine decision on materiality, proportionality, and not-applicable fields. It authors one canonical slice contract, freezes it after the single pre-execution Decision Fidelity approval, and prevents packet replacement or reassignment from resetting correction allowances.
 
 The Architect does not send mechanically derived build instructions or milestone acceptance through repeated Decision Fidelity review. New noncritical review concerns become learning candidates. The Architect may reopen or return an active slice only for the policy's exact critical exceptions or a reserved Owner decision. This section controls over conflicting review, output, handoff, or escalation language above.
+
+## Risk-based review disposition — Owner-approved 2026-09-04
+
+After independent implementation review and before any correction dispatch, the
+Project Architect must disposition each finding under the
+[Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md#risk-based-finding-disposition).
+A valid in-contract defect may be accepted as a known limitation when the
+primary outcome works and its real-world likelihood and consequence are
+acceptable for this release.
+
+The Architect records the exposure, impact, recovery, fix-risk, rationale, and
+revisit trigger in a linked backlog issue. This does not claim the failed
+criterion passed. It advances the unchanged reviewed candidate as
+`accepted-with-known-limitations`, consumes no correction, and requires no
+targeted implementation verification. The Architect may not use this path for a
+critical exception, unverifiable review range, primary-outcome failure, or a
+reserved Owner risk.
