@@ -1,9 +1,9 @@
 """Closed schema-4 operational records and service-owned persistence.
 
 This module contains record creation, canonical value handling, idempotent
-append, read foundations, and guarded run-lifecycle and packet-eligibility
-storage primitives. Claim/lease/lock, acceptance/merge guards, and recovery
-orchestration remain outside this boundary.
+append, read foundations, guarded run-lifecycle and packet-eligibility
+transitions, and the atomic assignment-claim primitive. Acceptance/merge
+guards and recovery orchestration remain outside this boundary.
 """
 
 from __future__ import annotations
@@ -485,6 +485,217 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def claim_packet_assignment(
+        self, packet_id, expected_version, lease_request, lock_requests,
+        attempt_request, reason_payload, idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_version = _positive_int(expected_version, "expected_version")
+        lease = _assignment_lease_request(lease_request)
+        locks = _assignment_lock_requests(lock_requests)
+        attempt = _assignment_attempt_request(attempt_request)
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("assignment claim reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "attempt": attempt,
+            "expected_version": expected_version,
+            "lease": lease,
+            "locks": locks,
+            "packet_id": packet_id,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint("claim_packet_assignment", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                if lease["expires_at"] <= timestamp:
+                    raise InvalidRecord("assignment lease expiry must follow observation time")
+
+                packet = connection.execute(
+                    "SELECT state,version,run_id,base_commit,executor_class,resource_claims_json "
+                    "FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(packet[0]), int(packet[1])
+                if current_version != expected_version:
+                    raise StaleState("packet version is stale")
+                if source_state != "Dispatchable":
+                    raise InvalidTransition("assignment claim requires a Dispatchable packet")
+
+                run_id = str(packet[2])
+                run = connection.execute(
+                    "SELECT state,run_fingerprint FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet run is missing")
+                if str(run[0]) != "Running":
+                    raise InvalidTransition("assignment claim requires a Running run")
+
+                declared_resources = json.loads(str(packet[5]))
+                requested_resources = [item["resource_key"] for item in locks]
+                if requested_resources != declared_resources:
+                    raise InvalidRecord("assignment locks must exactly cover declared resources")
+
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE lease_id=?", (lease["lease_id"],)
+                ).fetchone() is not None:
+                    raise InvalidRecord("assignment lease_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE claim_key=?", (key,)
+                ).fetchone() is not None:
+                    raise InvalidRecord("assignment claim_key already exists without replay")
+                for lock_id in sorted(item["lock_id"] for item in locks):
+                    if connection.execute(
+                        "SELECT 1 FROM resource_locks WHERE lock_id=?", (lock_id,)
+                    ).fetchone() is not None:
+                        raise InvalidRecord("assignment lock_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM attempts WHERE attempt_id=?", (attempt["attempt_id"],)
+                ).fetchone() is not None:
+                    raise InvalidRecord("assignment attempt_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM attempts WHERE packet_id=? AND attempt_number=1", (packet_id,)
+                ).fetchone() is not None:
+                    raise InvalidRecord("packet already has an Initial attempt")
+
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE packet_id=? AND state='Active'", (packet_id,)
+                ).fetchone() is not None:
+                    raise ResourceConflict("packet already has an Active lease")
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE worktree_path=? AND state='Active'",
+                    (lease["worktree_path"],),
+                ).fetchone() is not None:
+                    raise ResourceConflict("worktree already has an Active lease")
+                if requested_resources:
+                    requested_resource_set = set(requested_resources)
+                    active_resources = connection.execute(
+                        "SELECT resource_key FROM resource_locks WHERE state='Active' "
+                        "ORDER BY resource_key"
+                    ).fetchall()
+                    conflicting_resources = [
+                        str(row[0]) for row in active_resources
+                        if str(row[0]) in requested_resource_set
+                    ]
+                    if conflicting_resources:
+                        raise ResourceConflict(
+                            f"resource already has an Active lock: {conflicting_resources[0]}"
+                        )
+
+                packet_before = _state_payload(
+                    "Packet", packet_id, source_state, current_version
+                )
+                packet_after = _state_payload(
+                    "Packet", packet_id, "Leased", expected_version + 1
+                )
+                lease_row = {
+                    "lease_id": lease["lease_id"],
+                    "packet_id": packet_id,
+                    "run_id": run_id,
+                    "claim_key": key,
+                    "run_fingerprint": str(run[1]),
+                    "base_commit": str(packet[3]),
+                    "worktree_path": lease["worktree_path"],
+                    "executor_route": lease["executor_route"],
+                    "holder_id": lease["holder_id"],
+                    "state": "Active",
+                    "acquired_at": timestamp,
+                    "expires_at": lease["expires_at"],
+                    "heartbeat_at": timestamp,
+                    "released_at": None,
+                    "version": 1,
+                }
+                lock_rows = [
+                    {
+                        "lock_id": item["lock_id"],
+                        "resource_key": item["resource_key"],
+                        "lock_kind": item["lock_kind"],
+                        "packet_id": packet_id,
+                        "lease_id": lease["lease_id"],
+                        "state": "Active",
+                        "acquired_at": timestamp,
+                        "expires_at": lease["expires_at"],
+                        "released_at": None,
+                        "version": 1,
+                    }
+                    for item in locks
+                ]
+                attempt_row = self._attempt(
+                    {
+                        "attempt_id": attempt["attempt_id"],
+                        "packet_id": packet_id,
+                        "lease_id": lease["lease_id"],
+                        "attempt_number": 1,
+                        "attempt_kind": "Initial",
+                        "executor_class": str(packet[4]),
+                        "model_identity": attempt["model_identity"],
+                        "runtime_identity": attempt["runtime_identity"],
+                        "state": "Planned",
+                        "result_commit": None,
+                        "correction_for_review_id": None,
+                        "started_at": None,
+                        "finished_at": None,
+                    },
+                    timestamp,
+                )
+                lock_ids = sorted(item["lock_id"] for item in locks)
+                result = {
+                    "attempt": _state_payload(
+                        "Attempt", attempt["attempt_id"], "Planned", 1
+                    ),
+                    "claim": validate_payload(
+                        {
+                            "kind": "claim",
+                            "lease_id": lease["lease_id"],
+                            "lock_ids": lock_ids,
+                            "packet_id": packet_id,
+                        }
+                    ),
+                    "lease": _state_payload(
+                        "Lease", lease["lease_id"], "Active", 1
+                    ),
+                    "locks": [
+                        _state_payload("ResourceLock", lock_id, "Active", 1)
+                        for lock_id in lock_ids
+                    ],
+                    "packet": packet_after,
+                }
+                canonical_json(result, root_type=dict)
+
+                updated = connection.execute(
+                    "UPDATE packets SET state='Leased',updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=? AND state='Dispatchable'",
+                    (timestamp, expected_version + 1, packet_id, expected_version),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert(connection, "leases", lease_row)
+                for lock_row in lock_rows:
+                    self._insert(connection, "resource_locks", lock_row)
+                self._insert(connection, "attempts", attempt_row)
+                self._insert_packet_claim_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, packet_before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("assignment claim violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_attempt(self, attempt, idempotency_key, actor, now):
         row = self._attempt(attempt, now)
         return self._append_one("attempts", "attempt_id", row, "Attempt", "AttemptRecorded", idempotency_key, actor, now)
@@ -766,6 +977,25 @@ class OperationalStateStore:
             """,
             (
                 key, "Packet", packet_id, "PacketStateChanged", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_packet_claim_event(
+        connection, key, fingerprint, actor, now, packet_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Packet", packet_id, "PacketClaimed", canonical_json(before),
                 canonical_json(after), canonical_json(reason), actor["correlation_id"],
                 actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
                 fingerprint, now,
@@ -1203,6 +1433,56 @@ def _actor(value: Actor | Mapping[str, Any]) -> dict[str, Any]:
     if raw["causation_event_id"] is not None:
         raw["causation_event_id"] = _positive_int(raw["causation_event_id"], "causation_event_id")
     return raw
+
+
+def _assignment_lease_request(value: Any) -> dict[str, str]:
+    row = _closed_mapping(
+        value,
+        {"executor_route", "expires_at", "holder_id", "lease_id", "worktree_path"},
+        "assignment lease request",
+    )
+    row["executor_route"] = _text(row["executor_route"], "executor_route")
+    row["expires_at"] = _timestamp(row["expires_at"], "expires_at")
+    row["holder_id"] = _text(row["holder_id"], "holder_id")
+    row["lease_id"] = _text(row["lease_id"], "lease_id")
+    row["worktree_path"] = _text(row["worktree_path"], "worktree_path")
+    return row
+
+
+def _assignment_lock_requests(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        raise InvalidRecord("assignment lock_requests must be an array")
+    result = []
+    for item in value:
+        row = _closed_mapping(
+            item, {"lock_id", "lock_kind", "resource_key"}, "assignment lock request"
+        )
+        row["lock_id"] = _text(row["lock_id"], "lock_id")
+        row["lock_kind"] = _text(row["lock_kind"], "lock_kind")
+        if row["lock_kind"] not in {"Path", "SharedBoundary", "FiniteResource"}:
+            raise InvalidRecord("assignment lock_kind is invalid")
+        row["resource_key"] = _text(row["resource_key"], "resource_key")
+        result.append(row)
+    resource_keys = [item["resource_key"] for item in result]
+    if resource_keys != sorted(set(resource_keys)):
+        raise InvalidRecord("assignment lock resources must be sorted and unique")
+    lock_ids = [item["lock_id"] for item in result]
+    if len(lock_ids) != len(set(lock_ids)):
+        raise InvalidRecord("assignment lock IDs must be unique")
+    canonical_json(result, root_type=list)
+    return result
+
+
+def _assignment_attempt_request(value: Any) -> dict[str, str]:
+    row = _closed_mapping(
+        value,
+        {"attempt_id", "model_identity", "runtime_identity"},
+        "assignment attempt request",
+    )
+    row["attempt_id"] = _text(row["attempt_id"], "attempt_id")
+    row["model_identity"] = _text(row["model_identity"], "model_identity")
+    row["runtime_identity"] = _text(row["runtime_identity"], "runtime_identity")
+    return row
 
 
 def _closed_mapping(value: Any, fields: set[str], name: str) -> dict[str, Any]:
