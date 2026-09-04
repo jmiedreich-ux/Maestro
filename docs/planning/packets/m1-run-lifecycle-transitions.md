@@ -1,7 +1,7 @@
 # M1 Run Lifecycle Transitions
 
 **Slice ID:** `MB-SLICE-M1-RUN-LIFECYCLE-01`
-**Status:** `Planning correction committed; targeted verification pending`
+**Status:** `Frozen for implementation`
 **Planning and implementation base:**
 `07cb48123bdc0d94ebe656fa93a17a3d1309581b`
 **Outcome authority:** the Owner's direction to complete M1; the current
@@ -21,8 +21,8 @@ master.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-RUN-LIFECYCLE-01` |
-| `phase` | `PlanningCorrection` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `Frozen` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -30,7 +30,7 @@ master.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b", "git:planning-review:07cb48123bdc0d94ebe656fa93a17a3d1309581b..3a57e702ea74e3eefc69b2e4319a34dd2e55d591", "readiness:a6e3b293eb575f55bc42d4bc52708047fe484b1290cb1b35fab7f1d4f071f69a", "review:M1-RUN-LIFECYCLE-DFR-01-REQUEST-CHANGES"]` |
+| `evidence_refs` | `["git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b", "git:planning-correction:3a57e702ea74e3eefc69b2e4319a34dd2e55d591..4001ef05862247d9133a561861a3c03087da6c3b", "git:planning-review:07cb48123bdc0d94ebe656fa93a17a3d1309581b..3a57e702ea74e3eefc69b2e4319a34dd2e55d591", "readiness:055ffe893150677fd9f2a222d5269582edd75c702a432c7726a2fac77d64bd40", "readiness:a6e3b293eb575f55bc42d4bc52708047fe484b1290cb1b35fab7f1d4f071f69a", "review:M1-RUN-LIFECYCLE-DFR-01-REQUEST-CHANGES", "review:M1-RUN-LIFECYCLE-TDFR-01-APPROVE"]` |
 
 Counts never reset. A reviewer is launched only after a successful mechanical
 readiness result. Status-only commits outside the frozen implementation range
