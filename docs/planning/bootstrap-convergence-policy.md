@@ -1,6 +1,6 @@
 # Maestro Bootstrap Convergence Policy
 
-**Status:** Owner-approved on 2026-09-03  
+**Status:** Owner-approved on 2026-09-03; risk-disposition amendment approved on 2026-09-04  
 **Applies to:** Maestro's own development until the durable Development Manager
 control loop has completed an accepted qualification run  
 **Precedence:** This policy controls wherever an older planning, review,
@@ -116,6 +116,13 @@ Accepting a known limitation changes no code, consumes no correction allowance,
 and requires no targeted implementation verification. The exact independently
 reviewed candidate may advance with status `accepted-with-known-limitations`.
 The reviewer finding remains truthful and the backlog issue remains open.
+
+The durable limitation record must be created in issue or pull-request metadata
+outside the candidate tree before acceptance, so it does not move the reviewed
+head. If a project instead commits that record into the candidate branch, the
+review-readiness gate must establish coverage of the resulting new exact head;
+the metadata-only commit does not consume an implementation correction, but the
+candidate cannot merge on stale review coverage.
 
 A reviewer `REQUEST_CHANGES` is a recommendation pending Architect
 disposition; it does not automatically dispatch the developer. Routine risk is
