@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, and assignment claim
-**Current development state:** Execution start merged; heartbeat and terminal attempt completion are next
+**Current development state:** Execution heartbeat/finish merged; completion and review-control routing are next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -78,6 +78,11 @@ Independent `MB-SLICE-M1-EXECUTION-START-01` is merged through PR #35 at
 `c5e3c05799764d02841d2732200e267f19af9beb` passed targeted Decision Fidelity
 and independent implementation review, 220/220 tests, and the ten-run stress
 group. One planning correction and zero implementation corrections were used.
+
+`MB-SLICE-M1-EXECUTION-FINISH-01` is merged through PR #37 at
+`18c00fadad537d4fbd74149d4c3ef9e36579ffeb`. Exact implementation head
+`f885d1d90bdf0c130140d731fbe8b8627d2e6c74` passed both reviews with no
+findings, 235/235 tests, and 40/40 stress cases with zero corrections.
 
 ## What exists only on side branches
 
@@ -167,8 +172,8 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence non-authoritative.
 2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, and assignment
    claim as integrated, while keeping M1 open.
-3. Have the Project Architect materialize heartbeat and terminal completion
-   for the Running attempt using its exact stored execution identity.
+3. Have the Project Architect materialize completion and review-control
+   routing from `AwaitingIntegration` through its closed reviewed outcome.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
