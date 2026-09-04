@@ -1,7 +1,7 @@
 # M1-02A Current-Master Integration
 
 **Slice ID:** `MB-SLICE-M1-02A-INTEGRATION-01`
-**Status:** `Pending Decision Fidelity review`
+**Status:** `Frozen for implementation`
 **Planning and implementation base:**
 `438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7`
 **Accepted behavior source:**
@@ -24,16 +24,16 @@ chat, branches, and stale observations are not status.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-02A-INTEGRATION-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `Frozen` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7", "git:source-accepted:d82164c2f3be2164ad6e66b022f645be5f61844b", "record:03ce591:docs/planning/done/m1-02a-ar-accepted.md"]` |
+| `evidence_refs` | `["git:base:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7", "git:planning-review:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7..7dbfa741d2c38880557e75e1cca1e0c02492888e", "git:source-accepted:d82164c2f3be2164ad6e66b022f645be5f61844b", "readiness:a8071b537544d10bda49f343b0bc48a2579d0f534b34285be44ce0b330c1c3ec", "record:03ce591:docs/planning/done/m1-02a-ar-accepted.md", "review:M1-02A-INT-DFR-01-APPROVE"]` |
 
 Counts never reset. Status-only commits outside a frozen implementation range
 may update this table. A review allowance is consumed only when a reviewer is
