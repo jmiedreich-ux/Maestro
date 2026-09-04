@@ -34,7 +34,7 @@ dispatch is running.
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
 | Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
 | Failed correction evidence | Two uncommitted files remain in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` (SHA-256 `76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47`) and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` (SHA-256 `92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`) | Preserve these mutable files as failed-attempt evidence only. They are not authority and must not be merged, approved, discarded, or reused as a planning candidate. |
-| Review-readiness gate | Owner-authorized new independent bootstrap slice `MB-SLICE-REVIEW-READINESS-GATE-01`; planning not yet Decision-Fidelity approved | Its sole outcome is a small executable gate that prevents reviewer launch and allowance consumption until an exact committed candidate passes all readiness checks. |
+| Review-readiness gate | Complete and merged through PR #19 at `6d5c2722380b99db0fb6f829f0afe073a1d49b80`; exact reviewed candidate `5b01acb00e9890beb5a04f0bc483133e73129a08` | Decision Fidelity and implementation review each used one correction and received targeted `APPROVE`. Focused tests passed 27/27 and the explicit regression suite passed 101/101. |
 | M1-02C, M1-03, M2, M3, M4, attended E2E | Not released | No end-to-end run, live project, GitHub automation, Atlas control, worker dispatch loop, or durable autonomous wake loop is ready. |
 
 ## Terminal M1-02B findings
@@ -269,11 +269,20 @@ completed, merged, approved, or reused as authority. The slice cannot receive
 another complete fidelity review, targeted verification, planning correction,
 replacement packet, takeover, or allowance reset.
 
-The Owner's next direction authorizes one separate bootstrap implementation
-slice, `MB-SLICE-REVIEW-READINESS-GATE-01`. Its only outcome is an executable
-mechanical preflight that prevents Decision Fidelity or implementation-review
-launch and review-allowance consumption unless the exact committed candidate,
-cleanliness, allowlist, validations, reconstruction checks, and immutable
-result record all pass. It excludes M1-02B repair and all broader control-plane
-work. The Project Architect handles its routine planning, materiality, and
-acceptance decisions.
+The independent bootstrap slice `MB-SLICE-REVIEW-READINESS-GATE-01`
+completed and merged through PR #19 at
+`6d5c2722380b99db0fb6f829f0afe073a1d49b80`. Its review-readiness command is
+now the executable prerequisite for future reviewer launch.
+
+On 2026-09-04 the Owner added risk-based review disposition prospectively.
+Reproducibility alone no longer forces correction. The Project Architect must
+evaluate actual operating likelihood, consequence, reach, recovery, and fix
+risk, then choose `correct now`, `accept known limitation`, `reject finding`,
+or `return slice`. An accepted limitation requires a linked backlog issue,
+does not claim the failed criterion passed, and consumes no correction when code
+is unchanged. Completed and terminal slices remain unchanged.
+
+No next implementation slice is authorized by this governance amendment. The
+Project Architect's next planning action is to select the smallest executable
+post-readiness behavior from the approved roadmap and return only reserved
+direction choices to the Owner.
