@@ -1,7 +1,7 @@
 # M1 Attempt Execution Lifecycle
 
 **Slice ID:** `MB-SLICE-M1-ATTEMPT-EXECUTION-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending targeted Decision Fidelity`
 **Base:** `0b00c26c396216d293ba8f09b780c2bc07630066`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-ATTEMPT-EXECUTION-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `Decision Fidelity` |
+| `phase` | `PendingTargetedDecisionFidelity` |
+| `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:0b00c26c396216d293ba8f09b780c2bc07630066"]` |
+| `evidence_refs` | `["git:base:0b00c26c396216d293ba8f09b780c2bc07630066", "git:planning-review:0b00c26c396216d293ba8f09b780c2bc07630066..02bd185b4cc001f073a27a106006579ce957aefd", "readiness:86737b3f04a89abdb02b5b284451725048b5836e67ea65e398cb8550c7290f87", "review:M1-ATTEMPT-EXECUTION-DFR-01-REQUEST_CHANGES"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
@@ -99,9 +99,18 @@ OperationalStateStore.finish_attempt_execution(
 All inputs are validated before writing. Every command uses one
 `BEGIN IMMEDIATE` transaction, resolves exact replay before mutable-state
 checks, compares every supplied version, writes one composite event before
-commit, and returns its canonical after object. Same key and same immutable
-facts replays the original result and time; same key with changed facts raises
-`IdempotencyConflict`. Busy exhaustion is not retried.
+commit, and returns the exact canonical object below. Same key and same
+immutable facts replays the original result and time; same key with changed
+facts raises `IdempotencyConflict`. Busy exhaustion is not retried.
+
+Every state object below is exactly:
+
+```json
+{"entity_id":"id","entity_type":"Attempt|Packet|Lease|ResourceLock","kind":"state","state":"state","version":1}
+```
+
+Arrays of locks are ordered by `entity_id`. No key beyond those shown is
+allowed in a result or composite event envelope.
 
 ### Start
 
@@ -109,9 +118,21 @@ Start requires a `Planned` attempt, its packet in `Leased`, and the referenced
 lease `Active` and unexpired at `now`. It writes attempt `Running` with the
 exact handle, expected result, start and heartbeat time; writes packet
 `Running`; increments each changed version once; and emits one
-`AttemptStateChanged` event. Its result contains exact before/after attempt,
-packet, lease identity, execution handle, and expected result. The handle must
-not occur on any other attempt.
+`AttemptStateChanged` event. The handle must not occur on any other attempt.
+The exact result and event payloads are:
+
+```json
+{
+  "attempt":{"entity_id":"attempt-id","entity_type":"Attempt","kind":"state","state":"Running","version":2},
+  "execution":{"attempt_id":"attempt-id","execution_handle":"provider-job-id","expected_result":"committed-candidate","heartbeat_at":"now","started_at":"now"},
+  "lease":{"entity_id":"lease-id","entity_type":"Lease","kind":"state","state":"Active","version":1},
+  "packet":{"entity_id":"packet-id","entity_type":"Packet","kind":"state","state":"Running","version":7}
+}
+```
+
+The event has `entity_type=Attempt`, `entity_id=attempt-id`,
+`event_type=AttemptStateChanged`, `before_json={"attempt": planned-state,
+"packet": leased-state}`, and `after_json` equal to the result.
 
 ### Heartbeat
 
@@ -120,7 +141,23 @@ and its `Active` lease. `now` must be strictly later than the stored attempt
 and lease heartbeat; `new_expires_at` must be later than `now` and the current
 lease expiry. It advances attempt heartbeat/version and lease heartbeat,
 expiry, and version once and emits one composite `LeaseHeartbeatRecorded`
-event. It neither changes packet state nor invents worker progress.
+event. It neither changes packet state nor invents worker progress. Its exact
+result is:
+
+```json
+{
+  "attempt":{"entity_id":"attempt-id","entity_type":"Attempt","kind":"state","state":"Running","version":3},
+  "execution":{"attempt_id":"attempt-id","execution_handle":"provider-job-id","expected_result":"committed-candidate","heartbeat_at":"now"},
+  "lease":{"entity_id":"lease-id","entity_type":"Lease","expires_at":"new-expires-at","heartbeat_at":"now","kind":"state","state":"Active","version":2}
+}
+```
+
+The event has `entity_type=Lease`, `entity_id=lease-id`,
+`event_type=LeaseHeartbeatRecorded`. Its `before_json` has exact keys
+`attempt`, `execution`, and `lease`: the attempt state, an execution object
+containing `attempt_id`, `execution_handle`, and the prior `heartbeat_at`, and
+a lease object shaped as above with the prior expiry, heartbeat, and version.
+Its `after_json` equals the result.
 
 ### Finish
 
@@ -142,10 +179,65 @@ every active lock owned by it, increments every changed version once, and emits
 one composite `AttemptStateChanged` event. It performs no integration, review,
 correction, merge, redispatch, or external action.
 
-The command fingerprint is SHA-256 of canonical JSON over `actor`, the exact
-operation name, and all command arguments except `now`. Event before/after
-objects, reason, actor, correlation, causation, entity, event type, and stored
-fingerprint must reconstruct exactly.
+The exact finish result is:
+
+```json
+{
+  "attempt":{"entity_id":"attempt-id","entity_type":"Attempt","kind":"state","state":"Succeeded","version":4},
+  "completion":{"attempt_id":"attempt-id","completion_evidence_reference":"evidence-ref","execution_handle":"provider-job-id","finished_at":"now","result_commit":"40-hex-or-null"},
+  "lease":{"entity_id":"lease-id","entity_type":"Lease","kind":"state","state":"Released","version":3},
+  "locks":[{"entity_id":"lock-id","entity_type":"ResourceLock","kind":"state","state":"Released","version":2}],
+  "packet":{"entity_id":"packet-id","entity_type":"Packet","kind":"state","state":"AwaitingIntegration","version":8}
+}
+```
+
+The state values follow the outcome table. The event has
+`entity_type=Attempt`, `entity_id=attempt-id`,
+`event_type=AttemptStateChanged`. Its `before_json` has exact keys `attempt`,
+`execution`, `lease`, `locks`, and `packet`: pre-change state objects plus an
+execution object with `attempt_id`, `execution_handle`, `expected_result`, and
+the stored `heartbeat_at`. Its `after_json` equals the result.
+
+### Exact fingerprints
+
+Each fingerprint is SHA-256 of the UTF-8 canonical JSON for its exact object.
+`actor` has exact keys `actor_id`, `actor_type`, `causation_event_id`, and
+`correlation_id`; `reason` is the validated closed reason payload. `now` is
+observation time and is excluded.
+
+```json
+{"actor":{"actor_id":"...","actor_type":"...","causation_event_id":null,"correlation_id":"..."},"operation":"start_attempt_execution","payload":{"attempt_id":"...","execution_handle":"...","expected_attempt_version":1,"expected_packet_version":6,"expected_result":"...","reason":{"detail_reference":null,"kind":"reason","reason_code":"..."}}}
+```
+
+```json
+{"actor":{"actor_id":"...","actor_type":"...","causation_event_id":null,"correlation_id":"..."},"operation":"heartbeat_attempt_execution","payload":{"attempt_id":"...","execution_handle":"...","expected_attempt_version":2,"expected_lease_version":1,"new_expires_at":"...","reason":{"detail_reference":null,"kind":"reason","reason_code":"..."}}}
+```
+
+```json
+{"actor":{"actor_id":"...","actor_type":"...","causation_event_id":null,"correlation_id":"..."},"operation":"finish_attempt_execution","payload":{"attempt_id":"...","completion_evidence_reference":"...","execution_handle":"...","expected_attempt_version":3,"expected_packet_version":7,"outcome":"Succeeded","reason":{"detail_reference":null,"kind":"reason","reason_code":"..."},"result_commit":"40-hex-or-null"}}
+```
+
+### Closed errors and check precedence
+
+Before opening the transaction, validate arguments in signature order, then
+the command-specific enum/commit/time relationships, reason, idempotency key,
+actor, and canonical fingerprint. Malformed or out-of-range input raises
+`InvalidRecord`. Inside the transaction, the order is always: exact replay or
+`IdempotencyConflict`; attempt existence; attempt version; attempt state;
+execution-handle match when already Running; packet existence/relationship;
+packet version when supplied; packet state; lease existence/relationship;
+lease version when supplied; lease state; time/expiry rules; execution-handle
+uniqueness for start; active locks ordered by ID for finish; mutation; event;
+commit.
+
+A missing or structurally mismatched entity raises `InvalidRecord`; a supplied
+version or Running handle mismatch raises `StaleState`; an unavailable source
+state or violated lease/time transition raises `InvalidTransition`; an
+execution handle already bound to another attempt raises `ResourceConflict`;
+changed-fact key reuse raises `IdempotencyConflict`; and SQLite busy exhaustion
+raises `ResourceBusy`. A concurrent constraint collision is mapped to the same
+domain error its precheck names. Every other integrity violation is
+`InvalidRecord`. No rejected command writes state or an event.
 
 ## Exact implementation boundary
 
@@ -197,21 +289,38 @@ concurrency and restart group in ten fresh processes; run compileall with an
 external pycache; and run exact diff, allowlist, staged, tracked/untracked,
 artifact, and sensitive-value checks.
 
-## Quality and stop contract
+## M0-D12 quality contract
 
-Protected outcome: no attempt or packet is `Running` without a unique current
-execution handle, and duplicate, stale, interrupted, expired, or restarted
-observations cannot duplicate or split execution state from ownership.
-
-Assurance: exact local SQLite transactions, schema constraints, finite state
-and outcome complements, idempotent reconstruction, failure seams,
-contention, and restart proof. Excluded threats are a lying provider, database
-corruption, hostile same-UID/root mutation, multi-host writers, worker launch,
-network facts, and machine-reboot proof.
-
-Stop and return to the Project Architect on any need for an undeclared state,
-route, schema carrier, path, dependency, external fact, or more than one event
-per command. One planning correction and one implementation correction are the
-maximum allowed by the Bootstrap Convergence Policy. Final merge uses the
-Owner's standing point-1 merge authority only after exact-candidate readiness
-and independent implementation approval.
+1. **Protected outcome:** no attempt or packet is `Running` without a unique
+   current execution handle, and duplicate, stale, interrupted, expired, or
+   restarted observations cannot duplicate or split execution state from
+   ownership.
+2. **Operating and threat model:** one trusted local Maestro writer, one SQLite
+   database, concurrent threads/processes, validated trusted-caller commands,
+   provider handles already obtained externally, crashes before commit,
+   duplicate/stale observations, lease expiry, and service restart.
+3. **Explicit exclusions:** a lying or compromised provider, database
+   corruption, hostile same-UID/root mutation, multi-host writers, actual
+   worker launch or termination, network truth, distributed consensus, and
+   physical machine-reboot proof.
+4. **Assurance level:** exact local SQLite transactions and schema constraints,
+   finite state/outcome complements, idempotent reconstruction, injected
+   failure seams, contention, reopen, and fresh-process restart proof.
+5. **Acceptance proof:** the 22 tests and complete regression/stress,
+   compilation, candidate-union, allowlist, staged-hygiene, artifact, and
+   sensitive-value checks named in `Named sufficient proof` are sufficient.
+6. **Implementation boundary:** only the five paths in `Exact implementation
+   boundary`, Python standard library, existing Maestro SQLite/config/value
+   helpers, and no new dependency or process are permitted.
+7. **Proportionality ceiling:** one additive four-column schema migration, one
+   uniqueness index, only the minimum insert/update validation triggers, three
+   storage methods, one new 22-test module, and the minimum compatibility edits
+   to the two named existing test modules. No general transition framework,
+   executor abstraction, ORM, background process, or policy redesign.
+8. **Stop and escalation rule:** stop and return to the Project Architect on
+   any need for an undeclared state, route, schema carrier, path, dependency,
+   external fact, more than one event per command, or work beyond this ceiling.
+   One planning correction and one implementation correction are the maximum
+   allowed by the Bootstrap Convergence Policy. Final merge uses the Owner's
+   standing point-1 merge authority only after exact-candidate readiness and
+   independent implementation approval.
