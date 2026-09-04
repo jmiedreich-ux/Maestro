@@ -1,7 +1,7 @@
 # M1 Packet Eligibility Transitions — Independent Slice 02
 
 **Slice ID:** `MB-SLICE-M1-PACKET-ELIGIBILITY-02`
-**Status:** `Project Architect accepted; merge ready`
+**Status:** `Merged`
 **Base:** `81280f70b5bf8257d981824b32b47741879b01ce`
 
 ## Durable slice status
@@ -10,7 +10,7 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-PACKET-ELIGIBILITY-02` |
-| `phase` | `MergeReady` |
+| `phase` | `Terminal` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
@@ -18,8 +18,8 @@
 | `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
-| `terminal_state` | `null` |
-| `evidence_refs` | `["digest:74db48a9206cc08fcd22dba6c12c53694fc3170438baa6a389da470484ec1878", "git:base:81280f70b5bf8257d981824b32b47741879b01ce", "git:implementation:79a09da751628b26616ad4c1bb5e7d53535446f1..64b0b7c26cd446056d160b93987bd3fed93226e8", "git:planning-review:81280f70b5bf8257d981824b32b47741879b01ce..91e4e85a4e7285ffd6377d35facd40a53b93972c", "readiness:167d718e5c0f6ac5ad8aff814bfb5d5d746606542b0ca45a7b1e0434f2dc2b50", "readiness:9a96763b9c4c58885e94b9dad49f8a7145a16cba55e1e3bdf7f80aef852157a6", "review:M1-PACKET-ELIGIBILITY-02-DFR-01-APPROVE", "review:M1-PACKET-ELIGIBILITY-02-IIR-01-APPROVE"]` |
+| `terminal_state` | `Merged` |
+| `evidence_refs` | `["digest:74db48a9206cc08fcd22dba6c12c53694fc3170438baa6a389da470484ec1878", "git:base:81280f70b5bf8257d981824b32b47741879b01ce", "git:implementation:79a09da751628b26616ad4c1bb5e7d53535446f1..64b0b7c26cd446056d160b93987bd3fed93226e8", "git:merge:571c5da9d41bd413a9aca6df3da78a1f29c0c5bb", "git:planning-review:81280f70b5bf8257d981824b32b47741879b01ce..91e4e85a4e7285ffd6377d35facd40a53b93972c", "readiness:167d718e5c0f6ac5ad8aff814bfb5d5d746606542b0ca45a7b1e0434f2dc2b50", "readiness:9a96763b9c4c58885e94b9dad49f8a7145a16cba55e1e3bdf7f80aef852157a6", "readiness:c540fd5ad71729a822fdb3fcafa0dd440b5908fe6eb493217657d5025969de2a", "review:M1-PACKET-ELIGIBILITY-02-DFR-01-APPROVE", "review:M1-PACKET-ELIGIBILITY-02-IIR-01-APPROVE"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
