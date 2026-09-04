@@ -210,6 +210,14 @@ reopened, corrected, replaced, renamed, dispatched, or reused. A new independent
 slice must correct the contract using `attempts.result_commit` without taking
 this slice's allowance.
 
+`MB-SLICE-M1-REVIEW-ROUTING-03` is terminally `returned` after its sole targeted
+Decision Fidelity verification returned `REQUEST_CHANGES`. Its remaining
+material defect is a non-closed `findings_json` payload contract: the required
+evidence/disposition shape and complement rejection cases were not exact. No
+implementation occurred. The slice cannot be reopened, corrected, replaced,
+renamed, dispatched, or reused. A new independent slice must define that exact
+shape without inheriting this slice's allowance.
+
 `MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned` after its sole
 targeted Decision Fidelity verification returned `REQUEST_CHANGES`. The one
 planning correction fixed candidate-head authority and expanded the protocol,
