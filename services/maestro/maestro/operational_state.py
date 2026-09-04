@@ -1,9 +1,9 @@
 """Closed schema-4 operational records and service-owned persistence.
 
 This module contains record creation, canonical value handling, idempotent
-append, read foundations, and the guarded run-lifecycle storage primitive.
-Claim/lease/lock, acceptance/merge guards, and recovery orchestration remain
-outside this boundary.
+append, read foundations, and guarded run-lifecycle and packet-eligibility
+storage primitives. Claim/lease/lock, acceptance/merge guards, and recovery
+orchestration remain outside this boundary.
 """
 
 from __future__ import annotations
@@ -56,6 +56,13 @@ _RUN_TRANSITIONS = {
     "AwaitingOwner": {"Running", "Blocked", "Complete", "Cancelled"},
     "Complete": set(),
     "Cancelled": set(),
+}
+_PACKET_ELIGIBILITY_TRANSITIONS = {
+    "Planned": {"Waiting", "Blocked", "Cancelled"},
+    "Waiting": {"Ready", "Blocked", "Cancelled"},
+    "Blocked": {"Waiting", "Ready", "Cancelled"},
+    "Ready": {"Waiting", "Blocked", "Dispatchable", "Cancelled"},
+    "Dispatchable": {"Ready", "Waiting", "Blocked", "Cancelled"},
 }
 
 
@@ -412,6 +419,72 @@ class OperationalStateStore:
         row = self._packet(packet, now)
         return self._append_one("packets", "packet_id", row, "Packet", "PacketMaterialized", idempotency_key, actor, now)
 
+    def transition_packet_eligibility(
+        self, packet_id, expected_version, target_state, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_version = _positive_int(expected_version, "expected_version")
+        target_state = _text(target_state, "target_state")
+        if target_state not in _ENTITY_STATES["Packet"]:
+            raise InvalidTransition("target packet state is not declared")
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("packet eligibility reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "packet_id": packet_id,
+            "expected_version": expected_version,
+            "target_state": target_state,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint(
+            "transition_packet_eligibility", facts, actor_value
+        )
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+                current = connection.execute(
+                    "SELECT state,version FROM packets WHERE packet_id=?", (packet_id,)
+                ).fetchone()
+                if current is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(current[0]), int(current[1])
+                if current_version != expected_version:
+                    raise StaleState("packet version is stale")
+                if target_state not in _PACKET_ELIGIBILITY_TRANSITIONS.get(
+                    source_state, set()
+                ):
+                    raise InvalidTransition("packet eligibility transition is not permitted")
+                before = _state_payload("Packet", packet_id, source_state, current_version)
+                after = _state_payload(
+                    "Packet", packet_id, target_state, expected_version + 1
+                )
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (target_state, timestamp, expected_version + 1, packet_id, expected_version),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_packet_state_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, after, reason,
+                )
+                connection.commit()
+                return after
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("packet eligibility transition violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_attempt(self, attempt, idempotency_key, actor, now):
         row = self._attempt(attempt, now)
         return self._append_one("attempts", "attempt_id", row, "Attempt", "AttemptRecorded", idempotency_key, actor, now)
@@ -674,6 +747,25 @@ class OperationalStateStore:
             """,
             (
                 key, "Run", run_id, "RunStateChanged", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_packet_state_event(
+        connection, key, fingerprint, actor, now, packet_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Packet", packet_id, "PacketStateChanged", canonical_json(before),
                 canonical_json(after), canonical_json(reason), actor["correlation_id"],
                 actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
                 fingerprint, now,
