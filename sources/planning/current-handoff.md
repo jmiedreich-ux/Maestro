@@ -3,8 +3,8 @@
 **Date:** 2026-09-04
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1-01
-**Current development state:** M1-01 recovery slice merged; next M1 continuation slice not selected
+**Current integrated product state:** Alpha-01 through Alpha-03, M1-01, and M1-02A
+**Current development state:** M1-02A recovery slice merged; next M1 continuation slice not selected
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -32,6 +32,13 @@ Independent Implementation Review both returned `APPROVE`, all 128 named tests
 passed, and no correction was used. It adds only the internal exact-commit,
 read-only authority loader and durable candidate persistence foundation.
 
+M1-02A is merged through PR #25 at
+`160dcf48240c90b787a7bcb88e4aeb10d6348b30`. Its exact reviewed
+implementation head is `807d0194ef6c15787385c4c8518a387b4d5d3edb`;
+both reviews returned `APPROVE`, all 163 named tests and both ten-run
+fresh-process stress groups passed, and no correction was used. It adds the
+accepted schema-4 operational-record validation and persistence foundation.
+
 ## What exists only on side branches
 
 - Alpha-04 readiness reached local correction head
@@ -43,8 +50,9 @@ read-only authority loader and durable candidate persistence foundation.
 - M1-01's historical accepted source head is
   `56b4dfb5e4d4bef860616cde93d172affb0e4210`; its exact behavior is now
   integrated through the reviewed recovery slice above.
-- M1-02A+AR's Project-Architect-accepted implementation head is
-  `d82164c2f3be2164ad6e66b022f645be5f61844b`.
+- M1-02A+AR's historical accepted source head is
+  `d82164c2f3be2164ad6e66b022f645be5f61844b`; its exact behavior is now
+  integrated through the reviewed recovery slice above.
 - The first M1-02B planning packet was returned at `a9af23a` after exhausting
   its correction allowance and produced no implementation.
 - Replacement M1-02B planning at `ab271ff` is terminally returned after its sole
@@ -117,9 +125,10 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 ## Exact next action
 
 1. Keep terminal M1-02B evidence non-authoritative.
-2. Treat M1-01 as integrated, while keeping M1 open.
-3. Have the Project Architect inspect accepted M1-02A+AR evidence and select
-   the smallest executable continuation behavior.
+2. Treat M1-01 and M1-02A as integrated, while keeping M1 open.
+3. Have the Project Architect inspect the remaining authoritative M1 roadmap,
+   current integrated code, and dependencies and select the smallest executable
+   continuation behavior.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or

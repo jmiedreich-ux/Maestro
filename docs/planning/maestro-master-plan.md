@@ -4,12 +4,14 @@
 
 The authoritative current status and process-delay record is
 [Maestro Development Status and Process-Delay Record](maestro-development-status.md),
-dated 2026-09-04. Alpha-01 through Alpha-03 and the internal M1-01 authority
-loader are integrated. M1-01 merged through PR #23 at
-`83c4eb98246adc3f542c6604ea77ce23110d4e4b` after both required reviews
-approved the exact candidate and 128/128 tests passed. Later M1 evidence remains
-on unmerged side branches, and M1-02B is terminally returned. Nothing in those
-side branches is live-project, merge, or end-to-end-test authority.
+dated 2026-09-04. Alpha-01 through Alpha-03, the internal M1-01 authority
+loader, and accepted M1-02A schema-4 operational records are integrated.
+M1-02A merged through PR #25 at
+`160dcf48240c90b787a7bcb88e4aeb10d6348b30` after both required reviews
+approved the exact candidate, 163/163 named tests passed, and both ten-run
+fresh-process stress groups passed. Later M1 work remains unmerged, and M1-02B
+is terminally returned. Nothing in its failed-attempt evidence is live-project,
+merge, or end-to-end-test authority.
 
 ## 1. Charter
 
