@@ -172,6 +172,17 @@ be reopened, corrected, replaced, renamed, or reused as authority. The next
 independent slice must bind candidate head to the successful attempt's
 `result_commit`.
 
+## Terminal review-routing slice 03
+
+`MB-SLICE-M1-REVIEW-ROUTING-03` is terminally `returned` after its sole targeted
+Decision Fidelity verification returned `REQUEST_CHANGES`. The event envelope,
+truthful status carrier, candidate-head authority, and fingerprint were closed;
+the remaining blocker was an unspecified closed finding payload, leaving
+`findings_json` mechanically open to unrelated payload variants. No
+implementation was dispatched. This slice is immutable and non-authoritative.
+The next independent slice must define one exact finding/evidence/disposition
+shape and explicit positive/negative result complement tests.
+
 ## Terminal review-routing slice 02
 
 `MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned` after its sole

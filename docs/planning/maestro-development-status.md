@@ -350,6 +350,14 @@ terminally returned after its sole targeted verification. The independent
 execution-start and heartbeat/finish slices are now merged. Completion and
 review-control routing is next. M1 remains open.
 
+`MB-SLICE-M1-REVIEW-ROUTING-03` is terminally `returned`. Its complete
+Decision Fidelity review passed the candidate-head and protocol corrections,
+but the sole targeted verification found that the required closed finding
+payload was still unspecified: `findings_json` could contain unrelated payload
+variants, so the result/findings complement was not mechanically enforceable.
+No implementation occurred. This slice cannot be reopened, corrected,
+renamed, replaced, dispatched, or reused as authority.
+
 `MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned`. Its complete Decision
 Fidelity review found missing executable protocol/status detail; the sole
 planning correction added those sections, but targeted verification found the
