@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** Execution start merged; heartbeat and terminal attempt completion are next
+**State:** Execution heartbeat/finish merged; completion and review-control routing are next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -73,6 +73,11 @@ Independent `MB-SLICE-M1-EXECUTION-START-01` is merged through PR #35 at
 and independent implementation review, 220/220 tests, and the ten-run stress
 group. One planning correction and zero implementation corrections were used.
 
+`MB-SLICE-M1-EXECUTION-FINISH-01` is merged through PR #37 at
+`18c00fadad537d4fbd74149d4c3ef9e36579ffeb`. Exact implementation head
+`f885d1d90bdf0c130140d731fbe8b8627d2e6c74` passed both reviews with no
+findings, 235/235 tests, and 40/40 stress cases with zero corrections.
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -134,11 +139,12 @@ implementation review each used one correction and received targeted
 ## Next authorized action
 
 M1-01, M1-02A, run lifecycle, packet eligibility, and atomic assignment claim
-are complete, and execution start is now integrated, but M1 is not closed. The
-Project Architect next materializes heartbeat and terminal attempt completion
-against the exact stored execution identity. No implementation is authorized
-until that new contract receives pre-execution Decision Fidelity approval. All
-returned slices remain immutable and non-authoritative.
+are complete, and execution start plus heartbeat/finish are now integrated,
+but M1 is not closed. The Project Architect next materializes completion and
+review-control routing from `AwaitingIntegration` through its closed reviewed
+outcome. No implementation is authorized until that new contract receives
+pre-execution Decision Fidelity approval. All returned slices remain immutable
+and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
