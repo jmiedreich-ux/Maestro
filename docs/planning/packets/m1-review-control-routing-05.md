@@ -48,16 +48,18 @@ Schema facts below are quoted from `services/maestro/maestro/storage.py` and
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-05` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-04:returned:non-authoritative:app-map-11-boundary-gap"]` |
+| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:c2ede3e72fce6cf2c94b02d18a527b67bdeb642e","review:decision-fidelity:approve:no-findings","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-04:returned:non-authoritative:app-map-11-boundary-gap"]` |
+
+The planning contract is now frozen at `c2ede3e72fce6cf2c94b02d18a527b67bdeb642e`, approved with zero findings and zero corrections. Passing its named acceptance proof is enough; implementation may not silently strengthen it.
 
 Counts are monotonic and start at zero because no review of this slice's
 contract has occurred yet. `phase` advances only on a recorded event: a
