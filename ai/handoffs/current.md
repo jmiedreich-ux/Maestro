@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** Atomic assignment claim merged; attempt lifecycle and execution identity are next
+**State:** Atomic assignment claim merged; first attempt-execution slice returned; smaller independent continuation is next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -59,6 +59,13 @@ findings, 191/191 tests, and both ten-run stress groups with zero corrections.
 `4e99054d1752372b901621b30961fff543a84621` passed both reviews with no
 findings, 209/209 tests, and 10/10 concurrency/restart stress runs with zero
 corrections. It creates the packet claim atomically but does not start work.
+
+`MB-SLICE-M1-ATTEMPT-EXECUTION-01` is terminally `returned` at correction head
+`3462b09d5c17336817bd8adcd9e6ad65c0d1f274`. Its sole targeted Decision
+Fidelity verification found one unresolved contradiction between the declared
+five-key state object and heartbeat's extended lease envelope. No
+implementation occurred; the slice cannot be corrected, reopened, renamed,
+or used as authority.
 
 ## Unmerged M1 evidence
 
@@ -121,12 +128,12 @@ implementation review each used one correction and received targeted
 ## Next authorized action
 
 M1-01, M1-02A, run lifecycle, packet eligibility, and atomic assignment claim
-are complete, but M1 is not closed. The Project Architect next materializes
-the smallest attempt-lifecycle and execution-identity slice so a claimed
-Planned attempt can acquire honest live-execution evidence and transition
-without implying work ran when it did not. No implementation is authorized
-until that contract receives pre-execution Decision Fidelity approval. Both
-returned slices remain immutable and non-authoritative.
+are complete, but M1 is not closed. The Project Architect next materializes a
+new independent, smaller execution-start slice so a claimed Planned attempt
+can acquire honest live-execution evidence without implying work ran when it
+did not. No implementation is authorized until that contract receives
+pre-execution Decision Fidelity approval. All returned slices remain immutable
+and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
