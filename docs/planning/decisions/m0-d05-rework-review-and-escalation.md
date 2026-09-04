@@ -139,3 +139,16 @@ tests, the comparable evidence supports an approximately 20% forecast.
 The [Maestro Bootstrap Convergence Policy](../bootstrap-convergence-policy.md) controls Maestro's own development until the durable loop completes its accepted qualification run. Its slice-wide identity, frozen-contract rule, bounded review sequence, correction budgets, terminal return behavior, Coordinator takeover, and learning quarantine override any conflicting earlier language in this decision.
 
 For one bootstrap slice, packet replacement, branch movement, reassignment, or takeover does not reset the one planning-correction or one implementation-correction allowance. R3/R4 findings are learning candidates and do not amend shared invariants or templates during the active slice. A new ordinary finding after the complete set is non-blocking; only the policy's named critical exceptions may interrupt the frozen slice.
+
+## Risk-based disposition amendment — Owner-approved 2026-09-04
+
+A reviewer `REQUEST_CHANGES` does not itself authorize rework. Before dispatch,
+the Project Architect applies the
+[risk-based finding disposition](../bootstrap-convergence-policy.md#risk-based-finding-disposition).
+Only `correct now` consumes the slice's one implementation correction.
+`accept known limitation` requires the recorded backlog issue, advances the
+unchanged reviewed candidate as `accepted-with-known-limitations`, consumes no
+correction, and requires no targeted implementation verification. The reviewer
+finding remains recorded. Critical exceptions and primary-outcome failures
+cannot use this path. This prospective rule does not alter prior terminal or
+completed slices.
