@@ -159,3 +159,15 @@ and non-authoritative.
 - **Implementation correction:** 0, unused
 - **Correction head:** none; branch HEAD remained equal to reviewed base
 - **Terminal state:** `returned`
+
+## Terminal review-routing slice
+
+`MB-SLICE-M1-REVIEW-ROUTING-01` is terminally `returned`. Its sole targeted
+Decision Fidelity verification returned `REQUEST_CHANGES`: the Architect-
+disposition route was corrected, but the required equality to
+`packets.current_head` cannot pass because the integrated finish behavior leaves
+that field null and stores the successful candidate only as
+`attempts.result_commit`. No implementation was dispatched. This slice cannot
+be reopened, corrected, replaced, renamed, or reused as authority. The next
+independent slice must bind candidate head to the successful attempt's
+`result_commit`.
