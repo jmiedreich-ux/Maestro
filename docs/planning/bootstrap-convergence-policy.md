@@ -130,8 +130,8 @@ the Project Architect's authority. Only reserved product, legal/compliance,
 security, data-loss, authorization, external/production, irreversible,
 spending, or direction risk returns to the Owner.
 
-A critical exception, unverifiable review range, or failure of the primary
-promised outcome cannot be accepted through this path. High likelihood combined
+A critical exception, reserved Owner risk, unverifiable review range, or
+failure of the primary promised outcome cannot be accepted through this path. High likelihood combined
 with material impact is presumptively corrected or returned; any routine
 exception requires explicit evidence and rationale.
 
