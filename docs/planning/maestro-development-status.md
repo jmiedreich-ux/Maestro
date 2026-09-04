@@ -319,6 +319,17 @@ The Project Architect may select a new independent packet-eligibility slice
 from current master; it receives a new identity and no allowance from this
 returned slice.
 
+`MB-SLICE-M1-REVIEW-ROUTING-01` is terminally `returned` after its sole
+targeted Decision Fidelity verification returned `REQUEST_CHANGES`. The
+correction resolved the Architect-disposition bypass, but the remaining
+candidate-head relationship was impossible against the integrated state:
+`packets.current_head` remains null after execution finish, while the attempt's
+`result_commit` is the actual candidate authority. No implementation occurred;
+the slice cannot be corrected, reopened, renamed, replaced, dispatched, or
+used as authority. A new independent slice must use the successful attempt's
+`result_commit` as candidate-head authority and must not consume this slice's
+allowance.
+
 The new independent slice `MB-SLICE-M1-PACKET-ELIGIBILITY-02` completed and
 merged through PR #30 at
 `571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Its exact independently reviewed

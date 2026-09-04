@@ -197,3 +197,15 @@ controls any conflicting older handoff or rule language.
 - **Implementation correction:** 0, unused
 - **Correction head:** none; branch HEAD remained equal to reviewed base
 - **Terminal state:** `returned`
+
+## Terminal review-routing slice
+
+`MB-SLICE-M1-REVIEW-ROUTING-01` is terminally `returned`: its sole targeted
+Decision Fidelity verification returned `REQUEST_CHANGES`. The correction fixed
+the missing Project Architect disposition gate, but the remaining candidate-head
+equality was impossible because `packets.current_head` remains null after the
+merged execution finish path; `attempts.result_commit` is the actual successful
+candidate authority. No implementation occurred and this slice cannot be
+reopened, corrected, replaced, renamed, dispatched, or reused. A new independent
+slice must correct the contract using `attempts.result_commit` without taking
+this slice's allowance.
