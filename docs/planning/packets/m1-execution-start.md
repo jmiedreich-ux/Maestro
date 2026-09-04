@@ -1,7 +1,7 @@
 # M1 Execution Start
 
 **Slice ID:** `MB-SLICE-M1-EXECUTION-START-01`
-**Status:** `Decision Fidelity approved; implementation released`
+**Status:** `Project Architect accepted; merge ready`
 **Base:** `7f81b42c3bd0b853dcd10b1b6a75208d5866f141`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-EXECUTION-START-01` |
-| `phase` | `Frozen` |
+| `phase` | `MergeReady` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7f81b42c3bd0b853dcd10b1b6a75208d5866f141", "git:planning-correction:0dfd2cfdf248da0168f26e7cc0061a34c2136238..1687b4aa569bdfd7d8d5602b7cb1594af83cf338", "git:planning-review:7f81b42c3bd0b853dcd10b1b6a75208d5866f141..0dfd2cfdf248da0168f26e7cc0061a34c2136238", "readiness:076c4efaaa42b6c22eed849128b8b0fc9426d2171d6e9a1c25d35c3382caa0af", "readiness:ebc5ad79874a5abb63a6bf69bd92d62b26e801b73dad155664df43221871c6e6", "review:M1-EXECUTION-START-DFR-01-REQUEST_CHANGES", "review:M1-EXECUTION-START-DFR-01-TARGETED-APPROVE"]` |
+| `evidence_refs` | `["digest:5f29fc0224ae13be22ca239221145b91bd7b67f481e714b5e3e9e7e6840c8874", "git:base:7f81b42c3bd0b853dcd10b1b6a75208d5866f141", "git:implementation:2f549b67c854198f304347f6272f85bf33a7e37b..c5e3c05799764d02841d2732200e267f19af9beb", "git:planning-correction:0dfd2cfdf248da0168f26e7cc0061a34c2136238..1687b4aa569bdfd7d8d5602b7cb1594af83cf338", "git:planning-review:7f81b42c3bd0b853dcd10b1b6a75208d5866f141..0dfd2cfdf248da0168f26e7cc0061a34c2136238", "readiness:076c4efaaa42b6c22eed849128b8b0fc9426d2171d6e9a1c25d35c3382caa0af", "readiness:5d536ecec862fe1987498d885339627b09476ac401c3f983aae3001831289c27", "readiness:ebc5ad79874a5abb63a6bf69bd92d62b26e801b73dad155664df43221871c6e6", "review:M1-EXECUTION-START-DFR-01-REQUEST_CHANGES", "review:M1-EXECUTION-START-DFR-01-TARGETED-APPROVE", "review:M1-EXECUTION-START-IIR-01-APPROVE"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
