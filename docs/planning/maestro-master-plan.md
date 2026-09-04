@@ -61,6 +61,13 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 19. Pre-review and pre-commit validation covers the actual candidate union,
     including untracked files. Exact allowlist comparison and staged
     `git diff --cached --check` are required before a clean-candidate claim.
+20. A reproducible review finding is evidence, not automatic rework. Before
+    dispatch, the Project Architect evaluates actual operating exposure,
+    likelihood, consequence, reach, recovery, and fix risk. A working primary
+    outcome may advance as `accepted-with-known-limitations` with a linked
+    backlog issue; this consumes no correction when the reviewed code is
+    unchanged. Critical exceptions and primary-outcome failures cannot use this
+    path.
 
 ## 3. System shape
 
