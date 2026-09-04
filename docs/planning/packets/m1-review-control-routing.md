@@ -1,7 +1,7 @@
 # M1 Review Control Routing
 
 **Slice ID:** `MB-SLICE-M1-REVIEW-ROUTING-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Targeted Decision Fidelity`
 **Base:** `3574bf2b2c3730f167cec553439d0f08bdc85568`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-01` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `PendingTargetedDecisionFidelity` |
 | `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:3574bf2b2c3730f167cec553439d0f08bdc85568"]` |
+| `evidence_refs` | `["git:base:3574bf2b2c3730f167cec553439d0f08bdc85568","git:full-planning-review-head:58fef6263422d317d6b511fc7bdde4669d1d2137","review:decision-fidelity:request-changes","finding:DF-01:correct-now","finding:DF-02:correct-now"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
@@ -49,20 +49,58 @@ The closed route table is:
 | `AwaitingIntegration` | `Integration` | `ValidateOnly` | `AwaitingReview` |
 | `AwaitingIntegration` | `Integration` | `NeedsReplan` | `NeedsReplan` |
 | `AwaitingReview` | `IndependentImplementation` | `Approve` | `MergeReady` |
-| `AwaitingReview` | `IndependentImplementation` | `RequestChanges` | `NeedsReplan` |
+| `AwaitingReview` | `IndependentImplementation` | `RequestChanges` | `AwaitingArchitect` |
 
 All other source/kind/result combinations are prohibited and raise
 `InvalidTransition`. In particular `Assemble` and `Comment` require a later
-workflow, and this slice does not resume a correction.
+workflow, and this slice does not resume a correction. `RequestChanges` records
+reviewer advice and enters the explicit disposition-pending state; it does not
+authorize correction, replan, return, or developer dispatch. A later command
+must persist the Project Architect's one risk disposition before any such
+action.
 
 The supplied review is the exact existing closed review record. It must name
-the supplied packet, its one latest `Succeeded` attempt and that attempt's
-`result_commit` as `head_commit`; use correction number 0; and use
+the supplied packet, its one latest `Succeeded` Initial attempt and that
+attempt's `result_commit` as `head_commit`; use correction number 0; and use
 `created_at=now`. `base_commit` must equal the packet base commit and differ
-from head. `coverage_json` must be nonempty. Integration must be the first
-Integration review for the packet. Independent review requires exactly one
-prior `Integration/ValidateOnly` review for the same packet, attempt, base,
-and head, and must be the first IndependentImplementation review.
+from head. Integration must be the first Integration review for the packet.
+Independent review requires exactly one prior `Integration/ValidateOnly`
+review for the same packet, attempt, base, and head, and must be the first
+IndependentImplementation review.
+
+`coverage_json` has exactly these two keys:
+
+```text
+coverage_json := {
+  "kind": "review-readiness-coverage",
+  "result": <the complete maestro.review-readiness.result/v1 object>
+}
+```
+
+No additional outer key is permitted. `result` is the complete, unmodified
+review-readiness result, including its request, check records, blockers,
+callback, and `record_digest`. Validate it with the existing
+`review_readiness.validate_result`; require `ready=true`, an empty blocker
+list, and every validation and reconstruction check `Passed`. Its request must
+use `review_kind=IndependentImplementation`. Its resolved base, request base,
+review base, and packet base must be identical; its resolved head, request
+head, both checked-out heads, review head, latest attempt result commit, and
+current packet head must be identical. Its changed paths must be nonempty,
+UTF-8-byte sorted, and identical to the paths derived and sealed by that result;
+its request allowlist must equal the packet's canonical
+`owned_paths_json`. Both clean observations must be true. These relationships
+make the successful gate result and digest durable review coverage rather than
+caller prose. Because this slice accepts only correction number 0 and the
+Initial attempt, the exact full base/head range is the complete current
+correction chain.
+
+Integration requires `reviewer_role=IntegrationAgent`; IndependentImplementation
+requires `reviewer_role=IndependentImplementationReviewer`. In both cases,
+`reviewer_instance` must differ from the attempt's `model_identity` and
+`runtime_identity` and from its lease `holder_id`. The independent reviewer
+instance must also differ from the prior Integration reviewer instance. These
+are exact durable independence checks; role or instance convention alone is
+not accepted.
 
 Every state value below is the existing five-key state payload. The result has
 exactly:
@@ -89,12 +127,14 @@ supplied reason/actor facts. The fingerprint is SHA-256 over canonical JSON:
 `now` appears inside the review's immutable `created_at` and is therefore
 covered by the fingerprint; there is no second hidden clock.
 
-Validate packet ID, expected version, full review, review/packet/time/base-head
-relationships, reason, key, and actor before writing. Then use one
+Validate packet ID, expected version, full review, its closed readiness result,
+review/packet/time/base-head/coverage/independence relationships, reason, key,
+and actor before writing. Then use one
 `BEGIN IMMEDIATE` transaction in this exact order: replay/conflict; packet
 existence; packet version; route-table match; latest Succeeded attempt
-existence and attempt/packet/head relationships; prior-review cardinality and
-exact facts; insert review; update packet once; insert event; commit.
+existence and attempt/packet/head/lease relationships; coverage-result and
+reviewer-independence checks; prior-review cardinality and exact facts; insert
+review; update packet once; insert event; commit.
 
 Malformed or mismatched facts and missing required records raise
 `InvalidRecord`; version mismatch raises `StaleState`; prohibited route/order
@@ -125,10 +165,15 @@ The new module contains exactly thirteen tests:
 1. Integration ValidateOnly records one review and enters AwaitingReview;
 2. Integration NeedsReplan records one review and enters NeedsReplan;
 3. independent Approve records one review and enters MergeReady;
-4. independent RequestChanges records one review and enters NeedsReplan;
+4. independent RequestChanges records one review and enters AwaitingArchitect
+   without authorizing correction, replan, return, or dispatch;
 5. the complete source/kind/result complement rejects every unlisted route;
-6. packet/attempt/base/head/time/coverage/correction relationships are guarded;
-7. independent review requires one exact prior validate-only Integration review;
+6. packet/Initial-attempt/base/head/time/correction and the complete closed
+   readiness result, digest, clean state, paths, checks, and allowlist
+   relationships are guarded;
+7. exact reviewer roles and instance independence from the attempt executor,
+   lease holder, and prior integrator are guarded, and independent review
+   requires one exact prior validate-only Integration review;
 8. stale version, wrong state, duplicate review kind, and missing records reject;
 9. replay is exact and every changed immutable fact conflicts;
 10. review/event/update failure rolls back the whole command;
@@ -143,7 +188,9 @@ allowlist, staged, tracked/untracked, artifact, and sensitive-value checks.
 ## M0-D12 quality contract
 
 1. **Protected outcome:** a review result cannot be fabricated, reordered,
-   duplicated, or detached from the exact succeeded candidate and packet route.
+   duplicated, detached from the exact mechanically ready succeeded candidate,
+   made authoritative by a non-independent reviewer, or route
+   `RequestChanges` around Project Architect disposition.
 2. **Operating and threat model:** one trusted local writer/SQLite database,
    pre-obtained review judgment, concurrent commands, crash before commit,
    duplicate/stale input, and service restart.
@@ -151,7 +198,8 @@ allowlist, staged, tracked/untracked, artifact, and sensitive-value checks.
    correction execution, acceptance/merge, external truth, distributed writers,
    database corruption, and hostile same-UID/root mutation.
 4. **Assurance level:** closed four-route local atomic/idempotent persistence
-   with exact relationships, failure seams, contention, and restart proof.
+   with exact readiness coverage, reviewer independence, disposition-pending
+   routing, failure seams, contention, and restart proof.
 5. **Acceptance proof:** the thirteen named tests, total 248-test inventory,
    ten-run stress group, compilation, candidate-union, allowlist, staged
    hygiene, artifact, and sensitive-value checks are sufficient.
