@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, and assignment claim
-**Current development state:** Atomic assignment claim merged; attempt lifecycle and execution identity are next
+**Current development state:** Atomic assignment claim merged; first attempt-execution slice returned; smaller independent continuation is next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -65,6 +65,13 @@ findings, 191/191 tests, and both ten-run stress groups with zero corrections.
 findings, 209/209 tests, and 10/10 concurrency/restart stress runs with zero
 corrections. It atomically establishes one claim but records no false running
 state and launches no worker.
+
+`MB-SLICE-M1-ATTEMPT-EXECUTION-01` is terminally `returned` at correction head
+`3462b09d5c17336817bd8adcd9e6ad65c0d1f274`. Its sole targeted Decision
+Fidelity verification found one unresolved contradiction between the declared
+five-key state object and heartbeat's extended lease envelope. No
+implementation occurred; it cannot be corrected, reopened, renamed, or used
+as authority.
 
 ## What exists only on side branches
 
@@ -154,8 +161,9 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence non-authoritative.
 2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, and assignment
    claim as integrated, while keeping M1 open.
-3. Have the Project Architect materialize the smallest attempt-lifecycle and
-   execution-identity slice for the already-claimed Planned attempt.
+3. Have the Project Architect materialize a new independent execution-start
+   slice for the already-claimed Planned attempt; do not reuse the returned
+   combined attempt-execution contract.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or

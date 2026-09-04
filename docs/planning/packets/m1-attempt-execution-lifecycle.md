@@ -1,7 +1,7 @@
 # M1 Attempt Execution Lifecycle
 
 **Slice ID:** `MB-SLICE-M1-ATTEMPT-EXECUTION-01`
-**Status:** `Pending targeted Decision Fidelity`
+**Status:** `Returned`
 **Base:** `0b00c26c396216d293ba8f09b780c2bc07630066`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-ATTEMPT-EXECUTION-01` |
-| `phase` | `PendingTargetedDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `Terminal` |
+| `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
-| `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:0b00c26c396216d293ba8f09b780c2bc07630066", "git:planning-review:0b00c26c396216d293ba8f09b780c2bc07630066..02bd185b4cc001f073a27a106006579ce957aefd", "readiness:86737b3f04a89abdb02b5b284451725048b5836e67ea65e398cb8550c7290f87", "review:M1-ATTEMPT-EXECUTION-DFR-01-REQUEST_CHANGES"]` |
+| `terminal_state` | `Returned` |
+| `evidence_refs` | `["git:base:0b00c26c396216d293ba8f09b780c2bc07630066", "git:planning-correction:02bd185b4cc001f073a27a106006579ce957aefd..3462b09d5c17336817bd8adcd9e6ad65c0d1f274", "git:planning-review:0b00c26c396216d293ba8f09b780c2bc07630066..02bd185b4cc001f073a27a106006579ce957aefd", "readiness:86737b3f04a89abdb02b5b284451725048b5836e67ea65e398cb8550c7290f87", "readiness:b28a6a19967706af14db91ae8f2a8b41061e534c3853e7de82c458f60cc7051d", "review:M1-ATTEMPT-EXECUTION-DFR-01-REQUEST_CHANGES", "review:M1-ATTEMPT-EXECUTION-DFR-01-TARGETED-REQUEST_CHANGES"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
