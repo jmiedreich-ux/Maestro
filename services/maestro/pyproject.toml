@@ -3,6 +3,10 @@ name = "maestro"
 version = "0.1.0a1"
 description = "Local Python and SQLite foundation for Maestro Alpha"
 requires-python = ">=3.12"
+dependencies = ["PyYAML>=6.0.2,<7"]
+
+[project.optional-dependencies]
+test = ["jsonschema>=4.10,<5"]
 
 [project.scripts]
 maestro = "maestro.cli:main"

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maestro.local/schemas/maestro-project-v1.schema.json",
+  "title": "Maestro project manifest version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "identity", "authority", "delivery", "verification", "routing", "operations", "exceptions"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["project_id", "name", "repository", "default_branch", "adapter_version", "process_version"],
+      "properties": {
+        "project_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "name": {"$ref": "#/$defs/scalar"},
+        "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$", "maxLength": 512},
+        "default_branch": {"$ref": "#/$defs/scalar"},
+        "adapter_version": {"$ref": "#/$defs/scalar"},
+        "process_version": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture_paths", "plan_paths", "work_graph_path", "handoff_path", "rules_sop_path", "task_issue_convention"],
+      "properties": {
+        "architecture_paths": {"$ref": "#/$defs/nonemptyUniqueRepositoryPaths"},
+        "plan_paths": {"$ref": "#/$defs/nonemptyUniqueRepositoryPaths"},
+        "work_graph_path": {"$ref": "#/$defs/repositoryPath"},
+        "handoff_path": {"$ref": "#/$defs/repositoryPath"},
+        "rules_sop_path": {"$ref": "#/$defs/repositoryPath"},
+        "task_issue_convention": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "delivery": {
+      "type": "object", "additionalProperties": false,
+      "required": ["branch_policy", "pull_request_policy", "merge_policy", "acceptance_authority", "deployment_policy", "rollback_policy"],
+      "properties": {
+        "branch_policy": {"$ref": "#/$defs/scalar"}, "pull_request_policy": {"$ref": "#/$defs/scalar"},
+        "merge_policy": {"$ref": "#/$defs/scalar"}, "acceptance_authority": {"enum": ["project-architect", "owner"]},
+        "deployment_policy": {"$ref": "#/$defs/scalar"}, "rollback_policy": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "verification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["build_commands", "test_commands", "integration_commands", "ui_qa_commands", "evidence_rules", "untested_handling"],
+      "properties": {
+        "build_commands": {"$ref": "#/$defs/uniqueStrings"}, "test_commands": {"$ref": "#/$defs/uniqueStrings"},
+        "integration_commands": {"$ref": "#/$defs/uniqueStrings"}, "ui_qa_commands": {"$ref": "#/$defs/uniqueStrings"},
+        "evidence_rules": {"$ref": "#/$defs/scalar"}, "untested_handling": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "routing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["specialist_overlays", "worker_routes", "integration_route", "independent_reviewer_route", "qa_murphy_policy"],
+      "properties": {
+        "specialist_overlays": {"$ref": "#/$defs/uniqueStrings"}, "worker_routes": {"$ref": "#/$defs/uniqueStrings"},
+        "integration_route": {"$ref": "#/$defs/scalar"}, "independent_reviewer_route": {"$ref": "#/$defs/scalar"},
+        "qa_murphy_policy": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "operations": {
+      "type": "object", "additionalProperties": false,
+      "required": ["environment_references", "secret_references", "resource_locks", "notification_policy"],
+      "properties": {
+        "environment_references": {"$ref": "#/$defs/uniqueStrings"},
+        "secret_references": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,127}$"}},
+        "resource_locks": {"$ref": "#/$defs/uniqueStrings"}, "notification_policy": {"$ref": "#/$defs/scalar"}
+      }
+    },
+    "exceptions": {
+      "type": "object", "additionalProperties": false, "required": ["disposition", "items"],
+      "properties": {"disposition": {"enum": ["none", "declared"]}, "items": {"$ref": "#/$defs/uniqueStrings"}}
+    }
+  },
+  "$defs": {
+    "scalar": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!\\s)(?:[^\\x00-\\x1f\\x7f]*[^\\s])?$"},
+    "uniqueStrings": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/scalar"}},
+    "nonemptyUniqueStrings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/scalar"}},
+    "repositoryPath": {
+      "allOf": [
+        {"$ref": "#/$defs/scalar"},
+        {"pattern": "^(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.|\\.git)(?:/|$))(?!.*//)(?!.*\\\\)[^\\x00-\\x1f\\x7f]+$"}
+      ]
+    },
+    "nonemptyUniqueRepositoryPaths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/repositoryPath"}
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"exceptions": {"properties": {"disposition": {"const": "none"}}}}}, "then": {"properties": {"exceptions": {"properties": {"items": {"maxItems": 0}}}}}},
+    {"if": {"properties": {"exceptions": {"properties": {"disposition": {"const": "declared"}}}}}, "then": {"properties": {"exceptions": {"properties": {"items": {"minItems": 1}}}}}}
+  ]
+}
