@@ -1,7 +1,7 @@
 # M1 Execution Start
 
 **Slice ID:** `MB-SLICE-M1-EXECUTION-START-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending targeted Decision Fidelity`
 **Base:** `7f81b42c3bd0b853dcd10b1b6a75208d5866f141`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-EXECUTION-START-01` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `PendingTargetedDecisionFidelity` |
 | `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7f81b42c3bd0b853dcd10b1b6a75208d5866f141"]` |
+| `evidence_refs` | `["git:base:7f81b42c3bd0b853dcd10b1b6a75208d5866f141", "git:planning-review:7f81b42c3bd0b853dcd10b1b6a75208d5866f141..0dfd2cfdf248da0168f26e7cc0061a34c2136238", "readiness:076c4efaaa42b6c22eed849128b8b0fc9426d2171d6e9a1c25d35c3382caa0af", "review:M1-EXECUTION-START-DFR-01-REQUEST_CHANGES"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
@@ -124,12 +124,14 @@ actor, `now`, and fingerprint construction. Malformed input raises
 `InvalidRecord`. Inside the transaction the exact order is: replay/conflict;
 attempt existence; attempt version; attempt state `Planned`; packet existence
 and attempt/packet relationship; packet version; packet state `Leased`; lease
-existence and attempt/packet relationship; lease state `Active`; lease expiry
-strictly after `now`; execution-handle uniqueness; attempt update; packet
-update; event insert; commit.
+existence and attempt/packet relationship; lease state `Active`; parent run
+existence and packet/lease/run relationship; parent run state `Running`; lease
+expiry strictly after `now`; execution-handle uniqueness; attempt update;
+packet update; event insert; commit.
 
-A missing or mismatched entity raises `InvalidRecord`; a version mismatch
-raises `StaleState`; an unavailable state or expired lease raises
+A missing or mismatched entity, including the parent run relationship, raises
+`InvalidRecord`; a version mismatch raises `StaleState`; an unavailable
+attempt, packet, lease, or parent-run state, or an expired lease, raises
 `InvalidTransition`; a handle bound to another attempt raises
 `ResourceConflict`; changed-fact key reuse raises `IdempotencyConflict`; and
 SQLite busy exhaustion raises `ResourceBusy`. A concurrent unique-handle
@@ -163,7 +165,8 @@ M1-03 work is permitted.
 3. reopen and two concurrent migrators produce exactly one version-5 row;
 4. valid start returns the exact result and changes attempt/packet once;
 5. malformed, empty, reused, and concurrently duplicated handles are blocked;
-6. missing/mismatched records, wrong states, and expired lease are blocked;
+6. missing/mismatched records, wrong attempt/packet/lease state, a
+   Blocked/Complete/Cancelled parent run, and expired lease are blocked;
 7. stale attempt or packet version leaves all state unchanged;
 8. same-key replay is exact and changed immutable facts conflict;
 9. event failure rolls back both updates and concurrency has one winner;
