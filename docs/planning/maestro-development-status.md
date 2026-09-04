@@ -1,6 +1,6 @@
 # Maestro Development Status and Process-Delay Record
 
-**Recorded:** 2026-09-03
+**Recorded:** 2026-09-04
 **Recorded on:** `master`
 **Master baseline before this update:**
 `8aa4cb517dcb902060cf5acd1d58806787e03841`
@@ -280,7 +280,8 @@ evaluate actual operating likelihood, consequence, reach, recovery, and fix
 risk, then choose `correct now`, `accept known limitation`, `reject finding`,
 or `return slice`. An accepted limitation requires a linked backlog issue,
 does not claim the failed criterion passed, and consumes no correction when code
-is unchanged. Completed and terminal slices remain unchanged.
+is unchanged. Critical exceptions, reserved Owner risks, and primary-outcome
+failures remain non-deferrable. Completed and terminal slices remain unchanged.
 
 No next implementation slice is authorized by this governance amendment. The
 Project Architect's next planning action is to select the smallest executable
