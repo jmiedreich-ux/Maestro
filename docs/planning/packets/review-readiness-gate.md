@@ -20,16 +20,16 @@ name are not status. Its current value is:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-REVIEW-READINESS-GATE-01` |
-| `phase` | `ImplementationReview` |
-| `current_actor` | `IndependentImplementationReviewer` |
+| `phase` | `ImplementationCorrection` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` (the slice is not `Running`) |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
-| `implementation_review_count` | `0` |
-| `implementation_correction_count` | `0` |
+| `implementation_review_count` | `1` |
+| `implementation_correction_count` | `1` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:5889a345b700cd4fac3e50a11951427a6a2648f1..3d6005ecf8f72f6cdc14f40986401ecd04494976", "git:e3c0b71a7a282389f12a4620caf32e5552623720..ffb1e1675941052a9b9ce32fee8b447330145b01", "git:ffb1e1675941052a9b9ce32fee8b447330145b01..42069d67aaa80627371b08c5c4db09684d7e370b", "readiness:bc9df3d30a0cae54b0e94eb18e9756fed1ac8868e57b29f046b284a883d786f2", "review:RRG-DFR-01-REQUEST_CHANGES", "review:RRG-DFR-01-TARGETED-APPROVE"]` |
+| `evidence_refs` | `["git:5889a345b700cd4fac3e50a11951427a6a2648f1..3d6005ecf8f72f6cdc14f40986401ecd04494976", "git:e3c0b71a7a282389f12a4620caf32e5552623720..ffb1e1675941052a9b9ce32fee8b447330145b01", "git:ffb1e1675941052a9b9ce32fee8b447330145b01..42069d67aaa80627371b08c5c4db09684d7e370b", "readiness:bc9df3d30a0cae54b0e94eb18e9756fed1ac8868e57b29f046b284a883d786f2", "review:RRG-DFR-01-REQUEST_CHANGES", "review:RRG-DFR-01-TARGETED-APPROVE", "review:RRG-IIR-01-REQUEST_CHANGES"]` |
 
 The carrier has exactly those keys and no others. `schema` and `slice_id` are
 the literals shown. `evidence_refs` is a UTF-8-byte-sorted array of unique,
