@@ -4,12 +4,12 @@
 
 The authoritative current status and process-delay record is
 [Maestro Development Status and Process-Delay Record](maestro-development-status.md),
-dated 2026-09-04. Alpha-01 through Alpha-03 remain the integrated product
-stages. The independent review-readiness bootstrap gate is merged through PR
-#19 at `6d5c2722380b99db0fb6f829f0afe073a1d49b80`. No M1 implementation is
-merged; M1 planning and accepted implementation evidence remain on unmerged
-side branches, and M1-02B is terminally returned. Nothing in those side
-branches is live-project, merge, or end-to-end-test authority.
+dated 2026-09-04. Alpha-01 through Alpha-03 and the internal M1-01 authority
+loader are integrated. M1-01 merged through PR #23 at
+`83c4eb98246adc3f542c6604ea77ce23110d4e4b` after both required reviews
+approved the exact candidate and 128/128 tests passed. Later M1 evidence remains
+on unmerged side branches, and M1-02B is terminally returned. Nothing in those
+side branches is live-project, merge, or end-to-end-test authority.
 
 ## 1. Charter
 

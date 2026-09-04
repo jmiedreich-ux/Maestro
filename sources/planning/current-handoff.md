@@ -3,8 +3,8 @@
 **Date:** 2026-09-04
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03
-**Current development state:** review-readiness gate merged; risk-based review disposition adopted; next implementation slice not selected
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1-01
+**Current development state:** M1-01 recovery slice merged; next M1 continuation slice not selected
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -25,7 +25,12 @@ update was `8aa4cb517dcb902060cf5acd1d58806787e03841`.
   `f21e4a2ff25cead8b972b4433da33f0e9910efc5`, including its recorded
   trusted-fixture limitation.
 
-No M1 implementation is merged to master.
+M1-01 is merged through PR #23 at
+`83c4eb98246adc3f542c6604ea77ce23110d4e4b`. Its exact reviewed implementation
+head is `cf36927243e782e2b4adc3e36ab696087cff5697`; Decision Fidelity and
+Independent Implementation Review both returned `APPROVE`, all 128 named tests
+passed, and no correction was used. It adds only the internal exact-commit,
+read-only authority loader and durable candidate persistence foundation.
 
 ## What exists only on side branches
 
@@ -35,8 +40,9 @@ No M1 implementation is merged to master.
 - The real M1-M4 planning branch is `architecture/m1-m4-packets`, committed at
   `ab271ffea42204c44c1894d53ba10e0d5f34ca4f` before the interrupted
   correction.
-- M1-01's downstream-accepted implementation head is
-  `56b4dfb5e4d4bef860616cde93d172affb0e4210`.
+- M1-01's historical accepted source head is
+  `56b4dfb5e4d4bef860616cde93d172affb0e4210`; its exact behavior is now
+  integrated through the reviewed recovery slice above.
 - M1-02A+AR's Project-Architect-accepted implementation head is
   `d82164c2f3be2164ad6e66b022f645be5f61844b`.
 - The first M1-02B planning packet was returned at `a9af23a` after exhausting
@@ -111,16 +117,15 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 ## Exact next action
 
 1. Keep terminal M1-02B evidence non-authoritative.
-2. Have the Project Architect select the smallest executable post-readiness
-   behavior from the approved roadmap.
-3. Require the executable review-readiness gate before reviewer launch.
-4. Before correction dispatch, disposition every implementation finding as
+2. Treat M1-01 as integrated, while keeping M1 open.
+3. Have the Project Architect inspect accepted M1-02A+AR evidence and select
+   the smallest executable continuation behavior.
+4. Require the executable review-readiness gate before reviewer launch.
+5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
    `return slice` using real likelihood and consequence.
-5. Critical exceptions, reserved Owner risks, and primary-outcome failures
-   cannot be accepted as known limitations.
-6. Do not begin implementation until that next slice completes its one
-   pre-execution Decision Fidelity gate.
+6. Do not begin successor implementation until its new canonical contract
+   completes the one pre-execution Decision Fidelity gate.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
 controls any conflicting older handoff or rule language.

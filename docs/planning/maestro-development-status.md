@@ -10,9 +10,10 @@ development delay, and define the controls required before work resumes.
 ## Executive status
 
 Maestro is not ready for end-to-end testing or use by the projects waiting on
-it. Alpha-01 through Alpha-03 are complete on `master`. Later M1 planning and
-implementation work exists only on local side branches and worktrees; it has
-not been merged to `master`.
+it. Alpha-01 through Alpha-03 and the first M1 behavior are complete on
+`master`. M1-01 now supplies the internal exact-commit, read-only project
+authority loader and durable candidate persistence foundation. Later M1 work
+remains unmerged.
 
 The Owner approved a bootstrap-governance repair on 2026-09-03. Replacement
 M1-02B slice `MB-SLICE-M1-02B-REPLACEMENT-01` is now terminally `returned`.
@@ -26,10 +27,10 @@ dispatch is running.
 
 | Workstream | Exact state | What it does and does not mean |
 |---|---|---|
-| `master` | Alpha-01 through Alpha-03 merged at `8aa4cb517dcb902060cf5acd1d58806787e03841` before this status commit | This is the last integrated product state. It contains no accepted M1 implementation. |
+| `master` | Alpha-01 through Alpha-03 plus M1-01 merged through PR #23 at `83c4eb98246adc3f542c6604ea77ce23110d4e4b` | This is the current integrated product state. It contains the internal authority loader but no public project create/register command. |
 | Alpha-04 | Readiness packet reached correction head `40db7fa9dd6054896f9496cd241db2247cf85e1a` with targeted Decision Fidelity `APPROVE`, but was never accepted, merged, released, or implemented | It is not an executable packet. Later direction moved work toward the real M1-M4 build path; Alpha-04 requires explicit reconciliation before reuse. |
 | M1-M4 planning | Local branch `architecture/m1-m4-packets`, committed head `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`; 33 commits beyond the master baseline | This is unmerged planning evidence, not master state or dispatch authority. |
-| M1-01 | Implementation accepted for downstream planning at `56b4dfb5e4d4bef860616cde93d172affb0e4210` | The real-project authority loader exists on an implementation branch. It is not merged to master and does not register or mutate a live project. |
+| M1-01 | Recovery slice `MB-SLICE-M1-01-INTEGRATION-01` terminally merged through PR #23 at `83c4eb98246adc3f542c6604ea77ce23110d4e4b`; exact reviewed implementation head `cf36927243e782e2b4adc3e36ab696087cff5697` | Decision Fidelity and independent implementation review both returned `APPROVE` with no findings; 128/128 tests passed and no correction was used. It does not register a project or access a live project. |
 | M1-02A + AR | Project Architect acceptance recorded at planning commit `03ce591`; exact implementation head `d82164c2f3be2164ad6e66b022f645be5f61844b` | Schema-4 records and the final proof correction passed the recorded gates. They are not merged to master. |
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
 | Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
@@ -283,7 +284,10 @@ does not claim the failed criterion passed, and consumes no correction when code
 is unchanged. Critical exceptions, reserved Owner risks, and primary-outcome
 failures remain non-deferrable. Completed and terminal slices remain unchanged.
 
-No next implementation slice is authorized by this governance amendment. The
-Project Architect's next planning action is to select the smallest executable
-post-readiness behavior from the approved roadmap and return only reserved
-direction choices to the Owner.
+M1 recovery has restarted with `MB-SLICE-M1-01-INTEGRATION-01`, which completed
+and merged through PR #23 at
+`83c4eb98246adc3f542c6604ea77ce23110d4e4b`. This is M1 continuation, not M1
+closeout. No successor slice was selected by that merge. The Project Architect's
+next routine planning action is to inspect the accepted M1-02A+AR evidence and
+select the smallest executable continuation behavior; M1-02B remains terminal
+and cannot be used as authority.
