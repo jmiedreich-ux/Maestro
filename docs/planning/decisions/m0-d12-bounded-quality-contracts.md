@@ -104,4 +104,5 @@ consequence are acceptable under the approved operating model.
 The [risk-based finding disposition](../bootstrap-convergence-policy.md#risk-based-finding-disposition)
 governs that variance. It requires a durable issue and rationale, consumes no
 correction when code is unchanged, and cannot waive a critical exception,
-unverifiable evidence/range, or failure of the primary promised outcome.
+reserved Owner risk, unverifiable evidence/range, or failure of the primary
+promised outcome.
