@@ -1,7 +1,7 @@
 # M1 Run Lifecycle Transitions
 
 **Slice ID:** `MB-SLICE-M1-RUN-LIFECYCLE-01`
-**Status:** `Frozen for implementation`
+**Status:** `Project Architect accepted; merge ready`
 **Planning and implementation base:**
 `07cb48123bdc0d94ebe656fa93a17a3d1309581b`
 **Outcome authority:** the Owner's direction to complete M1; the current
@@ -21,16 +21,16 @@ master.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-RUN-LIFECYCLE-01` |
-| `phase` | `Frozen` |
-| `current_actor` | `MaestroDeveloper` |
+| `phase` | `MergeReady` |
+| `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b", "git:planning-correction:3a57e702ea74e3eefc69b2e4319a34dd2e55d591..4001ef05862247d9133a561861a3c03087da6c3b", "git:planning-review:07cb48123bdc0d94ebe656fa93a17a3d1309581b..3a57e702ea74e3eefc69b2e4319a34dd2e55d591", "readiness:055ffe893150677fd9f2a222d5269582edd75c702a432c7726a2fac77d64bd40", "readiness:a6e3b293eb575f55bc42d4bc52708047fe484b1290cb1b35fab7f1d4f071f69a", "review:M1-RUN-LIFECYCLE-DFR-01-REQUEST-CHANGES", "review:M1-RUN-LIFECYCLE-TDFR-01-APPROVE"]` |
+| `evidence_refs` | `["digest:a7be0999fdc601fcd4a09fa2a5b80bd130db968ac2b07cf840aeec639d099360", "git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b", "git:implementation:011cd78e9edf347035b982858ee34cedaad31e05..fafb07eade36723d1620b02ed07b7767c5951783", "git:planning-correction:3a57e702ea74e3eefc69b2e4319a34dd2e55d591..4001ef05862247d9133a561861a3c03087da6c3b", "git:planning-review:07cb48123bdc0d94ebe656fa93a17a3d1309581b..3a57e702ea74e3eefc69b2e4319a34dd2e55d591", "readiness:055ffe893150677fd9f2a222d5269582edd75c702a432c7726a2fac77d64bd40", "readiness:9c4eca0cff6282f716f78d35ef2e172d4d9e137a20aea848337249065b891af2", "readiness:a6e3b293eb575f55bc42d4bc52708047fe484b1290cb1b35fab7f1d4f071f69a", "review:M1-RUN-LIFECYCLE-DFR-01-REQUEST-CHANGES", "review:M1-RUN-LIFECYCLE-IIR-01-APPROVE", "review:M1-RUN-LIFECYCLE-TDFR-01-APPROVE"]` |
 
 Counts never reset. A reviewer is launched only after a successful mechanical
 readiness result. Status-only commits outside the frozen implementation range
