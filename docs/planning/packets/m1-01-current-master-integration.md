@@ -1,7 +1,7 @@
 # M1-01 Current-Master Integration
 
 **Slice ID:** `MB-SLICE-M1-01-INTEGRATION-01`
-**Status:** `PendingDecisionFidelity`
+**Status:** `Merged`
 **Planning and implementation base:**
 `b47592cfa417fd39daddef46ff691697969b51f0`
 **Accepted behavior source:**
@@ -26,7 +26,7 @@ chat, branches, and stale process observations are not status.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-01-INTEGRATION-01` |
-| `phase` | `MergeReady` |
+| `phase` | `Terminal` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
@@ -34,8 +34,8 @@ chat, branches, and stale process observations are not status.
 | `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
-| `terminal_state` | `null` |
-| `evidence_refs` | `["digest:9ec223e90df8324e2ff7ef30b6537f0dbd55f64439dfe8b887e15471c89bbc3b", "execution:/root/maestro_developer:2026-09-04T01:22:07Z", "git:05b11b3b66243ed05c2aa7b7b35e82cf75502108..cf36927243e782e2b4adc3e36ab696087cff5697", "git:4e213b10d2bfd709e43a9073c41cc986e78a0fcd..56b4dfb5e4d4bef860616cde93d172affb0e4210", "git:b47592cfa417fd39daddef46ff691697969b51f0", "git:source-accepted:56b4dfb5e4d4bef860616cde93d172affb0e4210", "readiness:671a5ccedf40d389cc13f2fb30b38dca2e162140b73bf04ade674d29c89828b1", "readiness:b9f48a997f6294208c9bbb7a2c029a5047bbd2d8812c72fb8b06f7ce1ba03858", "review:M1-01-INT-DFR-01-APPROVE", "review:M1-01-INT-IIR-01-APPROVE"]` |
+| `terminal_state` | `Merged` |
+| `evidence_refs` | `["digest:9ec223e90df8324e2ff7ef30b6537f0dbd55f64439dfe8b887e15471c89bbc3b", "execution:/root/maestro_developer:2026-09-04T01:22:07Z", "git:05b11b3b66243ed05c2aa7b7b35e82cf75502108..cf36927243e782e2b4adc3e36ab696087cff5697", "git:4e213b10d2bfd709e43a9073c41cc986e78a0fcd..56b4dfb5e4d4bef860616cde93d172affb0e4210", "git:b47592cfa417fd39daddef46ff691697969b51f0", "git:b47592cfa417fd39daddef46ff691697969b51f0..83c4eb98246adc3f542c6604ea77ce23110d4e4b", "git:source-accepted:56b4dfb5e4d4bef860616cde93d172affb0e4210", "readiness:671a5ccedf40d389cc13f2fb30b38dca2e162140b73bf04ade674d29c89828b1", "readiness:b4969d80bb130cec872601745f90044b0c5093154aa4b280d56fa0884ab5ceeb", "readiness:b9f48a997f6294208c9bbb7a2c029a5047bbd2d8812c72fb8b06f7ce1ba03858", "review:M1-01-INT-DFR-01-APPROVE", "review:M1-01-INT-IIR-01-APPROVE"]` |
 
 The allowed phases are `PendingDecisionFidelity`, `PlanningCorrection`,
 `Frozen`, `Running`, `ImplementationReview`, `ImplementationCorrection`,
