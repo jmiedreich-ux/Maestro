@@ -14,13 +14,13 @@ it. Alpha-01 through Alpha-03 are complete on `master`. Later M1 planning and
 implementation work exists only on local side branches and worktrees; it has
 not been merged to `master`.
 
-The Owner approved a bootstrap-governance repair on 2026-09-03. M1-02B remains
-frozen and no implementation is authorized by that repair. Its replacement B0/B1-B5 planning set received a full Decision
-Fidelity `REQUEST_CHANGES` with five material contract findings. The Project
-Architect accepted those findings as one complete set and authorized the one
-normal planning correction. The correction was interrupted by the Owner's
-`stop` instruction and remains uncommitted. No M1-02B correction worker,
-Maestro Developer, review, or dispatch is currently running.
+The Owner approved a bootstrap-governance repair on 2026-09-03. Replacement
+M1-02B slice `MB-SLICE-M1-02B-REPLACEMENT-01` is now terminally `returned`.
+Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`
+because no committed correction head existed, the staged candidate was empty,
+and the preserved draft still failed required routing and digest checks. B1 was
+never authorized. No M1-02B correction worker, Maestro Developer, review, or
+dispatch is running.
 
 ## Exact state by workstream
 
@@ -32,11 +32,12 @@ Maestro Developer, review, or dispatch is currently running.
 | M1-01 | Implementation accepted for downstream planning at `56b4dfb5e4d4bef860616cde93d172affb0e4210` | The real-project authority loader exists on an implementation branch. It is not merged to master and does not register or mutate a live project. |
 | M1-02A + AR | Project Architect acceptance recorded at planning commit `03ce591`; exact implementation head `d82164c2f3be2164ad6e66b022f645be5f61844b` | Schema-4 records and the final proof correction passed the recorded gates. They are not merged to master. |
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
-| Replacement M1-02B | B0 canonical contract plus serial B1-B5 packets committed at `ab271ffea42204c44c1894d53ba10e0d5f34ca4f` | Full Decision Fidelity review returned five material findings. It is not released and B1 cannot be dispatched. |
-| Active correction | Two uncommitted files in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` | These are partial edits for the authorized normal correction. Preserve them, but do not treat them as reviewed evidence. |
+| Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
+| Failed correction evidence | Two uncommitted files remain in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` (SHA-256 `76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47`) and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` (SHA-256 `92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`) | Preserve these mutable files as failed-attempt evidence only. They are not authority and must not be merged, approved, discarded, or reused as a planning candidate. |
+| Review-readiness gate | Owner-authorized new independent bootstrap slice `MB-SLICE-REVIEW-READINESS-GATE-01`; planning not yet Decision-Fidelity approved | Its sole outcome is a small executable gate that prevents reviewer launch and allowance consumption until an exact committed candidate passes all readiness checks. |
 | M1-02C, M1-03, M2, M3, M4, attended E2E | Not released | No end-to-end run, live project, GitHub automation, Atlas control, worker dispatch loop, or durable autonomous wake loop is ready. |
 
-## Open M1-02B findings
+## Terminal M1-02B findings
 
 The Decision Fidelity Reviewer returned one complete material set against
 `a9af23a..ab271ff`:
@@ -52,9 +53,10 @@ The Decision Fidelity Reviewer returned one complete material set against
 5. Per-slice digest serialization required an undocumented inference about the
    canonical object key.
 
-These are implementation-contract defects, not optional review preferences.
-They remain one bounded correction set. No later reviewer may turn unrelated
-polish or a stronger preferred design into another blocker.
+The sole targeted verification could not verify this set against an immutable
+correction range and directly reproduced unresolved routing and digest defects.
+It returned `REQUEST_CHANGES`; under the Bootstrap Convergence Policy the slice
+is terminally `returned`, with no further planning correction or review.
 
 ## What went wrong in the development process
 
@@ -245,9 +247,8 @@ slice contract, preserves correction counts across replacement and takeover,
 authorizes bounded Coordinator completion under the same contract, quarantines
 new policy learning, and makes targeted follow-up terminal.
 
-M1-02B and its interrupted local files remain preserved and frozen. This rules
-repair does not accept, discard, or complete those files and does not dispatch
-B1.
+M1-02B and its interrupted local files remain preserved as failed-attempt
+evidence. They are not accepted authority and B1 remains unauthorized.
 
 ### Frozen M1-02B slice identity and counters
 
@@ -257,21 +258,22 @@ B1.
 - **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
 - **Complete Decision Fidelity review:** 1, consumed
 - **Planning correction:** 1 authorized and interrupted; allowance consumed
-- **Targeted planning verification:** 0, pending after the preserved correction
+- **Targeted planning verification:** 1, consumed; `REQUEST_CHANGES`
 - **Implementation review:** 0, unused
 - **Implementation correction:** 0, unused
-- **Current state:** frozen administrative pause, not a new slice and not a
-  counter reset
+- **Correction head:** none; branch HEAD remained equal to reviewed base
+- **Terminal state:** `returned`
 
-Completion of the preserved correction may proceed only to the one targeted
-Decision Fidelity verification. It cannot receive another complete fidelity
-review or another planning correction. A failed targeted verification
-terminally returns this slice.
+The preserved files are evidence of the failed attempt only. They cannot be
+completed, merged, approved, or reused as authority. The slice cannot receive
+another complete fidelity review, targeted verification, planning correction,
+replacement packet, takeover, or allowance reset.
 
-The next authorized planning action after that merge is for the Project Architect to resume only
-`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
-recorded counters. It completes the already-authorized correction and proceeds
-only to the pending targeted Decision Fidelity verification. It does not create
-or reconstruct a slice, repeat complete review, or receive a fresh planning
-correction. The Owner is not required for routine materiality or acceptance
-decisions.
+The Owner's next direction authorizes one separate bootstrap implementation
+slice, `MB-SLICE-REVIEW-READINESS-GATE-01`. Its only outcome is an executable
+mechanical preflight that prevents Decision Fidelity or implementation-review
+launch and review-allowance consumption unless the exact committed candidate,
+cleanliness, allowlist, validations, reconstruction checks, and immutable
+result record all pass. It excludes M1-02B repair and all broader control-plane
+work. The Project Architect handles its routine planning, materiality, and
+acceptance decisions.

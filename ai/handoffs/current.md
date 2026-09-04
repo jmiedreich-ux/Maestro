@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-03
-**State:** M1-02B frozen; bootstrap convergence repair approved by Owner
+**State:** M1-02B replacement slice terminally returned; review-readiness gate authorized for planning
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -30,8 +30,8 @@ No M1 implementation is merged to master.
 - Accepted M1-02A+AR implementation head:
   `d82164c2f3be2164ad6e66b022f645be5f61844b`
 - First M1-02B packet: returned at `a9af23a`; never implemented
-- Replacement M1-02B: B0 plus B1-B5 at `ab271ff`; full review returned five
-  material findings; the normal correction is incomplete and uncommitted
+- Replacement M1-02B: terminally returned after its sole targeted Decision
+  Fidelity verification returned `REQUEST_CHANGES`; B1 is unauthorized
 
 These facts support recovery only. They do not authorize dispatch or merge.
 
@@ -44,9 +44,11 @@ to:
 - `docs/planning/contracts/m1-02b-contract.json`
 - `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md`
 
-The Meastro Architecture Agent performing the Project Architect role was
-interrupted. No M1 correction worker is running. Do not describe an assignment,
-conversation, lock, or stale message as active execution.
+These files are failed-attempt evidence only. Their SHA-256 values are
+`76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47` and
+`92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`,
+respectively. Do not merge, approve, discard, or reuse them as authority. No
+M1 correction worker is running.
 
 ## Completed governance repair
 
@@ -58,20 +60,22 @@ at `a8f389682c98500981cd828a2028ec56b5782705`.
 
 M1-02B remains frozen. The governance merge did not edit or dispatch it.
 
+## Terminal M1-02B result
+
+The reviewed base and current branch head were both
+`ab271ffea42204c44c1894d53ba10e0d5f34ca4f`; no committed correction range or
+staged candidate existed. The sole targeted Decision Fidelity verification
+returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
+`returned`, cannot be reopened or replaced, and cannot authorize B1.
+
 ## Next authorized action
 
-The Project Architect may resume only
-`MB-SLICE-M1-02B-REPLACEMENT-01` from its preserved correction evidence and
-recorded counters. It completes the already-consumed planning correction
-allowance and proceeds only to the pending targeted Decision Fidelity
-verification. It may not create a fresh slice, repeat complete review, or
-receive another planning correction.
-
-If targeted verification approves, the Architect may release only B1 under the
-frozen contract. Later implementation has one full independent implementation
-review and at most one targeted correction/verification. Routine materiality
-and acceptance remain with the Project Architect; only reserved decisions
-return to the Owner.
+Plan only the new independent slice `MB-SLICE-REVIEW-READINESS-GATE-01`. Its
+sole outcome is an executable review-readiness gate that blocks reviewer launch
+and review-allowance consumption until an exact committed candidate passes the
+complete mechanical preflight. It excludes M1-02B repair and broader routing,
+learning, Atlas, UI, scheduler, external-access, and live-project work. Obtain
+its one pre-execution Decision Fidelity review before implementation dispatch.
 
 ### Frozen M1-02B slice identity and counters
 
@@ -81,9 +85,8 @@ return to the Owner.
 - **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
 - **Complete Decision Fidelity review:** 1, consumed
 - **Planning correction:** 1 authorized and interrupted; allowance consumed
-- **Targeted planning verification:** 0, pending after the preserved correction
+- **Targeted planning verification:** 1, consumed; `REQUEST_CHANGES`
 - **Implementation review:** 0, unused
 - **Implementation correction:** 0, unused
-- **Current state:** frozen administrative pause, not a new slice and not a
-  counter reset
-
+- **Correction head:** none; branch HEAD remained equal to reviewed base
+- **Terminal state:** `returned`
