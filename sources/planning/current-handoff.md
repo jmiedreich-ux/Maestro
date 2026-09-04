@@ -4,8 +4,8 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03
-**Current development state:** M1-02B replacement slice terminally returned; review-readiness gate authorized for planning
-**Implementation authorization:** only an approved review-readiness slice may proceed after its pre-execution fidelity gate
+**Current development state:** review-readiness gate merged; risk-based review disposition adopted; next implementation slice not selected
+**Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
 sequence are in the
@@ -101,15 +101,24 @@ staged candidate existed. Its sole targeted Decision Fidelity verification
 returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 `returned`, receives no further review or correction, and cannot authorize B1.
 
+## Completed review-readiness slice
+
+`MB-SLICE-REVIEW-READINESS-GATE-01` completed at independently reviewed head
+`5b01acb00e9890beb5a04f0bc483133e73129a08` and merged through PR #19 at
+`6d5c2722380b99db0fb6f829f0afe073a1d49b80`. Its focused tests passed
+27/27 and the explicit regression suite passed 101/101.
+
 ## Exact next action
 
-1. Preserve the failed M1-02B files as non-authoritative evidence.
-2. Plan only `MB-SLICE-REVIEW-READINESS-GATE-01`, whose sole outcome is an
-   executable mechanical reviewer-launch preflight.
-3. Obtain that new slice's one pre-execution Decision Fidelity review before
-   assigning implementation.
-4. Exclude M1-02B repair and all broader routing, learning, Atlas, UI,
-   scheduler, external-access, and live-project work.
+1. Keep terminal M1-02B evidence non-authoritative.
+2. Have the Project Architect select the smallest executable post-readiness
+   behavior from the approved roadmap.
+3. Require the executable review-readiness gate before reviewer launch.
+4. Before correction dispatch, disposition every implementation finding as
+   `correct now`, `accept known limitation`, `reject finding`, or
+   `return slice` using real likelihood and consequence.
+5. Do not begin implementation until that next slice completes its one
+   pre-execution Decision Fidelity gate.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
 controls any conflicting older handoff or rule language.
