@@ -1,7 +1,7 @@
 # M1 Packet Eligibility Transitions
 
 **Slice ID:** `MB-SLICE-M1-PACKET-ELIGIBILITY-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Awaiting targeted Decision Fidelity verification`
 **Base:** `bcf93a45fb03aed566b372d55b6e428c17bef39a`
 
 ## Authority and outcome
@@ -197,7 +197,7 @@ new suite is 191 tests. Passing this closed inventory is enough.
 - **Stop and escalation rule:** external authority, credentials, M1-03,
   terminal M1-02B dependency, or product-boundary change returns before review.
 
-## Review sequence and counters
+## Review sequence and durable slice status
 
 The slice receives one complete pre-execution Decision Fidelity review, at
 most one planning correction and its sole targeted verification, one complete
@@ -208,11 +208,22 @@ allowance. Project Architect risk disposition controls any implementation
 finding. No successor slice begins until this slice is terminally merged or
 returned.
 
-| Counter | Value |
-|---|---:|
-| Complete Decision Fidelity review | 0 |
-| Planning correction | 0 |
-| Targeted planning verification | 0 |
-| Implementation review | 0 |
-| Implementation correction | 0 |
-| Targeted implementation verification | 0 |
+| Field | Value |
+|---|---|
+| `schema` | `maestro.bootstrap-slice-status/v1` |
+| `slice_id` | `MB-SLICE-M1-PACKET-ELIGIBILITY-01` |
+| `phase` | `AwaitingTargetedDecisionFidelity` |
+| `current_actor` | `None` |
+| `live_execution_evidence` | `null` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
+| `targeted_planning_verification_count` | `0` |
+| `implementation_review_count` | `0` |
+| `implementation_correction_count` | `0` |
+| `targeted_implementation_verification_count` | `0` |
+| `terminal_state` | `null` |
+| `evidence_refs` | `["git:base:bcf93a45fb03aed566b372d55b6e428c17bef39a", "git:planning-review:bcf93a45fb03aed566b372d55b6e428c17bef39a..c5f708c382efc78261c5c0e3914d1d8e627743c7", "readiness:05de0d6068349a05a45e5ce2b15325d3905ccd4b6b71fcc195ee8681fe6322c4", "review:M1-PACKET-ELIGIBILITY-DFR-01-REQUEST-CHANGES"]` |
+
+Counts never reset. `DF-01` was dispositioned `correct now`; this status-only
+addition is the slice's sole planning correction. It changes no API, graph,
+proof, scope, identity, or allowance.
