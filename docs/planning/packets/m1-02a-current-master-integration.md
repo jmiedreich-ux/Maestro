@@ -1,7 +1,7 @@
 # M1-02A Current-Master Integration
 
 **Slice ID:** `MB-SLICE-M1-02A-INTEGRATION-01`
-**Status:** `Frozen for implementation`
+**Status:** `Project Architect accepted; merge ready`
 **Planning and implementation base:**
 `438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7`
 **Accepted behavior source:**
@@ -24,16 +24,16 @@ chat, branches, and stale observations are not status.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-02A-INTEGRATION-01` |
-| `phase` | `Frozen` |
-| `current_actor` | `MaestroDeveloper` |
+| `phase` | `MergeReady` |
+| `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7", "git:planning-review:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7..7dbfa741d2c38880557e75e1cca1e0c02492888e", "git:source-accepted:d82164c2f3be2164ad6e66b022f645be5f61844b", "readiness:a8071b537544d10bda49f343b0bc48a2579d0f534b34285be44ce0b330c1c3ec", "record:03ce591:docs/planning/done/m1-02a-ar-accepted.md", "review:M1-02A-INT-DFR-01-APPROVE"]` |
+| `evidence_refs` | `["digest:6ff30ee50dcd64cf263bd7595082fccb7e5446411958f63f28cc25e067288076", "git:base:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7", "git:implementation:de4c3af776c3088acc64d1813862679ae88d2441..807d0194ef6c15787385c4c8518a387b4d5d3edb", "git:planning-review:438bfc5b1b6315fa66be3af7b63184c2b9bbc8a7..7dbfa741d2c38880557e75e1cca1e0c02492888e", "git:source-accepted:d82164c2f3be2164ad6e66b022f645be5f61844b", "readiness:a8071b537544d10bda49f343b0bc48a2579d0f534b34285be44ce0b330c1c3ec", "readiness:aa1338af6079ce957710bc5712659d705a797c25c74de0bc75ad1ab1a5fc97c5", "record:03ce591:docs/planning/done/m1-02a-ar-accepted.md", "review:M1-02A-INT-DFR-01-APPROVE", "review:M1-02A-INT-IIR-01-APPROVE"]` |
 
 Counts never reset. Status-only commits outside a frozen implementation range
 may update this table. A review allowance is consumed only when a reviewer is
