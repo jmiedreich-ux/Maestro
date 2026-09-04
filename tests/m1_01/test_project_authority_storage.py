@@ -61,10 +61,11 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
             health = runtime.foundation().health()
 
             self.assertEqual(health.schema_version, SCHEMA_VERSION)
+            self.assertEqual(health.schema_version, 4)
             with closing(sqlite3.connect(database)) as connection:
                 self.assertEqual(
                     connection.execute("SELECT version FROM schema_versions ORDER BY version").fetchall(),
-                    [(2,), (3,)],
+                    [(2,), (3,), (4,)],
                 )
                 self.assertEqual(
                     connection.execute("SELECT packet_id, status FROM packet_runs").fetchall(),
@@ -199,39 +200,43 @@ class ProjectAuthorityStorageTests(unittest.TestCase):
 
     def test_two_concurrent_identical_loads_observe_one_durable_result(self) -> None:
         repository = TemporaryProjectRepository()
-        runtime = RuntimeDirectory()
-        barrier = threading.Barrier(2)
-        results = []
-        errors = []
-
-        def load() -> None:
-            try:
-                barrier.wait()
-                result = ProjectAuthorityLoader(runtime.foundation()).load(
-                    repository.path, repository.commit, "owner/example-project"
-                )
-                results.append(result)
-            except Exception as exc:  # pragma: no cover
-                errors.append(exc)
-
         try:
-            threads = [threading.Thread(target=load) for _ in range(2)]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join(timeout=15)
-            self.assertFalse(any(thread.is_alive() for thread in threads))
-            self.assertEqual(errors, [])
-            self.assertEqual(len(results), 2)
-            self.assertEqual(results[0], results[1])
-            with closing(sqlite3.connect(runtime.path / "maestro.sqlite3")) as connection:
-                counts = [
-                    connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                    for table in ("projects", "project_registration_runs", "events")
-                ]
-            self.assertEqual(counts, [1, 1, 1])
+            for repetition in range(5):
+                runtime = RuntimeDirectory()
+                barrier = threading.Barrier(2)
+                results = []
+                errors = []
+
+                def load() -> None:
+                    try:
+                        barrier.wait()
+                        result = ProjectAuthorityLoader(runtime.foundation()).load(
+                            repository.path, repository.commit, "owner/example-project"
+                        )
+                        results.append(result)
+                    except Exception as exc:  # pragma: no cover
+                        errors.append(exc)
+
+                try:
+                    threads = [threading.Thread(target=load) for _ in range(2)]
+                    for thread in threads:
+                        thread.start()
+                    for thread in threads:
+                        thread.join(timeout=15)
+                    with self.subTest(repetition=repetition):
+                        self.assertFalse(any(thread.is_alive() for thread in threads))
+                        self.assertEqual(errors, [])
+                        self.assertEqual(len(results), 2)
+                        self.assertEqual(results[0], results[1])
+                    with closing(sqlite3.connect(runtime.path / "maestro.sqlite3")) as connection:
+                        counts = [
+                            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                            for table in ("projects", "project_registration_runs", "events")
+                        ]
+                    self.assertEqual(counts, [1, 1, 1])
+                finally:
+                    runtime.close()
         finally:
-            runtime.close()
             repository.close()
 
 
