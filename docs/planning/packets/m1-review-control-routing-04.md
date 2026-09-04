@@ -32,16 +32,16 @@ Schema facts below are quoted from `services/maestro/maestro/storage.py` and
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-04` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `PendingTargetedDecisionFidelity` |
 | `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
+| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:a79b3617c3becd77411a6650226a4ec6fce073e0","review:decision-fidelity:request-changes","finding:DF-01:guard-8-review-readiness-review-kind-mismatch:correct-now","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
 
 Counts are monotonic and start at zero because no review of this slice's
 contract has occurred yet. `phase` advances only on a recorded event: a
@@ -123,8 +123,17 @@ slice.
    with the existing `review_readiness` result parser and additionally
    require: `ready=true`; `blockers=[]`; every entry in `checks` has
    `outcome="Passed"`; `request.review_kind` equals `"IndependentImplementation"`
-   for an `IndependentImplementation` review and `"Integration"` for an
-   `Integration` review; `resolved_base`/`resolved_head` equal
+   for both review kinds this slice covers. The review-readiness gate's
+   closed `review_kind` enum (`DecisionFidelity`, `TargetedDecisionFidelity`,
+   `IndependentImplementation`, `TargetedImplementation`, per
+   `review_readiness._REVIEW_KINDS`) has no `"Integration"` value and no
+   separate phase for an `Integration`-kind `reviews` row — it is a
+   different, gate-invocation-phase enum, not the `reviews.review_kind`
+   column's `('Integration','IndependentImplementation')` enum, and the two
+   must not be conflated. Both operational review kinds this slice routes
+   independently prove the same thing (the implementation candidate at
+   `review.head_commit` is clean and fully tested), so both require coverage
+   tagged `request.review_kind="IndependentImplementation"`; `resolved_base`/`resolved_head` equal
    `review.base_commit`/`review.head_commit`; `checked_out_head_before` and
    `checked_out_head_after` both equal `review.head_commit`;
    `clean_before`/`clean_after` are both true; `changed_paths` is nonempty
