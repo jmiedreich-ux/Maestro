@@ -301,3 +301,16 @@ The Project Architect's next routine action is to inspect the remaining M1
 roadmap and the new lifecycle dependency, then select the smallest executable
 continuation without reopening, renaming, correcting, or using terminal
 M1-02B as authority.
+
+The first packet-eligibility slice,
+`MB-SLICE-M1-PACKET-ELIGIBILITY-01`, is terminally `returned`. Its complete
+Decision Fidelity review found one missing durable slice-status carrier. The
+sole planning correction added the carrier at
+`1bd4d3c07183300614693aea3b9a3d691261f2ff`, but used the noncanonical phase
+`AwaitingTargetedDecisionFidelity` instead of
+`PendingTargetedDecisionFidelity`. Its sole targeted verification therefore
+returned `REQUEST_CHANGES`. No product code was written, and the slice cannot
+be corrected, reopened, renamed, replaced, dispatched, or used as authority.
+The Project Architect may select a new independent packet-eligibility slice
+from current master; it receives a new identity and no allowance from this
+returned slice.

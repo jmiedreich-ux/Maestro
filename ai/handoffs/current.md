@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** M1 run-lifecycle slice merged; next M1 continuation slice not selected
+**State:** First packet-eligibility slice returned; independent rematerialization is next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -41,6 +41,13 @@ independent implementation review returned `APPROVE`, all 177 named tests and
 implementation correction were used. It adds only an internal trusted-caller,
 atomic run-state transition and audit-event primitive. It does not wake or
 dispatch work.
+
+`MB-SLICE-M1-PACKET-ELIGIBILITY-01` is terminally `returned`. Its complete
+Decision Fidelity review requested one durable status-carrier correction; the
+sole targeted verification rejected correction head
+`1bd4d3c07183300614693aea3b9a3d691261f2ff` because its phase value was not
+canonical. No implementation occurred. The slice cannot be corrected,
+reopened, renamed, replaced, dispatched, or used as authority.
 
 ## Unmerged M1 evidence
 
@@ -103,13 +110,11 @@ implementation review each used one correction and received targeted
 ## Next authorized action
 
 M1-01, M1-02A, and the run-lifecycle slice are complete, but M1 is not closed.
-The Project Architect next inspects the remaining authoritative M1 roadmap,
-current integrated code, and dependency graph and selects the smallest
-executable continuation under the same review-readiness and risk-based
-disposition controls. No successor implementation is authorized until its new
-canonical contract receives pre-execution Decision Fidelity approval. M1-02B
-remains terminally returned and cannot be reopened, renamed, corrected, or
-reused as authority.
+The Project Architect next materializes a new independent packet-eligibility
+slice from current master with a valid canonical durable status carrier. No
+implementation is authorized until that new contract receives pre-execution
+Decision Fidelity approval. Both terminally returned slices remain immutable
+and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 

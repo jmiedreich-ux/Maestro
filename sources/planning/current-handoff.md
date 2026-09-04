@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03, M1-01, M1-02A, and guarded run lifecycle
-**Current development state:** M1 run-lifecycle slice merged; next M1 continuation slice not selected
+**Current development state:** First packet-eligibility slice returned; independent rematerialization is next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -46,6 +46,13 @@ accepted schema-4 operational-record validation and persistence foundation.
 planning correction and no implementation correction were used. It adds only
 an internal trusted-caller, atomic run-state transition and audit-event
 primitive. It does not wake or dispatch work.
+
+`MB-SLICE-M1-PACKET-ELIGIBILITY-01` is terminally `returned`. Its sole
+targeted Decision Fidelity verification rejected correction head
+`1bd4d3c07183300614693aea3b9a3d691261f2ff` because the added durable status
+carrier used a noncanonical phase value. No implementation occurred. The
+slice cannot be corrected, reopened, renamed, replaced, dispatched, or used
+as authority.
 
 ## What exists only on side branches
 
@@ -135,9 +142,8 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence non-authoritative.
 2. Treat M1-01, M1-02A, and the run-lifecycle primitive as integrated, while
    keeping M1 open.
-3. Have the Project Architect inspect the remaining authoritative M1 roadmap,
-   current integrated code, and dependencies and select the smallest executable
-   continuation behavior.
+3. Have the Project Architect materialize a new independent packet-eligibility
+   slice from current master with a valid canonical durable status carrier.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
