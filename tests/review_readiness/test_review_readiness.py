@@ -150,6 +150,13 @@ class ReviewReadinessTests(unittest.TestCase):
         self.assert_codes(invalid_repository, "REPOSITORY_INVALID")
         self.assertTrue(all(check["skip_reason"] == "RepositoryInvalid" for check in invalid_repository["checks"]))  # type: ignore[union-attr]
 
+        nul_repository = self.candidate.evaluate(
+            self.candidate.request(repository=f"{self.candidate.root}\0invalid")
+        )
+        self.assert_codes(nul_repository, "REPOSITORY_INVALID")
+        self.assertEqual(result_exit_code(nul_repository), 2)
+        validate_result(nul_repository)
+
     def test_06_noncommit_objects_are_blocked(self) -> None:
         blob = self.candidate.git("hash-object", "-w", "--stdin", input_bytes=b"blob").stdout.decode().strip()
         tree = self.candidate.git("rev-parse", "HEAD^{tree}").stdout.decode().strip()
@@ -281,6 +288,31 @@ class ReviewReadinessTests(unittest.TestCase):
         )
         self.assert_codes(no_shell, "VALIDATION_LAUNCH_ERROR")
 
+    def test_15b_nul_argv_launch_errors_are_canonical_and_suppress_callback(self) -> None:
+        for field, check_id, code in (
+            ("validation_commands", "nul-validation", "VALIDATION_LAUNCH_ERROR"),
+            ("reconstruction_commands", "nul-reconstruction", "RECONSTRUCTION_LAUNCH_ERROR"),
+        ):
+            with self.subTest(field=field):
+                callbacks = 0
+
+                def callback() -> None:
+                    nonlocal callbacks
+                    callbacks += 1
+
+                request = self.candidate.request(
+                    **{field: [{"check_id": check_id, "argv": [sys.executable, "\0"]}]}
+                )
+                result = self.candidate.evaluate(request, callback)
+                self.assert_codes(result, code)
+                check = next(item for item in result["checks"] if item["check_id"] == check_id)  # type: ignore[union-attr]
+                self.assertEqual(check["outcome"], "LaunchError")
+                self.assertIn("ValueError: embedded null byte", result["blockers"][0]["detail"])  # type: ignore[index]
+                self.assertEqual(result["callback"], {"outcome": "Suppressed", "detail": None})
+                self.assertEqual(callbacks, 0)
+                self.assertEqual(result_exit_code(result), 2)
+                validate_result(result)
+
     def test_16_successful_command_mutations_are_caught_after_commands(self) -> None:
         scripts = {
             "staged": "from pathlib import Path; import subprocess; Path('post.txt').write_text('x'); subprocess.run(['git','add','post.txt'],check=True)",
@@ -380,6 +412,28 @@ class ReviewReadinessTests(unittest.TestCase):
                 self.assertEqual(result["request"], None)
                 self.assertEqual(result["checks"], [])
         self.assertEqual(calls, 0)
+
+    def test_19b_combined_invalid_request_uses_canonical_field_first_reason(self) -> None:
+        request = self.candidate.request(
+            reconstruction_commands=[{"check_id": "", "argv": []}],
+            repository="relative-and-invalid",
+            validation_commands=[],
+        )
+        result = self.candidate.evaluate(request)
+        self.assertEqual(
+            result["blockers"][0]["detail"],  # type: ignore[index]
+            "request does not conform to maestro.review-readiness.request/v1: "
+            "reconstruction_commands[0].argv must be a nonempty array",
+        )
+
+        duplicate = self.candidate.request()
+        duplicate["validation_commands"][0]["check_id"] = "reconstruction"  # type: ignore[index]
+        duplicate_result = self.candidate.evaluate(duplicate)
+        self.assertEqual(
+            duplicate_result["blockers"][0]["detail"],  # type: ignore[index]
+            "request does not conform to maestro.review-readiness.request/v1: "
+            "duplicate check_id reconstruction",
+        )
 
     def test_20_result_and_nested_objects_are_closed_and_enums_are_closed(self) -> None:
         valid = self.candidate.evaluate()
@@ -531,6 +585,30 @@ class ReviewReadinessTests(unittest.TestCase):
             )
         self.assertEqual(passing.returncode, 0, passing.stderr)
         self.assertTrue(json.loads(passing.stdout)["ready"])
+
+        with tempfile.TemporaryDirectory() as request_directory:
+            nul_request = Path(request_directory) / "nul-request.json"
+            nul_request.write_bytes(
+                canonical_json(
+                    self.candidate.request(
+                        validation_commands=[
+                            {"check_id": "nul", "argv": [sys.executable, "\0"]}
+                        ]
+                    )
+                )
+            )
+            blocked = subprocess.run(
+                [sys.executable, "-m", "maestro.cli", "review-readiness", "--request", str(nul_request)],
+                cwd=REPOSITORY_ROOT,
+                env={**os.environ, "PYTHONPATH": str(REPOSITORY_ROOT / "services" / "maestro")},
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(blocked.returncode, 2, blocked.stderr)
+        blocked_result = json.loads(blocked.stdout)
+        self.assertEqual(blocked_result["blockers"][0]["code"], "VALIDATION_LAUNCH_ERROR")
+        self.assertFalse(blocked_result["ready"])
 
 
 if __name__ == "__main__":

@@ -186,11 +186,17 @@ def _nonempty_text(value: Any, label: str, error_type: type[ValueError]) -> str:
 
 def _validate_request(value: Any, error_type: type[ValueError]) -> None:
     request = _closed_keys(value, _REQUEST_KEYS, "request", error_type)
+    seen_check_ids: set[str] = set()
     validators: dict[str, Callable[[], None]] = {
         "allowed_paths": lambda: _validate_allowed_paths(request["allowed_paths"], error_type),
         "base": lambda: _nonempty_text(request["base"], "base", error_type),
         "head": lambda: _nonempty_text(request["head"], "head", error_type),
-        "reconstruction_commands": lambda: None,
+        "reconstruction_commands": lambda: _validate_commands(
+            request["reconstruction_commands"],
+            "reconstruction_commands",
+            seen_check_ids,
+            error_type,
+        ),
         "repository": lambda: _validate_repository_field(request["repository"], error_type),
         "review_kind": lambda: _validate_enum(
             request["review_kind"], _REVIEW_KINDS, "review_kind", error_type
@@ -198,13 +204,15 @@ def _validate_request(value: Any, error_type: type[ValueError]) -> None:
         "schema": lambda: _validate_literal(request["schema"], REQUEST_SCHEMA, "schema", error_type),
         "slice_id": lambda: _nonempty_text(request["slice_id"], "slice_id", error_type),
         "timeout_seconds": lambda: _validate_timeout(request["timeout_seconds"], error_type),
-        "validation_commands": lambda: None,
+        "validation_commands": lambda: _validate_commands(
+            request["validation_commands"],
+            "validation_commands",
+            seen_check_ids,
+            error_type,
+        ),
     }
     for key in sorted(validators, key=lambda item: item.encode("utf-8")):
         validators[key]()
-    seen: set[str] = set()
-    _validate_commands(request["reconstruction_commands"], "reconstruction_commands", seen, error_type)
-    _validate_commands(request["validation_commands"], "validation_commands", seen, error_type)
 
 
 def _validate_literal(
@@ -328,7 +336,7 @@ def _run_command(
                 stderr=stderr_file,
                 start_new_session=True,
             )
-        except OSError as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             elapsed = max(0, (time.monotonic_ns() - started) // 1_000_000)
             result = _check_result(command, category, "LaunchError", None, elapsed)
             result["stderr"] = _empty_stream()
@@ -388,13 +396,22 @@ def _blocker(code: str, detail: str, check_id: str | None = None) -> dict[str, A
 
 
 def _git(repository: Path, *arguments: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
-        ["git", "-C", str(repository), *arguments],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    argv = ["git", "-C", str(repository), *arguments]
+    try:
+        return subprocess.run(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return subprocess.CompletedProcess(
+            argv,
+            127,
+            stdout=b"",
+            stderr=_exception_text(error).encode("utf-8", errors="replace"),
+        )
 
 
 def _repository_root(repository: str) -> Path | None:
