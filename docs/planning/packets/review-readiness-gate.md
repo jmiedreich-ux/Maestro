@@ -22,7 +22,7 @@ name are not status. Its current value is:
 | `slice_id` | `MB-SLICE-REVIEW-READINESS-GATE-01` |
 | `phase` | `Running` |
 | `current_actor` | `MaestroDeveloper` |
-| `live_execution_evidence` | `{"kind":"Agent","handle":"/root/review_readiness_developer","packet_item":"RRG-R01..RRG-R10 implementation","observed_at":"2026-09-04T00:20:16Z"}` |
+| `live_execution_evidence` | `{"kind":"Agent","handle":"/root/maestro_developer","packet_item":"RRG-R01..RRG-R10 implementation","observed_at":"2026-09-04T00:21:21Z"}` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
