@@ -1,7 +1,7 @@
 # M1 Review Control Routing — Final Candidate
 
 **Slice ID:** `MB-SLICE-M1-REVIEW-ROUTING-03`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Targeted Decision Fidelity`
 **Base:** `eaa524b01cb8527b8cf611850e4dbb2eebc39afb`
 
 ## Durable status and authority
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-03` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `PendingTargetedDecisionFidelity` |
 | `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:eaa524b01cb8527b8cf611850e4dbb2eebc39afb"]` |
+| `evidence_refs` | `["git:base:eaa524b01cb8527b8cf611850e4dbb2eebc39afb","git:full-planning-review-head:5be844d0a4c6b525c96a984bc4888bea9446a53e","review:decision-fidelity:request-changes","finding:DF-01:correct-now","finding:DF-02:correct-now"]` |
 
 Counts are monotonic. After full planning review, the carrier records
 `planning_review_count=1`; after an authorized correction it records
@@ -89,6 +89,29 @@ winner remains; restart preserves exact replay and reconstruction. Errors are
 `StaleState` for version mismatch, `InvalidTransition` for route/order,
 `IdempotencyConflict` for changed-key reuse, and `ResourceBusy` after busy
 exhaustion.
+
+The exact persisted event envelope is:
+
+```text
+entity_type="Packet"
+entity_id=<packet_id>
+event_type="ReviewRecorded"
+before_json={"packet": <exact five-key source packet state>}
+after_json={"packet": <exact returned packet state>, "review": <exact review row>}
+reason=<supplied reason payload>
+actor=<supplied actor object>
+```
+
+The event's idempotency key, fingerprint, correlation ID, and causation event
+ID are the same supplied facts used by the command; no alternate envelope is
+permitted. This is the reconstruction oracle for tests 10, 12, and 13.
+
+The result/findings complement is closed: `ValidateOnly` and `Approve` require
+`findings_json=[]`; `NeedsReplan` and `RequestChanges` require at least one
+closed finding payload carrying its evidence and disposition context. An
+approve-with-finding or approve-with-known-limitation cannot enter `MergeReady`
+in this slice; it is rejected as `InvalidRecord` until a later explicit
+Architect-disposition command exists.
 
 ## Boundary, proof, and M0-D12
 
