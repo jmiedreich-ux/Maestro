@@ -854,6 +854,413 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def heartbeat_attempt_execution(
+        self, attempt_id, expected_attempt_version, expected_lease_version,
+        execution_handle, new_expires_at, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        attempt_id = _text(attempt_id, "attempt_id")
+        expected_attempt_version = _positive_int(
+            expected_attempt_version, "expected_attempt_version"
+        )
+        expected_lease_version = _positive_int(
+            expected_lease_version, "expected_lease_version"
+        )
+        execution_handle = _text(execution_handle, "execution_handle")
+        new_expiry = _timestamp(new_expires_at, "new_expires_at")
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("execution heartbeat reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "attempt_id": attempt_id,
+            "execution_handle": execution_handle,
+            "expected_attempt_version": expected_attempt_version,
+            "expected_lease_version": expected_lease_version,
+            "new_expires_at": new_expiry,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint(
+            "heartbeat_attempt_execution", facts, actor_value
+        )
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                attempt = connection.execute(
+                    "SELECT state,version,packet_id,lease_id,execution_handle,heartbeat_at "
+                    "FROM attempts WHERE attempt_id=?",
+                    (attempt_id,),
+                ).fetchone()
+                if attempt is None:
+                    raise InvalidRecord("unknown attempt")
+                attempt_state, attempt_version = str(attempt[0]), int(attempt[1])
+                if attempt_version != expected_attempt_version:
+                    raise StaleState("attempt version is stale")
+                if attempt_state != "Running":
+                    raise InvalidTransition("execution heartbeat requires a Running attempt")
+                if str(attempt[4]) != execution_handle:
+                    raise StaleState("execution handle does not match the Running attempt")
+
+                packet_id = str(attempt[2])
+                packet = connection.execute(
+                    "SELECT state,run_id FROM packets WHERE packet_id=?", (packet_id,)
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("attempt packet is missing")
+                if str(packet[0]) != "Running":
+                    raise InvalidTransition("execution heartbeat requires a Running packet")
+
+                lease_id = str(attempt[3])
+                lease = connection.execute(
+                    "SELECT packet_id,run_id,state,version,expires_at,heartbeat_at "
+                    "FROM leases WHERE lease_id=?",
+                    (lease_id,),
+                ).fetchone()
+                if lease is None:
+                    raise InvalidRecord("attempt lease is missing")
+                run_id = str(packet[1])
+                if str(lease[0]) != packet_id or str(lease[1]) != run_id:
+                    raise InvalidRecord("attempt, packet, and lease relationship is invalid")
+                lease_version = int(lease[3])
+                if lease_version != expected_lease_version:
+                    raise StaleState("lease version is stale")
+                if str(lease[2]) != "Active":
+                    raise InvalidTransition("execution heartbeat requires an Active lease")
+
+                run = connection.execute(
+                    "SELECT state FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet parent run is missing")
+                if str(run[0]) != "Running":
+                    raise InvalidTransition("execution heartbeat requires a Running parent run")
+
+                old_attempt_heartbeat = str(attempt[5])
+                old_expiry, old_lease_heartbeat = str(lease[4]), str(lease[5])
+                if timestamp <= old_attempt_heartbeat or timestamp <= old_lease_heartbeat:
+                    raise InvalidTransition("execution heartbeat time must advance both heartbeats")
+                if new_expiry <= timestamp:
+                    raise InvalidTransition("heartbeat expiry must be strictly later than now")
+                if new_expiry <= old_expiry:
+                    raise InvalidTransition("execution heartbeat expiry must advance the lease")
+
+                before = {
+                    "attempt": _state_payload(
+                        "Attempt", attempt_id, "Running", attempt_version
+                    ),
+                    "execution": {
+                        "attempt_id": attempt_id,
+                        "execution_handle": execution_handle,
+                        "heartbeat_at": old_attempt_heartbeat,
+                    },
+                    "lease": _state_payload(
+                        "Lease", lease_id, "Active", lease_version
+                    ),
+                    "renewal": {
+                        "expires_at": old_expiry,
+                        "heartbeat_at": old_lease_heartbeat,
+                        "lease_id": lease_id,
+                    },
+                }
+                result = {
+                    "attempt": _state_payload(
+                        "Attempt", attempt_id, "Running", expected_attempt_version + 1
+                    ),
+                    "execution": {
+                        "attempt_id": attempt_id,
+                        "execution_handle": execution_handle,
+                        "heartbeat_at": timestamp,
+                    },
+                    "lease": _state_payload(
+                        "Lease", lease_id, "Active", expected_lease_version + 1
+                    ),
+                    "renewal": {
+                        "expires_at": new_expiry,
+                        "heartbeat_at": timestamp,
+                        "lease_id": lease_id,
+                    },
+                }
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                updated_attempt = connection.execute(
+                    "UPDATE attempts SET heartbeat_at=?,updated_at=?,version=? "
+                    "WHERE attempt_id=? AND version=? AND state='Running' "
+                    "AND execution_handle=?",
+                    (
+                        timestamp, timestamp, expected_attempt_version + 1,
+                        attempt_id, expected_attempt_version, execution_handle,
+                    ),
+                )
+                if updated_attempt.rowcount != 1:
+                    raise StaleState("attempt version is stale")
+                updated_lease = connection.execute(
+                    "UPDATE leases SET expires_at=?,heartbeat_at=?,version=? "
+                    "WHERE lease_id=? AND version=? AND state='Active'",
+                    (
+                        new_expiry, timestamp, expected_lease_version + 1,
+                        lease_id, expected_lease_version,
+                    ),
+                )
+                if updated_lease.rowcount != 1:
+                    raise StaleState("lease version is stale")
+                self._insert_lease_heartbeat_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    lease_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord(
+                "execution heartbeat violates a durable constraint"
+            ) from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
+    def finish_attempt_execution(
+        self, attempt_id, expected_attempt_version, expected_packet_version,
+        expected_lease_version, execution_handle, outcome, result_commit,
+        completion_evidence_reference, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        attempt_id = _text(attempt_id, "attempt_id")
+        expected_attempt_version = _positive_int(
+            expected_attempt_version, "expected_attempt_version"
+        )
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        expected_lease_version = _positive_int(
+            expected_lease_version, "expected_lease_version"
+        )
+        execution_handle = _text(execution_handle, "execution_handle")
+        outcome = _text(outcome, "outcome")
+        outcome_mapping = {
+            "Succeeded": ("AwaitingIntegration", "Released", "Released"),
+            "Failed": ("NeedsReplan", "Released", "Released"),
+            "Cancelled": ("Cancelled", "Cancelled", "Released"),
+            "TimedOut": ("NeedsReplan", "Expired", "Expired"),
+            "Stale": ("NeedsReplan", "Released", "Released"),
+        }
+        if outcome not in outcome_mapping:
+            raise InvalidRecord("execution outcome is invalid")
+        if result_commit is not None:
+            result_commit = _commit(result_commit, "result_commit")
+        if outcome == "Succeeded" and result_commit is None:
+            raise InvalidRecord("Succeeded execution requires a result commit")
+        if outcome != "Succeeded" and result_commit is not None:
+            raise InvalidRecord("non-success execution prohibits a result commit")
+        completion_reference = _text(
+            completion_evidence_reference, "completion_evidence_reference"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("execution finish reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "attempt_id": attempt_id,
+            "completion_evidence_reference": completion_reference,
+            "execution_handle": execution_handle,
+            "expected_attempt_version": expected_attempt_version,
+            "expected_lease_version": expected_lease_version,
+            "expected_packet_version": expected_packet_version,
+            "outcome": outcome,
+            "reason": reason,
+            "result_commit": result_commit,
+        }
+        fingerprint = _fingerprint("finish_attempt_execution", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                attempt = connection.execute(
+                    "SELECT state,version,packet_id,lease_id,execution_handle,"
+                    "expected_result,heartbeat_at FROM attempts WHERE attempt_id=?",
+                    (attempt_id,),
+                ).fetchone()
+                if attempt is None:
+                    raise InvalidRecord("unknown attempt")
+                attempt_state, attempt_version = str(attempt[0]), int(attempt[1])
+                if attempt_version != expected_attempt_version:
+                    raise StaleState("attempt version is stale")
+                if attempt_state != "Running":
+                    raise InvalidTransition("execution finish requires a Running attempt")
+                if str(attempt[4]) != execution_handle:
+                    raise StaleState("execution handle does not match the Running attempt")
+
+                packet_id = str(attempt[2])
+                packet = connection.execute(
+                    "SELECT state,version,run_id FROM packets WHERE packet_id=?", (packet_id,)
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("attempt packet is missing")
+                packet_state, packet_version = str(packet[0]), int(packet[1])
+                if packet_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+                if packet_state != "Running":
+                    raise InvalidTransition("execution finish requires a Running packet")
+
+                lease_id = str(attempt[3])
+                lease = connection.execute(
+                    "SELECT packet_id,run_id,state,version,expires_at FROM leases WHERE lease_id=?",
+                    (lease_id,),
+                ).fetchone()
+                if lease is None:
+                    raise InvalidRecord("attempt lease is missing")
+                run_id = str(packet[2])
+                if str(lease[0]) != packet_id or str(lease[1]) != run_id:
+                    raise InvalidRecord("attempt, packet, and lease relationship is invalid")
+                lease_version = int(lease[3])
+                if lease_version != expected_lease_version:
+                    raise StaleState("lease version is stale")
+                if str(lease[2]) != "Active":
+                    raise InvalidTransition("execution finish requires an Active lease")
+
+                run = connection.execute(
+                    "SELECT state FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet parent run is missing")
+                if str(run[0]) != "Running":
+                    raise InvalidTransition("execution finish requires a Running parent run")
+
+                lease_expiry = str(lease[4])
+                if outcome == "TimedOut":
+                    if timestamp <= lease_expiry:
+                        raise InvalidTransition("TimedOut execution requires an expired lease")
+                elif timestamp > lease_expiry:
+                    raise InvalidTransition("execution finish requires a current lease")
+
+                lock_rows = connection.execute(
+                    "SELECT lock_id,state,version FROM resource_locks "
+                    "WHERE lease_id=? AND state='Active' ORDER BY lock_id",
+                    (lease_id,),
+                ).fetchall()
+                packet_target, lease_target, lock_target = outcome_mapping[outcome]
+                attempt_before = _state_payload(
+                    "Attempt", attempt_id, "Running", attempt_version
+                )
+                packet_before = _state_payload(
+                    "Packet", packet_id, "Running", packet_version
+                )
+                lease_before = _state_payload(
+                    "Lease", lease_id, "Active", lease_version
+                )
+                locks_before = [
+                    _state_payload("ResourceLock", str(row[0]), str(row[1]), int(row[2]))
+                    for row in lock_rows
+                ]
+                result = {
+                    "attempt": _state_payload(
+                        "Attempt", attempt_id, outcome, expected_attempt_version + 1
+                    ),
+                    "completion": {
+                        "attempt_id": attempt_id,
+                        "completion_evidence_reference": completion_reference,
+                        "execution_handle": execution_handle,
+                        "finished_at": timestamp,
+                        "result_commit": result_commit,
+                    },
+                    "lease": _state_payload(
+                        "Lease", lease_id, lease_target, expected_lease_version + 1
+                    ),
+                    "locks": [
+                        _state_payload(
+                            "ResourceLock", str(row[0]), lock_target, int(row[2]) + 1
+                        )
+                        for row in lock_rows
+                    ],
+                    "packet": _state_payload(
+                        "Packet", packet_id, packet_target, expected_packet_version + 1
+                    ),
+                }
+                before = {
+                    "attempt": attempt_before,
+                    "execution": {
+                        "attempt_id": attempt_id,
+                        "execution_handle": execution_handle,
+                        "expected_result": str(attempt[5]),
+                        "heartbeat_at": str(attempt[6]),
+                    },
+                    "lease": lease_before,
+                    "locks": locks_before,
+                    "packet": packet_before,
+                }
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                updated_attempt = connection.execute(
+                    "UPDATE attempts SET state=?,result_commit=?,finished_at=?,"
+                    "completion_evidence_reference=?,updated_at=?,version=? "
+                    "WHERE attempt_id=? AND version=? AND state='Running' "
+                    "AND execution_handle=?",
+                    (
+                        outcome, result_commit, timestamp, completion_reference, timestamp,
+                        expected_attempt_version + 1, attempt_id,
+                        expected_attempt_version, execution_handle,
+                    ),
+                )
+                if updated_attempt.rowcount != 1:
+                    raise StaleState("attempt version is stale")
+                updated_packet = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=? AND state='Running'",
+                    (
+                        packet_target, timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated_packet.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                updated_lease = connection.execute(
+                    "UPDATE leases SET state=?,released_at=?,version=? "
+                    "WHERE lease_id=? AND version=? AND state='Active'",
+                    (
+                        lease_target, timestamp, expected_lease_version + 1,
+                        lease_id, expected_lease_version,
+                    ),
+                )
+                if updated_lease.rowcount != 1:
+                    raise StaleState("lease version is stale")
+                for lock_id, _, lock_version in lock_rows:
+                    updated_lock = connection.execute(
+                        "UPDATE resource_locks SET state=?,released_at=?,version=? "
+                        "WHERE lock_id=? AND version=? AND state='Active'",
+                        (
+                            lock_target, timestamp, int(lock_version) + 1,
+                            str(lock_id), int(lock_version),
+                        ),
+                    )
+                    if updated_lock.rowcount != 1:
+                        raise StaleState("resource lock version is stale")
+                self._insert_attempt_state_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    attempt_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord(
+                "execution finish violates a durable constraint"
+            ) from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_attempt(self, attempt, idempotency_key, actor, now):
         row = self._attempt(attempt, now)
         return self._append_one("attempts", "attempt_id", row, "Attempt", "AttemptRecorded", idempotency_key, actor, now)
@@ -1173,6 +1580,25 @@ class OperationalStateStore:
             """,
             (
                 key, "Attempt", attempt_id, "AttemptStateChanged",
+                canonical_json(before), canonical_json(after), canonical_json(reason),
+                actor["correlation_id"], actor["causation_event_id"], actor["actor_type"],
+                actor["actor_id"], fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_lease_heartbeat_event(
+        connection, key, fingerprint, actor, now, lease_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Lease", lease_id, "LeaseHeartbeatRecorded",
                 canonical_json(before), canonical_json(after), canonical_json(reason),
                 actor["correlation_id"], actor["causation_event_id"], actor["actor_type"],
                 actor["actor_id"], fingerprint, now,
