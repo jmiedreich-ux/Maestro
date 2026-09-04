@@ -1,8 +1,53 @@
 # M1 Review Control Routing — Independent Candidate 04
 
 **Slice ID:** `MB-SLICE-M1-REVIEW-ROUTING-04`
-**Status:** `Pending Decision Fidelity`
+**Status:** `returned` — terminal
 **Base:** `45b50165dc66c527ab47397cbe3f7320cdd3f93a` (`origin/master`)
+
+## Terminal disposition
+
+This slice is terminally `returned`. It cannot be reopened, corrected,
+replaced, renamed, dispatched, or reused as authority; its allowances are
+exhausted and confer none to any later slice.
+
+Its planning contract received one complete Decision Fidelity review
+(finding DF-01, guard 8's impossible `review_readiness` review-kind value),
+one targeted planning correction (`f1a6f3d0`), and a targeted verification
+that returned `APPROVE`, freezing the contract at `8092ef45`. During
+implementation dispatch, the Maestro Developer correctly stopped, without
+committing any code, on a genuine architecture-contract completeness gap:
+`tests/m1_02/test_schema_and_records.py`'s `test_ar_p05_...` APP-MAP-11
+trace hard-codes the exact permissive `findings_json` behavior this slice
+exists to close, making the frozen 248-test acceptance proof impossible
+inside the originally declared two-path writable boundary.
+
+I (Coordinator, acting with Project-Architect authority for this routine
+disposition) initially tried to resolve this as an in-place "Architecture
+completeness amendment" (commit `668d2cc0`) that would widen the writable
+path boundary without consuming a correction allowance. The independent
+reviewer correctly rejected that mechanism: the Bootstrap Convergence
+Policy's precedence clause makes its own "Terminal correction behavior"
+section — "Any critical exception immediately stops the current slice and
+records one terminal state: `returned` for a proof/contract or
+candidate-integrity defect... Safety or contract remediation requires a
+separately approved slice with a new identity" — controlling over M0-D12's
+older, now-superseded "return to Architecture and fix in place" language.
+There is no cost-free in-place-amendment path in the current governing
+text; inventing one was a process error on my part, corrected here rather
+than repeated.
+
+The diagnosis and the proposed one-line test substitution are both sound
+(the reviewer confirmed this on the technical merits) and are carried
+forward, reused rather than rediscovered, into a new independent slice:
+`MB-SLICE-M1-REVIEW-ROUTING-05` (`docs/planning/packets/m1-review-control-routing-05.md`),
+which declares the test-fixture path as an originally owned writable path
+from the start and receives its own fresh, full Decision Fidelity review.
+No correction or review allowance transfers from this slice to that one.
+
+---
+
+**Original status (superseded by the terminal disposition above):**
+`Pending Decision Fidelity`
 
 ## Relationship to prior attempts
 
@@ -32,16 +77,16 @@ Schema facts below are quoted from `services/maestro/maestro/storage.py` and
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-04` |
-| `phase` | `PendingImplementation` |
-| `current_actor` | `MaestroDeveloper` |
+| `phase` | `Returned` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
-| `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:a79b3617c3becd77411a6650226a4ec6fce073e0","review:decision-fidelity:request-changes","finding:DF-01:guard-8-review-readiness-review-kind-mismatch:correct-now","git:targeted-planning-verification-head:f1a6f3d0703045e3e15627aa4752242d1e2e9ef5","review:targeted-decision-fidelity:approve","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
+| `terminal_state` | `returned` |
+| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:a79b3617c3becd77411a6650226a4ec6fce073e0","review:decision-fidelity:request-changes","finding:DF-01:guard-8-review-readiness-review-kind-mismatch:correct-now","git:targeted-planning-verification-head:f1a6f3d0703045e3e15627aa4752242d1e2e9ef5","review:targeted-decision-fidelity:approve","git:frozen-implementation-base:8092ef45ad480d97b61a47ec9f6e26f393844c03","developer:stopped-uncommitted:app-map-11-fixture-conflict","git:rejected-amendment-head:668d2cc04d3c0f022ce845e98e3025c471407171","review:amendment-check:request-changes:no-in-place-amendment-path","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
 
 The planning contract is now frozen at `f1a6f3d0703045e3e15627aa4752242d1e2e9ef5`. Passing its named acceptance proof is enough; implementation may not silently strengthen it.
 
