@@ -3,8 +3,8 @@
 **Date:** 2026-09-04
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03, M1-01, and M1-02A
-**Current development state:** M1-02A recovery slice merged; next M1 continuation slice not selected
+**Current integrated product state:** Alpha-01 through Alpha-03, M1-01, M1-02A, and guarded run lifecycle
+**Current development state:** M1 run-lifecycle slice merged; next M1 continuation slice not selected
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -38,6 +38,14 @@ implementation head is `807d0194ef6c15787385c4c8518a387b4d5d3edb`;
 both reviews returned `APPROVE`, all 163 named tests and both ten-run
 fresh-process stress groups passed, and no correction was used. It adds the
 accepted schema-4 operational-record validation and persistence foundation.
+
+`MB-SLICE-M1-RUN-LIFECYCLE-01` is merged through PR #27 at
+`30b856f475aa0d57f0131b9c089bee5b264b8051`. Its exact accepted candidate is
+`741dc73956f6136fe8e9e288d9ffb6c9015f7251`; both final reviews returned
+`APPROVE`, 177/177 named tests and 10/10 lifecycle stress runs passed, one
+planning correction and no implementation correction were used. It adds only
+an internal trusted-caller, atomic run-state transition and audit-event
+primitive. It does not wake or dispatch work.
 
 ## What exists only on side branches
 
@@ -125,7 +133,8 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 ## Exact next action
 
 1. Keep terminal M1-02B evidence non-authoritative.
-2. Treat M1-01 and M1-02A as integrated, while keeping M1 open.
+2. Treat M1-01, M1-02A, and the run-lifecycle primitive as integrated, while
+   keeping M1 open.
 3. Have the Project Architect inspect the remaining authoritative M1 roadmap,
    current integrated code, and dependencies and select the smallest executable
    continuation behavior.
