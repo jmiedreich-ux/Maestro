@@ -1,7 +1,7 @@
 # Bootstrap Review-Readiness Gate
 
 **Slice ID:** `MB-SLICE-REVIEW-READINESS-GATE-01`
-**Status:** `Frozen`
+**Status:** `Running`
 **Authority:** Owner direction dated 2026-09-03, the
 [Bootstrap Convergence Policy](../bootstrap-convergence-policy.md),
 [M0-D05](../decisions/m0-d05-rework-review-and-escalation.md), and
@@ -20,9 +20,9 @@ name are not status. Its current value is:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-REVIEW-READINESS-GATE-01` |
-| `phase` | `Frozen` |
-| `current_actor` | `ProjectArchitect` |
-| `live_execution_evidence` | `null` (the slice is not `Running`) |
+| `phase` | `Running` |
+| `current_actor` | `MaestroDeveloper` |
+| `live_execution_evidence` | `{"kind":"Agent","handle":"/root/review_readiness_developer","packet_item":"RRG-R01..RRG-R10 implementation","observed_at":"2026-09-04T00:20:16Z"}` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
