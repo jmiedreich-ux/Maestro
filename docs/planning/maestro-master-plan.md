@@ -4,11 +4,12 @@
 
 The authoritative current status and process-delay record is
 [Maestro Development Status and Process-Delay Record](maestro-development-status.md),
-dated 2026-09-03. Alpha-01 through Alpha-03 are the last work integrated on
-`master`. M1 planning and accepted implementation evidence currently remain on
-unmerged side branches; M1-02B is paused during a non-dispatchable planning
-correction. Nothing in those side branches is live-project, merge, or
-end-to-end-test authority.
+dated 2026-09-04. Alpha-01 through Alpha-03 remain the integrated product
+stages. The independent review-readiness bootstrap gate is merged through PR
+#19 at `6d5c2722380b99db0fb6f829f0afe073a1d49b80`. No M1 implementation is
+merged; M1 planning and accepted implementation evidence remain on unmerged
+side branches, and M1-02B is terminally returned. Nothing in those side
+branches is live-project, merge, or end-to-end-test authority.
 
 ## 1. Charter
 
@@ -61,6 +62,13 @@ The detailed agent-workforce, specialist-queue, Atlas live-reporting, SOP, and p
 19. Pre-review and pre-commit validation covers the actual candidate union,
     including untracked files. Exact allowlist comparison and staged
     `git diff --cached --check` are required before a clean-candidate claim.
+20. A reproducible review finding is evidence, not automatic rework. Before
+    dispatch, the Project Architect evaluates actual operating exposure,
+    likelihood, consequence, reach, recovery, and fix risk. A working primary
+    outcome may advance as `accepted-with-known-limitations` with a linked
+    backlog issue; this consumes no correction when the reviewed code is
+    unchanged. Critical exceptions, reserved Owner risks, and primary-outcome
+    failures cannot use this path.
 
 ## 3. System shape
 

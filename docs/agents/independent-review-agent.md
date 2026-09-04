@@ -166,9 +166,12 @@ a merge blocker.
 
 ## Targeted correction follow-up
 
-After an initial full review, verify only the named implementation findings,
-the correction-only diff, the evidence rerun required by those corrections, and
-directly affected consistency. Stop when those findings are resolved.
+After an initial full review, verify only the findings dispositioned `correct
+now`, the correction-only diff, the evidence rerun required by those
+corrections, and directly affected consistency. Stop when those corrected
+findings are resolved. For a finding dispositioned `accept known limitation`,
+verify only the required linked backlog evidence, rationale, revisit trigger,
+and exact-head integrity; do not require the unchanged defect to be resolved.
 
 Do not re-review unchanged code or reopen general defect discovery. A new
 unrelated observation is non-blocking unless the correction introduced it or it
@@ -244,3 +247,23 @@ The [Maestro Bootstrap Convergence Policy](../planning/bootstrap-convergence-pol
 A Coordinator takeover before the full review uses that one full review. A takeover after the full review may use only the still-unused sole correction and targeted verification. After targeted verification the result is terminal: approve the exact covered candidate or return the slice; no takeover or additional review remains.
 
 A contract preference or newly imagined ordinary risk is a learning candidate, not an architecture-contract defect for the active slice. A new critical blocker immediately transitions the current slice to the terminal state required by the policy; remediation cannot reopen it. This section overrides conflicting reopening, owner-approval, or repeated-correction language above.
+
+## Risk and acceptance disposition — Owner-approved 2026-09-04
+
+A reproducible finding does not automatically require code change. For every
+finding, report its operating exposure, evidence-based likelihood, consequence,
+reach, detectability, recovery/workaround, immediate-fix cost/regression risk,
+and relationship to the primary outcome and critical exceptions.
+
+`REQUEST_CHANGES` is the reviewer's evidence-backed recommendation; it does
+not authorize developer dispatch. The Project Architect assigns `correct now`,
+`accept known limitation`, `reject finding`, or `return slice` under the
+[Bootstrap Convergence Policy](../planning/bootstrap-convergence-policy.md#risk-based-finding-disposition).
+
+When the Architect accepts a known limitation, the reviewer finding remains
+true, the unchanged exact head remains reviewed, and no targeted implementation
+verification is required. Merge coverage may close with
+`accepted-with-known-limitations` once the required linked issue and
+disposition evidence exist. The reviewer may not convert mere reproducibility
+or testability into mandatory correction without assessing expected operational
+exposure and consequence.

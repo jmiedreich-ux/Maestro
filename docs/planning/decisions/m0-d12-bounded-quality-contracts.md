@@ -91,3 +91,18 @@ no merge or Alpha-02 action is authorized by M0-D12.
 The [Maestro Bootstrap Convergence Policy](../bootstrap-convergence-policy.md) controls Maestro's own development until the durable loop completes its accepted qualification run. Its slice-wide identity, frozen-contract rule, bounded review sequence, correction budgets, terminal return behavior, Coordinator takeover, and learning quarantine override any conflicting earlier language in this decision.
 
 The eight fields are authored once in the slice's canonical contract and referenced rather than recopied into every carrier. The Project Architect approves routine materiality and not-applicable dispositions. Owner approval is reserved for the policy's named material choices. After Decision Fidelity approval, the contract is frozen; an ordinary later concern cannot strengthen it or reopen planning for the active slice.
+
+## Risk-based release variance — Owner-approved 2026-09-04
+
+Named proof remains the definition of contract satisfaction, but contract
+satisfaction and release acceptance are recorded separately. A failed
+individual criterion is never reported as `PASS`; the Project Architect may
+nevertheless accept the exact reviewed candidate with a known limitation when
+the primary outcome still works and the evidence-based likelihood and
+consequence are acceptable under the approved operating model.
+
+The [risk-based finding disposition](../bootstrap-convergence-policy.md#risk-based-finding-disposition)
+governs that variance. It requires a durable issue and rationale, consumes no
+correction when code is unchanged, and cannot waive a critical exception,
+reserved Owner risk, unverifiable evidence/range, or failure of the primary
+promised outcome.

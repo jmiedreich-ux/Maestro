@@ -1,6 +1,6 @@
 # Maestro Bootstrap Convergence Policy
 
-**Status:** Owner-approved on 2026-09-03  
+**Status:** Owner-approved on 2026-09-03; risk-disposition amendment approved on 2026-09-04  
 **Applies to:** Maestro's own development until the durable Development Manager
 control loop has completed an accepted qualification run  
 **Precedence:** This policy controls wherever an older planning, review,
@@ -76,6 +76,67 @@ active slice only when reproducible evidence proves one of the following:
 Everything else is recorded as a non-blocking learning candidate for a later
 slice. A disagreement about ordinary materiality is decided by the Project
 Architect and does not return to the Owner.
+
+## Risk-based finding disposition
+
+A reproducible defect is not automatically mandatory rework. Before any
+correction is authorized, the independent reviewer reports the finding and the
+Project Architect decides its release disposition.
+
+For every finding, the review records:
+
+- the reproduction and affected behavior;
+- the real operating conditions required to encounter it;
+- measured occurrence data when available, otherwise an evidence-based
+  likelihood of `rare`, `unlikely`, `possible`, `likely`, or `expected`;
+- consequence, affected reach, detectability, recovery, and workaround;
+- the cost and regression risk of fixing it now; and
+- whether it threatens the slice's primary outcome or a critical exception.
+
+The Project Architect assigns exactly one disposition:
+
+1. **correct now** — the expected operational risk justifies using the slice's
+   one correction;
+2. **accept known limitation** — the defect is real, but the primary product
+   outcome works and its expected likelihood and consequence are acceptable for
+   this release;
+3. **reject finding** — evidence does not establish the claimed defect; or
+4. **return slice** — the primary outcome does not work, the risk is
+   unacceptable, or correction cannot fit the remaining boundary.
+
+An accepted known limitation may be inside the frozen contract. It is an
+explicit release variance, not a claim that the failed criterion passed and not
+a silent contract rewrite. It requires a linked backlog issue recording the
+exact reviewed head, evidence, occurrence conditions, likelihood basis,
+consequence and reach, detection/recovery/workaround, acceptance rationale, and
+a concrete revisit trigger such as an observed occurrence, exposure change,
+threshold, or named later milestone.
+
+Accepting a known limitation changes no code, consumes no correction allowance,
+and requires no targeted implementation verification. The exact independently
+reviewed candidate may advance with status `accepted-with-known-limitations`.
+The reviewer finding remains truthful and the backlog issue remains open.
+
+The durable limitation record must be created in issue or pull-request metadata
+outside the candidate tree before acceptance, so it does not move the reviewed
+head. If a project instead commits that record into the candidate branch, the
+review-readiness gate must establish coverage of the resulting new exact head;
+the metadata-only commit does not consume an implementation correction, but the
+candidate cannot merge on stale review coverage.
+
+A reviewer `REQUEST_CHANGES` is a recommendation pending Architect
+disposition; it does not automatically dispatch the developer. Routine risk is
+the Project Architect's authority. Only reserved product, legal/compliance,
+security, data-loss, authorization, external/production, irreversible,
+spending, or direction risk returns to the Owner.
+
+A critical exception, reserved Owner risk, unverifiable review range, or
+failure of the primary promised outcome cannot be accepted through this path. High likelihood combined
+with material impact is presumptively corrected or returned; any routine
+exception requires explicit evidence and rationale.
+
+This rule is prospective. It does not reopen, refund, or reclassify a completed
+or terminal slice.
 
 ## Terminal correction behavior
 

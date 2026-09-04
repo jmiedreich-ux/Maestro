@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
-**Date:** 2026-09-03
-**State:** M1-02B replacement slice terminally returned; review-readiness gate authorized for planning
+**Date:** 2026-09-04
+**State:** review-readiness gate merged; risk-based review disposition adopted; next implementation slice not selected
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -68,14 +68,28 @@ staged candidate existed. The sole targeted Decision Fidelity verification
 returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 `returned`, cannot be reopened or replaced, and cannot authorize B1.
 
+## Completed review-readiness slice
+
+`MB-SLICE-REVIEW-READINESS-GATE-01` completed at independently reviewed head
+`5b01acb00e9890beb5a04f0bc483133e73129a08` and merged through PR #19 at
+`6d5c2722380b99db0fb6f829f0afe073a1d49b80`. Decision Fidelity and
+implementation review each used one correction and received targeted
+`APPROVE`; focused tests passed 27/27 and the explicit regression suite passed
+101/101.
+
 ## Next authorized action
 
-Plan only the new independent slice `MB-SLICE-REVIEW-READINESS-GATE-01`. Its
-sole outcome is an executable review-readiness gate that blocks reviewer launch
-and review-allowance consumption until an exact committed candidate passes the
-complete mechanical preflight. It excludes M1-02B repair and broader routing,
-learning, Atlas, UI, scheduler, external-access, and live-project work. Obtain
-its one pre-execution Decision Fidelity review before implementation dispatch.
+The Project Architect may select the smallest executable post-readiness behavior
+from the approved roadmap. Before any correction dispatch, it must disposition
+review findings by real operating likelihood, consequence, reach, recovery, and
+fix risk. A working candidate may be
+`accepted-with-known-limitations` with a linked backlog issue; unchanged code
+consumes no correction and needs no targeted implementation verification.
+Critical exceptions, reserved Owner risks, and primary-outcome failures
+remain non-deferrable.
+
+This governance direction does not itself authorize implementation, reopen
+M1-02B, or alter the completed review-readiness slice.
 
 ### Frozen M1-02B slice identity and counters
 
