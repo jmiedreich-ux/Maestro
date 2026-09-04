@@ -209,3 +209,11 @@ candidate authority. No implementation occurred and this slice cannot be
 reopened, corrected, replaced, renamed, dispatched, or reused. A new independent
 slice must correct the contract using `attempts.result_commit` without taking
 this slice's allowance.
+
+`MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned` after its sole
+targeted Decision Fidelity verification returned `REQUEST_CHANGES`. The one
+planning correction fixed candidate-head authority and expanded the protocol,
+but left a false zeroed review/correction status carrier and no literal
+canonical fingerprint object. No implementation occurred; the slice cannot be
+reopened, corrected, replaced, renamed, dispatched, or reused. A new independent
+slice must correct those two details without taking this slice's allowance.
