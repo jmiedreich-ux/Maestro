@@ -1,4 +1,4 @@
-"""Closed schema-4 operational records and service-owned persistence.
+"""Closed schema-5 operational records and service-owned persistence.
 
 This module contains record creation, canonical value handling, idempotent
 append, read foundations, guarded run-lifecycle and packet-eligibility
@@ -696,6 +696,164 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def start_attempt_execution(
+        self, attempt_id, expected_attempt_version, expected_packet_version,
+        execution_handle, expected_result, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        attempt_id = _text(attempt_id, "attempt_id")
+        expected_attempt_version = _positive_int(
+            expected_attempt_version, "expected_attempt_version"
+        )
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        execution_handle = _text(execution_handle, "execution_handle")
+        expected_result = _text(expected_result, "expected_result")
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("execution start reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "attempt_id": attempt_id,
+            "execution_handle": execution_handle,
+            "expected_attempt_version": expected_attempt_version,
+            "expected_packet_version": expected_packet_version,
+            "expected_result": expected_result,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint("start_attempt_execution", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                attempt = connection.execute(
+                    "SELECT state,version,packet_id,lease_id FROM attempts WHERE attempt_id=?",
+                    (attempt_id,),
+                ).fetchone()
+                if attempt is None:
+                    raise InvalidRecord("unknown attempt")
+                attempt_state, attempt_version = str(attempt[0]), int(attempt[1])
+                if attempt_version != expected_attempt_version:
+                    raise StaleState("attempt version is stale")
+                if attempt_state != "Planned":
+                    raise InvalidTransition("execution start requires a Planned attempt")
+
+                packet_id = str(attempt[2])
+                packet = connection.execute(
+                    "SELECT state,version,run_id FROM packets WHERE packet_id=?", (packet_id,)
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("attempt packet is missing")
+                packet_state, packet_version = str(packet[0]), int(packet[1])
+                if packet_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+                if packet_state != "Leased":
+                    raise InvalidTransition("execution start requires a Leased packet")
+
+                lease_id = str(attempt[3])
+                lease = connection.execute(
+                    "SELECT packet_id,run_id,state,version,expires_at FROM leases WHERE lease_id=?",
+                    (lease_id,),
+                ).fetchone()
+                if lease is None:
+                    raise InvalidRecord("attempt lease is missing")
+                run_id = str(packet[2])
+                if str(lease[0]) != packet_id or str(lease[1]) != run_id:
+                    raise InvalidRecord("attempt, packet, and lease relationship is invalid")
+                if str(lease[2]) != "Active":
+                    raise InvalidTransition("execution start requires an Active lease")
+
+                run = connection.execute(
+                    "SELECT state FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet parent run is missing")
+                if str(run[0]) != "Running":
+                    raise InvalidTransition("execution start requires a Running parent run")
+                if str(lease[4]) <= timestamp:
+                    raise InvalidTransition("execution start requires an unexpired lease")
+
+                handle_owner = connection.execute(
+                    "SELECT attempt_id FROM attempts WHERE execution_handle=?",
+                    (execution_handle,),
+                ).fetchone()
+                if handle_owner is not None:
+                    raise ResourceConflict("execution handle is already bound to another attempt")
+
+                attempt_before = _state_payload(
+                    "Attempt", attempt_id, attempt_state, attempt_version
+                )
+                packet_before = _state_payload(
+                    "Packet", packet_id, packet_state, packet_version
+                )
+                attempt_after = _state_payload(
+                    "Attempt", attempt_id, "Running", expected_attempt_version + 1
+                )
+                packet_after = _state_payload(
+                    "Packet", packet_id, "Running", expected_packet_version + 1
+                )
+                result = {
+                    "attempt": attempt_after,
+                    "execution": {
+                        "attempt_id": attempt_id,
+                        "execution_handle": execution_handle,
+                        "expected_result": expected_result,
+                        "heartbeat_at": timestamp,
+                        "started_at": timestamp,
+                    },
+                    "lease": _state_payload(
+                        "Lease", lease_id, "Active", int(lease[3])
+                    ),
+                    "packet": packet_after,
+                }
+                before = {"attempt": attempt_before, "packet": packet_before}
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                updated_attempt = connection.execute(
+                    "UPDATE attempts SET state='Running',execution_handle=?,expected_result=?,"
+                    "started_at=?,heartbeat_at=?,updated_at=?,version=? "
+                    "WHERE attempt_id=? AND version=? AND state='Planned'",
+                    (
+                        execution_handle, expected_result, timestamp, timestamp, timestamp,
+                        expected_attempt_version + 1, attempt_id, expected_attempt_version,
+                    ),
+                )
+                if updated_attempt.rowcount != 1:
+                    raise StaleState("attempt version is stale")
+                updated_packet = connection.execute(
+                    "UPDATE packets SET state='Running',updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=? AND state='Leased'",
+                    (
+                        timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated_packet.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_attempt_state_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    attempt_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            if "attempts.execution_handle" in str(error):
+                raise ResourceConflict(
+                    "execution handle is already bound to another attempt"
+                ) from error
+            raise InvalidRecord("execution start violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_attempt(self, attempt, idempotency_key, actor, now):
         row = self._attempt(attempt, now)
         return self._append_one("attempts", "attempt_id", row, "Attempt", "AttemptRecorded", idempotency_key, actor, now)
@@ -1003,6 +1161,25 @@ class OperationalStateStore:
         )
 
     @staticmethod
+    def _insert_attempt_state_event(
+        connection, key, fingerprint, actor, now, attempt_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Attempt", attempt_id, "AttemptStateChanged",
+                canonical_json(before), canonical_json(after), canonical_json(reason),
+                actor["correlation_id"], actor["causation_event_id"], actor["actor_type"],
+                actor["actor_id"], fingerprint, now,
+            ),
+        )
+
+    @staticmethod
     def _insert(connection: sqlite3.Connection, table: str, row: Mapping[str, Any]) -> None:
         columns = tuple(row)
         placeholders = ",".join("?" for _ in columns)
@@ -1196,7 +1373,15 @@ class OperationalStateStore:
         if any(row[field] is not None for field in ("result_commit", "started_at", "finished_at")):
             raise InvalidRecord("planned attempt has no result/start/finish facts")
         timestamp = _timestamp(now, "now")
-        row.update(created_at=timestamp, updated_at=timestamp, version=1)
+        row.update(
+            created_at=timestamp,
+            updated_at=timestamp,
+            version=1,
+            execution_handle=None,
+            expected_result=None,
+            heartbeat_at=None,
+            completion_evidence_reference=None,
+        )
         return row
 
     @staticmethod
