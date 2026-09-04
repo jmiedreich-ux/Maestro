@@ -1,7 +1,7 @@
 # M1 Execution Heartbeat and Finish
 
 **Slice ID:** `MB-SLICE-M1-EXECUTION-FINISH-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Decision Fidelity approved; implementation released`
 **Base:** `e7bc781747d7faf85e6724d9b26b0882735f1989`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-EXECUTION-FINISH-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `Frozen` |
+| `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:e7bc781747d7faf85e6724d9b26b0882735f1989"]` |
+| `evidence_refs` | `["git:base:e7bc781747d7faf85e6724d9b26b0882735f1989", "git:planning-review:e7bc781747d7faf85e6724d9b26b0882735f1989..ae41a0eaba3b1403d53c0c1258ea137dc57a514f", "readiness:5e67fa46188d84776f2e67832c4cc732904990033de579aa40cc10d4147e472d", "review:M1-EXECUTION-FINISH-DFR-01-APPROVE"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
