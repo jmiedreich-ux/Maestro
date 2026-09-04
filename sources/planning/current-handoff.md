@@ -3,8 +3,8 @@
 **Date:** 2026-09-04
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03, M1-01, M1-02A, and guarded run lifecycle
-**Current development state:** Packet eligibility merged; atomic assignment claim is next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, and assignment claim
+**Current development state:** Atomic assignment claim merged; attempt lifecycle and execution identity are next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -58,6 +58,13 @@ Independent `MB-SLICE-M1-PACKET-ELIGIBILITY-02` is merged through PR #30 at
 `571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Exact implementation head
 `64b0b7c26cd446056d160b93987bd3fed93226e8` passed both reviews without
 findings, 191/191 tests, and both ten-run stress groups with zero corrections.
+
+`MB-SLICE-M1-ASSIGNMENT-CLAIM-01` is merged through PR #32 at
+`2efdb111d9b5bfd2bd25696e49750eb479a880f8`. Exact implementation head
+`4e99054d1752372b901621b30961fff543a84621` passed both reviews with no
+findings, 209/209 tests, and 10/10 concurrency/restart stress runs with zero
+corrections. It atomically establishes one claim but records no false running
+state and launches no worker.
 
 ## What exists only on side branches
 
@@ -145,11 +152,10 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 ## Exact next action
 
 1. Keep terminal M1-02B evidence non-authoritative.
-2. Treat M1-01, M1-02A, and the run-lifecycle primitive as integrated, while
-   keeping M1 open.
-3. Have the Project Architect materialize the atomic assignment-claim slice:
-   Dispatchable to Leased plus one lease, its complete lock set, and one
-   planned attempt in a single transaction.
+2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, and assignment
+   claim as integrated, while keeping M1 open.
+3. Have the Project Architect materialize the smallest attempt-lifecycle and
+   execution-identity slice for the already-claimed Planned attempt.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
