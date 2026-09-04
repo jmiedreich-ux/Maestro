@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-04
 **Recorded on:** `master`
 **Current master at this update:**
-`30b856f475aa0d57f0131b9c089bee5b264b8051`
+`2efdb111d9b5bfd2bd25696e49750eb479a880f8`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -29,12 +29,13 @@ dispatch is running.
 
 | Workstream | Exact state | What it does and does not mean |
 |---|---|---|
-| `master` | Alpha-01 through Alpha-03, M1-01, M1-02A, and the run-lifecycle slice merged through PR #27 at `30b856f475aa0d57f0131b9c089bee5b264b8051` | This is the current integrated product state. It contains the internal authority loader, schema-4 operational records, and guarded durable run transitions, but no completed M1 control loop or public project create/register command. |
+| `master` | Alpha-01 through Alpha-03 plus the M1 authority, operational-state, run-lifecycle, packet-eligibility, and assignment-claim slices merged through PR #32 at `2efdb111d9b5bfd2bd25696e49750eb479a880f8` | This is the current integrated product state. It can atomically establish a claimed packet, lease, complete lock set, and planned attempt, but has no attempt execution identity, completion routing, or durable wake loop yet. |
 | Alpha-04 | Readiness packet reached correction head `40db7fa9dd6054896f9496cd241db2247cf85e1a` with targeted Decision Fidelity `APPROVE`, but was never accepted, merged, released, or implemented | It is not an executable packet. Later direction moved work toward the real M1-M4 build path; Alpha-04 requires explicit reconciliation before reuse. |
 | M1-M4 planning | Local branch `architecture/m1-m4-packets`, committed head `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`; 33 commits beyond the master baseline | This is unmerged planning evidence, not master state or dispatch authority. |
 | M1-01 | Recovery slice `MB-SLICE-M1-01-INTEGRATION-01` terminally merged through PR #23 at `83c4eb98246adc3f542c6604ea77ce23110d4e4b`; exact reviewed implementation head `cf36927243e782e2b4adc3e36ab696087cff5697` | Decision Fidelity and independent implementation review both returned `APPROVE` with no findings; 128/128 tests passed and no correction was used. It does not register a project or access a live project. |
 | M1-02A + AR | Recovery slice `MB-SLICE-M1-02A-INTEGRATION-01` terminally merged through PR #25 at `160dcf48240c90b787a7bcb88e4aeb10d6348b30`; exact reviewed implementation head `807d0194ef6c15787385c4c8518a387b4d5d3edb` | Both reviews returned `APPROVE` with no findings; 163/163 named tests and both 10/10 fresh-process stress groups passed; no correction was used. It does not reopen M1-02B or complete M1. |
 | M1 run lifecycle | Independent slice `MB-SLICE-M1-RUN-LIFECYCLE-01` terminally merged through PR #27 at `30b856f475aa0d57f0131b9c089bee5b264b8051`; exact accepted candidate head `741dc73956f6136fe8e9e288d9ffb6c9015f7251` | Targeted Decision Fidelity verification and independent implementation review returned `APPROVE`; 177/177 tests and 10/10 lifecycle stress runs passed. One planning correction and no implementation correction were used. It adds an internal trusted-caller run transition primitive only; it does not wake or dispatch work. |
+| M1 assignment claim | Independent slice `MB-SLICE-M1-ASSIGNMENT-CLAIM-01` terminally merged through PR #32 at `2efdb111d9b5bfd2bd25696e49750eb479a880f8`; exact implementation head `4e99054d1752372b901621b30961fff543a84621` | Both reviews returned `APPROVE` with no findings; 209/209 tests and 10/10 concurrency/restart stress runs passed with zero corrections. It atomically claims one eligible packet without starting an agent or falsely recording execution. |
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
 | Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
 | Failed correction evidence | Two uncommitted files remain in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` (SHA-256 `76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47`) and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` (SHA-256 `92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`) | Preserve these mutable files as failed-attempt evidence only. They are not authority and must not be merged, approved, discarded, or reused as a planning candidate. |
@@ -322,6 +323,12 @@ implementation head is `64b0b7c26cd446056d160b93987bd3fed93226e8`.
 Decision Fidelity and implementation review both returned `APPROVE` with no
 findings; 191/191 tests and both ten-run stress groups passed; no correction
 was used. Maestro now records the closed pre-claim packet eligibility graph
-atomically and idempotently. The next smallest M1 operational-core behavior is
-the atomic assignment claim that creates one lease, its complete lock set, and
-one planned attempt while moving one Dispatchable packet to Leased.
+atomically and idempotently.
+
+`MB-SLICE-M1-ASSIGNMENT-CLAIM-01` completed and merged through PR #32 at
+`2efdb111d9b5bfd2bd25696e49750eb479a880f8`. Its exact implementation head is
+`4e99054d1752372b901621b30961fff543a84621`. Decision Fidelity and independent
+implementation review both returned `APPROVE` with no findings; 209/209 tests
+and 10/10 concurrency/restart stress runs passed; no correction was used. The
+next smallest M1 operational-core behavior is real attempt lifecycle with an
+honest execution identity. M1 remains open.

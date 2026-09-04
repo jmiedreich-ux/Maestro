@@ -1,7 +1,7 @@
 # M1 Atomic Assignment Claim
 
 **Slice ID:** `MB-SLICE-M1-ASSIGNMENT-CLAIM-01`
-**Status:** `Project Architect accepted; merge ready`
+**Status:** `Merged`
 **Base:** `55a1f3a5a36c9bf3b79480639b0c6de2a14f4241`
 
 ## Durable slice status
@@ -10,7 +10,7 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-ASSIGNMENT-CLAIM-01` |
-| `phase` | `MergeReady` |
+| `phase` | `Terminal` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
@@ -18,8 +18,8 @@
 | `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
-| `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:55a1f3a5a36c9bf3b79480639b0c6de2a14f4241", "git:planning-review:55a1f3a5a36c9bf3b79480639b0c6de2a14f4241..1a544a17c1e0c4b8edcc1e649867d32a3488ff35", "readiness:7a39e50f22e96a22a7b042a36a5ce24fa3c5a05d0841c0a27f8d0b9137c4cfea", "review:M1-ASSIGNMENT-CLAIM-DFR-01-APPROVE", "git:implementation:50183400874838782b3cd25e42488e04745b8844..4e99054d1752372b901621b30961fff543a84621", "digest:14e285c72429581d1780da0996adae4fb2ec9f7830c2f1dffb2a6dde5817d572", "readiness:385f8cb2c7be28f6f1930c4824777398c314511ab3765154ced2f601a4e4c889", "review:M1-ASSIGNMENT-CLAIM-IIR-01-APPROVE"]` |
+| `terminal_state` | `Merged` |
+| `evidence_refs` | `["git:base:55a1f3a5a36c9bf3b79480639b0c6de2a14f4241", "git:planning-review:55a1f3a5a36c9bf3b79480639b0c6de2a14f4241..1a544a17c1e0c4b8edcc1e649867d32a3488ff35", "readiness:7a39e50f22e96a22a7b042a36a5ce24fa3c5a05d0841c0a27f8d0b9137c4cfea", "review:M1-ASSIGNMENT-CLAIM-DFR-01-APPROVE", "git:implementation:50183400874838782b3cd25e42488e04745b8844..4e99054d1752372b901621b30961fff543a84621", "digest:14e285c72429581d1780da0996adae4fb2ec9f7830c2f1dffb2a6dde5817d572", "readiness:385f8cb2c7be28f6f1930c4824777398c314511ab3765154ced2f601a4e4c889", "review:M1-ASSIGNMENT-CLAIM-IIR-01-APPROVE", "readiness:7fa221318cf6d41e96b3270685ec97ca577ebfa9c65462b000102f19da6edd43", "git:merge:2efdb111d9b5bfd2bd25696e49750eb479a880f8"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 

@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** Packet eligibility merged; atomic assignment claim is next
+**State:** Atomic assignment claim merged; attempt lifecycle and execution identity are next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -53,6 +53,12 @@ Independent `MB-SLICE-M1-PACKET-ELIGIBILITY-02` is merged through PR #30 at
 `571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Exact implementation head
 `64b0b7c26cd446056d160b93987bd3fed93226e8` passed both reviews without
 findings, 191/191 tests, and both ten-run stress groups with zero corrections.
+
+`MB-SLICE-M1-ASSIGNMENT-CLAIM-01` is merged through PR #32 at
+`2efdb111d9b5bfd2bd25696e49750eb479a880f8`. Exact implementation head
+`4e99054d1752372b901621b30961fff543a84621` passed both reviews with no
+findings, 209/209 tests, and 10/10 concurrency/restart stress runs with zero
+corrections. It creates the packet claim atomically but does not start work.
 
 ## Unmerged M1 evidence
 
@@ -114,12 +120,13 @@ implementation review each used one correction and received targeted
 
 ## Next authorized action
 
-M1-01, M1-02A, run lifecycle, and packet eligibility are complete, but M1 is
-not closed. The Project Architect next materializes the atomic assignment
-claim: one Dispatchable packet becomes Leased while its lease, complete lock
-set, and planned attempt are created in the same transaction. No implementation
-is authorized until that contract receives pre-execution Decision Fidelity
-approval. Both returned slices remain immutable and non-authoritative.
+M1-01, M1-02A, run lifecycle, packet eligibility, and atomic assignment claim
+are complete, but M1 is not closed. The Project Architect next materializes
+the smallest attempt-lifecycle and execution-identity slice so a claimed
+Planned attempt can acquire honest live-execution evidence and transition
+without implying work ran when it did not. No implementation is authorized
+until that contract receives pre-execution Decision Fidelity approval. Both
+returned slices remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
