@@ -32,8 +32,8 @@ Schema facts below are quoted from `services/maestro/maestro/storage.py` and
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-REVIEW-ROUTING-04` |
-| `phase` | `PendingTargetedDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -41,7 +41,9 @@ Schema facts below are quoted from `services/maestro/maestro/storage.py` and
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:a79b3617c3becd77411a6650226a4ec6fce073e0","review:decision-fidelity:request-changes","finding:DF-01:guard-8-review-readiness-review-kind-mismatch:correct-now","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
+| `evidence_refs` | `["git:base:45b50165dc66c527ab47397cbe3f7320cdd3f93a","git:full-planning-review-head:a79b3617c3becd77411a6650226a4ec6fce073e0","review:decision-fidelity:request-changes","finding:DF-01:guard-8-review-readiness-review-kind-mismatch:correct-now","git:targeted-planning-verification-head:f1a6f3d0703045e3e15627aa4752242d1e2e9ef5","review:targeted-decision-fidelity:approve","history:MB-SLICE-M1-REVIEW-ROUTING-01:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-02:returned:non-authoritative","history:MB-SLICE-M1-REVIEW-ROUTING-03:returned:non-authoritative"]` |
+
+The planning contract is now frozen at `f1a6f3d0703045e3e15627aa4752242d1e2e9ef5`. Passing its named acceptance proof is enough; implementation may not silently strengthen it.
 
 Counts are monotonic and start at zero because no review of this slice's
 contract has occurred yet. `phase` advances only on a recorded event: a
