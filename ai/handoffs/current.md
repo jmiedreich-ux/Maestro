@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** Atomic assignment claim merged; first attempt-execution slice returned; smaller independent continuation is next
+**State:** Execution start merged; heartbeat and terminal attempt completion are next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -67,6 +67,12 @@ five-key state object and heartbeat's extended lease envelope. No
 implementation occurred; the slice cannot be corrected, reopened, renamed,
 or used as authority.
 
+Independent `MB-SLICE-M1-EXECUTION-START-01` is merged through PR #35 at
+`0a7be20578671ceaa8b9edb81d583bc94f499bf0`. Exact implementation head
+`c5e3c05799764d02841d2732200e267f19af9beb` passed targeted Decision Fidelity
+and independent implementation review, 220/220 tests, and the ten-run stress
+group. One planning correction and zero implementation corrections were used.
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -128,12 +134,11 @@ implementation review each used one correction and received targeted
 ## Next authorized action
 
 M1-01, M1-02A, run lifecycle, packet eligibility, and atomic assignment claim
-are complete, but M1 is not closed. The Project Architect next materializes a
-new independent, smaller execution-start slice so a claimed Planned attempt
-can acquire honest live-execution evidence without implying work ran when it
-did not. No implementation is authorized until that contract receives
-pre-execution Decision Fidelity approval. All returned slices remain immutable
-and non-authoritative.
+are complete, and execution start is now integrated, but M1 is not closed. The
+Project Architect next materializes heartbeat and terminal attempt completion
+against the exact stored execution identity. No implementation is authorized
+until that new contract receives pre-execution Decision Fidelity approval. All
+returned slices remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 

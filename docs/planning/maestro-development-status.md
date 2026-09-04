@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-04
 **Recorded on:** `master`
 **Current master at this update:**
-`2efdb111d9b5bfd2bd25696e49750eb479a880f8`
+`0a7be20578671ceaa8b9edb81d583bc94f499bf0`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -37,6 +37,7 @@ dispatch is running.
 | M1 run lifecycle | Independent slice `MB-SLICE-M1-RUN-LIFECYCLE-01` terminally merged through PR #27 at `30b856f475aa0d57f0131b9c089bee5b264b8051`; exact accepted candidate head `741dc73956f6136fe8e9e288d9ffb6c9015f7251` | Targeted Decision Fidelity verification and independent implementation review returned `APPROVE`; 177/177 tests and 10/10 lifecycle stress runs passed. One planning correction and no implementation correction were used. It adds an internal trusted-caller run transition primitive only; it does not wake or dispatch work. |
 | M1 assignment claim | Independent slice `MB-SLICE-M1-ASSIGNMENT-CLAIM-01` terminally merged through PR #32 at `2efdb111d9b5bfd2bd25696e49750eb479a880f8`; exact implementation head `4e99054d1752372b901621b30961fff543a84621` | Both reviews returned `APPROVE` with no findings; 209/209 tests and 10/10 concurrency/restart stress runs passed with zero corrections. It atomically claims one eligible packet without starting an agent or falsely recording execution. |
 | First attempt-execution slice | `MB-SLICE-M1-ATTEMPT-EXECUTION-01` terminally `returned` at correction head `3462b09d5c17336817bd8adcd9e6ad65c0d1f274` | Its sole targeted Decision Fidelity verification found that the claimed exact heartbeat lease envelope contradicted the five-key state-object rule. No implementation occurred; it cannot be corrected, reopened, renamed, or used as authority. |
+| M1 execution start | `MB-SLICE-M1-EXECUTION-START-01` terminally merged through PR #35 at `0a7be20578671ceaa8b9edb81d583bc94f499bf0`; exact implementation head `c5e3c05799764d02841d2732200e267f19af9beb` | Targeted Decision Fidelity and independent implementation review returned `APPROVE`; 220/220 tests and 10/10 stress runs passed. One planning correction and zero implementation corrections were used. Maestro can record `Running` only with a unique external handle and still-Running parent run. |
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
 | Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
 | Failed correction evidence | Two uncommitted files remain in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` (SHA-256 `76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47`) and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` (SHA-256 `92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`) | Preserve these mutable files as failed-attempt evidence only. They are not authority and must not be merged, approved, discarded, or reused as a planning candidate. |
@@ -333,6 +334,6 @@ implementation review both returned `APPROVE` with no findings; 209/209 tests
 and 10/10 concurrency/restart stress runs passed; no correction was used. The
 next smallest M1 operational-core behavior is real attempt lifecycle with an
 honest execution identity. The first combined attempt-execution contract was
-terminally returned after its sole targeted verification. The Project
-Architect must select a new independent, smaller behavior from current master.
-M1 remains open.
+terminally returned after its sole targeted verification. The independent
+execution-start slice is now merged. Heartbeat and terminal attempt completion
+are next. M1 remains open.

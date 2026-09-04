@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, and assignment claim
-**Current development state:** Atomic assignment claim merged; first attempt-execution slice returned; smaller independent continuation is next
+**Current development state:** Execution start merged; heartbeat and terminal attempt completion are next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -72,6 +72,12 @@ Fidelity verification found one unresolved contradiction between the declared
 five-key state object and heartbeat's extended lease envelope. No
 implementation occurred; it cannot be corrected, reopened, renamed, or used
 as authority.
+
+Independent `MB-SLICE-M1-EXECUTION-START-01` is merged through PR #35 at
+`0a7be20578671ceaa8b9edb81d583bc94f499bf0`. Exact implementation head
+`c5e3c05799764d02841d2732200e267f19af9beb` passed targeted Decision Fidelity
+and independent implementation review, 220/220 tests, and the ten-run stress
+group. One planning correction and zero implementation corrections were used.
 
 ## What exists only on side branches
 
@@ -161,9 +167,8 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence non-authoritative.
 2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, and assignment
    claim as integrated, while keeping M1 open.
-3. Have the Project Architect materialize a new independent execution-start
-   slice for the already-claimed Planned attempt; do not reuse the returned
-   combined attempt-execution contract.
+3. Have the Project Architect materialize heartbeat and terminal completion
+   for the Running attempt using its exact stored execution identity.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
