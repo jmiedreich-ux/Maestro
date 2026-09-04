@@ -1,8 +1,9 @@
 """Closed schema-4 operational records and service-owned persistence.
 
-This module intentionally contains record creation, canonical value handling,
-idempotent append, and read foundations only.  Lifecycle, claim/lease/lock,
-acceptance/merge guards, and recovery orchestration belong to M1-02B.
+This module contains record creation, canonical value handling, idempotent
+append, read foundations, and the guarded run-lifecycle storage primitive.
+Claim/lease/lock, acceptance/merge guards, and recovery orchestration remain
+outside this boundary.
 """
 
 from __future__ import annotations
@@ -46,6 +47,15 @@ _ENTITY_STATES = {
     "ResourceLock": {"Active", "Released", "Expired"},
     "Wait": {"Open", "Resolved", "Expired", "Cancelled"},
     "Notification": {"Pending", "Delivered", "Failed", "Acknowledged"},
+}
+_RUN_TRANSITIONS = {
+    "Planned": {"Running", "Blocked", "Cancelled"},
+    "Running": {"Blocked", "AwaitingArchitect", "AwaitingOwner", "Complete", "Cancelled"},
+    "Blocked": {"Running", "AwaitingArchitect", "AwaitingOwner", "Cancelled"},
+    "AwaitingArchitect": {"Running", "Blocked", "AwaitingOwner", "Cancelled"},
+    "AwaitingOwner": {"Running", "Blocked", "Complete", "Cancelled"},
+    "Complete": set(),
+    "Cancelled": set(),
 }
 
 
@@ -336,6 +346,68 @@ class OperationalStateStore:
         row = self._run(run, now)
         return self._append_one("runs", "run_id", row, "Run", "RunCreated", idempotency_key, actor, now)
 
+    def transition_run(
+        self, run_id, expected_version, target_state, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        run_id = _text(run_id, "run_id")
+        expected_version = _positive_int(expected_version, "expected_version")
+        target_state = _text(target_state, "target_state")
+        if target_state not in _ENTITY_STATES["Run"]:
+            raise InvalidTransition("target run state is not declared")
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("run transition reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "run_id": run_id,
+            "expected_version": expected_version,
+            "target_state": target_state,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint("transition_run", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+                current = connection.execute(
+                    "SELECT state,version FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if current is None:
+                    raise InvalidRecord("unknown run")
+                source_state, current_version = str(current[0]), int(current[1])
+                if current_version != expected_version:
+                    raise StaleState("run version is stale")
+                if target_state not in _RUN_TRANSITIONS[source_state]:
+                    raise InvalidTransition("run transition is not permitted")
+                before = _state_payload("Run", run_id, source_state, current_version)
+                after = _state_payload(
+                    "Run", run_id, target_state, expected_version + 1
+                )
+                updated = connection.execute(
+                    "UPDATE runs SET state=?,updated_at=?,version=? "
+                    "WHERE run_id=? AND version=?",
+                    (target_state, timestamp, expected_version + 1, run_id, expected_version),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("run version is stale")
+                self._insert_run_state_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    run_id, before, after, reason,
+                )
+                connection.commit()
+                return after
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("run transition violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def materialize_packet(self, packet, idempotency_key, actor, now):
         row = self._packet(packet, now)
         return self._append_one("packets", "packet_id", row, "Packet", "PacketMaterialized", idempotency_key, actor, now)
@@ -586,6 +658,25 @@ class OperationalStateStore:
                 canonical_json({"kind": "reason", "reason_code": "RECORDED", "detail_reference": None}),
                 actor["correlation_id"], actor["causation_event_id"], actor["actor_type"],
                 actor["actor_id"], fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_run_state_event(
+        connection, key, fingerprint, actor, now, run_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Run", run_id, "RunStateChanged", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
             ),
         )
 
@@ -1188,6 +1279,18 @@ def _fingerprint(operation: str, payload: Mapping[str, Any], actor: Mapping[str,
         return value
 
     return canonical_digest({"operation": operation, "payload": command_facts(payload), "actor": actor})
+
+
+def _state_payload(
+    entity_type: str, entity_id: str, state: str, version: int
+) -> dict[str, Any]:
+    return {
+        "entity_id": entity_id,
+        "entity_type": entity_type,
+        "kind": "state",
+        "state": state,
+        "version": version,
+    }
 
 
 def _decode_row(row: dict[str, Any]) -> dict[str, Any]:
