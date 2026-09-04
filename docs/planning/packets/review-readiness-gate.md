@@ -1,7 +1,7 @@
 # Bootstrap Review-Readiness Gate
 
 **Slice ID:** `MB-SLICE-REVIEW-READINESS-GATE-01`
-**Status:** `PendingTargetedDecisionFidelity`
+**Status:** `Frozen`
 **Authority:** Owner direction dated 2026-09-03, the
 [Bootstrap Convergence Policy](../bootstrap-convergence-policy.md),
 [M0-D05](../decisions/m0-d05-rework-review-and-escalation.md), and
@@ -20,7 +20,7 @@ name are not status. Its current value is:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-REVIEW-READINESS-GATE-01` |
-| `phase` | `PendingTargetedDecisionFidelity` |
+| `phase` | `Frozen` |
 | `current_actor` | `ProjectArchitect` |
 | `live_execution_evidence` | `null` (the slice is not `Running`) |
 | `planning_review_count` | `1` |
@@ -29,7 +29,7 @@ name are not status. Its current value is:
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:e3c0b71a7a282389f12a4620caf32e5552623720..ffb1e1675941052a9b9ce32fee8b447330145b01"]` |
+| `evidence_refs` | `["git:e3c0b71a7a282389f12a4620caf32e5552623720..ffb1e1675941052a9b9ce32fee8b447330145b01", "git:ffb1e1675941052a9b9ce32fee8b447330145b01..42069d67aaa80627371b08c5c4db09684d7e370b", "review:RRG-DFR-01-REQUEST_CHANGES", "review:RRG-DFR-01-TARGETED-APPROVE"]` |
 
 The carrier has exactly those keys and no others. `schema` and `slice_id` are
 the literals shown. `evidence_refs` is a UTF-8-byte-sorted array of unique,
