@@ -276,10 +276,75 @@ The event's idempotency key, fingerprint, `correlation_id`, and
 envelope shape is produced. This is the reconstruction oracle for tests 10,
 12, and 13 below.
 
+## Architecture-contract amendment (post-freeze, pre-implementation-review)
+
+The dispatched Maestro Developer correctly stopped, without committing any
+code, on a real architecture-contract completeness gap rather than guessing
+past it: `tests/m1_02/test_schema_and_records.py`,
+`test_ar_p05_app_map_01_through_21_have_exact_per_route_mock_traces`,
+constructs `review = dict(valid["_review"], findings_json=[{"kind":
+"reason", "reason_code": "NONE", "detail_reference": None}])` where
+`valid["_review"]["result"] == "ValidateOnly"`, and asserts
+`OperationalStateStore._review(review)` succeeds. That is precisely the old,
+open `findings_json` behavior this slice exists to close (an arbitrary
+existing closed `validate_payload` kind, paired with a result that must
+require empty findings) — the two are unconditionally incompatible with any
+correct implementation of this contract's own "Closed finding payload" and
+"Result/findings complement" sections, independent of how those sections are
+worded. The frozen 248-test acceptance proof is therefore currently
+impossible to satisfy inside the originally declared writable-path boundary.
+
+Per M0-D12 ("if the risk shows that the approved contract itself is
+materially incomplete, the reviewer must identify an architecture-contract
+defect and stop the packet... it is not sent through repeated worker
+corrections") and the Bootstrap Convergence Policy's named blocking
+criterion ("the frozen named proof cannot establish its stated protected
+outcome"), this is resolved as an Architecture completeness fix, not a
+worker correction: it does not consume this slice's one planning-correction
+allowance (already recorded as used, at `f1a6f3d0`) or its
+implementation-correction allowance (still unused), because no worker
+attempt was committed against the gap before it was found.
+
+**Amendment:** the writable-path boundary below is widened by exactly one
+file, for exactly one line. In `tests/m1_02/test_schema_and_records.py`,
+the `test_ar_p05_...` method's `review = dict(valid["_review"],
+findings_json=[...])` line (and its immediately following `trace(...)`
+call) may be changed to use a closed `review-finding` item and a `result`
+that legally carries one (`RequestChanges` or `NeedsReplan`), for example:
+
+```python
+review = dict(
+    valid["_review"],
+    result="RequestChanges",
+    findings_json=[{
+        "kind": "review-finding", "finding_id": "test-app-map-11",
+        "criterion_reference": "test-fixture",
+        "evidence": {
+            "kind": "evidence-reference", "evidence_id": "test-evidence",
+            "digest": "0" * 64, "source_reference": None,
+        },
+        "disposition": {
+            "kind": "reason", "reason_code": "CorrectNow",
+            "detail_reference": None,
+        },
+    }],
+)
+```
+
+No other line of that file, and no other test's fixture, expectation, or
+assertion, may change. The `("APP-MAP-11", "R09")` relation check already
+accepts any of the six `result` values and only requires `findings_json`
+to be a list, so this substitution preserves that test's original coverage
+intent (it still proves `_review()` validates and iterates
+`findings_json` items) without asserting the now-superseded permissive
+behavior.
+
 ## Boundary, proof, and M0-D12
 
-Writable paths are exactly `services/maestro/maestro/operational_state.py`
-and `tests/m1_02/test_review_control_routing.py`. No other file changes.
+Writable paths are exactly `services/maestro/maestro/operational_state.py`,
+`tests/m1_02/test_review_control_routing.py`, and — solely for the one
+substitution above — `tests/m1_02/test_schema_and_records.py`. No other
+file changes.
 
 The thirteen named tests, in
 `tests/m1_02/test_review_control_routing.py` following the repository's
