@@ -4,8 +4,8 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03
-**Current development state:** M1-02B frozen; bootstrap convergence repair approved by Owner
-**Implementation authorization:** no new dispatch is authorized by this handoff
+**Current development state:** M1-02B replacement slice terminally returned; review-readiness gate authorized for planning
+**Implementation authorization:** only an approved review-readiness slice may proceed after its pre-execution fidelity gate
 
 The full current ledger, delay analysis, interim controls, and exact recovery
 sequence are in the
@@ -41,9 +41,9 @@ No M1 implementation is merged to master.
   `d82164c2f3be2164ad6e66b022f645be5f61844b`.
 - The first M1-02B planning packet was returned at `a9af23a` after exhausting
   its correction allowance and produced no implementation.
-- Replacement M1-02B planning at `ab271ff` is split into non-executable B0 and
-  serial B1-B5. Full Decision Fidelity review returned five material contract
-  findings. Its one normal correction is incomplete and uncommitted.
+- Replacement M1-02B planning at `ab271ff` is terminally returned after its sole
+  targeted Decision Fidelity verification returned `REQUEST_CHANGES`. B1 was
+  never authorized.
 
 These branches are evidence and work in progress. They are not master state,
 merge authority, live-project authority, or permission to dispatch later work.
@@ -61,7 +61,11 @@ had uncommitted edits:
 - `docs/planning/contracts/m1-02b-contract.json`
 - `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md`
 
-Preserve those edits. They are not reviewed or accepted evidence.
+Preserve those edits as failed-attempt evidence only. Their SHA-256 values are
+`76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47` and
+`92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`,
+respectively. They are not reviewed or accepted authority and must not be
+merged, approved, discarded, or reused as a candidate.
 
 ## Why development is delayed
 
@@ -89,16 +93,23 @@ review, one bounded three-finding correction set, and targeted independent
 `ea7483ab3963e8b465e3533ab0dd9d09f6adde3c`. PR #16 merged to `master`
 at `a8f389682c98500981cd828a2028ec56b5782705`.
 
+## Terminal M1-02B result
+
+The reviewed base and branch head were both
+`ab271ffea42204c44c1894d53ba10e0d5f34ca4f`; no committed correction range or
+staged candidate existed. Its sole targeted Decision Fidelity verification
+returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
+`returned`, receives no further review or correction, and cannot authorize B1.
+
 ## Exact next action
 
-1. Keep M1-02B and its interrupted files frozen until the Project Architect
-   verifies the preserved local evidence.
-2. Resume only `MB-SLICE-M1-02B-REPLACEMENT-01`; do not create a fresh slice.
-3. Complete its already-authorized planning correction.
-4. Obtain its sole targeted Decision Fidelity verification; do not repeat full
-   review or grant another planning correction.
-5. If approved, the Project Architect may release only B1. No later packet,
-   live-project action, external access, or automatic dispatch is authorized.
+1. Preserve the failed M1-02B files as non-authoritative evidence.
+2. Plan only `MB-SLICE-REVIEW-READINESS-GATE-01`, whose sole outcome is an
+   executable mechanical reviewer-launch preflight.
+3. Obtain that new slice's one pre-execution Decision Fidelity review before
+   assigning implementation.
+4. Exclude M1-02B repair and all broader routing, learning, Atlas, UI,
+   scheduler, external-access, and live-project work.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
 controls any conflicting older handoff or rule language.
@@ -111,8 +122,8 @@ controls any conflicting older handoff or rule language.
 - **Replacement contract head reviewed:** `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`
 - **Complete Decision Fidelity review:** 1, consumed
 - **Planning correction:** 1 authorized and interrupted; allowance consumed
-- **Targeted planning verification:** 0, pending after the preserved correction
+- **Targeted planning verification:** 1, consumed; `REQUEST_CHANGES`
 - **Implementation review:** 0, unused
 - **Implementation correction:** 0, unused
-- **Current state:** frozen administrative pause, not a new slice and not a
-  counter reset
+- **Correction head:** none; branch HEAD remained equal to reviewed base
+- **Terminal state:** `returned`
