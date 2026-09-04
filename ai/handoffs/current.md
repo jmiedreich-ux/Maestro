@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** M1-01 recovery slice merged; next M1 continuation slice not selected
+**State:** M1-02A recovery slice merged; next M1 continuation slice not selected
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -26,6 +26,13 @@ head is `cf36927243e782e2b4adc3e36ab696087cff5697`; both reviews returned
 only the internal exact-commit authority loader and durable candidate
 persistence foundation.
 
+M1-02A is merged through PR #25 at
+`160dcf48240c90b787a7bcb88e4aeb10d6348b30`. Its exact reviewed
+implementation head is `807d0194ef6c15787385c4c8518a387b4d5d3edb`;
+both reviews returned `APPROVE`, all 163 named tests and both ten-run
+fresh-process stress groups passed, and no correction was used. It adds only
+the accepted schema-4 operational-record validation and persistence foundation.
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -33,8 +40,9 @@ persistence foundation.
 - Historical accepted M1-01 source head:
   `56b4dfb5e4d4bef860616cde93d172affb0e4210`; its exact behavior is now
   integrated through the reviewed recovery slice above
-- Accepted M1-02A+AR implementation head:
-  `d82164c2f3be2164ad6e66b022f645be5f61844b`
+- Historical accepted M1-02A+AR source head:
+  `d82164c2f3be2164ad6e66b022f645be5f61844b`; its exact behavior is now
+  integrated through the reviewed recovery slice above
 - First M1-02B packet: returned at `a9af23a`; never implemented
 - Replacement M1-02B: terminally returned after its sole targeted Decision
   Fidelity verification returned `REQUEST_CHANGES`; B1 is unauthorized
@@ -85,13 +93,13 @@ implementation review each used one correction and received targeted
 
 ## Next authorized action
 
-M1-01 is complete, but M1 is not closed. The Project Architect next inspects
-the accepted M1-02A+AR implementation evidence and selects the smallest
-executable continuation slice under the same review-readiness and risk-based
-disposition controls. No successor implementation is authorized until that new
-canonical contract receives its pre-execution Decision Fidelity approval.
-M1-02B remains terminally returned and cannot be reopened, renamed, corrected,
-or reused as authority.
+M1-01 and M1-02A are complete, but M1 is not closed. The Project Architect next
+inspects the remaining authoritative M1 roadmap, current integrated code, and
+dependency graph and selects the smallest executable continuation under the
+same review-readiness and risk-based disposition controls. No successor
+implementation is authorized until its new canonical contract receives
+pre-execution Decision Fidelity approval. M1-02B remains terminally returned
+and cannot be reopened, renamed, corrected, or reused as authority.
 
 ### Frozen M1-02B slice identity and counters
 
