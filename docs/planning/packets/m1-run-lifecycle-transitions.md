@@ -1,7 +1,7 @@
 # M1 Run Lifecycle Transitions
 
 **Slice ID:** `MB-SLICE-M1-RUN-LIFECYCLE-01`
-**Status:** `Pending Decision Fidelity review`
+**Status:** `Planning correction committed; targeted verification pending`
 **Planning and implementation base:**
 `07cb48123bdc0d94ebe656fa93a17a3d1309581b`
 **Outcome authority:** the Owner's direction to complete M1; the current
@@ -21,16 +21,16 @@ master.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-RUN-LIFECYCLE-01` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `PlanningCorrection` |
 | `current_actor` | `DecisionFidelityReviewer` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b"]` |
+| `evidence_refs` | `["git:base:07cb48123bdc0d94ebe656fa93a17a3d1309581b", "git:planning-review:07cb48123bdc0d94ebe656fa93a17a3d1309581b..3a57e702ea74e3eefc69b2e4319a34dd2e55d591", "readiness:a6e3b293eb575f55bc42d4bc52708047fe484b1290cb1b35fab7f1d4f071f69a", "review:M1-RUN-LIFECYCLE-DFR-01-REQUEST-CHANGES"]` |
 
 Counts never reset. A reviewer is launched only after a successful mechanical
 readiness result. Status-only commits outside the frozen implementation range
@@ -48,7 +48,10 @@ boundary.
 
 ## One executable outcome
 
-Add this public service-owned method:
+The Project Architect classifies and authorizes the exact method signature and
+directed edge graph below as routine internal implementation design under the
+delegated architecture boundary. It is not a public product, CLI, network, or
+project-adapter contract. Add this internal service-owned method:
 
 ```text
 OperationalStateStore.transition_run(
@@ -70,6 +73,16 @@ version once, sets `updated_at`, appends exactly one `RunStateChanged` event
 with exact before/after state payloads and the caller's validated closed
 `reason` payload, commits, and returns the after payload.
 
+This is a trusted-caller storage primitive. Its caller must already have
+validated the applicable project policy and authority before invocation. The
+method does not select a transition, infer approval, or decide that an Owner or
+Project Architect acted. `actor` is a validated audit identity, not an
+authorization token. No caller, route, CLI, or service endpoint is added in
+this slice. A later orchestration slice must prove its own authorization guard
+before it may call this method. Thus `AwaitingOwner`, `AwaitingArchitect`, and
+`Complete` record only a prevalidated caller choice; they do not create
+acceptance, merge, or successor authority.
+
 The permitted directed edges are the complete graph for this slice:
 
 ```text
@@ -86,6 +99,35 @@ Self-transitions and every unlisted edge raise `InvalidTransition`. A missing
 run raises `InvalidRecord`. A version mismatch raises `StaleState`. Reuse of an
 idempotency key with different immutable command facts raises
 `IdempotencyConflict`. SQLite busy exhaustion remains `ResourceBusy`.
+
+The command fingerprint is exactly SHA-256 over the UTF-8 bytes of canonical
+JSON for this closed object:
+
+```json
+{
+  "actor": {
+    "actor_id": "...",
+    "actor_type": "...",
+    "causation_event_id": null,
+    "correlation_id": "..."
+  },
+  "operation": "transition_run",
+  "payload": {
+    "expected_version": 1,
+    "reason": {"detail_reference": null, "kind": "reason", "reason_code": "..."},
+    "run_id": "...",
+    "target_state": "Running"
+  }
+}
+```
+
+Canonical JSON uses the existing `canonical_json` rules: UTF-8, object keys
+sorted by Unicode code point, no spaces, `ensure_ascii=false`, and finite
+closed values. `now` is observation time and is excluded from the fingerprint.
+Therefore a same-key retry with a later valid `now` and otherwise identical
+command facts is an exact replay; it returns the originally stored after
+payload and retains the original event time. Any change to actor, run ID,
+expected version, target state, or reason is a conflicting command.
 
 An event-insert failure rolls back the state update. Two concurrent commands
 from one expected version produce one committed winner and one stale result;
@@ -117,13 +159,17 @@ prove:
 3. Running to Complete succeeds;
 4. Blocked and authority-wait paths resume only through listed edges;
 5. Complete and Cancelled are terminal;
-6. every representative unlisted or self edge is rejected without mutation;
+6. a table-driven Cartesian check over all 49 source/target pairs proves
+   exactly the listed edges succeed and every other pair, including every self
+   edge, fails without mutation;
 7. stale expected version is rejected without mutation;
 8. a missing run is rejected without an event;
-9. same-key/same-command replay returns the original result exactly once;
-10. same-key/different-command reuse is rejected;
-11. one transition writes exactly one event with exact before, after, reason,
-    actor, correlation, causation, fingerprint, entity, and event type;
+9. same-key/same-command replay with a later `now` returns the original result,
+   event time, state, and version exactly once;
+10. same-key reuse with any changed immutable command field is rejected;
+11. an independently constructed documented fingerprint matches the stored
+    digest, and one transition writes exactly one event with exact before,
+    after, reason, actor, correlation, causation, entity, and event type;
 12. forced event insertion failure rolls back the run update and event;
 13. two concurrent transitions at one version have exactly one winner; and
 14. restart preserves state/version/event and makes replay nonduplicating.
@@ -180,15 +226,17 @@ pass. Passing this inventory is enough.
 
 ### Q3 — Authority and scope confinement
 
-- **Protected outcome:** the method records only an already-authorized run
-  state choice and cannot select work or create an external effect.
+- **Protected outcome:** the internal method faithfully records a trusted
+  caller's prevalidated run-state choice and cannot itself select work, infer
+  authority, or create an external effect.
 - **Operating/failure model:** accidental expansion into packet control,
   dispatch, claims, notifications, registration, repository/network, or merge.
 - **Exclusions:** every later M1 capability requiring those effects.
-- **Assurance level:** two-path allowlist, complete diff inspection, and
-  regression proof.
-- **Acceptance proof:** exact changed paths, no imports or calls for excluded
-  effects, 177 tests, compile, and readiness pass.
+- **Assurance level:** no call site or public exposure in this slice, a
+  two-path allowlist, complete diff inspection, and regression proof.
+- **Acceptance proof:** exact changed paths; no CLI, endpoint, route, or other
+  caller; documented trusted-caller boundary; no imports or calls for excluded
+  effects; 177 tests, compile, and readiness pass.
 - **Implementation boundary:** existing local SQLite service boundary only.
 - **Proportionality ceiling:** no public CLI or additional lifecycle entity.
 - **Stop rule:** any external authority, credential, live-project access,
