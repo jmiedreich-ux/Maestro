@@ -1,6 +1,6 @@
 # Maestro — Current Project Handoff
 
-**Date:** 2026-09-03
+**Date:** 2026-09-04
 **State:** review-readiness gate merged; risk-based review disposition adopted; next implementation slice not selected
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
@@ -85,7 +85,8 @@ review findings by real operating likelihood, consequence, reach, recovery, and
 fix risk. A working candidate may be
 `accepted-with-known-limitations` with a linked backlog issue; unchanged code
 consumes no correction and needs no targeted implementation verification.
-Critical exceptions and primary-outcome failures remain non-deferrable.
+Critical exceptions, reserved Owner risks, and primary-outcome failures
+remain non-deferrable.
 
 This governance direction does not itself authorize implementation, reopen
 M1-02B, or alter the completed review-readiness slice.
