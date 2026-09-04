@@ -1,7 +1,7 @@
 # M1 Packet Eligibility Transitions — Independent Slice 02
 
 **Slice ID:** `MB-SLICE-M1-PACKET-ELIGIBILITY-02`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Decision Fidelity approved; implementation released`
 **Base:** `81280f70b5bf8257d981824b32b47741879b01ce`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-PACKET-ELIGIBILITY-02` |
-| `phase` | `PendingDecisionFidelity` |
+| `phase` | `Frozen` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:81280f70b5bf8257d981824b32b47741879b01ce"]` |
+| `evidence_refs` | `["git:base:81280f70b5bf8257d981824b32b47741879b01ce", "git:planning-review:81280f70b5bf8257d981824b32b47741879b01ce..91e4e85a4e7285ffd6377d35facd40a53b93972c", "readiness:167d718e5c0f6ac5ad8aff814bfb5d5d746606542b0ca45a7b1e0434f2dc2b50", "review:M1-PACKET-ELIGIBILITY-02-DFR-01-APPROVE"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
