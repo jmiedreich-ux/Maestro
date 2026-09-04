@@ -1,7 +1,7 @@
 # M1 Execution Heartbeat and Finish
 
 **Slice ID:** `MB-SLICE-M1-EXECUTION-FINISH-01`
-**Status:** `Decision Fidelity approved; implementation released`
+**Status:** `Project Architect accepted; merge ready`
 **Base:** `e7bc781747d7faf85e6724d9b26b0882735f1989`
 
 ## Durable slice status
@@ -10,16 +10,16 @@
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-EXECUTION-FINISH-01` |
-| `phase` | `Frozen` |
+| `phase` | `MergeReady` |
 | `current_actor` | `None` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:e7bc781747d7faf85e6724d9b26b0882735f1989", "git:planning-review:e7bc781747d7faf85e6724d9b26b0882735f1989..ae41a0eaba3b1403d53c0c1258ea137dc57a514f", "readiness:5e67fa46188d84776f2e67832c4cc732904990033de579aa40cc10d4147e472d", "review:M1-EXECUTION-FINISH-DFR-01-APPROVE"]` |
+| `evidence_refs` | `["digest:00d46c9fe3f597469313ce551d88cf42d38f7af6f840200a7bd9d7f53aa1aecb", "git:base:e7bc781747d7faf85e6724d9b26b0882735f1989", "git:implementation:09fa06e9490b6ef9a71ca1a040060800c920b6a1..f885d1d90bdf0c130140d731fbe8b8627d2e6c74", "git:planning-review:e7bc781747d7faf85e6724d9b26b0882735f1989..ae41a0eaba3b1403d53c0c1258ea137dc57a514f", "readiness:103ec7d14e7c23dded5a7598fd3cfbd88cc0aed8642dee85ed456f7255c36d83", "readiness:5e67fa46188d84776f2e67832c4cc732904990033de579aa40cc10d4147e472d", "review:M1-EXECUTION-FINISH-DFR-01-APPROVE", "review:M1-EXECUTION-FINISH-IIR-01-APPROVE"]` |
 
 The carrier has exactly the canonical v1 keys. Counts never reset.
 
