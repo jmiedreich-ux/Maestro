@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-04
-**State:** First packet-eligibility slice returned; independent rematerialization is next
+**State:** Packet eligibility merged; atomic assignment claim is next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -48,6 +48,11 @@ sole targeted verification rejected correction head
 `1bd4d3c07183300614693aea3b9a3d691261f2ff` because its phase value was not
 canonical. No implementation occurred. The slice cannot be corrected,
 reopened, renamed, replaced, dispatched, or used as authority.
+
+Independent `MB-SLICE-M1-PACKET-ELIGIBILITY-02` is merged through PR #30 at
+`571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Exact implementation head
+`64b0b7c26cd446056d160b93987bd3fed93226e8` passed both reviews without
+findings, 191/191 tests, and both ten-run stress groups with zero corrections.
 
 ## Unmerged M1 evidence
 
@@ -109,12 +114,12 @@ implementation review each used one correction and received targeted
 
 ## Next authorized action
 
-M1-01, M1-02A, and the run-lifecycle slice are complete, but M1 is not closed.
-The Project Architect next materializes a new independent packet-eligibility
-slice from current master with a valid canonical durable status carrier. No
-implementation is authorized until that new contract receives pre-execution
-Decision Fidelity approval. Both terminally returned slices remain immutable
-and non-authoritative.
+M1-01, M1-02A, run lifecycle, and packet eligibility are complete, but M1 is
+not closed. The Project Architect next materializes the atomic assignment
+claim: one Dispatchable packet becomes Leased while its lease, complete lock
+set, and planned attempt are created in the same transaction. No implementation
+is authorized until that contract receives pre-execution Decision Fidelity
+approval. Both returned slices remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 

@@ -314,3 +314,14 @@ be corrected, reopened, renamed, replaced, dispatched, or used as authority.
 The Project Architect may select a new independent packet-eligibility slice
 from current master; it receives a new identity and no allowance from this
 returned slice.
+
+The new independent slice `MB-SLICE-M1-PACKET-ELIGIBILITY-02` completed and
+merged through PR #30 at
+`571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Its exact independently reviewed
+implementation head is `64b0b7c26cd446056d160b93987bd3fed93226e8`.
+Decision Fidelity and implementation review both returned `APPROVE` with no
+findings; 191/191 tests and both ten-run stress groups passed; no correction
+was used. Maestro now records the closed pre-claim packet eligibility graph
+atomically and idempotently. The next smallest M1 operational-core behavior is
+the atomic assignment claim that creates one lease, its complete lock set, and
+one planned attempt while moving one Dispatchable packet to Leased.

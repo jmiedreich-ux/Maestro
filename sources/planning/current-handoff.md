@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03, M1-01, M1-02A, and guarded run lifecycle
-**Current development state:** First packet-eligibility slice returned; independent rematerialization is next
+**Current development state:** Packet eligibility merged; atomic assignment claim is next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -53,6 +53,11 @@ targeted Decision Fidelity verification rejected correction head
 carrier used a noncanonical phase value. No implementation occurred. The
 slice cannot be corrected, reopened, renamed, replaced, dispatched, or used
 as authority.
+
+Independent `MB-SLICE-M1-PACKET-ELIGIBILITY-02` is merged through PR #30 at
+`571c5da9d41bd413a9aca6df3da78a1f29c0c5bb`. Exact implementation head
+`64b0b7c26cd446056d160b93987bd3fed93226e8` passed both reviews without
+findings, 191/191 tests, and both ten-run stress groups with zero corrections.
 
 ## What exists only on side branches
 
@@ -142,8 +147,9 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence non-authoritative.
 2. Treat M1-01, M1-02A, and the run-lifecycle primitive as integrated, while
    keeping M1 open.
-3. Have the Project Architect materialize a new independent packet-eligibility
-   slice from current master with a valid canonical durable status carrier.
+3. Have the Project Architect materialize the atomic assignment-claim slice:
+   Dispatchable to Leased plus one lease, its complete lock set, and one
+   planned attempt in a single transaction.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
