@@ -1,6 +1,6 @@
 # Maestro — Current Handoff
 
-**Date:** 2026-09-03
+**Date:** 2026-09-04
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03
@@ -117,7 +117,9 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 4. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
    `return slice` using real likelihood and consequence.
-5. Do not begin implementation until that next slice completes its one
+5. Critical exceptions, reserved Owner risks, and primary-outcome failures
+   cannot be accepted as known limitations.
+6. Do not begin implementation until that next slice completes its one
    pre-execution Decision Fidelity gate.
 
 The [Bootstrap Convergence Policy](../../docs/planning/bootstrap-convergence-policy.md)
