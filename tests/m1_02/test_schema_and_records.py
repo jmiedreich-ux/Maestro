@@ -124,6 +124,8 @@ class MigrationTests(unittest.TestCase):
             "one_active_binding_per_project", "one_active_graph_per_project",
             "one_active_lease_per_packet", "one_active_lease_per_worktree",
             "one_active_resource_key", "one_open_wait_per_packet_gate",
+            "one_attempt_per_execution_handle", "attempts_execution_shape_insert",
+            "attempts_execution_shape_update",
             "events_require_v4_metadata", "events_validate_v4_shape", "events_closed_event_type",
             "events_no_update", "events_no_delete", "evidence_no_update", "evidence_no_delete",
             "reviews_no_update", "reviews_no_delete", "secret_reference_observations_no_update",
@@ -149,11 +151,11 @@ class MigrationTests(unittest.TestCase):
                     self.assertIsNotNone(row, name)
                     rows.append({"type": row[0], "name": row[1], "table": row[2], "sql": row[3]})
             encoded = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            self.assertEqual(len(rows), 47)
-            self.assertEqual(len(encoded), 36914)
+            self.assertEqual(len(rows), 50)
+            self.assertEqual(len(encoded), 42028)
             self.assertEqual(
                 hashlib.sha256(encoded).hexdigest(),
-                "3bf7930f669752d89590a7590cc580bbaf08dd21ff36ddcbe4042fa30a2084af",
+                "027432352ce41ae1be9767657f852aeae3fc9ee13a9e855db33fb4be16602f33",
             )
         finally:
             runtime.close()
@@ -171,11 +173,11 @@ class MigrationTests(unittest.TestCase):
                 }
                 before_rows = _inventory(connection)[1]
             health = SQLiteFoundation(runtime.config()).health()
-            self.assertEqual(health.schema_version, 4)
+            self.assertEqual(health.schema_version, 5)
             with closing(sqlite3.connect(database)) as connection:
                 self.assertEqual(
                     connection.execute("SELECT version FROM schema_versions ORDER BY version").fetchall(),
-                    [(3,), (4,)],
+                    [(3,), (4,), (5,)],
                 )
                 after_rows = _inventory(connection)[1]
                 for table in before_rows:
@@ -253,7 +255,7 @@ class MigrationTests(unittest.TestCase):
                 first = _inventory(connection)[0]
             SQLiteFoundation(runtime.config()).health()
             with closing(sqlite3.connect(database)) as connection:
-                self.assertEqual(connection.execute("SELECT version,COUNT(*) FROM schema_versions GROUP BY version").fetchall(), [(3, 1), (4, 1)])
+                self.assertEqual(connection.execute("SELECT version,COUNT(*) FROM schema_versions GROUP BY version").fetchall(), [(3, 1), (4, 1), (5, 1)])
                 self.assertEqual(_inventory(connection)[0], first)
         finally:
             runtime.close()
@@ -1170,7 +1172,7 @@ class RecordRouteTests(unittest.TestCase):
             ):
                 command(self.store)
             reopened = OperationalStateStore(self.runtime.config())
-            self.assertEqual(reopened.health().schema_version, 4)
+            self.assertEqual(reopened.health().schema_version, 5)
             with closing(sqlite3.connect(database)) as connection:
                 connection.execute("PRAGMA foreign_keys=ON")
                 self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
@@ -1853,7 +1855,7 @@ class RecordRouteTests(unittest.TestCase):
                 self.assertEqual(raised.exception.sqlite_errorname, expected_error)
                 connection.rollback()
             reopened = OperationalStateStore(self.runtime.config())
-            self.assertEqual(reopened.health().schema_version, 4)
+            self.assertEqual(reopened.health().schema_version, 5)
             with closing(sqlite3.connect(database)) as connection:
                 connection.execute("PRAGMA foreign_keys=ON")
                 self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])

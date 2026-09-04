@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterator
 from .config import RuntimeConfig
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -363,12 +363,13 @@ class SQLiteFoundation:
         connection: sqlite3.Connection,
         failure_injector: Callable[[str], None] | None = None,
     ) -> None:
-        """Apply the additive schema through version 4 in one transaction.
+        """Apply the additive schema through version 5 in one transaction.
 
-        Version 4 deliberately uses only ``CREATE``, ``ALTER ... ADD COLUMN``
-        and index/trigger creation.  In particular, the accepted Alpha and
-        M1-01 tables are never rebuilt: SQLite can therefore roll an injected
-        DDL failure back without copying or rewriting any accepted row.
+        Versions 4 and 5 deliberately use only ``CREATE``,
+        ``ALTER ... ADD COLUMN`` and index/trigger creation. In particular,
+        accepted tables are never rebuilt: SQLite can therefore roll an
+        injected DDL failure back without copying or rewriting any accepted
+        row.
         """
         connection.execute("BEGIN IMMEDIATE")
         try:
@@ -386,7 +387,11 @@ class SQLiteFoundation:
                     "SELECT version FROM schema_versions ORDER BY version"
                 ).fetchall()
             ]
-            supported_histories = ([2], [2, 3], [3], [2, 3, 4], [3, 4], [4])
+            fresh_database = not versions
+            supported_histories = (
+                [2], [2, 3], [3], [2, 3, 4], [3, 4], [4],
+                [2, 3, 4, 5], [3, 4, 5], [4, 5], [5],
+            )
             if versions and versions not in supported_histories:
                 raise RuntimeError(f"unsupported or ambiguous schema history: {versions}")
             if versions and versions[-1] == SCHEMA_VERSION:
@@ -505,9 +510,15 @@ class SQLiteFoundation:
                 connection.execute("INSERT INTO schema_versions(version) VALUES (3)")
                 versions = [2, 3]
 
-            _inject(failure_injector, "before_m1_02_schema")
-            _apply_schema_four(connection, failure_injector)
-            connection.execute("INSERT INTO schema_versions(version) VALUES (4)")
+            if not versions or versions[-1] < 4:
+                _inject(failure_injector, "before_m1_02_schema")
+                _apply_schema_four(connection, failure_injector)
+                if not fresh_database:
+                    connection.execute("INSERT INTO schema_versions(version) VALUES (4)")
+                versions = [*versions, 4]
+
+            _apply_schema_five(connection, failure_injector)
+            connection.execute("INSERT INTO schema_versions(version) VALUES (5)")
             _inject(failure_injector, "after_schema_version")
             connection.commit()
         except Exception:
@@ -583,6 +594,80 @@ def _apply_schema_four(
     for statement in _SCHEMA_FOUR_TRIGGERS:
         connection.execute(statement)
     _inject(failure_injector, "after_m1_02_schema")
+
+
+def _apply_schema_five(
+    connection: sqlite3.Connection,
+    failure_injector: Callable[[str], None] | None,
+) -> None:
+    """Add execution-start carriers and constraints without rebuilding attempts."""
+    attempt_columns = {
+        str(row[1]) for row in connection.execute("PRAGMA table_info(attempts)")
+    }
+    for name in (
+        "execution_handle",
+        "expected_result",
+        "heartbeat_at",
+        "completion_evidence_reference",
+    ):
+        if name not in attempt_columns:
+            connection.execute(
+                f"ALTER TABLE attempts ADD COLUMN {name} TEXT "
+                f"CHECK({name} IS NULL OR (typeof({name})='text' AND "
+                f"length(CAST({name} AS BLOB)) BETWEEN 1 AND 512))"
+            )
+    connection.execute(
+        "CREATE UNIQUE INDEX one_attempt_per_execution_handle "
+        "ON attempts(execution_handle) WHERE execution_handle IS NOT NULL"
+    )
+    for operation in ("INSERT", "UPDATE"):
+        connection.execute(
+            f"""
+            CREATE TRIGGER attempts_execution_shape_{operation.lower()}
+            BEFORE {operation} ON attempts
+            WHEN NOT (
+                (NEW.state='Planned'
+                 AND NEW.execution_handle IS NULL
+                 AND NEW.expected_result IS NULL
+                 AND NEW.heartbeat_at IS NULL
+                 AND NEW.completion_evidence_reference IS NULL
+                 AND NEW.started_at IS NULL
+                 AND NEW.finished_at IS NULL
+                 AND NEW.result_commit IS NULL)
+                OR
+                (NEW.state='Running'
+                 AND NEW.execution_handle IS NOT NULL
+                 AND NEW.expected_result IS NOT NULL
+                 AND NEW.started_at IS NOT NULL
+                 AND NEW.heartbeat_at IS NOT NULL
+                 AND NEW.finished_at IS NULL
+                 AND NEW.result_commit IS NULL
+                 AND NEW.completion_evidence_reference IS NULL)
+                OR
+                (NEW.state='Succeeded'
+                 AND NEW.execution_handle IS NOT NULL
+                 AND NEW.expected_result IS NOT NULL
+                 AND NEW.started_at IS NOT NULL
+                 AND NEW.heartbeat_at IS NOT NULL
+                 AND NEW.finished_at IS NOT NULL
+                 AND NEW.completion_evidence_reference IS NOT NULL
+                 AND NEW.result_commit IS NOT NULL
+                 AND length(NEW.result_commit)=40
+                 AND NEW.result_commit NOT GLOB '*[^0-9a-f]*')
+                OR
+                (NEW.state IN ('Failed','Cancelled','TimedOut','Stale')
+                 AND NEW.execution_handle IS NOT NULL
+                 AND NEW.expected_result IS NOT NULL
+                 AND NEW.started_at IS NOT NULL
+                 AND NEW.heartbeat_at IS NOT NULL
+                 AND NEW.finished_at IS NOT NULL
+                 AND NEW.completion_evidence_reference IS NOT NULL
+                 AND NEW.result_commit IS NULL)
+            )
+            BEGIN SELECT RAISE(ABORT, 'attempt execution shape is invalid'); END
+            """
+        )
+    _inject(failure_injector, "after_m1_execution_schema")
 
 
 _SCHEMA_FOUR_TABLES = (
