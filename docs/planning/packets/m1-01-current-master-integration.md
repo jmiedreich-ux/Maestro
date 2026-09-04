@@ -26,16 +26,16 @@ chat, branches, and stale process observations are not status.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-01-INTEGRATION-01` |
-| `phase` | `Frozen` |
-| `current_actor` | `None` |
-| `live_execution_evidence` | `null` |
+| `phase` | `Running` |
+| `current_actor` | `MaestroDeveloper` |
+| `live_execution_evidence` | `{"kind":"Agent","handle":"/root/maestro_developer","packet_item":"exact ten-blob M1-01 rematerialization","observed_at":"2026-09-04T01:22:07Z"}` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:4e213b10d2bfd709e43a9073c41cc986e78a0fcd..56b4dfb5e4d4bef860616cde93d172affb0e4210", "git:b47592cfa417fd39daddef46ff691697969b51f0", "git:source-accepted:56b4dfb5e4d4bef860616cde93d172affb0e4210", "readiness:b9f48a997f6294208c9bbb7a2c029a5047bbd2d8812c72fb8b06f7ce1ba03858", "review:M1-01-INT-DFR-01-APPROVE"]` |
+| `evidence_refs` | `["execution:/root/maestro_developer:2026-09-04T01:22:07Z", "git:4e213b10d2bfd709e43a9073c41cc986e78a0fcd..56b4dfb5e4d4bef860616cde93d172affb0e4210", "git:b47592cfa417fd39daddef46ff691697969b51f0", "git:source-accepted:56b4dfb5e4d4bef860616cde93d172affb0e4210", "readiness:b9f48a997f6294208c9bbb7a2c029a5047bbd2d8812c72fb8b06f7ce1ba03858", "review:M1-01-INT-DFR-01-APPROVE"]` |
 
 The allowed phases are `PendingDecisionFidelity`, `PlanningCorrection`,
 `Frozen`, `Running`, `ImplementationReview`, `ImplementationCorrection`,
