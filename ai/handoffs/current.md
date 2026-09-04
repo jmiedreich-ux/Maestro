@@ -171,3 +171,14 @@ that field null and stores the successful candidate only as
 be reopened, corrected, replaced, renamed, or reused as authority. The next
 independent slice must bind candidate head to the successful attempt's
 `result_commit`.
+
+## Terminal review-routing slice 02
+
+`MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned` after its sole
+targeted Decision Fidelity verification returned `REQUEST_CHANGES`. Its one
+planning correction corrected candidate-head authority and added the protocol,
+but the durable carrier still reported zero consumed review/correction counts
+and `PendingDecisionFidelity`; the fingerprint contract also remained prose
+without a literal canonical object. No implementation was dispatched. This
+slice is immutable and non-authoritative. The next independent slice must
+record truthful phase/counts and an exact fingerprint object.

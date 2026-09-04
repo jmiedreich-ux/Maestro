@@ -349,3 +349,12 @@ honest execution identity. The first combined attempt-execution contract was
 terminally returned after its sole targeted verification. The independent
 execution-start and heartbeat/finish slices are now merged. Completion and
 review-control routing is next. M1 remains open.
+
+`MB-SLICE-M1-REVIEW-ROUTING-02` is terminally `returned`. Its complete Decision
+Fidelity review found missing executable protocol/status detail; the sole
+planning correction added those sections, but targeted verification found the
+status carrier still falsely reported zero consumed reviews/corrections and the
+fingerprint remained prose rather than an exact canonical object. No
+implementation occurred. This slice cannot be reopened, corrected, renamed,
+replaced, dispatched, or reused as authority. A new independent slice must carry
+truthful post-review counters/phase and a literal fingerprint schema.
