@@ -1,7 +1,7 @@
 # M1 Correction-Pass Review Routing — Candidate 01
 
 **Slice ID:** `MB-SLICE-M1-CORRECTION-REVIEW-ROUTING-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Implementation` (frozen at `ba7315664d1423c5fbe1d729ac50f2fc07a8a1ed`, approved with zero findings and zero corrections)
 **Base:** `2436aca58ceb1385d0c3214123a9c025dcc91add` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -36,16 +36,16 @@ read from current `origin/master`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-CORRECTION-REVIEW-ROUTING-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:2436aca58ceb1385d0c3214123a9c025dcc91add"]` |
+| `evidence_refs` | `["git:base:2436aca58ceb1385d0c3214123a9c025dcc91add","git:full-planning-review-head:ba7315664d1423c5fbe1d729ac50f2fc07a8a1ed","review:decision-fidelity:approve:no-findings"]` |
 
 ## Closed command and routes
 
