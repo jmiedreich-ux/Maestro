@@ -1,7 +1,7 @@
 # M2 Wave C — Wire Packet Thread Into Desktop Shell — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C1B-SHELL-WIRING-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the packet's central "purely additive" claim was false: the reviewer actually built and ran the described diff and found a real typecheck failure (`VIEW_LABEL`'s type) and three real test failures (missing em-dash normalization in two new tests, and a genuine breaking change to one pre-existing test's own expectation). All four are now fixed and disclosed honestly as real edits, not additions.
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review actually built and ran the described diff and found 4 blocking findings (a real typecheck failure, two test bugs, and a genuine regression in a pre-existing test the packet claimed was untouched); one targeted planning correction resolved all four, verified by actually running the corrected diff's real toolchain (27/27 tests, typecheck/lint/build all clean, `PacketThread` content confirmed present in the built bundle). No further planning correction is available for this slice.
 **Base:** `a219e57` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -93,8 +93,8 @@ passing.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C1B-SHELL-WIRING-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -102,7 +102,7 @@ passing.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:a219e57","git:full-planning-review-head:2f7b9127c64cbb330f32abc6c942ff0e2a86a1e0","review:decision-fidelity:request-changes:4-blocking-findings"]` |
+| `evidence_refs` | `["git:base:a219e57","git:full-planning-review-head:2f7b9127c64cbb330f32abc6c942ff0e2a86a1e0","review:decision-fidelity:request-changes:4-blocking-findings","git:corrected-planning-head:798f5a818107698fa71c5ef2c381848f4a68bc07","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact file contents
 
