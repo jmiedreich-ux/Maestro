@@ -1,7 +1,7 @@
 # M2 Wave D — Command: Owner Resolves a Decision — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-D2-RESOLVE-DECISION-COMMAND-01`
-**Status:** `Draft, pending Decision Fidelity Verification`
+**Status:** `Draft — Targeted correction applied (the first draft's _handle_resolve_decision left ResourceBusy — a real, reachable exception under real SQLite writer-lock contention — uncaught, which would have crashed the request thread with no HTTP response; the Design rationale's own exception-count claim also undercounted the real class list), pending Targeted Decision Fidelity Verification`
 **Base:** `09545e6` (full: `09545e6d2ba2d8fe7d0177c776618ee53f0ab930`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -88,11 +88,14 @@ def transition_packet_eligibility(
 ```
 
 ```python
-# operational_state.py:89-110 — the 5 exception classes relevant to this
-# slice (the real base class plus the 4 this command's handler catches;
-# `operational_state.py` declares 2 more subclasses, `ResourceBusy` at
-# :113 and `RecoveryConflict` at :121, neither of which
-# `transition_packet_eligibility` can raise — see below)
+# operational_state.py:89-114 — 7 exception classes (the base plus 6
+# subclasses). This command's handler explicitly catches 5 of the
+# subclasses by name below (StaleState, InvalidTransition,
+# IdempotencyConflict, InvalidRecord, ResourceBusy) plus a bare
+# `sqlite3.OperationalError` fallback; `ResourceConflict` is shown here
+# for contrast only — `transition_packet_eligibility` cannot raise it.
+# `operational_state.py` declares one further subclass this method also
+# cannot raise, `RecoveryConflict` (operational_state.py:121), not shown here.
 class OperationalStateError(Exception):
     """Base class for closed operational-state failures."""
 
@@ -110,18 +113,43 @@ class IdempotencyConflict(OperationalStateError):
 
 class ResourceConflict(OperationalStateError):
     ...
+
+class ResourceBusy(OperationalStateError):
+    ...
 ```
 
-This slice's handler catches exactly `StaleState`, `InvalidTransition`,
-`IdempotencyConflict`, and `InvalidRecord` — the four exceptions
-`transition_packet_eligibility` can actually raise (verified by reading
-its full body at `operational_state.py:465-529`: it raises
-`InvalidTransition`/`InvalidRecord`/`StaleState` directly, and
-`IdempotencyConflict` via its own call to the real `self._replay`
-helper quoted in D1's own evidence section — it never raises
-`ResourceConflict`, `ResourceBusy`, or `RecoveryConflict`, so this
-slice does not catch any of those three — catching an exception a
-method cannot raise would be dead code, not a guard).
+**Corrected by targeted correction (the first draft of this Evidence
+section undercounted this exception list and, worse, wrongly claimed
+`transition_packet_eligibility` "never raises ... `ResourceBusy`" — a
+Decision Fidelity review found this false):** this slice's handler
+catches `StaleState`, `InvalidTransition`, `IdempotencyConflict`,
+`InvalidRecord`, and `ResourceBusy` — the five exceptions
+`transition_packet_eligibility` can actually raise or propagate
+(verified by reading its full body at `operational_state.py:465-529`):
+it raises `InvalidTransition`/`InvalidRecord`/`StaleState` directly;
+raises `IdempotencyConflict` via its own call to the real
+`self._replay` helper quoted in D1's own evidence section; and
+propagates `ResourceBusy` via its own `except sqlite3.OperationalError:
+self._raise_sqlite(error)` fallback at `operational_state.py:528-529`,
+where `_raise_sqlite` (`operational_state.py:2713-2717`) raises
+`ResourceBusy` whenever a competing writer holds the SQLite lock past
+the store's real 5-second busy timeout
+(`storage.SQLITE_BUSY_TIMEOUT_MS = 5000`) — already a real, tested
+outcome of this exact store for other mutations
+(`tests/m1_02/test_schema_and_records.py`'s
+`test_held_writer_returns_resource_busy_on_health_reads_and_mutation`).
+It never raises `ResourceConflict` or `RecoveryConflict`, so this
+slice does not catch either — catching an exception a method cannot
+raise would be dead code, not a guard. It also never raises a *bare*
+`sqlite3.OperationalError` whose message lacks "locked"/"busy" from
+this call path in ordinary operation, but `_raise_sqlite`'s own
+`raise error` fallback (`operational_state.py:2717`) means one
+theoretically could if SQLite ever produced such a message for some
+other operational failure; this slice's corrected handler also catches
+a bare `sqlite3.OperationalError` (mapped to the existing
+`database_unavailable` 503 convention the GET snapshot routes already
+use) so no exception this call can produce is left unhandled, even one
+outside the store's own documented exception hierarchy.
 
 ## Design rationale (decisions made under delegated Project Architect authority)
 
@@ -156,8 +184,14 @@ method cannot raise would be dead code, not a guard).
 4. **A fresh `OperationalStateStore` is constructed per request**,
    exactly matching every existing GET route's own pattern in this
    file (`RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)`
-   appears identically at `read_api.py:163`, `:198`, `:233`, `:281` for
-   the four existing snapshot routes) — this slice's new handler is the
+   appears identically at `read_api.py:155`, `:190`, `:225`, `:273` in
+   the currently-merged file for the four existing snapshot routes —
+   **corrected by targeted correction: the first draft of this item
+   cited `:163`/`:198`/`:233`/`:281`, which are only where these calls
+   land in this slice's own proposed new file, after the two new import
+   lines this slice adds shift everything below them down; a reviewer
+   checking the claim against the currently-merged file would not find
+   the calls at those line numbers**) — this slice's new handler is the
    fifth, not a new pattern.
 5. **Real closed-shape/field validation of `actor` is still not this
    command's job**, exactly as D1 established: `_validate_command_envelope`
@@ -218,6 +252,14 @@ method cannot raise would be dead code, not a guard).
 7. This command does not implement D3 (wiring the Atlas owner-decision
    card's buttons to this endpoint) — that is explicitly a future
    slice's job, not this one's.
+8. **Added by targeted correction:** `_handle_resolve_decision` now
+   also catches `ResourceBusy` (503 `resource_busy`) and a bare
+   `sqlite3.OperationalError` (503 `database_unavailable`) — real,
+   reachable exceptions from `transition_packet_eligibility`'s own
+   `_raise_sqlite` fallback that the first draft left uncaught (see
+   Evidence section and Pre-verification's targeted-correction note).
+   One new test, `test_11_real_writer_lock_contention_returns_503_resource_busy`,
+   proves this against a real held SQLite writer lock, not mocked.
 
 ## `services/maestro/maestro/read_api.py` (modified — full new content)
 
@@ -244,6 +286,7 @@ from .operational_state import (
     InvalidRecord,
     InvalidTransition,
     OperationalStateStore,
+    ResourceBusy,
     StaleState,
 )
 
@@ -624,6 +667,31 @@ def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[s
             400, canonical_response_json({"error": "invalid_command", "detail": str(error)})
         )
         return
+    except ResourceBusy as error:
+        # Real, reachable path: `transition_packet_eligibility`'s own
+        # internal `_raise_sqlite` (operational_state.py:2713-2717) raises
+        # this when a competing writer holds the SQLite lock past the
+        # store's real 5-second busy timeout (`storage.SQLITE_BUSY_TIMEOUT_MS`)
+        # — already a real, tested outcome of this exact store
+        # (`tests/m1_02/test_schema_and_records.py`'s
+        # `test_held_writer_returns_resource_busy_on_health_reads_and_mutation`
+        # exercises the identical `_raise_sqlite` path for other mutations).
+        # A Decision Fidelity review of this slice's first draft found this
+        # was left uncaught, which would have crashed the request thread
+        # with no HTTP response under real write contention.
+        handler._respond(503, canonical_response_json({"error": "resource_busy", "detail": str(error)}))
+        return
+    except sqlite3.OperationalError as error:
+        # `_raise_sqlite` re-raises any `sqlite3.OperationalError` whose
+        # message does not contain "locked" or "busy" completely unchanged
+        # (see the same source cited above) — an operational-database
+        # failure this command did not cause and cannot itself recover
+        # from, mapped to the same `database_unavailable` convention the
+        # existing GET snapshot routes already use for a broken database.
+        handler._respond(
+            503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
+        )
+        return
 
     handler._respond(200, canonical_response_json(result))
 
@@ -805,6 +873,7 @@ import http.client
 import json
 import sqlite3
 import tempfile
+import time
 import unittest
 from contextlib import closing
 from pathlib import Path
@@ -824,7 +893,7 @@ REASON = {"kind": "reason", "reason_code": "OwnerResolvedDecision", "detail_refe
 def _request(
     port: int, method: str, path: str, body: bytes | None = None
 ) -> tuple[int, str | None, bytes]:
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
     try:
         connection.request(method, path, body=body, headers={"Content-Type": "application/json"})
         response = connection.getresponse()
@@ -992,6 +1061,7 @@ class ResolveDecisionCommandTests(unittest.TestCase):
         )
         self.server.start()
         self.addCleanup(self.server.stop)
+        self.addCleanup(self.runtime._temporary.cleanup)
 
     def _post(self, envelope: dict) -> tuple[int, str | None, dict]:
         status, content_type, raw_body = _request(
@@ -1034,6 +1104,7 @@ class ResolveDecisionCommandTests(unittest.TestCase):
         for target in ("Waiting", "Ready", "Cancelled"):
             with self.subTest(target=target):
                 runtime = _PacketDatabase()
+                self.addCleanup(runtime._temporary.cleanup)
                 server = read_api.ReadApiServer(
                     read_api.ReadApiConfig(port=0, runtime_dir=runtime.path)
                 )
@@ -1145,6 +1216,37 @@ class ResolveDecisionCommandTests(unittest.TestCase):
         for fictional_term in ("sentinel", "amend", "frozen", "contract", "Architect agent"):
             self.assertNotIn(fictional_term, serialized)
 
+    def test_11_real_writer_lock_contention_returns_503_resource_busy(self) -> None:
+        # Reproduces, for this command, the exact real contention path a
+        # Decision Fidelity review found uncaught in this slice's first
+        # draft: a competing writer holding the SQLite lock past the
+        # store's real 5-second busy timeout causes
+        # `transition_packet_eligibility`'s internal `_raise_sqlite` to
+        # raise `ResourceBusy` — not mocked, the same technique
+        # `tests/m1_02/test_schema_and_records.py`'s own
+        # `test_held_writer_returns_resource_busy_on_health_reads_and_mutation`
+        # already uses for other mutations against this same store.
+        with closing(sqlite3.connect(self.runtime.database, timeout=0)) as holder:
+            holder.execute("PRAGMA journal_mode=WAL")
+            holder.execute("BEGIN IMMEDIATE")
+            holder.execute(
+                "UPDATE packets SET version=version WHERE packet_id='packet-1'"
+            )
+            started = time.monotonic()
+            status, _content_type, body = self._post(self._base_envelope())
+            elapsed = time.monotonic() - started
+        self.assertEqual(status, 503)
+        self.assertEqual(body["error"], "resource_busy")
+        # Proves the real 5-second busy timeout was actually exhausted,
+        # not short-circuited or mocked away.
+        self.assertGreaterEqual(elapsed, 4.5)
+
+        # The held writer's own uncommitted change was never visible to the
+        # blocked request, and the packet is untouched by the failed call.
+        reopened = OperationalStateStore(self.runtime.config)
+        row = reopened.snapshot("Packet", "packet-1")
+        self.assertEqual((row["state"], row["version"]), ("Blocked", 2))
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -1161,16 +1263,19 @@ tracked files restored with `git checkout --`, 1 new untracked file
 deleted) so the worktree returned to a clean diff before running the
 review-readiness gate.
 
-- `python -m unittest discover -s ../../tests/m2_wave_d -v` — **22/22
+- `python -m unittest discover -s ../../tests/m2_wave_d -v` — **23/23
   passed**: all 12 pre-existing `test_command_api_scaffold.py` tests
-  (11 unchanged, `test_11` updated per Guards item 2) plus all 10 new
-  `test_resolve_decision_command.py` tests.
-  - First full run surfaced exactly one expected, self-caught failure:
-    the pre-existing `test_11_no_real_command_is_registered_in_production_code`
-    failed because `_COMMAND_ROUTES` is no longer empty — this is the
-    correct, intended consequence of registering the first real
-    command, not a defect. Fixed per Guards item 2 (renamed test,
-    asserts the exact closed route set); re-run confirmed 22/22.
+  (11 unchanged, `test_11` updated per Guards item 2) plus all 11
+  `test_resolve_decision_command.py` tests (10 from the first draft
+  plus 1 new, `test_11_real_writer_lock_contention_returns_503_resource_busy`,
+  added by the targeted correction below).
+  - First full run (first draft) surfaced exactly one expected,
+    self-caught failure: the pre-existing
+    `test_11_no_real_command_is_registered_in_production_code` failed
+    because `_COMMAND_ROUTES` is no longer empty — this is the correct,
+    intended consequence of registering the first real command, not a
+    defect. Fixed per Guards item 2 (renamed test, asserts the exact
+    closed route set); re-run confirmed 22/22 for the first draft.
 - `python -m unittest discover -s ../../tests/m2_wave_a -v` — **49/49
   passed**, unmodified — zero regression in the existing Wave A read
   API tests.
@@ -1182,17 +1287,49 @@ review-readiness gate.
   — confirms the module imports cleanly and exposes exactly the one
   real route.
 
-**Total: 233 tests directly re-verified across the 3 directories this
-slice's diff can plausibly affect (49 + 162 + 22), zero new failures
-beyond the one expected, self-caught, and fixed test-11 update.** Wave
-D's other pre-existing directory (`m2_wave_e`) is Atlas frontend
-TypeScript, not Python, and is unaffected by a backend-only slice; it
-is not part of this backend toolchain run.
+**Total (post-correction): 234 tests directly re-verified across the 3
+directories this slice's diff can plausibly affect (49 + 162 + 23),
+zero failures beyond the one expected, self-caught, and fixed test-11
+update from the first draft.** Wave D's other pre-existing directory
+(`m2_wave_e`) is Atlas frontend TypeScript, not Python, and is
+unaffected by a backend-only slice; it is not part of this backend
+toolchain run.
 
-No targeted correction was needed against an external Decision
-Fidelity review for this candidate — issues found during this slice's
-own pre-verification (the `test_11` update) were fixed before this
-packet was ever submitted for review, not after.
+**Targeted correction (found by an independent Decision Fidelity
+review, fixed before merge):** the first draft's `_handle_resolve_decision`
+caught only `StaleState`/`InvalidTransition`/`IdempotencyConflict`/
+`InvalidRecord`, and its own Evidence section falsely claimed these
+were the only exceptions `transition_packet_eligibility` "can actually
+raise." The review found this false: the method's own real
+`except sqlite3.OperationalError: self._raise_sqlite(error)` fallback
+(`operational_state.py:528-529`) means `ResourceBusy` is a real,
+reachable outcome under SQLite writer-lock contention — already a
+real, tested behavior of this exact store for other mutations
+(`tests/m1_02/test_schema_and_records.py`'s
+`test_held_writer_returns_resource_busy_on_health_reads_and_mutation`).
+Left uncaught, a real contention event would have crashed the request
+thread with no clean HTTP response. Fixed by adding an `except
+ResourceBusy` branch (503 `resource_busy`) and, for full closure, a
+bare `except sqlite3.OperationalError` branch (503
+`database_unavailable`, matching the existing GET-route convention)
+for the one theoretical case `_raise_sqlite` re-raises an
+`OperationalError` unchanged. Verified two ways, matching this
+session's own established rigor for backend hang/contention bugs: (1)
+the new `test_11_real_writer_lock_contention_returns_503_resource_busy`
+holds a real competing writer lock on the same SQLite database via a
+second raw connection (`BEGIN IMMEDIATE`), issues a real HTTP request
+to `/command/resolve-decision`, and confirms it blocks for the real
+5-second busy timeout before returning `503 resource_busy` — not
+mocked; (2) the fix was independently confirmed load-bearing by
+temporarily removing the new `except ResourceBusy` branch and
+re-running this test alone — it then failed with an uncaught
+`ResourceBusy` traceback from inside the request-handling thread
+instead of receiving a clean `503`, proving the test exercises a real
+defect. The Evidence section's exception-exhaustiveness claim and the
+Design rationale's `read_api.py` line-number citation (item 4, which
+had cited this proposed file's own post-edit line numbers rather than
+the currently-merged file's) were also corrected — see both sections
+above.
 
 ## M0-D12 bounded quality contract
 
@@ -1222,13 +1359,16 @@ packet was ever submitted for review, not after.
 4. **Assurance level:** practical correctness for a thin HTTP command
    wrapper — every documented success path (all 3 real target states)
    and every documented failure path (`StaleState`, `InvalidTransition`,
-   `IdempotencyConflict`, `InvalidRecord`-shaped 400s) is directly
-   exercised by real HTTP requests over real sockets against a real
-   running server, backed by a real seeded SQLite database — not
-   mocked at the store or socket layer.
-5. **Acceptance proof:** the 22 named `tests/m2_wave_d` tests, 49
+   `IdempotencyConflict`, `InvalidRecord`-shaped 400s, `ResourceBusy`-
+   shaped 503, and a bare `sqlite3.OperationalError`-shaped 503) is
+   directly exercised by real HTTP requests over real sockets against a
+   real running server, backed by a real seeded SQLite database — not
+   mocked at the store or socket layer. The `ResourceBusy` path is
+   exercised against a real held writer lock and a real 5-second busy
+   timeout, not simulated.
+5. **Acceptance proof:** the 23 named `tests/m2_wave_d` tests, 49
    pre-existing Wave A tests, and 162 pre-existing `m1_02` tests all
-   passing (233 total, zero regressions).
+   passing (234 total, zero regressions).
 6. **Implementation boundary:** one modified production file
    (`read_api.py`), one modified test file (one test changed), one new
    test file; no new third-party dependency; no new module; no
@@ -1248,11 +1388,11 @@ packet was ever submitted for review, not after.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-D2-RESOLVE-DECISION-COMMAND-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
