@@ -1,0 +1,93 @@
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  padding: 4px 34px 8px;
+}
+
+.card {
+  min-width: 0;
+  max-width: 60ch;
+  border: 1px solid var(--atlas-decision-border);
+  border-radius: 14px;
+  background: var(--atlas-decision-bg);
+  overflow: hidden;
+  padding: 15px 17px 13px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 10.5px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-decision-ink);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-decision-dot);
+  box-shadow: 0 0 0 3px var(--atlas-decision-dot-ring);
+}
+
+.age {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  color: var(--atlas-decision-age);
+}
+
+.headline {
+  margin-top: 9px;
+  font-family: var(--atlas-font-display);
+  font-size: 17.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  text-wrap: pretty;
+  color: var(--atlas-decision-headline);
+}
+
+.lede {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--atlas-decision-lede);
+  text-wrap: pretty;
+}
+
+.chainRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  font: 500 11.5px var(--atlas-font-mono);
+  color: var(--atlas-decision-ink);
+}
+
+.chip {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--atlas-decision-chip);
+}
+
+.chipOn {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--atlas-decision-chip-on);
+  color: var(--atlas-decision-chip-on-ink);
+}
+
+.arrow {
+  color: var(--atlas-decision-arrow);
+}
+
+.why {
+  font-family: var(--atlas-font-body);
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--atlas-decision-why);
+}
