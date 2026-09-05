@@ -265,11 +265,12 @@ B2 design tokens module (`MB-SLICE-M2-B2-DESIGN-TOKENS-01`), B3 desktop
 shell (`MB-SLICE-M2-B3-DESKTOP-SHELL-02` — candidate `-01` was
 terminally returned; see the status record), B4 mobile shell
 (`MB-SLICE-M2-B4-MOBILE-SHELL-01`). Wave C1 (packet thread,
-`MB-SLICE-M2-C1-PACKET-THREAD-01` — standalone, not yet wired into the
-shell) is also merged. Next: wiring `PacketThread` into `DesktopShell`,
-then Wave C's remaining items (C2-C5). Each subsequent wave slice still
-requires its own pre-execution Decision
-Fidelity approval before implementation. All
+`MB-SLICE-M2-C1-PACKET-THREAD-01`) and C1B (wired into `DesktopShell`,
+`MB-SLICE-M2-C1B-SHELL-WIRING-01` — the shell now shows real fixture
+content for the first time) are also merged. Next: Wave C's remaining
+items (C2 real-data wiring, C3 decision card, C4 fidelity record, C5
+crash card). Each subsequent wave slice still requires its own
+pre-execution Decision Fidelity approval before implementation. All
 returned slices remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters

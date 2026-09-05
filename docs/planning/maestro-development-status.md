@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`4a1b7ce`
+`4a4d36e`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -702,7 +702,23 @@ implementation review returned `APPROVE` with no findings; all 24
 `apps/atlas` tests pass, build succeeds, `PacketThread` correctly absent
 from the bundle since nothing imports it yet.
 
-Next: wiring `PacketThread` into `DesktopShell`'s nav and content pane
-(a new slice this program's roadmap named but had not yet scoped), then
-Wave C's remaining items (C2 real-data wiring, C3 decision card, C4
-fidelity record, C5 crash card).
+`MB-SLICE-M2-C1B-SHELL-WIRING-01` is merged at
+`4a4d36ec7cbd728f43e7b703f5e306e648152d3f`: `PacketThread` is now wired
+into `DesktopShell` via one real packet nav row (`A.2 · Runtime
+Package`, with the reference file's exact "needs attention" amber dot,
+since that fixture's own thread ends in a real escalation). Full
+Decision Fidelity review actually built and ran the described diff and
+found 4 blocking findings (a real typecheck failure, two test bugs, and
+a genuine regression in a pre-existing B3 test the packet had claimed
+was untouched); the one available targeted planning correction resolved
+all four, verified by actually running the corrected diff's real
+toolchain. Independent implementation review returned `APPROVE` with no
+blocking findings; all 27 `apps/atlas` tests pass, and `PacketThread`'s
+real fixture content is now present in the built bundle for the first
+time. One pre-existing, unrelated, deferred discrepancy was noted but
+not fixed: B3's static nav rows use `13.5px` font-size where the
+reference file actually specifies `14px` — a real but cosmetic
+0.5px issue, recorded here as optional future cleanup, not blocking.
+
+Next: Wave C's remaining items (C2 real-data wiring, C3 decision card,
+C4 fidelity record, C5 crash card).
