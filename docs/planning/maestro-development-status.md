@@ -983,7 +983,26 @@ correctness, test-scoping correctness for the two `"1"`-valued stats);
 all 99 `apps/atlas` tests pass (90 existing + 9 new), build succeeds,
 `History` is not imported anywhere else yet.
 
-Next: the rest of Wave E (per-action detail groups + expand/collapse —
-E2B, Performance breakdown card — E3, Agents roster/contention), per
-the M2 roadmap and the standing instruction to complete all of M2 where
-possible.
+`MB-SLICE-M2-E2B-PERF-RECORDS-EXPAND-01` is merged (planning PR #124 at
+`ea84b6a`, implementation PR #125 at `1682ec7`), completing roadmap
+item 27 in full. This is the first Wave E slice to modify already-
+merged files (`perfRecords.ts`, `PerfRecordsList.tsx`,
+`PerfRecordsList.module.css`) rather than add new ones: real
+click-to-expand accordion behavior (exactly one record's detail panel
+open at a time, via a single `openId` state field) plus the 3 real
+detail groups (`context`/`tokens`/`cost & time`) for all 5
+`PERF_RECORDS`. Zero disclosed color literals — including a genuine
+dual-match where `colors.focusHoverCard` and `colors.pageBgDesktop`
+are both literally `#FCFBFD` — and the real `motion.rise` token drives
+the reveal animation via CSS custom properties, its first concrete CSS
+implementation in this codebase. One targeted planning correction
+fixed two editorial slips (a "two vs. three files" wording mismatch, a
+mistyped base-commit hash); the underlying data, code, and toolchain
+results were confirmed correct throughout both reviews. Full Decision
+Fidelity review and independent implementation review both confirmed
+zero remaining defects; all 105 `apps/atlas` tests pass (99 existing +
+6 net new), build succeeds.
+
+Next: the rest of Wave E (Performance breakdown card — E3, Agents
+roster/contention — E4/E5), per the M2 roadmap and the standing
+instruction to complete all of M2 where possible.

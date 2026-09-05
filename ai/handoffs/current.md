@@ -404,8 +404,22 @@ correctness re-derived), and toolchain reproduction (99 `apps/atlas`
 tests, 90 existing + 9 new) all confirmed clean with zero remaining
 defects.
 
-Next: the rest of Wave E (detail groups/expand, breakdown card,
-Agents).
+`MB-SLICE-M2-E2B-PERF-RECORDS-EXPAND-01` is merged (planning PR #124,
+implementation PR #125), completing roadmap item 27 in full: real
+click-to-expand accordion behavior and the 3 real detail groups
+(context/tokens/cost & time) for all 5 `PERF_RECORDS`. The first Wave E
+slice to modify already-merged files (`perfRecords.ts`,
+`PerfRecordsList.tsx`, `PerfRecordsList.module.css`) rather than add
+new ones. Zero disclosed color literals; the real `motion.rise` token
+drives the reveal animation. One targeted planning correction was
+needed for two editorial slips (a "two vs. three files" wording
+mismatch, a mistyped base-commit hash) — the underlying data, code, and
+toolchain results were confirmed correct throughout. Full Decision
+Fidelity review and independent implementation review both confirmed
+zero remaining defects; all 105 `apps/atlas` tests pass (99 existing +
+6 net new).
+
+Next: the rest of Wave E (breakdown card, Agents).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
