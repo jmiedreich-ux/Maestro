@@ -629,4 +629,25 @@ in the test file was independently verified as load-bearing; a future
 slice should authorize `@types/node` as a devDependency to remove the
 recurring friction.
 
-Wave B3 (desktop shell) is next.
+`MB-SLICE-M2-B3-DESKTOP-SHELL-01` is terminally `returned`, unmerged,
+never pushed to a PR. Its complete Decision Fidelity review found 2
+blocking findings (hand-copied CSS token values had already drifted
+from the real token files); the one available targeted planning
+correction restructured the design soundly (CSS custom properties read
+from the real token module at runtime, eliminating the hand-copy step),
+but its targeted verification found the restructuring introduced a new,
+real defect the correction never addressed: `DesktopShell.tsx` importing
+from `../tokens` makes it a real consumer, which trips B2's own frozen,
+already-merged `tokens.test.ts` test ("no file outside src/tokens
+imports from src/tokens") — a test that cannot be modified within this
+slice's writable-path boundary. Per the Bootstrap Convergence Policy, a
+failed targeted planning follow-up returns the slice; it does not
+receive a second planning correction. This slice cannot be reopened,
+corrected, renamed, replaced, dispatched, or reused as authority. A
+fresh `-02` candidate must own retiring that specific B2 test as part of
+its own scope (B2's own contract already anticipated B3 as "the first
+slice that renders anything with them" — the test's assertion was
+always time-boxed to expire once a real consumer arrived by design, not
+a permanent invariant).
+
+`MB-SLICE-M2-B3-DESKTOP-SHELL-02` is next.
