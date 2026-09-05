@@ -1,5 +1,5 @@
 """Loopback-only read API: `/health`, `/snapshot/packets`, `/snapshot/attempts`,
-and `/snapshot/reviews`."""
+`/snapshot/reviews`, and `/snapshot/events`."""
 
 from __future__ import annotations
 
@@ -88,6 +88,21 @@ _REVIEWS_SNAPSHOT_QUERY = f"""
     FROM reviews
     WHERE (? IS NULL OR review_id > ?)
     ORDER BY review_id ASC
+    LIMIT ?+1
+"""
+
+
+_EVENTS_SNAPSHOT_COLUMNS = (
+    "actor_id", "actor_type", "after_json", "before_json", "causation_event_id",
+    "command_fingerprint", "correlation_id", "created_at", "entity_id", "entity_type",
+    "event_id", "event_type", "idempotency_key", "observed_at", "reason",
+)
+
+_EVENTS_SNAPSHOT_QUERY = f"""
+    SELECT {", ".join(_EVENTS_SNAPSHOT_COLUMNS)}
+    FROM events
+    WHERE (? IS NULL OR event_id < ?)
+    ORDER BY event_id DESC
     LIMIT ?+1
 """
 
@@ -222,11 +237,55 @@ def _handle_snapshot_reviews(handler: "_ReadApiRequestHandler", query: str) -> N
     )
 
 
+def _handle_snapshot_events(handler: "_ReadApiRequestHandler", query: str) -> None:
+    parsed = urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)
+    error_detail = _validate_snapshot_query(parsed)
+    if error_detail is not None:
+        handler._respond(400, canonical_response_json({"error": "invalid_query", "detail": error_detail}))
+        return
+    if "after" in parsed and not _LIMIT_LITERAL_RE.match(parsed["after"][0]):
+        handler._respond(
+            400,
+            canonical_response_json(
+                {"error": "invalid_query", "detail": "after must be a non-negative integer"}
+            ),
+        )
+        return
+
+    limit = int(parsed["limit"][0]) if "limit" in parsed else 100
+    after = int(parsed["after"][0]) if "after" in parsed else None
+
+    connection: sqlite3.Connection | None = None
+    try:
+        runtime_config = RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        connection = sqlite3.connect(
+            f"file:{runtime_config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0,
+        )
+        rows = connection.execute(_EVENTS_SNAPSHOT_QUERY, (after, after, limit)).fetchall()
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    finally:
+        if connection is not None:
+            connection.close()
+
+    next_after = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_after = rows[-1][_EVENTS_SNAPSHOT_COLUMNS.index("event_id")]
+
+    events = [dict(zip(_EVENTS_SNAPSHOT_COLUMNS, row)) for row in rows]
+    handler._respond(
+        200, canonical_response_json({"events": events, "next_after": next_after}),
+    )
+
+
 _ROUTES = {
     "/health": _handle_health,
     "/snapshot/packets": _handle_snapshot_packets,
     "/snapshot/attempts": _handle_snapshot_attempts,
     "/snapshot/reviews": _handle_snapshot_reviews,
+    "/snapshot/events": _handle_snapshot_events,
 }
 
 
