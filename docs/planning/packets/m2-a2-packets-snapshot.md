@@ -1,7 +1,7 @@
 # M2 Wave A — Packets Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the `RuntimeConfig`/`RuntimePathError` failure path was not covered by the 503 contract and an internal contradiction over when `RuntimeConfig` is resolved
 **Base:** `08ac872` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -34,16 +34,16 @@ module's private attribute now that a natural place to fix it exists.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:08ac872"]` |
+| `evidence_refs` | `["git:base:08ac872","git:full-planning-review-head:32cfd9efe937feb9c369892369c2d49d9c91319e","review:decision-fidelity:request-changes:2-blocking-findings"]` |
 
 ## Exact route contract
 
@@ -52,13 +52,22 @@ module's private attribute now that a natural place to fix it exists.
 Query-string parsing: the query string is parsed with
 `urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)`.
 The route recognizes exactly two keys, `limit` and `after`. Any of the
-following is a `400` with body `{"error":"invalid_query","detail":<string>}`:
+following is a `400` with body `{"error":"invalid_query","detail":<string>}`,
+where `<string>` is exactly the literal given (no interpolation beyond what
+is shown), so two implementers produce byte-identical bodies:
 
-- an unknown key is present;
-- `limit` or `after` appears more than once;
+- an unknown key `k` is present → `"unknown query parameter: {k}"`;
+- `limit` or `after` appears more than once → `"query parameter appears more than once: limit"`
+  or `"query parameter appears more than once: after"` (name the one that repeated);
 - `limit` is present and is not an ASCII base-10 integer literal (no sign,
-  no leading zero except the literal `"0"`) in the closed range `1`–`500`;
-- `after` is present and is an empty string.
+  no leading zero except the literal `"0"`) in the closed range `1`–`500`
+  → `"limit must be an integer from 1 through 500"`;
+- `after` is present and is an empty string →
+  `"after must not be empty"`.
+
+If more than one of these is true at once, report the first that matches
+in the order listed above (unknown key, then repeated key, then malformed
+`limit`, then empty `after`).
 
 `limit` defaults to `100` when absent. `after` defaults to "no lower
 bound" when absent.
@@ -98,19 +107,41 @@ includes only the first `limit` of them and `next_after` is set to the
 `limit` rows or fewer, all are included and `next_after` is JSON `null`
 (no more pages). An empty `packets` table returns `{"next_after":null,"packets":[]}`.
 
-Database-unavailable handling: the read API never creates, migrates, or
-writes the database. It resolves the path via
-`RuntimeConfig(runtime_dir).database_path` (read only; `RuntimeConfig`'s
-own `__post_init__` validation is reused unmodified — no directory is
-created) and opens it as
-`sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=5.0)`.
-If that connection or the subsequent query raises any `sqlite3.Error`
-(covers: file does not exist yet, is not a valid SQLite database, or any
-other read failure), the response is `503` with body
-`{"error":"database_unavailable"}` — no traceback, no partial body, and the
-connection (if opened) is closed in a `finally` block before responding.
+**Database-unavailable handling (corrected — blocking finding 1 and 2 from
+Decision Fidelity review):** the read API never creates, migrates, or
+writes the database, and **never validates or resolves `RuntimeConfig` at
+`start()` time** — only inside the `/snapshot/packets` handler, per
+request, inside one `try` block that covers both steps:
+
+1. `RuntimeConfig.from_runtime_dir(runtime_dir_setting)` — this itself can
+   raise `config.RuntimePathError` (a `ValueError` subclass), which is a
+   real, reproducible, in-scope condition: it is what happens when the
+   fixed `var/` root does not exist yet, before any `maestro health` or
+   writer-service activity has ever run on this machine. This is not a
+   hypothetical; it is the default state of a fresh checkout.
+2. Opening `sqlite3.connect(f"file:{config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0)`
+   and running the query — this can raise `sqlite3.Error` (file does not
+   exist, is not a valid SQLite database, or any other read failure).
+
+Both exception classes, `(RuntimePathError, sqlite3.Error)`, are caught by
+the **same** `except` clause and produce the **same** response: `503` with
+body `{"error":"database_unavailable"}` — no traceback, no partial body.
+A `sqlite3.Connection`, if one was successfully opened before the failure,
+is closed in a `finally` block before responding; if `RuntimeConfig`
+resolution itself failed, no connection object ever existed and there is
+nothing to close.
+
+This makes `ReadApiServer.start()` and `ReadApiConfig` construction total
+functions with respect to `runtime_dir`: neither one ever raises
+`RuntimePathError` (only `ReadApiConfig.__post_init__`'s existing loopback
+check can still raise, unchanged from A1), because neither one touches
+`RuntimeConfig` at all. Only the request handler does, and only inside the
+one unified try/except above.
 
 ## `ReadApiConfig` and `ReadApiServer` changes
+
+`read_api.py` gains one new import: `from .config import RuntimeConfig,
+RuntimePathError` (both read, neither modified).
 
 `ReadApiConfig` gains one new field:
 
@@ -123,27 +154,31 @@ class ReadApiConfig:
 ```
 
 No change to the existing `__post_init__` loopback guard; `runtime_dir` is
-resolved lazily (see below), not validated in `ReadApiConfig.__post_init__`,
-so a `ReadApiConfig` remains constructible even before the runtime
-directory exists — validation happens once per incoming
-`/snapshot/packets` request, matching "the read API never creates
-anything" above.
+**never** resolved or validated by `ReadApiConfig` or `ReadApiServer`
+themselves — not at construction, not at `start()`. It is carried as an
+inert value only. This is the corrected design (see "Database-unavailable
+handling" above): `RuntimeConfig.from_runtime_dir(...)` is called exactly
+once per incoming `/snapshot/packets` request, inside that request's own
+try/except, and nowhere else. `ReadApiServer.start()` is therefore
+guaranteed to raise only what A1 already documented
+(`RuntimeError` on double-start) plus `ReadApiConfig`'s own
+`ReadApiBindError` on an invalid host — never `RuntimePathError`.
 
-`ReadApiServer.start()` resolves `RuntimeConfig.from_runtime_dir(self._config.runtime_dir)`
-once and stores it; the HTTP server subclass carries it as a plain
-attribute so the handler can reach it per request:
+The HTTP server subclass carries the raw, unvalidated setting so the
+handler can reach it per request:
 
 ```python
 class _ReadApiHTTPServer(ThreadingHTTPServer):
-    def __init__(self, address, handler_cls, runtime_config: RuntimeConfig) -> None:
+    def __init__(self, address, handler_cls, runtime_dir_setting: str | Path | None) -> None:
         super().__init__(address, handler_cls)
-        self.runtime_config = runtime_config
+        self.runtime_dir_setting = runtime_dir_setting
 ```
 
 `ReadApiServer.start()` constructs `_ReadApiHTTPServer` (replacing the bare
 `ThreadingHTTPServer` construction) instead of `ThreadingHTTPServer`
-directly; every other line of `start()`/`stop()`/`bound_port`/`__enter__`/
-`__exit__` is unchanged.
+directly, passing `self._config.runtime_dir` straight through unexamined;
+every other line of `start()`/`stop()`/`bound_port`/`__enter__`/`__exit__`
+is unchanged.
 
 `ReadApiServer` gains one new public method, `wait_forever(self) -> None`,
 that calls `self._thread.join()` if a thread exists, else returns
@@ -183,11 +218,17 @@ dispatch mechanism.
    checked and resolved **before** any query-string parsing or database
    access for `/snapshot/packets`.
 3. Query-string validation (unknown key, repeated key, malformed `limit`,
-   empty `after`) is checked and resolved **before** any database
-   connection is opened.
-4. The database connection is opened read-only (`mode=ro`); this slice's
-   code path contains no `INSERT`, `UPDATE`, `DELETE`, `CREATE`, or `PRAGMA
-   ... = ` statement of any kind, and no migration call.
+   empty `after`) is checked and resolved **before** any `RuntimeConfig`
+   resolution or database connection is attempted.
+4. `RuntimeConfig.from_runtime_dir(...)` resolution and the database
+   connection open/query are both inside the one try/except described
+   under "Database-unavailable handling," catching
+   `(RuntimePathError, sqlite3.Error)` uniformly. The database connection,
+   when one is opened, is read-only (`mode=ro`); this slice's code path
+   contains no `INSERT`, `UPDATE`, `DELETE`, `CREATE`, or `PRAGMA ... = `
+   statement of any kind, and no migration call, and no other exception
+   type is caught or suppressed (a genuine bug elsewhere still surfaces
+   normally rather than being silently reported as `database_unavailable`).
 
 ## Boundary, proof, and M0-D12
 
@@ -241,17 +282,22 @@ new fixture-building code is added to any production module):
    exact `test_02` assertion (body, status, headers, no stderr output)
    against the refactored dispatcher, proving zero behavior change to
    `/health`.
-8. `test_08_database_unavailable_returns_503` — construct a
-   `ReadApiConfig` pointing at a `runtime_dir` whose database file does
-   not exist (no `SQLiteFoundation(...).health()` call made for this
-   config); `GET /snapshot/packets` returns `503` and exactly
-   `{"error":"database_unavailable"}`; confirm via a monkeypatched
-   `sqlite3.connect` call counter that no connection was leaked (a
-   `finally`-block close happens even on the open-time failure path,
-   trivially true here since no connection object exists yet — the
-   assertion instead confirms no exception propagates past the handler
-   and the server keeps serving `/health` correctly on a subsequent
-   request in the same test).
+8. `test_08_database_unavailable_returns_503` — two sub-cases, both
+   proving the unified `(RuntimePathError, sqlite3.Error)` handling
+   (blocking findings 1 and 2 from Decision Fidelity review):
+   (a) a `runtime_dir` whose containing `var/`-relative directory exists
+   but whose database file does not (no `SQLiteFoundation(...).health()`
+   call made for this config) — exercises the `sqlite3.Error` branch;
+   (b) a `runtime_dir` whose path does not exist at all yet (nothing
+   under the fixed `var/` root has ever been created for it) — exercises
+   the `RuntimePathError` branch. Both sub-cases assert `GET
+   /snapshot/packets` returns `503` and exactly
+   `{"error":"database_unavailable"}`, no exception propagates past the
+   handler (confirmed by the server continuing to serve `/health`
+   correctly on a subsequent request in the same test), and — for
+   sub-case (a), where a connection could have been opened —  a
+   monkeypatched `sqlite3.connect` call counter confirms no connection is
+   leaked open.
 9. `test_09_query_parsing_uses_path_only_not_query_string_for_routing` —
    `GET /snapshot/packets?limit=1` and `GET /health?ignored=1` are both
    routed correctly (the latter still returns the exact `/health` body;
