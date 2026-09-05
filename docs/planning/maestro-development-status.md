@@ -1245,7 +1245,26 @@ blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (2/4),
 Wave G (0/3) — 29 of 39 items are done (~74%), plus C2/D3 blocked
 together and D4/D5 rescheduled to M4.
 
-Next: any independent Wave F (F3, F4), Wave G (G1, G3 — G2 needs D7),
-or D7 (wire the Atlas crash card's recovery buttons to D6 — will need
+`MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01` is merged (planning PR #151
+at `0b24ff3`, implementation PR #154 at `01b4c8c`) — real progress on
+roadmap item 35 ("Activity tab: History/Agents/Cost segmented"), split
+into its smallest independently reviewable piece matching the E1/E1B
+and E2/E2B precedent: the real 3-way segmented control (all three
+tappable, correct `aria-current` state) plus real content for only the
+History segment, reusing E6's own `HISTORY_STATS`/`HISTORY_ENTRIES`/
+`HISTORY_KIND_STYLE` fixture and style data verbatim. **Item 35 itself
+is not yet complete** — the Agents segment (reusing E4) and the Cost
+segment (reusing E1-E3) remain separate, not-yet-built future slices,
+so Wave F's own completed-item count stays at 2/4 until they land; this
+merge is real, disclosed partial progress, not a completed roadmap
+item. Decision Fidelity review passed with 2 non-blocking notes (a
+dangling CSS class reference, an overstated line-range citation
+framing) fixed at zero cost; independent implementation review
+approved with zero findings. 21/21 test files, 157/157 tests pass,
+zero regressions.
+
+Next: any independent Wave F (item 35's own remaining Agents/Cost
+segments, or F4), Wave G (G1, G3 — G2 needs D7), or D7 (wire the Atlas
+crash card's recovery buttons to D6 — will need
 its own real-packet-identity check first, the same class of question
 D3 already found) not blocked by C2/D3's open question.

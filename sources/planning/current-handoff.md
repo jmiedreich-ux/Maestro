@@ -388,9 +388,14 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    `record_and_close_needs_replan` — only one of the roadmap's three
    named recovery options has any real backend counterpart, the other
    two rescheduled to M3 matching D4/D5's own precedent; zero
-   corrections needed at either review. Each subsequent wave slice
-   still requires its own pre-execution Decision Fidelity approval
-   before implementation.
+   corrections needed at either review. `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01`
+   is merged: real progress on roadmap item 35 (Activity tab), split
+   like E1/E1B and E2/E2B into the real segmented control plus only
+   the History segment's real content, reusing E6's fixture/style data
+   verbatim — item 35 itself is not yet complete (Agents/Cost segments
+   remain), so Wave F's completed-item count is unchanged. Each
+   subsequent wave slice still requires its own pre-execution Decision
+   Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
