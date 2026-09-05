@@ -720,5 +720,46 @@ not fixed: B3's static nav rows use `13.5px` font-size where the
 reference file actually specifies `14px` — a real but cosmetic
 0.5px issue, recorded here as optional future cleanup, not blocking.
 
-Next: Wave C's remaining items (C2 real-data wiring, C3 decision card,
-C4 fidelity record, C5 crash card).
+**C2 (packet thread wired to real data) is deferred, not built, and
+this is a deliberate architecture ruling, not a skipped step.**
+Sequencing Wave C surfaced that C2 has an unmet dependency (Wave A
+stopped at A5; A6/A7 were never built) and, more fundamentally, that
+the backend's structured `packets`/`attempts`/`reviews`/`events` data
+model has no concept matching the mockup's narrative chat-style thread
+messages. Producing one requires either a new backend "thread message"
+concept or a structured-to-narrative synthesis layer — a real product/
+architecture decision, recorded in `docs/planning/m2-atlas-roadmap.md`
+(PR #91, merged at `b84f32f`) as an open question for Owner input, not
+resolved unilaterally under the delegated 90% design authority. This
+does not block the rest of Wave C: C3 and onward extend `PacketThread`
+and `DecisionCard`'s own fixture patterns and need no real backend
+wiring.
+
+`MB-SLICE-M2-C3-DECISION-CARD-RULING-01` is merged (planning PR #92 at
+`1b4af558`, implementation PR #93 at `0aa3c709`): a standalone
+`DecisionCard` component rendering the ruling variant's exact visual
+anatomy (eyebrow, headline, lede, chain-chip evidence row — no option
+list, no footer, fully read-only) driven by one real, already-reviewed
+M1 `_REVIEW_ROUTES` entry
+(`("AwaitingReview","IndependentImplementation","Approve") ->
+"MergeReady"`), not the reference mockup's fictional "Architect agent"
+persona — per the roadmap's own "Architecture ruling on the one real
+gap" section. Deliberately does not reuse C1's `A.2` fixture thread or
+the reference file's own decision-card scenario, since both are real
+*owner-decision* cases (C4), not *ruling* cases. Full Decision Fidelity
+review found 2 blocking findings (a wrong `operational_state.py`
+line-number citation, and an undisclosed gap against the roadmap's own
+"link to the rule that fired" requirement); the one available targeted
+planning correction fixed both — the fired rule is now cited as an
+exact textual reference (`rule: _REVIEW_ROUTES[...] -> "..."`), since no
+real, navigable rule-inspection surface exists anywhere in M2 yet —
+approved by targeted verification. Independent implementation review
+confirmed a byte-exact match to the frozen contract; all 35 `apps/atlas`
+tests pass (27 existing + 8 new), build succeeds, `DecisionCard` is not
+imported anywhere else yet (standalone, like `PacketThread` before
+C1B).
+
+Next: Wave C's remaining items — C4 (decision card, owner-decision
+variant, options rendered but inert), C5 (Decision Fidelity record
+rendering), C6 (crash card), C7 (header/state-source wiring). C2 stays
+deferred pending Owner input on the real-data synthesis question above.

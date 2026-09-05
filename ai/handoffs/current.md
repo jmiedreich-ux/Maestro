@@ -267,11 +267,23 @@ terminally returned; see the status record), B4 mobile shell
 (`MB-SLICE-M2-B4-MOBILE-SHELL-01`). Wave C1 (packet thread,
 `MB-SLICE-M2-C1-PACKET-THREAD-01`) and C1B (wired into `DesktopShell`,
 `MB-SLICE-M2-C1B-SHELL-WIRING-01` — the shell now shows real fixture
-content for the first time) are also merged. Next: Wave C's remaining
-items (C2 real-data wiring, C3 decision card, C4 fidelity record, C5
-crash card). Each subsequent wave slice still requires its own
-pre-execution Decision Fidelity approval before implementation. All
-returned slices remain immutable and non-authoritative.
+content for the first time) are also merged. C2 (real-data wiring) is
+deliberately **deferred**, not built: it has an unmet A6/A7 dependency
+and, more fundamentally, the backend's structured data model has no
+concept matching the mockup's narrative thread messages — a real
+product/architecture question recorded in the roadmap as open for
+Owner input, not resolved unilaterally. C3 (decision card, ruling
+variant, `MB-SLICE-M2-C3-DECISION-CARD-RULING-01`) is now also merged:
+a standalone `DecisionCard` driven by one real M1 `_REVIEW_ROUTES`
+entry rather than the mockup's fictional "Architect agent" persona, per
+the roadmap's own architecture ruling; its planning packet needed one
+targeted correction (a line-citation error and a missing "link to the
+rule that fired" disclosure) before approval. Next: Wave C's remaining
+items — C4 (decision card, owner-decision variant), C5 (Decision
+Fidelity record), C6 (crash card), C7 (header/state-source wiring).
+Each subsequent wave slice still requires its own pre-execution
+Decision Fidelity approval before implementation. All returned slices
+remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
