@@ -40,7 +40,32 @@ Local-only (loopback-bound, no auth per Owner decision 2026-09-05: single local 
 
 ### Wave C — Packet thread (desktop) / Chat (mobile) — the default view
 12. **C1 — Packet thread, static fixtures.** Thread rendering (rows, avatars, grouping rule) against hardcoded fixtures, per the README's own step 2. No decision card yet.
-13. **C2 — Packet thread wired to real data.** Same view, reads `A2`/`A5` snapshot + `A6` stream instead of fixtures.
+13. **C2 — Packet thread wired to real data.** Same view, reads `A2`/`A5`
+    snapshot + `A6` stream instead of fixtures. **Blocked, discovered
+    2026-09-05 while sequencing Wave C execution — not merely a missing
+    dependency, a real architecture gap:** `A6` (the event stream) and
+    `A7` (the reconnect contract) were never built as their own slices —
+    Wave A execution stopped at `A5` (the events *snapshot*, a bounded
+    historical query) — so C2 cannot be *fully* built as scoped even
+    once that gap is closed. More fundamentally, the actual backend data
+    model (`packets`/`attempts`/`reviews`/`events` — all structured
+    records) has no concept of the mockup's narrative chat messages
+    ("Terra, base is 9d3e1a2. You can write one Runtime file...").
+    `events` carries a machine `event_type`, `before_json`/`after_json`,
+    and a `reason` payload — not authored prose. Producing something
+    resembling C1's fixture thread from real data requires either a new
+    backend concept (a real "thread message" record, itself a product
+    decision about what a Maestro agent/coordinator actually writes and
+    where) or a synthesis layer turning structured events into
+    human-readable narrative (a nontrivial design choice with real
+    fidelity/scope tradeoffs). Deciding which is a reserved product/
+    architecture choice, not a routine implementation detail delegated
+    authority should decide unilaterally — this is recorded here as an
+    open question for the Owner, not silently resolved. **Not a blocker
+    for the rest of Wave C**: C3-C7 all extend `PacketThread`'s existing,
+    already-reviewed fixture data (rendering a decision card, a fidelity
+    record, and a crash card on top of the same `A.2` messages) and need
+    no real backend wiring at all — they proceed in C2's absence.
 14. **C3 — Decision card, ruling variant.** Read-only rendering, driven by the real routing-table evidence per the ruling above.
 15. **C4 — Decision card, owner-decision variant, read-only.** Options rendered but inert (no command wiring yet — that is Wave D).
 16. **C5 — Decision Fidelity record (`DF-2`) rendering.**
