@@ -2,7 +2,7 @@
 
 **Slice ID:** `MB-SLICE-M2-F1-NOW-TAB-01`
 **Status:** `Draft, pending Decision Fidelity Review`
-**Base:** `ed200d1` (full: `ed200d146d6a1a76a5aabc862d0b12f0f8b6dcfa`, `origin/master`)
+**Base:** `09545e6` (full: `09545e6d2ba2d8fe7d0177c776618ee53f0ab930`, `origin/master`)
 
 ## Scope, deliberately minimal
 
