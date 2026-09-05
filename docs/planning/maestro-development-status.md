@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`ff74adc`
+`4a1b7ce`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -686,4 +686,23 @@ imports it yet.
 
 **Wave B (Atlas app shells) is now complete: the app scaffold (B1),
 design tokens (B2), desktop shell (B3), and mobile shell (B4) are all
-merged.** Wave C (packet thread) is next.
+merged.**
+
+`MB-SLICE-M2-C1-PACKET-THREAD-01` is merged at
+`4a1b7ce99b7d4f366ef0e8f7081586b934a929e5`: a standalone `PacketThread`
+component rendering the reference file's real `ENTRIES['A.2']` fixture
+thread (6 messages, avatars, the grouping rule), not wired into
+`DesktopShell`/`App.tsx`. Full Decision Fidelity review exhaustively
+verified every fixture value (message text, names, times, colors)
+byte-accurate against the reference file and found 1 blocking finding (a
+test-count bookkeeping mismatch, not a content defect) plus 1
+non-blocking wording fix; the one available targeted planning correction
+resolved both, approved by targeted verification. Independent
+implementation review returned `APPROVE` with no findings; all 24
+`apps/atlas` tests pass, build succeeds, `PacketThread` correctly absent
+from the bundle since nothing imports it yet.
+
+Next: wiring `PacketThread` into `DesktopShell`'s nav and content pane
+(a new slice this program's roadmap named but had not yet scoped), then
+Wave C's remaining items (C2 real-data wiring, C3 decision card, C4
+fidelity record, C5 crash card).
