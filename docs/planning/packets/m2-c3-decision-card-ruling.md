@@ -1,7 +1,13 @@
 # M2 Wave C — Decision Card, Ruling Variant — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C3-DECISION-CARD-RULING-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Corrected — Pending Targeted Decision Fidelity Verification`.
+Full Decision Fidelity review found 2 blocking findings (a wrong
+`operational_state.py` line-number citation, and an undisclosed gap
+against the roadmap's own "link to the rule that fired" requirement);
+one targeted planning correction resolved both, re-verified against the
+real toolchain. No further planning correction is available for this
+slice.
 **Base:** `b84f32f` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -42,6 +48,25 @@ file's **exact visual anatomy** (card structure, colors, type,
 spacing — every value cited below, checked directly against the file)
 but replaces every piece of copy that names a fictional persona with
 copy naming the real mechanism.
+
+**"A link to the rule that fired" (corrected — blocking finding from
+Decision Fidelity review: an earlier draft of this slice omitted this
+requirement entirely, with no disclosed exclusion for it, which is
+inconsistent with this program's own standing practice of disclosing
+every real gap rather than silently dropping a requirement its own
+cited authority states).** This slice renders that link as a literal,
+exact textual citation of the fired rule — `rule:
+_REVIEW_ROUTES["AwaitingReview","IndependentImplementation","Approve"]
+→ "MergeReady"` in the trailing `why` text — not as a clickable
+hyperlink. A real navigable link needs a real destination (a rule
+detail view or source-jump target), and no such destination exists
+anywhere in M2 yet — inventing one here would repeat the exact
+"rendering a capability that does not exist" failure this slice
+otherwise avoids. The citation is precise enough to trace, by hand, to
+the exact fired dict entry in `operational_state.py`, which is the
+substantive intent behind "link to the rule that fired." Building an
+actual clickable link to a real rule-inspection surface is out of
+scope for this slice (see Explicit exclusions, M0-D12 §3).
 
 **The rendered evidence is a real M1 routing-table entry, not invented
 product content.** `services/maestro/maestro/operational_state.py`'s
@@ -172,16 +197,16 @@ literals).
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C3-DECISION-CARD-RULING-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:b84f32f163618285d40d7fbd675999866d49c56c"]` |
+| `evidence_refs` | `["git:base:b84f32f163618285d40d7fbd675999866d49c56c","git:full-planning-review-head:e8a87ca782ff58391634b516bed09cde713d9e4c","review:decision-fidelity:request-changes:2-blocking-findings"]` |
 
 ## Exact file contents
 
@@ -220,7 +245,10 @@ export interface RulingExample {
 
 /**
  * `_REVIEW_ROUTES[("AwaitingReview", "IndependentImplementation", "Approve")]
- * == "MergeReady"` (`operational_state.py`, line 73) — an approved
+ * == "MergeReady"` (`operational_state.py`, line 74 — corrected,
+ * blocking finding from Decision Fidelity review: the dict's first two
+ * entries occupy lines 72-73, making this cited third entry line 74,
+ * not line 73 as an earlier draft said) — an approved
  * independent-implementation review always advances a packet to
  * `MergeReady`, deterministically, with no human step.
  */
@@ -406,7 +434,10 @@ export function DecisionCard() {
             →
           </span>
           <span className={styles.chipOn}>{route.toState}</span>
-          <span className={styles.why}>matches the recorded routing rule — no human input required</span>
+          <span className={styles.why}>
+            rule: _REVIEW_ROUTES["{route.fromState}","{route.reviewKind}","{route.verdict}"] → "
+            {route.toState}"
+          </span>
         </div>
       </div>
     </div>
@@ -436,6 +467,18 @@ describe("DecisionCard (ruling variant)", () => {
     expect(screen.getByText(route.toState)).toBeInTheDocument();
     expect(screen.queryByText(/Architect agent/)).toBeNull();
     expect(screen.queryByText(/Terra/)).toBeNull();
+  });
+
+  it("cites the exact fired rule as text evidence — the roadmap's 'link to the rule that fired' requirement, satisfied as a precise citation rather than an unbuildable hyperlink", () => {
+    render(<DecisionCard />);
+    const { route } = RULING_EXAMPLE;
+    expect(
+      screen.getByText(
+        (_, node) =>
+          node?.textContent ===
+          `rule: _REVIEW_ROUTES["${route.fromState}","${route.reviewKind}","${route.verdict}"] → "${route.toState}"`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("labels the eyebrow badge by the real mechanism, not a simulated ruling persona", () => {
@@ -492,8 +535,8 @@ describe("DecisionCard (ruling variant)", () => {
 against the real toolchain during authoring, not only drafted.** All
 four files above were written to a scratch copy of this worktree and
 `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`
-were run for real from `apps/atlas/`: 34/34 tests passed (27 existing +
-7 new), typecheck and lint were clean, and the production build
+were run for real from `apps/atlas/`: 35/35 tests passed (27 existing +
+8 new), typecheck and lint were clean, and the production build
 succeeded. Two of the originally-drafted tests failed on the first real
 run — both asserted a CSS-Module-resolved computed style
 (`element.style.border`/`.background`) that jsdom does not populate for
@@ -503,6 +546,14 @@ on the root element, matching the exact pattern already established by
 `DesktopShell.test.tsx`/`MobileShell.test.tsx`. This is disclosed here
 so the Decision Fidelity reviewer knows the code block above is the
 corrected, passing version, not the first draft.
+
+**Re-verified after the targeted planning correction below (the "link
+to the rule that fired" fix and the line-number fix):** all four files,
+with the correction applied, were rebuilt in a scratch copy and
+`npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`
+were run again for real — 35/35 tests passed (27 existing + 8 new,
+the 8th being the new rule-citation test added by this correction),
+typecheck, lint, and build all clean.
 
 ## Guards and boundary
 
@@ -539,13 +590,13 @@ No other path — `App.tsx`, `App.test.tsx`, everything under
 `apps/atlas/src/shell/`, `apps/atlas/src/thread/`, and
 `apps/atlas/src/tokens/` are untouched.
 
-The 7 named tests, run from `apps/atlas/`: `npm run typecheck`, `npm run
+The 8 named tests, run from `apps/atlas/`: `npm run typecheck`, `npm run
 lint`, and `npm test` must all exit `0`, covering the new test file
 above plus every existing `apps/atlas` test continuing to pass
-unmodified — 34 total after this slice (27 existing, verified directly
+unmodified — 35 total after this slice (27 existing, verified directly
 by running `npm test` at this slice's base commit — 4 token tests, 1
 App test, 7 thread tests, 5 mobile-shell tests, 10 desktop-shell tests
-— + 7 new). `npm run build` must still succeed; `DecisionCard` is not
+— + 8 new). `npm run build` must still succeed; `DecisionCard` is not
 expected to appear in the `dist/` bundle, matching B2's, B4's, and C1's
 own build-unaffected proof.
 
@@ -563,15 +614,18 @@ own build-unaffected proof.
    option list and its footer button (both variants — deferred to C4),
    the Decision Fidelity record (C5), the crash card (C6), any wiring
    into `PacketThread`/`DesktopShell`/`App.tsx`, any second evidence
-   example.
+   example, and a real clickable link/navigable destination for "the
+   rule that fired" (rendered here as an exact textual citation
+   instead — see Scope; a real rule-inspection surface to link to does
+   not exist anywhere in M2 yet, and is not this slice's to invent).
 4. **Assurance level:** practical component-rendering correctness with
    an accurately cited real backend mechanism, proportionate to a
    read-only view with no data dependency and no consumer yet —
    identical assurance posture to C1, with the added rigor of citing a
    cross-language (Python routing table → TypeScript fixture) source of
    truth accurately, disclosed as a hand-maintained, unchecked coupling.
-5. **Acceptance proof:** the 7 named tests, the existing 27 `apps/atlas`
-   tests continuing to pass (34 total), `npm run typecheck`, `npm run
+5. **Acceptance proof:** the 8 named tests, the existing 27 `apps/atlas`
+   tests continuing to pass (35 total), `npm run typecheck`, `npm run
    lint`, and `npm run build`, all passing.
 6. **Implementation boundary:** exactly the four writable paths above;
    no new npm dependency; every color either a real token property or a
