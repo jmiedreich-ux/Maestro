@@ -907,7 +907,29 @@ implementation review confirmed a byte-exact match to the frozen
 contract; all 81 `apps/atlas` tests pass (75 existing + 6 new), build
 succeeds, `PerfRecordsList` is not imported anywhere else yet.
 
+`MB-SLICE-M2-E7-GATE-CRITERIA-LIST-01` is terminally `returned`. Full
+Decision Fidelity review found 2 blocking findings (an undisclosed
+truncation of the "verbatim" source quote — the card's own real footer
+note was silently dropped with no exclusion listed — and a false claim
+of having "checked directly against `DesktopShell.tsx`'s own real
+usage" of `colors.navText`, which has no real consumer anywhere in
+this codebase). The one available targeted planning correction fixed
+the footer-note disclosure correctly, but its own replacement
+reasoning for the second finding introduced a new, confirmed false
+claim of the same species (asserting `DesktopShell.tsx` "uses ...
+`navTextDim`," when that file actually consumes `colors.inkMuted` and
+only mentions `navTextDim` in a comment noting the coincidental value
+equality). The targeted verification returned `REQUEST_CHANGES` on
+this new inaccuracy; per this program's bounded-correction policy, no
+second correction is available, so this candidate is immutable and
+non-authoritative. A fresh `-02` candidate must restate the
+`colors.navText` disclosure using only claims verified precisely
+(e.g., "no property in the `navGround`/`navText*` group is consumed
+anywhere in `apps/atlas/src` today" — checked exhaustively, not a
+partial enumeration) and must not reuse this candidate's specific
+wording.
+
 Next: the rest of Wave E (per-action detail groups + expand/collapse —
 E2B, Performance breakdown card — E3, Agents roster/contention, History
-timeline, Gate criteria), per the M2 roadmap and the standing
-instruction to complete all of M2 where possible.
+timeline, Gate criteria — a fresh `-02` candidate), per the M2 roadmap
+and the standing instruction to complete all of M2 where possible.

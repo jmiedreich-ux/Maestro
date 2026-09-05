@@ -333,8 +333,30 @@ matching E1's own precedent. E2 (per-action records list, collapsed,
 `PerfRecordsList` (all 5 real `PERF_RECORDS`, each its own bordered
 card), zero disclosed color literals; roadmap item 27 was split, with
 the expandable detail groups and expand/collapse behavior deferred to
-a follow-on `E2B`-style slice. Next: the rest of Wave E (detail
-groups/expand, breakdown card, Agents, History, Gate).
+a follow-on `E2B`-style slice.
+
+## Terminal Gate-criteria slice
+
+`MB-SLICE-M2-E7-GATE-CRITERIA-LIST-01` is terminally `returned` after
+its sole targeted Decision Fidelity verification returned
+`REQUEST_CHANGES`. Full review found 2 blocking findings (an
+undisclosed truncation dropping the entry-criteria card's own real
+footer note; a false claim of having checked `DesktopShell.tsx`'s real
+usage of `colors.navText`, which has no real consumer anywhere). The
+one available targeted correction fixed the footer-note disclosure but
+introduced a new, confirmed false claim of the same species (that
+`DesktopShell.tsx` "uses ... `navTextDim`" — it actually consumes
+`colors.inkMuted`, mentioning `navTextDim` only in a comment about
+coincidental value equality). No implementation was dispatched. This
+slice cannot be reopened, corrected, replaced, renamed, or reused as
+authority. The next independent slice must restate the `colors.navText`
+disclosure using only exhaustively-verified claims (e.g., "no property
+in the `navGround`/`navText*` group has any real consumer anywhere in
+`apps/atlas/src` today" — checked completely, not partially
+enumerated), without taking this slice's allowance.
+
+Next: the rest of Wave E (detail groups/expand, breakdown card, Agents,
+History, and a fresh Gate-criteria `-02` candidate).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
