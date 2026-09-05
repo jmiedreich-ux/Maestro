@@ -1,7 +1,7 @@
 # M2 Wave B — Design Tokens Module — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-B2-DESIGN-TOKENS-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found `performanceSeriesColors` was sourced from outside the Design Tokens section (a real scope violation, mislabeled as coming from the Color table), plus several non-blocking scope/mechanism fixes
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 1 blocking finding (`performanceSeriesColors` sourced from outside the Design Tokens section, mislabeled); one targeted planning correction resolved it and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `d3275dc` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -69,8 +69,8 @@ slice already declines to capture.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B2-DESIGN-TOKENS-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -78,7 +78,7 @@ slice already declines to capture.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:d3275dc","git:full-planning-review-head:64a98dede86e9eb490a131707ce6ea5dc1a0c669","review:decision-fidelity:request-changes:1-blocking-finding"]` |
+| `evidence_refs` | `["git:base:d3275dc","git:full-planning-review-head:64a98dede86e9eb490a131707ce6ea5dc1a0c669","review:decision-fidelity:request-changes:1-blocking-finding","git:corrected-planning-head:f35c2d2da4b429af876a0e60ce0bfb42e5bf37e6","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact file contents
 
