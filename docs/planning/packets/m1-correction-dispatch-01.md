@@ -34,16 +34,16 @@ M0-D05, and M0-D12, read from current `origin/master`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-CORRECTION-DISPATCH-01` |
-| `phase` | `PendingImplementation` |
-| `current_actor` | `MaestroDeveloper` |
+| `phase` | `MergeReady` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:9c78fdbd7ec7668c8dbfeeb13edf573e7be946e6","git:full-planning-review-head:4b6e5e2e9f0d2166e8c8298be37e9d9aa02f0bf8","review:decision-fidelity:approve:no-findings"]` |
+| `evidence_refs` | `["git:base:9c78fdbd7ec7668c8dbfeeb13edf573e7be946e6","git:full-planning-review-head:4b6e5e2e9f0d2166e8c8298be37e9d9aa02f0bf8","review:decision-fidelity:approve:no-findings","git:implementation-head:b04b4f42166ef00940f2186948f1adba6d9ddfed","review:independent-implementation:approve:no-findings","tests:274-of-274-passing:1-pre-existing-unrelated-pyyaml-environment-failure"]` |
 
 ## Closed command and route
 
