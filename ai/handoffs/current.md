@@ -454,9 +454,20 @@ color-token choice not itemized in the discrepancy table, and an
 imprecise attribution of "Decision Fidelity check" phrasing — neither
 a real defect); all 123 `apps/atlas` tests pass (114 existing + 9 new).
 
-Next: `MB-SLICE-M2-E5`, Agents contention/lock card — the final Wave E
-item — per the M2 roadmap and the standing instruction to complete all
-of M2 where possible.
+`MB-SLICE-M2-E5-CONTENTION-CARD-01` is merged (planning PR #134,
+implementation PR #135), completing roadmap item 30 — **Wave E is now
+fully complete, all 7 items merged**. A standalone `ContentionCard`:
+header ("contention" label, "no overlap" status), all 3 real
+`CONTENTION` rows, and the card's own real trailing caveat. Zero
+disclosed color literals, no real-vs-fictional persona issue in this
+data. Full Decision Fidelity review passed with zero defects and no
+correction needed; independent implementation review confirmed
+zero remaining defects; all 129 `apps/atlas` tests pass (123 existing +
+6 new).
+
+**Wave E complete.** Next: awaiting direction on Wave D (guarded
+operator-action commands — real backend command API work) versus
+continuing into Wave F/G.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
