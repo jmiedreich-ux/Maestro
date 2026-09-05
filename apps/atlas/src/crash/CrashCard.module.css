@@ -1,0 +1,147 @@
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  padding: 4px 34px 8px;
+}
+
+.card {
+  min-width: 0;
+  max-width: 60ch;
+  border: 1px solid var(--atlas-crash-border);
+  border-radius: 14px;
+  background: var(--atlas-crash-bg);
+  overflow: hidden;
+}
+
+.head {
+  padding: 15px 17px 13px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 10.5px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-crash-ink);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-crash-dot);
+}
+
+.age {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  color: var(--atlas-crash-age);
+}
+
+.headline {
+  margin-top: 9px;
+  font-family: var(--atlas-font-display);
+  font-size: 17.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  text-wrap: pretty;
+  color: var(--atlas-crash-headline);
+}
+
+.lede {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--atlas-crash-lede);
+  text-wrap: pretty;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 22px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-crash-divider);
+}
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.factLabel {
+  color: var(--atlas-crash-fact-label);
+}
+
+.factValue {
+  font-family: var(--atlas-font-mono);
+  font-weight: 600;
+  color: var(--atlas-crash-fact-value);
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 9px 9px;
+}
+
+.option {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--atlas-crash-surface);
+  text-align: left;
+  cursor: default;
+  font: inherit;
+}
+
+.option:hover {
+  border-color: var(--atlas-crash-hover-border);
+  background: var(--atlas-crash-hover-bg);
+}
+
+.optionRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.optionTitle {
+  font-size: 14.5px;
+  color: var(--atlas-crash-headline);
+}
+
+.optionCost {
+  margin-left: auto;
+  flex: none;
+  font: 500 11px var(--atlas-font-mono);
+  color: var(--atlas-crash-ink);
+}
+
+.optionBody {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--atlas-crash-lede);
+  text-wrap: pretty;
+}
+
+.footer {
+  padding: 10px 17px;
+  border-top: 1px solid var(--atlas-crash-divider);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--atlas-crash-fact-label);
+  text-wrap: pretty;
+}
