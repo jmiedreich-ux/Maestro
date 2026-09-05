@@ -1,7 +1,7 @@
 # M2 Wave G — Disconnected State (Connection Strip + Live Indicator) — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-G1-DISCONNECTED-STATE-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `Decision Fidelity review returned PASS WITH NON-BLOCKING NOTES (a misquoted status-doc citation, an overstated "same gap" framing, and a nonexistent AgentCard.tsx file cited twice instead of AgentsRoster.tsx's own private AgentCard function) — all fixed at zero cost, no planning correction needed`
 **Base:** `a72ab45` (full: `a72ab4503228fe69768d9b46d67b2aa33b433a0d`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -14,11 +14,20 @@ and A7 (the reconnect/resync contract) were never built.**
 `_ROUTES` table are exhaustive — `/health`, `/snapshot/packets`,
 `/snapshot/attempts`, `/snapshot/reviews`, `/snapshot/events` only; no
 `/stream/events` route, no SSE handling, no last-seen-event-id/gap-
-fill logic anywhere in this repository. This is the same real gap
-already identified and recorded as the reason C2/D3/D7 are rescheduled
-to M3 (`docs/planning/maestro-development-status.md`, the C2 deferral
-paragraph: *"Wave A execution stopped at A5 ... A6/A7 were never
-built"*). There is also no existing frontend consumer of any kind —
+fill logic anywhere in this repository. **Corrected — non-blocking
+finding from Decision Fidelity review:** this A6/A7 gap is real and
+independently sufficient justification on its own, but it is not
+literally identical to what already got C2/D3/D7 rescheduled to M3 —
+those three were rescheduled because specific fixture data
+(`OwnerDecisionCard`'s `packet_id`, `CrashCard`'s fixture) has no
+matching real backend row, a data-availability mismatch, not
+specifically the missing stream/reconnect machinery (which C2's own
+paragraph names as only part of a "more fundamental" cause). Both are
+real, related backend-immaturity gaps recorded in the same M3-target
+family, not one and the same finding
+(`docs/planning/maestro-development-status.md`, the C2 deferral
+paragraph, quoted exactly: *"(Wave A stopped at A5; A6/A7 were never
+built)"*). There is also no existing frontend consumer of any kind —
 every Atlas component built so far is fixture-driven, none polls or
 streams from the backend.
 
@@ -122,10 +131,13 @@ files and modifies 6 existing files, all within `apps/atlas/src/shell`.
    never a raw inline `style.color`/`style.background`.** A raw inline
    color/background value is silently re-serialized to `rgb(...)` by
    both real browsers and jsdom, which would break an exact-string
-   test assertion against the original hex token — this mirrors
-   `AgentCard.tsx`'s own already-established `cardVars` convention for
-   per-item dynamic colors, applied here for per-render dynamic colors
-   instead. (Self-caught during authoring, before any test was
+   test assertion against the original hex token — this mirrors the
+   private `AgentCard` function's own already-established `cardVars`
+   convention (`apps/atlas/src/agents/AgentsRoster.tsx`, not a
+   separate `AgentCard.tsx` file — corrected per Decision Fidelity
+   review) for per-item dynamic colors, applied here for per-render
+   dynamic colors instead. (Self-caught during authoring, before any
+   test was
    written against it — an early draft used raw inline color/
    background directly; fixed before writing tests, avoiding a defect
    class this program's own established convention already exists to
@@ -402,8 +414,9 @@ const SHELL_VARS = {
   // vary by `systemState` (idle vs. reconnecting), so they are
   // computed per-render by `deriveConnectionState` below and applied
   // as their own small per-render custom-property object (`connVars`),
-  // the same established convention `AgentCard`'s own `cardVars` uses
-  // for per-item dynamic colors — never as a raw inline `style.color`/
+  // the same established convention the private `AgentCard` function's
+  // own `cardVars` uses (`apps/atlas/src/agents/AgentsRoster.tsx`) for
+  // per-item dynamic colors — never as a raw inline `style.color`/
   // `style.background`, which a real browser (and jsdom) silently
   // re-serializes to `rgb(...)`, breaking an exact-string test
   // assertion against the original hex token. See
@@ -1441,6 +1454,49 @@ convention (Design rationale #2) before writing any test, since a raw
 inline color value is silently re-serialized by both real browsers and
 jsdom, which would have broken an exact-string color assertion.
 
+**Independent Decision Fidelity review result:** `PASS WITH
+NON-BLOCKING NOTES`, zero blocking findings. The review independently
+re-derived every material claim from source — re-reading
+`read_api.py`'s exact route tables, re-grepping the whole repo for any
+SSE/stream consumer, re-reading both `.dc.html` reference files'
+exact line ranges, re-checking every single hex literal in
+`colors.ts`, confirming the pre-existing `NowTab.tsx`/`DesktopShell.tsx`
+inconsistency via `git show` on the base commit, and independently
+re-applying this packet's exact proposed files and re-running the full
+toolchain (typecheck/lint/test/build), all reproducing the numbers
+above exactly — and found three citation/evidence-framing
+inaccuracies, none affecting code correctness, test validity, or the
+underlying scope decision, all fixed before freeze at zero cost, no
+planning correction consumed:
+
+1. **Misquote of the status doc.** This packet's Scope section quoted
+   `docs/planning/maestro-development-status.md`'s C2 deferral
+   paragraph as *"Wave A execution stopped at A5 ... A6/A7 were never
+   built"* — the real text reads `(Wave A stopped at A5; A6/A7 were
+   never built)`, no "execution," different punctuation. Fixed to the
+   exact quote.
+2. **Overstated "same real gap" framing.** This packet originally
+   claimed A6/A7's non-existence is "the same real gap already
+   identified and recorded as the reason C2/D3/D7 are rescheduled to
+   M3." Re-reading the actual D3 and D7 paragraphs: both were
+   rescheduled because specific fixture data
+   (`OwnerDecisionCard`'s/`CrashCard`'s `packet_id`) has no matching
+   real backend row — a data-availability mismatch, not specifically
+   the missing SSE/reconnect machinery (which C2's own paragraph names
+   as only part of a "more fundamental" cause). Fixed to describe both
+   as real, related backend-immaturity gaps in the same M3-target
+   family, not one identical finding — A6/A7's own non-existence
+   remains independently sufficient justification for this slice's
+   scope regardless.
+3. **Nonexistent file cited twice.** Design rationale #2 and the
+   `DesktopShell.tsx` `SHELL_VARS` doc comment both cited
+   "`AgentCard.tsx`'s own already-established `cardVars` convention" —
+   no file named `AgentCard.tsx` exists. `cardVars` is real, but lives
+   in a private, unexported `AgentCard` function inside
+   `apps/atlas/src/agents/AgentsRoster.tsx`. Fixed both citations to
+   name the real file. Re-verified after all three fixes: still
+   22/22 test files, 165/165 tests, clean typecheck/lint/build.
+
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
 slice.
@@ -1492,10 +1548,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-G1-DISCONNECTED-STATE-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
