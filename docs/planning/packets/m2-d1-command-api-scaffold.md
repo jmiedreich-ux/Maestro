@@ -1,7 +1,7 @@
 # M2 Wave D — Guarded Command API Scaffold — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-D1-COMMAND-API-SCAFFOLD-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Draft — Targeted correction applied (unbounded Content-Length could block a worker thread indefinitely on an oversized body; the packet's own "Operating and threat model" section falsely claimed oversized bodies were already handled), pending Targeted Decision Fidelity Verification`
 **Base:** `ccfdb3a` (full: `ccfdb3a559cb6c45448040d075b0546145e6f775`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -164,6 +164,21 @@ this slice and reused exactly as-is.
    supply `now` itself when it calls into `OperationalStateStore` —
    there is nothing for the generic scaffold to do with a timestamp
    before any real command exists to receive one.
+6. **`_MAX_COMMAND_BODY_BYTES = 1_048_576` (1 MiB), checked before
+   `self.rfile.read()` is ever called.** Found necessary by a Decision
+   Fidelity review of this packet's first draft: an unbounded
+   `content_length` passed straight to `self.rfile.read()`, combined
+   with `BaseHTTPRequestHandler.timeout` defaulting to `None` (no
+   socket read timeout), meant a POST that honestly declares a huge
+   `Content-Length` but never finishes sending that many bytes would
+   block the handling thread indefinitely — a real hang vector, not a
+   hypothetical one (independently reproduced: `test_12` genuinely
+   hangs and fails with a real `socket.TimeoutError` after 5 seconds
+   when the cap check is removed). A guarded command's own envelope is
+   small (an idempotency key, an actor, a handful of command-specific
+   fields); 1 MiB is generous headroom for that, not a real capacity
+   limit, and rejecting anything larger before reading it removes the
+   hang entirely for any body claiming to exceed the cap.
 
 ## Guards
 
@@ -202,6 +217,14 @@ this slice and reused exactly as-is.
    from this slice — see Design rationale item 3. A future real
    command (D2+) performs that validation via the real, already-tested
    `_actor()`.
+6. A request body under the `_MAX_COMMAND_BODY_BYTES` cap that arrives
+   at a deliberate trickle (rather than all at once) is not separately
+   timed out — `BaseHTTPRequestHandler.timeout` stays `None`, unchanged
+   from Wave A. This residual is explicitly accepted, not fixed, in
+   this slice (see M0-D12 item 2) — a genuinely slow-drip attack
+   against a loopback-only server with no untrusted network exposure
+   is a materially different, much lower-severity risk than the
+   unbounded/oversized-body hang this slice's own correction closes.
 
 ## `services/maestro/maestro/read_api.py` (modified — full new content)
 
@@ -254,6 +277,17 @@ _NOT_FOUND_BODY = canonical_response_json({"error": "not_found"})
 _METHOD_NOT_ALLOWED_BODY = canonical_response_json({"error": "method_not_allowed"})
 _INVALID_CONTENT_LENGTH_BODY = canonical_response_json({"error": "invalid_content_length"})
 _INVALID_JSON_BODY = canonical_response_json({"error": "invalid_json"})
+_PAYLOAD_TOO_LARGE_BODY = canonical_response_json({"error": "payload_too_large"})
+
+# A guarded command's own JSON envelope is small (an idempotency key, an
+# actor, and a handful of command-specific fields) — 1 MiB is generous
+# headroom, not a real capacity limit. Rejecting an oversized
+# Content-Length before ever calling `self.rfile.read()` is load-bearing:
+# without this cap, a POST that honestly declares a huge Content-Length
+# but never finishes sending that many bytes blocks the handling thread
+# indefinitely (`BaseHTTPRequestHandler.timeout` is `None` by default, so
+# the socket read has no timeout of its own).
+_MAX_COMMAND_BODY_BYTES = 1_048_576
 
 _VALID_SNAPSHOT_QUERY_KEYS = frozenset({"limit", "after"})
 _LIMIT_LITERAL_RE = re.compile(r"^(0|[1-9][0-9]*)$")
@@ -579,6 +613,9 @@ class _ReadApiRequestHandler(BaseHTTPRequestHandler):
         if content_length < 0:
             self._respond(400, _INVALID_CONTENT_LENGTH_BODY)
             return
+        if content_length > _MAX_COMMAND_BODY_BYTES:
+            self._respond(413, _PAYLOAD_TOO_LARGE_BODY)
+            return
         raw_body = self.rfile.read(content_length) if content_length > 0 else b""
 
         if raw_body == b"":
@@ -837,6 +874,29 @@ class CommandApiScaffoldTests(unittest.TestCase):
     def test_11_no_real_command_is_registered_in_production_code(self) -> None:
         self.assertEqual(read_api._COMMAND_ROUTES, {})
 
+    def test_12_oversized_content_length_rejected_before_reading_body(self) -> None:
+        with mock.patch.dict(read_api._COMMAND_ROUTES, {"/command/example": self._fake_handler}):
+            connection = http.client.HTTPConnection("127.0.0.1", self.server.bound_port, timeout=5)
+            try:
+                oversized = read_api._MAX_COMMAND_BODY_BYTES + 1
+                connection.putrequest("POST", "/command/example")
+                connection.putheader("Content-Length", str(oversized))
+                connection.endheaders()
+                # Deliberately send far fewer bytes than declared, and never
+                # send the rest. If the server tried to read `oversized`
+                # bytes before responding, this would hang until the
+                # client's own 5s socket timeout fired instead of returning
+                # promptly — proving the cap is checked before `rfile.read`.
+                connection.send(b"{}")
+                response = connection.getresponse()
+                body = response.read()
+                status = response.status
+            finally:
+                connection.close()
+        self.assertEqual(status, 413)
+        self.assertEqual(body, b'{"error":"payload_too_large"}')
+        self.assertEqual(self.received, [])
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -852,8 +912,11 @@ this docs-only packet was finalized (scratch changes then reverted;
 suite were restored with `git checkout --`, and the 1 new untracked
 `.pyc` was deleted):
 
-- `python -m unittest discover -s ../../tests/m2_wave_d -v` — **11/11
-  passed**, first attempt, no self-caught bugs.
+- `python -m unittest discover -s ../../tests/m2_wave_d -v` — **12/12
+  passed** (the file's own first draft had 11 tests and passed
+  first-attempt with zero self-caught bugs; a full Decision Fidelity
+  review then found one real defect — see the correction note below —
+  which is what the 12th test, `test_12`, proves fixed).
 - `python -m unittest discover -s ../../tests/m2_wave_a -v` — **49/49
   passed**, unmodified — zero regression in the existing Wave A read
   API tests.
@@ -865,11 +928,35 @@ suite were restored with `git checkout --`, and the 1 new untracked
 - `python -m compileall -q maestro ../../tests/m2_wave_d` — clean,
   exit 0.
 
-**Total: 350 tests across all 8 directories (339 pre-slice baseline +
-11 new), with the same 1 pre-existing, unrelated `m1_01` failure
+**Total: 351 tests across all 8 directories (339 pre-slice baseline +
+12 new), with the same 1 pre-existing, unrelated `m1_01` failure
 present identically before and after this slice's change** — this
 slice introduces zero new failures and fixes none of the pre-existing
 one (out of scope).
+
+**Targeted correction (found by Decision Fidelity review, fixed before
+merge):** the first draft's `_dispatch_command` called
+`self.rfile.read(content_length)` with no upper bound on
+`content_length`, and `BaseHTTPRequestHandler.timeout` is `None` by
+default (no socket read timeout) — a POST that honestly declares a
+huge `Content-Length` but never finishes sending that many bytes would
+block the handling thread indefinitely. The first draft's own
+"Operating and threat model" section (M0-D12 item 2) falsely claimed
+"a malformed or oversized body is handled" — only the malformed/
+negative-header case was actually handled. Fixed by adding
+`_MAX_COMMAND_BODY_BYTES = 1_048_576` and rejecting any
+`Content-Length` above it with `413 payload_too_large` *before* ever
+calling `self.rfile.read()`. Verified two ways: (1) `test_12` sends a
+real request declaring a `Content-Length` above the cap while only
+transmitting 2 bytes of body and never finishing, and confirms the
+server responds `413` promptly rather than hanging until the client's
+own socket timeout; (2) the fix was independently confirmed load-
+bearing by temporarily removing the new cap check and re-running
+`test_12` alone — it then genuinely hung and failed with a real
+`TimeoutError` after 5 real seconds, proving the test exercises a real
+defect, not a placebo. The `read_api.py` code block and `M0-D12` item 2
+below reflect the corrected, verified content — see "Design rationale"
+item 6 (new) for the cap's own reasoning.
 
 ## M0-D12 bounded quality contract
 
@@ -883,9 +970,19 @@ one (out of scope).
    only (unchanged from Wave A — `ReadApiConfig.__post_init__`'s
    loopback allowlist enforcement is untouched by this slice). This
    slice adds request-body parsing for the first time; a malformed or
-   oversized body is handled by existing, battle-tested stdlib
-   (`json.loads`, `int()`) wrapped in explicit `try`/`except`, with no
-   new file I/O, subprocess, or network call introduced.
+   negative `Content-Length` header is rejected by explicit
+   `try`/`except` around `int()`; an oversized (but well-formed)
+   `Content-Length` is rejected by the explicit `_MAX_COMMAND_BODY_BYTES`
+   cap *before* `self.rfile.read()` is ever called, closing a real
+   indefinite-hang vector a Decision Fidelity review found in this
+   packet's own first draft (see the correction note above) — no new
+   file I/O, subprocess, or network call is introduced. A body that
+   arrives slower than an attacker-controlled trickle but still under
+   the 1 MiB cap is not separately timed out (`BaseHTTPRequestHandler.timeout`
+   stays `None`, unchanged from Wave A); given this server is loopback-
+   only with no legitimate reason for a local client to send data at a
+   deliberate trickle, this residual is accepted, not fixed, in this
+   slice — explicitly disclosed here rather than silently left alone.
 3. **Explicit exclusions:** any real command (D2 onward), any
    `OperationalStateStore` call, real closed-shape/field validation of
    `actor` (deferred to the real command that will eventually receive
@@ -899,10 +996,10 @@ one (out of scope).
    real sockets against a real running server (matching this
    codebase's own established `http.client.HTTPConnection`-based test
    convention), not mocked at the socket layer.
-5. **Acceptance proof:** the 11 named tests, the existing 339
+5. **Acceptance proof:** the 12 named tests, the existing 339
    pre-slice tests continuing to pass (with the one pre-existing,
    unrelated `m1_01` failure unchanged), `python -m compileall`
-   passing — observed total 350 tests across 8 directories.
+   passing — observed total 351 tests across 8 directories.
 6. **Implementation boundary:** exactly one modified file
    (`read_api.py`) and one new test file; no new third-party
    dependency; no new module.
@@ -920,13 +1017,13 @@ one (out of scope).
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-D1-COMMAND-API-SCAFFOLD-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:ccfdb3a559cb6c45448040d075b0546145e6f775"]` |
+| `evidence_refs` | `["git:base:ccfdb3a559cb6c45448040d075b0546145e6f775", "git:planning-review-head:6bec322f7f7ba402e00b9e773c97203b65f69850", "review:DecisionFidelity:REQUEST_CHANGES:unbounded-content-length-can-hang-a-worker-thread-indefinitely-on-oversized-body;false-threat-model-claim", "code-correction:added-_MAX_COMMAND_BODY_BYTES-cap-before-rfile.read;corrected-threat-model-wording;added-test_12"]` |
