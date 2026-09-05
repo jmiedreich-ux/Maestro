@@ -355,8 +355,19 @@ in the `navGround`/`navText*` group has any real consumer anywhere in
 `apps/atlas/src` today" — checked completely, not partially
 enumerated), without taking this slice's allowance.
 
+`MB-SLICE-M2-E7-GATE-CRITERIA-LIST-02` (the successor candidate) is
+merged: a standalone `GateCriteriaList` (header, met-count summary, all
+5 real criteria, and the card's own real footer note), checking every
+property in the `colors.ts` nav-color group one at a time against real
+usage rather than partially enumerating, with a new test directly
+pinning the two token facts its disclosure depends on. Full Decision
+Fidelity review independently re-derived the entire nav-color-group
+table from scratch and found zero defects; independent implementation
+review confirmed a byte-exact match; all 90 `apps/atlas` tests pass (81
+existing + 9 new).
+
 Next: the rest of Wave E (detail groups/expand, breakdown card, Agents,
-History, and a fresh Gate-criteria `-02` candidate).
+History).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

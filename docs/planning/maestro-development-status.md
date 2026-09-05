@@ -929,7 +929,24 @@ anywhere in `apps/atlas/src` today" — checked exhaustively, not a
 partial enumeration) and must not reuse this candidate's specific
 wording.
 
+`MB-SLICE-M2-E7-GATE-CRITERIA-LIST-02` is merged (planning PR #117 at
+`d459357b`, implementation PR #118 at `8c0ee8ce`), closing out the
+Gate-criteria saga: candidate `-01` was terminally returned (its one
+correction fixed a real finding but introduced a new false claim about
+`DesktopShell.tsx`'s color-token usage); this fresh `-02` candidate
+checked every property in the `colors.ts` nav-color group one at a
+time against real usage — not partially enumerated — and added a test
+directly pinning the two token facts its disclosure depends on. A
+standalone `GateCriteriaList` component: header, met-count summary,
+all 5 real criteria, and the card's own real footer note, with exactly
+one exhaustively-disclosed color literal. Full Decision Fidelity review
+independently re-derived the entire nav-color-group table from scratch
+and found zero defects. Independent implementation review confirmed a
+byte-exact match to the frozen contract; all 90 `apps/atlas` tests pass
+(81 existing + 9 new), build succeeds, `GateCriteriaList` is not
+imported anywhere else yet.
+
 Next: the rest of Wave E (per-action detail groups + expand/collapse —
 E2B, Performance breakdown card — E3, Agents roster/contention, History
-timeline, Gate criteria — a fresh `-02` candidate), per the M2 roadmap
-and the standing instruction to complete all of M2 where possible.
+timeline), per the M2 roadmap and the standing instruction to complete
+all of M2 where possible.
