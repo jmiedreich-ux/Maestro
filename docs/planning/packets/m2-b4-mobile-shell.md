@@ -1,7 +1,7 @@
 # M2 Wave B — Mobile Shell — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-B4-MOBILE-SHELL-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review returned `APPROVE` with 2 non-blocking findings (one disclosed literal was left as a bare CSS value instead of routed through the same custom-property mechanism as the others; a quoting-convention inconsistency), both fixed here at zero cost before freeze. No blocking findings; no planning correction was needed.
 **Base:** `ca8f710` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -53,14 +53,18 @@ authority for the real tab order per the Fidelity rule above):
 <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);
   padding:6px 8px 4px;background:rgba(255,255,255,.92);
   border-top:1px solid #EAE5F0;backdrop-filter:blur(12px)">
-  <button style="min-height:50px;border:0;border-radius:14px;
-    background:transparent;color:{{ tabNowColor }};cursor:pointer;
-    font-size:12px;font-weight:700">Now</button>
+  <button onClick="{{ goNow }}" style="min-height:50px;border:0;
+    border-radius:14px;background:transparent;color:{{ tabNowColor }};
+    cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.01em">Now</button>
   <button style="...color:{{ tabThreadColor }}...">Chat</button>
   <button style="...color:{{ tabPlanColor }}...">Plan</button>
   <button style="...color:{{ tabActColor }}...">Activity</button>
 </nav>
 ```
+(Elided attributes — `onClick` handlers on the other three buttons and
+the first button's own `letter-spacing:.01em` — are the reference file's
+own interactivity/micro-styling, not reproduced by this static, unwired
+shell; `...` consistently marks every elision in this quote.)
 ```js
 const col = k => s.tab === k ? '#5B34E8' : '#9A90A6';
 ```
@@ -85,16 +89,16 @@ Explicitly **not** built by this slice:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B4-MOBILE-SHELL-01` |
-| `phase` | `PendingDecisionFidelityReview` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:ca8f710"]` |
+| `evidence_refs` | `["git:base:ca8f710","git:full-planning-review-head:371e1968185bc3428c65be91a9c2f4918a04553c","review:decision-fidelity:approve:non-blocking-findings-fixed-pre-freeze"]` |
 
 ## Exact file contents
 
@@ -129,7 +133,7 @@ file):
   padding: 6px 8px 4px;
   background: var(--atlas-tab-bar-bg);
   border-top: 1px solid var(--atlas-tab-bar-border);
-  backdrop-filter: blur(12px);
+  backdrop-filter: var(--atlas-tab-bar-blur);
 }
 
 .tab {
@@ -166,9 +170,12 @@ const TABS: ReadonlyArray<{ tab: MobileShellTab; label: string }> = [
 /**
  * Every value here is either a direct property of the real, reviewed
  * `colors`/`fontFamily` tokens, or — where no token exists yet — a
- * literal with an inline comment naming its actual source (all four
- * from `Atlas Mobile.dc.html`, none invented). Matches the pattern
- * `DesktopShell.tsx` (B3) already established.
+ * literal with an inline comment naming its actual source (all five
+ * non-token values here are from `Atlas Mobile.dc.html`, none
+ * invented — corrected from an earlier draft that left one,
+ * `backdrop-filter: blur(12px)`, as a bare CSS literal instead of
+ * routing it through this same disclosed mechanism). Matches the
+ * pattern `DesktopShell.tsx` (B3) already established.
  */
 const SHELL_VARS = {
   "--atlas-page-bg-mobile": colors.pageBgMobile,
@@ -179,6 +186,7 @@ const SHELL_VARS = {
   // in colors.ts.
   "--atlas-tab-bar-bg": "rgba(255,255,255,.92)",
   "--atlas-tab-bar-border": "#EAE5F0",
+  "--atlas-tab-bar-blur": "blur(12px)",
   // Reference file: `const col = k => s.tab === k ? '#5B34E8' : '#9A90A6'`.
   // The selected color is the real `colors.accent` token; the inactive
   // color (#9A90A6) has no equivalent token, so it stays a disclosed
@@ -242,6 +250,7 @@ describe("MobileShell", () => {
     expect(root.style.getPropertyValue("--atlas-font-body")).toBe(fontFamily.body);
     expect(root.style.getPropertyValue("--atlas-tab-bar-bg")).toBe("rgba(255,255,255,.92)");
     expect(root.style.getPropertyValue("--atlas-tab-bar-border")).toBe("#EAE5F0");
+    expect(root.style.getPropertyValue("--atlas-tab-bar-blur")).toBe("blur(12px)");
     expect(root.style.getPropertyValue("--atlas-tab-selected")).toBe(colors.accent);
     expect(root.style.getPropertyValue("--atlas-tab-inactive")).toBe("#9A90A6");
   });
@@ -284,12 +293,16 @@ describe("MobileShell", () => {
    component — it is a standalone, currently-unreferenced module, exactly
    like `src/tokens/` was before B3 (and unlike B3 itself, which was
    wired in immediately).
-2. `MobileShell.module.css` contains no literal hex color or font-family
-   string — every declaration is `var(--atlas-*)`, each one set exactly
-   once in `MobileShell.tsx`'s `SHELL_VARS` from a real `colors`/
-   `fontFamily` property or a literal with an inline comment naming its
-   real, non-token source (the four reference-file-only values named
-   above).
+2. `MobileShell.module.css` contains no literal hex color, font-family
+   string, or other design-token-shaped value (including the
+   `backdrop-filter` blur radius) — every declaration is `var(--atlas-*)`,
+   each one set exactly once in `MobileShell.tsx`'s `SHELL_VARS` from a
+   real `colors`/`fontFamily` property or a literal with an inline
+   comment naming its real, non-token source (the five
+   reference-file-only values named above). Numeric layout values with
+   no design-token equivalent in this codebase (`min-height`,
+   `border-radius`, grid/padding shorthands) stay literal, matching the
+   precedent B3's `DesktopShell.module.css` already established.
 3. No file under `apps/atlas/src/tokens/` is modified — `colors.ts`,
    `typography.ts`, `motion.ts`, `shape.ts`, and `index.ts` are read
    (imported) but byte-identical to their current, merged state. Unlike
