@@ -1,7 +1,15 @@
 # M2 Wave C — Header Summary / Boundary-Timestamps Single-State-Source Wiring — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C7-HEADER-STATE-WIRING-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Corrected — Pending Targeted Decision Fidelity Verification`.
+Full Decision Fidelity review found every architectural and data claim
+correct and returned `REQUEST_CHANGES_MINOR`: one quoted markup block
+labeled "verbatim" had silently dropped a real `sc-if` conditional
+around the summary row, with no disclosure (unlike the neighboring
+button/session-label elision, which was already disclosed correctly).
+One targeted planning correction restored the conditional and added
+the missing disclosure. No further planning correction is available
+for this slice.
 **Base:** `a0e6e05` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -38,7 +46,10 @@ exists) rather than re-deriving their own copy of this logic.
 **`eyebrow` and `title` are real, transcribed values, minus one
 segment checked and found not to be real for this repository.**
 Reference file's real packet-header markup (`Atlas Explorations.dc.html`,
-verbatim):
+elided only where explicitly marked below — corrected: an earlier
+draft of this quote dropped the summary row's own `sc-if` conditional
+silently, with no disclosure; this version keeps it, matching the
+disclosed treatment already given to the button/session-label elision):
 
 ```html
 <div style="flex:none;padding:16px 34px 0;background:#fff;border-bottom:1px solid #EEEAF2">
@@ -50,13 +61,23 @@ verbatim):
     </div>
     <!-- Stop/Start-work button and session label: real, but interactive-command-dependent (Wave D), not built by this slice -->
   </div>
+  <sc-if value="{{ cur.isCurrent }}" hint-placeholder-val="{{ true }}">
   <div style="display:flex;flex-wrap:wrap;margin:16px -34px 0;padding:11px 34px;border-top:1px solid #F3F0F6;background:#FCFBFD;gap:0 30px">
     <div style="display:flex;align-items:baseline;gap:8px;font-size:13.5px"><span style="color:#8E8299">Last report</span><b style="font-family:'IBM Plex Mono',monospace">{{ meta.report }}</b></div>
     <div style="display:flex;align-items:baseline;gap:8px;font-size:13.5px"><span style="color:#8E8299">Blocker</span><b style="color:{{ meta.blockerColor }};font-weight:{{ meta.blockerWeight }}">{{ meta.blocker }}</b></div>
     <div style="display:flex;align-items:baseline;gap:8px;font-size:13.5px"><span style="color:#8E8299">{{ meta.nextLabel }}</span><b style="font-family:'IBM Plex Mono',monospace;color:{{ meta.nextColor }}">{{ meta.next }}</b></div>
   </div>
+  </sc-if>
 </div>
 ```
+
+Both `sc-if value="{{ cur.isCurrent }}"` conditionals above are real —
+`A.2` is always the mockup's own currently-selected/running packet
+(`state.sel === 'A.2'`), so `cur.isCurrent` is always true in every
+real scenario this program has established, and this slice's
+standalone component renders unconditionally as if it were, with no
+`isCurrent`-false state to model (there is no real fixture for a
+different, non-current packet's header yet).
 
 `PACKETS`'s real `A.2` entry (`Atlas Explorations.dc.html`, verbatim):
 
@@ -159,16 +180,16 @@ in C1B, reused, not reinvented.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C7-HEADER-STATE-WIRING-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:a0e6e05e332d9f266acdff0faa1dfb190f63d10c"]` |
+| `evidence_refs` | `["git:base:a0e6e05e332d9f266acdff0faa1dfb190f63d10c","git:full-planning-review-head:9f22fcaf61189b0b4223c5296ab620921a911608","review:decision-fidelity:request-changes-minor:1-non-blocking-finding"]` |
 
 ## Exact file contents
 
@@ -179,6 +200,13 @@ four files below were written to a scratch copy of this worktree and
 were run for real from `apps/atlas/`: 64/64 tests passed (57 existing +
 7 new), typecheck and lint clean, production build succeeded — all on
 the first real run, no fix needed.
+
+**The targeted planning correction below (restoring and disclosing the
+`sc-if` conditional) changed only this document's Scope-section prose,
+not any shipped code** — the `headerState.ts`/`PacketHeader.tsx`/
+`PacketHeader.module.css`/`PacketHeader.test.tsx` code blocks shown
+below are unchanged from the version already run above. No re-run of
+the toolchain was needed or performed for this correction.
 
 `apps/atlas/src/thread/headerState.ts` (new — the single-state-source
 derivation function; no rendering logic):
