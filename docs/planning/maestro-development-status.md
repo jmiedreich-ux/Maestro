@@ -1003,6 +1003,29 @@ Fidelity review and independent implementation review both confirmed
 zero remaining defects; all 105 `apps/atlas` tests pass (99 existing +
 6 net new), build succeeds.
 
-Next: the rest of Wave E (Performance breakdown card — E3, Agents
-roster/contention — E4/E5), per the M2 roadmap and the standing
-instruction to complete all of M2 where possible.
+`MB-SLICE-M2-E3-PERF-BREAKDOWN-CARD-01` is merged (planning PR #127 at
+`5b83a8b`, implementation PR #128 at `d8f8489`), completing roadmap
+item 28. A standalone `PerfBreakdownCard`: the real "m1-a breakdown"
+card in full — a real cost/tokens/time segmented control (the first
+genuine multi-value toggle in this codebase, `useState<SplitBasisKey>`)
+driving two real stacked-bar-plus-legend groups ("by role", "by kind of
+work") and the current basis's own real caveat. Zero disclosed color
+literals — 20 real B2 tokens, including the first real consumers of
+`colors.segmentedTrack`/`colors.segmentedSelected`. One disclosed
+real-vs-fictional persona adaptation: `cost.role`'s fictional
+`Architect agent` entry replaced with the real `Local Qwen` actor
+(0%, `'local compute'` — the same cost text `PERF_RECORDS`'s own `p5`
+already uses), matching the pattern `tokens.role`/`time.role` already
+use without adaptation. One targeted planning correction fixed a
+color-discrepancy table missing one already-correct mapping (row count
+19→20; the mapping itself was correct in the shipped code throughout).
+Full Decision Fidelity review and independent implementation review
+both confirmed zero remaining defects; all 114 `apps/atlas` tests pass
+(105 existing + 9 new), build succeeds, `PerfBreakdownCard` is not
+imported anywhere else yet.
+
+Next: the last of Wave E (Agents roster/contention — E4/E5), per the
+M2 roadmap and the standing instruction to complete all of M2 where
+possible. The real `AGENTS` array includes a fictional `Architect
+agent` entry requiring the same real-mechanism substitution treatment
+as C3-C6/E3.
