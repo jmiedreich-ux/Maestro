@@ -12,6 +12,10 @@
   overflow: hidden;
 }
 
+.cardOpen {
+  border-color: var(--atlas-perf-card-border-open);
+}
+
 .row {
   display: grid;
   grid-template-columns: minmax(230px, 1fr) minmax(84px, 104px) minmax(84px, 104px) 62px 84px;
@@ -22,8 +26,12 @@
   border: 0;
   background: transparent;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   font: inherit;
+}
+
+.row:hover {
+  background: var(--atlas-perf-row-hover-bg);
 }
 
 .actionCell {
@@ -109,4 +117,96 @@
 .outcomeNeutral {
   background: var(--atlas-perf-tag-neutral-bg);
   color: var(--atlas-perf-tag-neutral-ink);
+}
+
+.detail {
+  border-top: 1px solid var(--atlas-perf-detail-border);
+  background: var(--atlas-perf-detail-bg);
+  padding: 13px 15px 14px;
+  animation: rise var(--atlas-perf-rise-duration) var(--atlas-perf-rise-easing);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--atlas-perf-rise-translate));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detailGroup {
+  min-width: 0;
+}
+
+.detailGroupName {
+  font: 600 10px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-perf-detail-group-name);
+}
+
+.detailRows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 7px;
+}
+
+.detailRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--atlas-perf-detail-row-divider);
+  font-size: 13px;
+}
+
+.detailLabel {
+  min-width: 0;
+  flex: 1;
+  color: var(--atlas-perf-detail-label);
+  text-wrap: pretty;
+}
+
+.detailValue {
+  flex: none;
+  font-family: var(--atlas-font-mono);
+  font-weight: 600;
+}
+
+.detailValueDefault {
+  color: var(--atlas-perf-detail-value-default);
+}
+
+.detailValueOk {
+  color: var(--atlas-perf-detail-value-ok);
+}
+
+.detailValueEst {
+  color: var(--atlas-perf-detail-value-est);
+}
+
+.detailValueWarn {
+  color: var(--atlas-perf-detail-value-warn);
+}
+
+.detailValueNa {
+  color: var(--atlas-perf-detail-value-na);
+}
+
+.detailNote {
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--atlas-perf-detail-note);
+  text-wrap: pretty;
 }
