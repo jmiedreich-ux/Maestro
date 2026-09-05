@@ -76,6 +76,7 @@
   flex: 1;
   line-height: 1.5;
   color: var(--atlas-conn-body);
+  text-wrap: pretty;
 }
 
 .connectionMeta {

@@ -68,6 +68,7 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--atlas-conn-body);
+  text-wrap: pretty;
 }
 
 .pageTitle {
