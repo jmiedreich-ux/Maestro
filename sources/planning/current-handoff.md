@@ -400,9 +400,17 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    like E1/E1B and E2/E2B into the real segmented control plus only
    the History segment's real content, reusing E6's fixture/style data
    verbatim — item 35 itself is not yet complete (Agents/Cost segments
-   remain), so Wave F's completed-item count is unchanged. Each
-   subsequent wave slice still requires its own pre-execution Decision
-   Fidelity approval before implementation.
+   remain), so Wave F's completed-item count is unchanged.
+   `MB-SLICE-M2-F3B-ACTIVITY-TAB-AGENTS-01` is merged: the Agents
+   segment of roadmap item 35, reusing E4's real fixture/style data as
+   fresh mobile-specific cards rather than mounting the desktop-only
+   `AgentsRoster`. One non-blocking DF note (a raw-inline-style
+   consistency gap) fixed at zero cost; one non-blocking implementation
+   review note (missing due/progress/bar-width/urgent/dot-state test
+   coverage) fixed with 2 new tests before merge. 162 tests pass, zero
+   regressions — item 35 still not complete, only the Cost segment
+   remains. Each subsequent wave slice still requires its own
+   pre-execution Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
