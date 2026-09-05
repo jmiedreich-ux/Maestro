@@ -880,7 +880,18 @@ byte-exact match to the frozen contract; all 70 `apps/atlas` tests pass
 (64 existing + 6 new), build succeeds, `PerformanceHeader` is not
 imported anywhere else yet.
 
-Next: the rest of Wave E (Performance's weekly-window strip and
-breakdown card, Agents roster/contention, History timeline, Gate
-criteria), per the M2 roadmap and the standing instruction to complete
-all of M2 where possible.
+`MB-SLICE-M2-E1B-WEEKLY-WINDOW-STRIP-01` is merged (planning PR #110 at
+`2b0dc426`, implementation PR #111 at `d662f969`): a standalone
+`WeeklyWindowStrip` component (label, 4 reconciliation figures with the
+amber-only-on-unattributed rule, meta timestamp, caption), the second
+half of roadmap item 26, split off from E1 (already merged). Zero
+disclosed color literals, matching E1's own precedent. Full Decision
+Fidelity review found zero blocking issues. Independent implementation
+review confirmed a byte-exact match to the frozen contract; all 75
+`apps/atlas` tests pass (70 existing + 5 new), build succeeds,
+`WeeklyWindowStrip` is not imported anywhere else yet.
+
+Next: the rest of Wave E (Performance's per-action records list — E2,
+already drafted — and breakdown card — E3, Agents roster/contention,
+History timeline, Gate criteria), per the M2 roadmap and the standing
+instruction to complete all of M2 where possible.

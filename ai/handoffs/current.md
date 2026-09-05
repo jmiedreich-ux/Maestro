@@ -324,9 +324,12 @@ work. Wave E is underway: E1 (Performance header/stats,
 disclosed color literals, the cleanest token match of the program so
 far; pure reporting content transcribed verbatim, no persona-fidelity
 issue. Roadmap item 26 was split into two smaller candidates; the
-weekly-window strip is deferred to a follow-on `E1B`-style slice. Next:
-the rest of Wave E (weekly-window strip, breakdown card, Agents,
-History, Gate).
+weekly-window strip is deferred to a follow-on `E1B`-style slice. E1B
+(weekly-window strip, `MB-SLICE-M2-E1B-WEEKLY-WINDOW-STRIP-01`) is
+also merged: a standalone `WeeklyWindowStrip` (label, 4 reconciliation
+figures, meta timestamp, caption), zero disclosed color literals,
+matching E1's own precedent. Next: the rest of Wave E (per-action
+records list, breakdown card, Agents, History, Gate).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
