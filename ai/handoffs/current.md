@@ -465,9 +465,43 @@ correction needed; independent implementation review confirmed
 zero remaining defects; all 129 `apps/atlas` tests pass (123 existing +
 6 new).
 
-**Wave E complete.** Next: awaiting direction on Wave D (guarded
-operator-action commands — real backend command API work) versus
-continuing into Wave F/G.
+**Wave E complete.** Owner directed continuation into Wave D
+2026-09-05. D4/D5 ("Decide this myself" / Architect-variant footer
+button) were first rescheduled to M4 (PR #137) — they depend on the
+real M4 autonomous Architect loop, which does not exist in M2; the
+roadmap's own architecture ruling and the already-merged C3/C4 packets
+both establish that only two real decision-card variants exist in M2,
+explicitly excluding any Architect-variant option. Per Owner-confirmed
+standing policy: a mockup feature that depends on a later milestone's
+machinery is rescheduled to that milestone, never forced into the
+current one or silently dropped — the mockup shows Maestro's full
+end-state vision, not just M2's scope.
+
+`MB-SLICE-M2-D1-COMMAND-API-SCAFFOLD-01` is merged (planning PR #138,
+implementation PR #139) — **the first Wave D slice and the first
+backend (Python) slice merged this session**. A guarded, empty
+POST-command dispatch scaffold added to the existing loopback-only
+read API (`services/maestro/maestro/read_api.py`, Wave A): a new
+`/command/...` route prefix backed by an empty `_COMMAND_ROUTES`
+registry (genuinely no real command registered, verified by a
+dedicated test), real `Content-Length`-bounded body reading, and
+`idempotency_key`/`actor` envelope shape validation reusing the real
+M1 idempotency/actor/causation envelope already used by every internal
+`OperationalStateStore` command (cited with exact, independently
+re-verified line numbers from `operational_state.py`). One targeted
+correction: a Decision Fidelity review found a real hang vector
+(unbounded `Content-Length` could block a worker thread indefinitely
+on an oversized body that never finishes arriving) and a false
+"oversized body is handled" claim in the packet's own threat-model
+section — fixed with a 1 MiB cap checked before any read is attempted,
+independently proven load-bearing twice (by temporarily removing it
+and confirming a genuine hang/timeout). All 351 `services/maestro`
+tests pass (339 baseline + 12 new; one pre-existing, unrelated `m1_01`
+PyYAML-version failure disclosed and unchanged).
+
+Next: `MB-SLICE-M2-D2`, the smallest real operator-action command
+(Owner resolves a decision — sentinel/amend/defer options), registering
+the first real entry into D1's `_COMMAND_ROUTES`.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
