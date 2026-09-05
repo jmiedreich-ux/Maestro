@@ -1,7 +1,7 @@
 # M2 Wave E — Performance Breakdown Card — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-E3-PERF-BREAKDOWN-CARD-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Draft — Targeted correction applied (color discrepancy table missing the group border-bottom row; row count corrected 19→20), pending Targeted Decision Fidelity Verification`
 **Base:** `7f9474e` (full: `7f9474e27e4fb84053d6bf9b2e6946ad270ecd4a`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -133,6 +133,7 @@ render real, consumed fields.
 | segmented button selected/hover text `#221C29` | `colors.ink` | real token |
 | segmented button unselected text `#8E8299` | `colors.inkMuted` | real token |
 | group-name text `#A79BB4` | `colors.inkFaint` | real token |
+| group border-bottom `#F3F0F6` | `colors.borderDivider[1]` | real token |
 | bar track bg `#F4F1F8` | `colors.segmentedTrack[1]` (same token, reused) | real token |
 | legend label `#6C6376` | `colors.inkSecondary` | real token |
 | legend pct (inherited default, made explicit — see Guards) `#221C29` | `colors.ink` | real token |
@@ -143,7 +144,7 @@ render real, consumed fields.
 | `SPLIT_COLORS[2]` `#2E9B72` | `colors.success` | real token |
 | `SPLIT_COLORS[3]` `#B9AFC4` | `colors.borderDashed[2]` | real token |
 
-**All 19 real, existing B2 tokens — zero disclosed literals**, matching
+**All 20 real, existing B2 tokens — zero disclosed literals**, matching
 E1/E1B/E2/E2B's own precedent (unlike Gate/History, which needed
 disclosures).
 
@@ -735,13 +736,13 @@ No self-caught bugs — first-attempt clean on every check.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E3-PERF-BREAKDOWN-CARD-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7f9474e27e4fb84053d6bf9b2e6946ad270ecd4a"]` |
+| `evidence_refs` | `["git:base:7f9474e27e4fb84053d6bf9b2e6946ad270ecd4a", "git:planning-review-head:d257c4be52a6312e4e71988f27cefa730628c25f", "review:DecisionFidelity:REQUEST_CHANGES:color-discrepancy-table-missing-group-border-row(19-should-be-20)", "docs-only-correction:added-group-border-row;count-corrected-to-20"]` |
