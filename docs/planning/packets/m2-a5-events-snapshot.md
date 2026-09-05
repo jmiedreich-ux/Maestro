@@ -1,7 +1,7 @@
 # M2 Wave A — Events Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the "no schema guarantee" justification incomplete (missed the schema-4 `events_validate_v4_shape`/`events_closed_event_type` triggers) and the fixture guidance under-specified for trigger-legal rows
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 1 blocking finding; one targeted planning correction resolved it and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `34f5a8d` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -130,8 +130,8 @@ non-object/non-JSON text.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -139,7 +139,7 @@ non-object/non-JSON text.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:34f5a8d","git:full-planning-review-head:15f426ab389eff5a0a80abd4ab76e9df569b263b","review:decision-fidelity:request-changes:1-blocking-finding"]` |
+| `evidence_refs` | `["git:base:34f5a8d","git:full-planning-review-head:15f426ab389eff5a0a80abd4ab76e9df569b263b","review:decision-fidelity:request-changes:1-blocking-finding","git:corrected-planning-head:cdc92a107c77327e64781f7dd2e6ecdc6a8ecc16","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact route contract
 
