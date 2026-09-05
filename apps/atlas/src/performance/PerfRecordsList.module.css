@@ -1,0 +1,112 @@
+.list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  border: 1px solid var(--atlas-perf-card-border);
+  border-radius: 14px;
+  background: var(--atlas-perf-card-surface);
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(84px, 104px) minmax(84px, 104px) 62px 84px;
+  align-items: center;
+  gap: 8px 14px;
+  width: 100%;
+  padding: 12px 15px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  font: inherit;
+}
+
+.actionCell {
+  min-width: 0;
+}
+
+.actionLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.action {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--atlas-perf-row-ink);
+}
+
+.packetWho {
+  font: 500 11.5px var(--atlas-font-mono);
+  color: var(--atlas-perf-row-faint);
+}
+
+.model {
+  margin-top: 2px;
+  font: 500 11px var(--atlas-font-mono);
+  color: var(--atlas-perf-row-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tokens {
+  font: 500 12.5px var(--atlas-font-mono);
+  color: var(--atlas-perf-row-ink);
+  text-align: right;
+}
+
+.cost {
+  font: 500 12.5px var(--atlas-font-mono);
+  text-align: right;
+}
+
+.costBilled {
+  color: var(--atlas-perf-row-ink);
+}
+
+.costEst {
+  color: var(--atlas-perf-row-warning);
+}
+
+.costNone {
+  color: var(--atlas-perf-row-muted);
+}
+
+.elapsed {
+  font: 500 12.5px var(--atlas-font-mono);
+  color: var(--atlas-perf-row-muted);
+  text-align: right;
+}
+
+.outcome {
+  justify-self: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font: 600 10px var(--atlas-font-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.outcomeBlocked {
+  background: var(--atlas-perf-tag-blocked-bg);
+  color: var(--atlas-perf-tag-blocked-ink);
+}
+
+.outcomeGood {
+  background: var(--atlas-perf-tag-good-bg);
+  color: var(--atlas-perf-tag-good-ink);
+}
+
+.outcomeNeutral {
+  background: var(--atlas-perf-tag-neutral-bg);
+  color: var(--atlas-perf-tag-neutral-ink);
+}
