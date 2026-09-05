@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Now Tab — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F1-NOW-TAB-01`
-**Status:** `Draft, pending Decision Fidelity Review`
+**Status:** `Draft — Targeted correction applied (the first draft's progress-fill color used the mockup's non-blocked barColor value on a genuinely blocked progress bar, contradicting this same packet's own avatar-styling principle; two color-token audit misses; a stale base-commit citation in Pre-verification; and three new-field test assertions were tautological, only cross-checked against derivePacketHeaderState's own live output, not a hardcoded literal), pending Targeted Decision Fidelity Verification`
 **Base:** `09545e6` (full: `09545e6d2ba2d8fe7d0177c776618ee53f0ab930`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -318,29 +318,39 @@ import styles from "./NowTab.module.css";
  * Hero-card colors from `Atlas Mobile.dc.html`'s real Now-tab markup
  * (lines 48-63 of the reference file), checked directly against
  * `colors.ts`. Real token matches: `colors.navGround` (card
- * background), `colors.accentLight` (live dot and, since Terra is
- * blocked here, the progress track's own inert fill color —
- * `colors.accentLiveDot`, a *different* real token that happens to be
- * the mockup's real blocked-fill color, `#A78BFF`), `colors.inkFaint`
- * (role text and boundary timestamps — the same hex the mockup uses,
- * `#A79BB4`), `colors.inkMuted` (eyebrow label), and `colors.surface`
- * (the meta-grid cards' white background — the mockup's own `#fff`).
- * The avatar bg/ink
- * reuse the real, already-reviewed `AGENT_STYLE.wait` pair from E4's
+ * background), `colors.accentLight` (live dot), `colors.navTextInactive`
+ * (the progress track's fill — the mockup's own real blocked-branch
+ * `barColor` is `#B7ADC1`, not `#A78BFF`; `#A78BFF` is that same
+ * ternary's *non-blocked* branch, checked directly at
+ * `Atlas Mobile.dc.html:687` — corrected by targeted correction, see
+ * below), `colors.navActiveBg` (the progress track's own background,
+ * `rgba(255,255,255,.13)` — an exact string match, also corrected by
+ * targeted correction), `colors.inkFaint` (role text and boundary
+ * timestamps — the same hex the mockup uses, `#A79BB4`), `colors.inkMuted`
+ * (eyebrow label), and `colors.surface` (the meta-grid cards' white
+ * background — the mockup's own `#fff`). The avatar bg/ink reuse the
+ * real, already-reviewed `AGENT_STYLE.wait` pair from E4's
  * `agentStyle.ts` — Terra is genuinely idle/blocked in this real
  * trajectory, not running, so the "wait" style key is the honest
  * choice, not "run" (which E4's own Agents-roster fixture uses for a
  * different, later simulated moment of the same persona — not reused
- * here to avoid implying this hero card shows that same moment).
+ * here to avoid implying this hero card shows that same moment). The
+ * same "blocked, not running" principle applies to the progress fill
+ * color: an independent Decision Fidelity review found the first
+ * draft picked the mockup's own *non-blocked* fill color here, which
+ * directly contradicted this same principle already correctly applied
+ * to the avatar — fixed to the real blocked-branch value.
  * Three values have no equivalent token and stay disclosed literals,
  * checked against every color family in `colors.ts`, not assumed: the
- * headline/name text (`#EDE8F1`), the subline text (`#C6BCD2`), and
- * the card's own 24px corner radius (`radii.mobileCardPx` only states
- * an 18-22px range; the reference file's own hero card is 24px, not
- * forced into the stated range) plus the progress track's translucent
- * white (`rgba(255,255,255,.13)`, only meaningful against this card's
- * own dark background) and the "what happens next" panel's own body
- * text color (`#3D3350`, likewise checked and unmatched).
+ * headline/name text (`#EDE8F1`), the subline text (`#C6BCD2`), the
+ * "what happens next" panel's own body text color (`#3D3350`), and the
+ * card's own 24px corner radius (`radii.mobileCardPx` only states an
+ * 18-22px range; the reference file's own hero card is 24px, not
+ * forced into the stated range). The hero card's own drop shadow
+ * (`0 16px 34px rgba(30,20,45,.22)`, transcribed directly into
+ * `NowTab.module.css`) is also a disclosed, unmatched literal — an
+ * `rgba` shadow value, not a solid color, so it was not caught by the
+ * hex-literal check above; noted here for completeness.
  */
 const SHELL_VARS = {
   "--atlas-hero-bg": colors.navGround,
@@ -348,8 +358,8 @@ const SHELL_VARS = {
   "--atlas-hero-ink-muted": colors.inkFaint,
   "--atlas-hero-avatar-bg": AGENT_STYLE.wait.avBg,
   "--atlas-hero-avatar-ink": AGENT_STYLE.wait.avColor,
-  "--atlas-hero-track": "rgba(255,255,255,.13)",
-  "--atlas-hero-fill": colors.accentLiveDot,
+  "--atlas-hero-track": colors.navActiveBg,
+  "--atlas-hero-fill": colors.navTextInactive,
   "--atlas-hero-radius": "24px",
   "--atlas-card-radius": `${radii.mobileCardPx.max}px`,
   "--atlas-gutter": `${spacing.mobileGutterPx}px`,
@@ -648,6 +658,11 @@ describe("NowTab", () => {
     const hero = container.querySelector('[class*="hero"]') as HTMLElement;
     expect(within(hero).getByText("Terra")).toBeInTheDocument();
     expect(within(hero).getByText("Implementor · A.2 Runtime Package")).toBeInTheDocument();
+    // Hardcoded literals, not just cross-checked against the function's own
+    // live return value — a wording regression inside
+    // derivePacketHeaderState itself must still fail this test.
+    expect(state.headline).toBe("Blocked");
+    expect(state.subline).toBe("Escalated to you · worktree held");
     expect(within(hero).getByText(state.headline)).toBeInTheDocument();
     expect(within(hero).getByText(state.subline)).toBeInTheDocument();
   });
@@ -687,6 +702,12 @@ describe("NowTab", () => {
   it("renders the 'what happens next' panel with the real derived text", () => {
     render(<NowTab />);
     const state = derivePacketHeaderState(PACKET_A2_ENTRIES);
+    // Hardcoded literal, not just cross-checked against the function's own
+    // live return value — a wording regression inside
+    // derivePacketHeaderState itself must still fail this test.
+    expect(state.nextPanelText).toBe(
+      "Nothing is expected from Terra until you answer — its worktree stays held while the packet is blocked.",
+    );
     expect(screen.getByText("what happens next")).toBeInTheDocument();
     expect(screen.getByText(state.nextPanelText)).toBeInTheDocument();
   });
@@ -967,7 +988,12 @@ describe("PacketHeader", () => {
 
 This candidate's exact file contents above were applied to a scratch
 worktree (`/tmp/maestro-m2-f1`, branch `architecture/m2-f1`, base
-`ed200d1`) and run through the real frontend toolchain from
+`09545e6` — **corrected by targeted correction: an earlier draft of
+this section cited `ed200d1`, a real commit but not an ancestor of
+this branch (it landed on `origin/master` after this worktree was
+already forked); an independent Decision Fidelity review found this
+left the packet internally contradicting its own, correct, header
+`Base:` line**) and run through the real frontend toolchain from
 `apps/atlas` (`npm install`, then each script below), before this
 packet was finalized.
 
@@ -1006,10 +1032,53 @@ packet was finalized.
 - `npm run build` (`vite build`) — clean, `38 modules transformed`, no
   warnings.
 
-**No targeted correction was needed against an external Decision
-Fidelity review for this candidate** — every issue above was found
-during this slice's own pre-verification and fixed before submission,
-not after.
+**Targeted correction (found by an independent Decision Fidelity
+review, fixed before merge):** four defects, all fixed together and
+re-verified with the same toolchain run above (still 19/19 test files,
+140/140 tests, clean typecheck/lint/build):
+
+1. **Wrong progress-fill color.** The first draft's `--atlas-hero-fill`
+   used `colors.accentLiveDot` (`#A78BFF`), described as "the mockup's
+   real blocked-fill color." Checked directly against
+   `Atlas Mobile.dc.html:687`:
+   `barColor: sys === 'crashed' ? '#D08A83' : blocked || s.decided === 'amend' ? '#B7ADC1' : '#A78BFF'`
+   — `#A78BFF` is that ternary's *non-blocked* branch; the real
+   blocked-branch value is `#B7ADC1`. This directly contradicted this
+   same packet's own Design rationale item 4 (use `AGENT_STYLE.wait`,
+   not `run`, because Terra is genuinely idle here, not working) —
+   applied correctly to the avatar but missed on the progress fill.
+   Fixed: `#B7ADC1` is itself a real token, `colors.navTextInactive`
+   (`colors.ts:16`), now used instead.
+2. **Missed a real token match for the progress track's background.**
+   `rgba(255,255,255,.13)` was disclosed as an unmatched literal, but
+   it is an exact match for `colors.navActiveBg` (`colors.ts:18`) —
+   missed because the audit checked hex colors, not `rgba()` strings,
+   against every family. Fixed: now uses `colors.navActiveBg`.
+3. **Stale base-commit citation in this section** (see the correction
+   note above it).
+4. **Tautological test coverage for three new fields.** `headline`,
+   `subline`, and `nextPanelText` were only ever compared against
+   `derivePacketHeaderState`'s own live return value in
+   `NowTab.test.tsx` — a wording regression inside the function itself
+   would have passed undetected (unlike `progressPercent`/
+   `boundaryBegin`/`boundaryHeld`, which already had hardcoded literal
+   assertions). Fixed: `NowTab.test.tsx` now asserts
+   `state.headline === "Blocked"`, `state.subline === "Escalated to
+   you · worktree held"`, and the exact `nextPanelText` string, in
+   addition to the existing render assertions.
+
+One further defect the review flagged was independently confirmed
+**not** a real defect: `nextPanelHeading` returning the static
+`"what happens next"` unconditionally (not gated behind `isBlocked`)
+matches the pre-existing, unmodified precedent `eyebrow`/`title`
+already established in this same function — a constant UI label is
+never `"unavailable"`, only a derived fact is. No change made for
+this item. Two further non-blocking notes (a CSS-variable-naming
+coincidence between this component and the reused `OwnerDecisionCard`,
+and the hero card's own drop-shadow not being itemized in the
+disclosed-literal audit) were addressed in the doc comment above for
+completeness, at zero cost, without consuming this slice's one
+targeted correction on their own.
 
 ## M0-D12 bounded quality contract
 
@@ -1062,11 +1131,11 @@ not after.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F1-NOW-TAB-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
