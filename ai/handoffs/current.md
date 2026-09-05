@@ -522,11 +522,29 @@ each independently reproduced live and re-verified. All 24 named
 `tests/m2_wave_d` tests, 49 Wave A tests, and 162 `m1_02` tests pass —
 zero regressions.
 
-Next: `MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2).
-Started in parallel — per the Owner's explicit instruction that
-independent slices should not idle-wait behind one in-flight review —
-`MB-SLICE-M2-F1-NOW-TAB-01` (mobile Now tab, Wave F: depends only on
-the already-complete Waves C/E, not on D2/D3).
+`MB-SLICE-M2-F1-NOW-TAB-01` is merged (planning PR #144 at `475b78d`,
+implementation PR #145 at `492fac7`) — the mobile "Now" tab: a real
+40% progress figure derived from `PACKET_A2_ENTRIES`' own real
+`plan.steps` (never rendered before), real boundary timestamps, and a
+new `NowTab` component reusing C4's `OwnerDecisionCard` verbatim, wired
+into `MobileShell`'s "now" tab — no backend change. One targeted
+correction fixed a progress-fill color that used the mockup's
+non-blocked value on a genuinely blocked bar (contradicting this same
+packet's own idle-vs-running styling principle), a missed token match,
+a stale citation, and tautological test coverage; all independently
+re-verified. 19/19 test files, 140/140 tests pass, zero regressions.
+
+`MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2) was
+investigated and found **blocked, not built**: its real `packet_id`
+is standalone fixture data with no real backend row, so it inherits
+C2's own still-open real-backend-data-wiring question rather than
+posing a new one — recorded in `m2-atlas-roadmap.md`, not assigned a
+milestone yet (unlike D4/D5's clear M4 destination) pending that
+resolution.
+
+Next: any independent Wave F (F2-F4), Wave G (G1, G3), or Wave D
+(D6/D7 crash-recovery command) item not blocked by C2/D3's open
+question.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

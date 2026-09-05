@@ -77,6 +77,32 @@ Each command is its own slice: a new guarded, idempotent backend command plus th
 19. **D1 — Guarded command API scaffold.** POST endpoint shape, idempotency-key handling, actor/causation envelope — no real command registered yet.
 20. **D2 — Command: Owner resolves a decision (`sentinel` / `amend` / `defer` options).** The smallest real operator-action command; only the owner-decision variant may call it (per the design's own rule that ruling-variant options are read-only).
 21. **D3 — Wire owner-decision card buttons to D2.**
+    **Blocked, not built.** Investigated 2026-09-05: `OwnerDecisionCard`'s
+    packet id (`"A.2"`) is standalone fixture data
+    (`decision/ownerFixtures.ts`, deliberately independent of
+    `thread/fixtures.ts` per that file's own doc comment) — it has no
+    corresponding row in the real backend database. Honestly calling
+    D2's real `POST /command/resolve-decision` requires a real
+    `packet_id` and `expected_version`, which requires the same
+    real-backend-data wiring C2 already identified as needing and left
+    open for Owner input (the backend's structured `packets` data model
+    has no established mapping to this UI's fixture content yet — see
+    the C2 entry above). D3 inherits that exact same open question, not
+    a new one. A second, narrower issue compounds this: of
+    `OwnerDecisionCard`'s two real options, only "Allow a sentinel
+    version" (→ "resumes now") has an honest 1:1 mapping to a D2 target
+    state (`Ready`); "Amend the A.1 contract"'s own real described
+    effect is dispatching a correction to a *different* packet (A.1),
+    a distinct real M1 command (`record_and_dispatch_correction`) that
+    D2 does not call and this slice does not implement. Per Owner-
+    confirmed standing policy (2026-09-05): work found not in scope for
+    the current milestone is planned into the correct milestone once
+    the blocking question resolves — never forced in, never silently
+    dropped. Unlike D4/D5 (a clear destination, M4, once the Architect
+    loop exists), D3 has no assigned milestone yet: it stays blocked on
+    C2's own still-open architecture question until the Owner resolves
+    it, at which point both C2 and D3 get scheduled together based on
+    what that resolution actually requires.
 22. ~~**D4 — Command: "Decide this myself" (Architect variant → Owner takes it over).**~~
     **Rescheduled to M4.** Depends on the real M4 autonomous Architect
     loop ([M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)),

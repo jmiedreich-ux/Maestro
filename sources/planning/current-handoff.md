@@ -363,13 +363,22 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    failure class: `ResourceBusy` under real SQLite contention (planning
    review), then the store's own unguarded construction (implementation
    review) — both fixed with the guard-and-503 pattern the existing GET
-   routes already use, each independently reproduced live. `MB-SLICE-M2-F1-NOW-TAB-01`
-   (mobile Now tab) was started in parallel with D2's review, per the
-   Owner's explicit instruction that independent slices should not
-   idle-wait behind one in-flight review — Wave F depends only on the
-   already-complete Waves C/E, not on D2/D3. Each subsequent wave slice
-   still requires its own pre-execution Decision Fidelity approval
-   before implementation.
+   routes already use, each independently reproduced live.
+   `MB-SLICE-M2-F1-NOW-TAB-01` is merged: the mobile Now tab, a real
+   40% progress figure derived from real `plan.steps` data never
+   rendered before, real boundary timestamps, and C4's
+   `OwnerDecisionCard` reused verbatim; one targeted correction fixed a
+   progress-fill color that used the mockup's non-blocked value on a
+   genuinely blocked bar (self-contradicting this same packet's own
+   idle-vs-running styling principle), a missed token match, a stale
+   citation, and tautological test coverage. `MB-SLICE-M2-D3` (wire
+   the owner-decision card's buttons to D2) was investigated and found
+   blocked, not built: its real `packet_id` is standalone fixture data
+   with no backend row, inheriting C2's own still-open real-data-wiring
+   question rather than posing a new one — recorded in the roadmap,
+   not yet assigned a milestone. Each subsequent wave slice still
+   requires its own pre-execution Decision Fidelity approval before
+   implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
