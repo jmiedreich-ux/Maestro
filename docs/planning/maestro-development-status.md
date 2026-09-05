@@ -1300,8 +1300,38 @@ regressions. **Item 35 itself is still not complete** — only the Cost
 segment (reusing E1-E3) remains, so Wave F's own completed-item count
 stays at 2/4 until it lands.
 
+`MB-SLICE-M2-G1-DISCONNECTED-STATE-01` is merged (planning PR #160 at
+`d3b58c0`, implementation PR #161 at `551693e`) — roadmap item 37,
+the `disconnected` connection strip + live-indicator flip. Investigated
+before authoring: A6 (SSE event stream) and A7 (reconnect/resync
+contract) were never built, the same real backend-immaturity family
+already used to reschedule C2/D3/D7 to M3 (though a distinct specific
+gap from theirs — a data-availability mismatch vs. a missing
+transport/protocol). With no real trigger possible, this slice builds
+the standalone, tested, presentational connection strip and
+live-indicator (a `deriveConnectionState(systemState, surface)`
+single-source-of-truth function, threaded via a `systemState` prop on
+`DesktopShell`/`NowTab`, defaulting to `"normal"`) and reschedules the
+real A6/A7-dependent wiring to M3 alongside C2/D3/D7. It also fixed a
+real pre-existing inconsistency: `NowTab.tsx` had hardcoded its live
+indicator to the literal `"live"` unconditionally (dishonest — this
+app has no real connection), while `DesktopShell.tsx` already
+correctly said `"idle"`; both now read from the same function.
+Decision Fidelity review passed with 3 non-blocking notes (a misquoted
+status-doc citation, an overstated "same gap" framing, a nonexistent
+`AgentCard.tsx` file cited twice instead of `AgentsRoster.tsx`'s own
+private `AgentCard` function) fixed at zero cost. Independent
+implementation review approved with 2 non-blocking notes (a missing
+`text-wrap:pretty` on the strip's body text, fixed; a missing
+`aria-live`/`role="status"` region, accepted as a known limitation —
+a pre-existing codebase-wide gap, not a regression, and moot since no
+caller passes `systemState="disconnected"` yet). 22/22 test files,
+170/170 tests pass, zero regressions. **The connection strip does not
+render anywhere in the running app today** — this is disclosed, not
+silent: the real trigger is M3's own job.
+
 Next: any independent Wave F (item 35's own remaining Cost segment,
-or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6 only, not
-D7, which is rescheduled to M3). C2/D3/D7 are all rescheduled to M3
-and off the current independent-work list entirely — not a blocker to
+or F4), or Wave G (G3 — G2 covers `crashed` via C6/D6 only, not D7,
+which is rescheduled to M3). C2/D3/D7 are all rescheduled to M3 and
+off the current independent-work list entirely — not a blocker to
 track, a milestone assignment already made.

@@ -593,8 +593,25 @@ before merge. 162/162 tests pass, zero regressions. **Item 35 still
 not complete** — only the Cost segment (E1-E3) remains; Wave F's
 completed-item count stays at 2/4.
 
+`MB-SLICE-M2-G1-DISCONNECTED-STATE-01` is merged (planning PR #160 at
+`d3b58c0`, implementation PR #161 at `551693e`) — roadmap item 37, the
+`disconnected` connection strip + live-indicator flip. A6/A7 (SSE
+stream + reconnect contract) were never built — no real trigger
+exists — so this slice builds only the standalone, tested
+presentational piece (`deriveConnectionState(systemState, surface)`,
+threaded via a `systemState` prop defaulting to `"normal"` on
+`DesktopShell`/`NowTab`) and reschedules real wiring to M3 alongside
+C2/D3/D7. Also fixed a real pre-existing bug: `NowTab.tsx` hardcoded
+"live" unconditionally (dishonest, no real connection exists) while
+`DesktopShell.tsx` already correctly said "idle" — both now share one
+function. DF review: 3 non-blocking citation notes fixed at zero cost.
+Implementation review: 1 non-blocking note fixed (`text-wrap:pretty`),
+1 accepted as a known limitation (no `aria-live` region — pre-existing
+codebase-wide gap, moot since the strip never renders today). 170/170
+tests pass, zero regressions.
+
 Next: any independent Wave F (item 35's remaining Cost segment, or
-F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6 only, not D7).
+F4), or Wave G (G3 — G2 covers `crashed` via C6/D6 only, not D7).
 C2/D3/D7 are all rescheduled to M3, off the current independent-work
 list.
 
