@@ -409,8 +409,24 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    review note (missing due/progress/bar-width/urgent/dot-state test
    coverage) fixed with 2 new tests before merge. 162 tests pass, zero
    regressions — item 35 still not complete, only the Cost segment
-   remains. Each subsequent wave slice still requires its own
-   pre-execution Decision Fidelity approval before implementation.
+   remains. `MB-SLICE-M2-G1-DISCONNECTED-STATE-01` is merged: roadmap
+   item 37's `disconnected` connection strip + live-indicator flip,
+   built standalone since A6/A7 (SSE stream + reconnect contract) were
+   never built — no real trigger exists. A single
+   `deriveConnectionState(systemState, surface)` function, threaded
+   via a `systemState` prop defaulting to `"normal"` on
+   `DesktopShell`/`NowTab`, drives both surfaces; real wiring is
+   rescheduled to M3 alongside C2/D3/D7. Also fixed a real pre-existing
+   bug: `NowTab.tsx` hardcoded "live" unconditionally (dishonest, no
+   real connection exists) while `DesktopShell.tsx` already correctly
+   said "idle" — both now share one function. DF review: 3
+   non-blocking citation notes fixed at zero cost. Implementation
+   review: 1 non-blocking note fixed (`text-wrap:pretty`), 1 accepted
+   as a known limitation (no `aria-live` region — pre-existing
+   codebase-wide gap, moot since the strip never renders today).
+   170 tests pass, zero regressions. Each subsequent wave slice still
+   requires its own pre-execution Decision Fidelity approval before
+   implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
