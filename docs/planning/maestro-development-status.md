@@ -802,6 +802,28 @@ review confirmed a byte-exact match to the frozen contract; all 50
 C4's sibling files were left untouched, `FidelityRecord` is not
 imported anywhere else yet.
 
-Next: Wave C's remaining items — C6 (crash card), C7 (header/
-state-source wiring). C2 stays deferred pending Owner input on the
-real-data synthesis question above.
+`MB-SLICE-M2-C6-CRASH-CARD-01` is merged (planning PR #101 at
+`8a4b43e9`, implementation PR #102 at `0b5ec2a8`): a standalone
+`CrashCard` reusing C1's real `A.2` scenario (the reference file's own
+`crashed` state is scoped to `A.2` — not a new invented scenario).
+Unlike C3/C4, no persona-swap was needed (no fictional "Architect
+agent" content exists anywhere in the reference file's crash-card
+copy) — instead, checking the reference file's own factual claims
+against `operational_state.py`'s real `finish_attempt_execution`
+outcome mapping found 5 pieces of copy (the headline, the lede, one
+fact, one option's body, and the footer note) that were either
+unverifiable ("still on disk", "Worktree: preserved") or directly
+contradicted the real mechanism ("locks... preserved", "Locks stay
+held" — a `Failed` outcome always releases the lease; "the Coordinator
+retried once" — no automatic-retry code path exists). All 5 corrected.
+Full Decision Fidelity review found 1 blocking finding (the headline/
+lede corrections were made but not disclosed as numbered corrections,
+unlike the other three); the one available targeted planning
+correction fixed the disclosure — approved by targeted verification.
+Independent implementation review confirmed a byte-exact match to the
+frozen contract; all 57 `apps/atlas` tests pass (50 existing + 7 new),
+build succeeds, `CrashCard` is not imported anywhere else yet.
+
+Next: Wave C's last remaining item — C7 (header/state-source wiring).
+C2 stays deferred pending Owner input on the real-data synthesis
+question above.
