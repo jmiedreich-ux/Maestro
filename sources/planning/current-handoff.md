@@ -3,9 +3,9 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, and NeedsReplan closure
-**Current development state:** M1 internal operational core closed; M2 (Atlas reporting, with named operator-action commands becoming available as built) is next per M0-D15, not yet started
-**Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, and M2 Wave A1 (loopback-only read API scaffold)
+**Current development state:** M1 internal operational core closed; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; Wave A2 (packets snapshot endpoint) is next
+**Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
 sequence are in the
@@ -265,9 +265,10 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    integrated.
 3. M2 (Atlas reporting, with named operator-action commands becoming
    available as built — see M0-D01's operator-action amendment) is the
-   next phase per M0-D15. No M2 work is authorized by this record; its
-   canonical contract still requires pre-execution Decision Fidelity
-   approval.
+   next phase per M0-D15, authorized by the Owner 2026-09-05 and
+   decomposed wave-by-wave in the M2 Atlas roadmap. Wave A1 (read API
+   scaffold) is merged; each subsequent wave slice still requires its own
+   pre-execution Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
