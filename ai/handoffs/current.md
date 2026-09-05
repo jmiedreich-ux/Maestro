@@ -285,8 +285,14 @@ escalation scenario, with the mockup's fictional "Architect agent"
 replaced by the real Coordinator actor and its agent-dependent third
 option excluded; its planning packet needed one targeted correction
 (an undisclosed wording change beyond the claimed persona-noun swap)
-before approval. Next: Wave C's remaining items — C5 (Decision
-Fidelity record), C6 (crash card), C7 (header/state-source wiring).
+before approval. C5 (Decision Fidelity record rendering,
+`MB-SLICE-M2-C5-FIDELITY-RECORD-01`) is also merged: a standalone
+`FidelityRecord` component citing this project's own real, closed C3
+Decision Fidelity review (PR #92) as its evidence, rather than the
+mockup's fictional "Architect agent" ruling narrative — its planning
+packet passed full Decision Fidelity review with zero findings. Next:
+Wave C's remaining items — C6 (crash card), C7 (header/state-source
+wiring).
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
 remain immutable and non-authoritative.
