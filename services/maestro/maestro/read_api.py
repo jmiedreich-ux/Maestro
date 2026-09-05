@@ -1,4 +1,5 @@
-"""Loopback-only read API: `/health` and the `/snapshot/packets` projection."""
+"""Loopback-only read API: `/health`, `/snapshot/packets`, `/snapshot/attempts`,
+and `/snapshot/reviews`."""
 
 from __future__ import annotations
 
@@ -73,6 +74,20 @@ _ATTEMPTS_SNAPSHOT_QUERY = f"""
     FROM attempts
     WHERE (? IS NULL OR attempt_id > ?)
     ORDER BY attempt_id ASC
+    LIMIT ?+1
+"""
+
+_REVIEWS_SNAPSHOT_COLUMNS = (
+    "attempt_id", "base_commit", "correction_number", "coverage_json", "created_at",
+    "findings_json", "head_commit", "packet_id", "result", "review_id", "review_kind",
+    "reviewer_instance", "reviewer_role",
+)
+
+_REVIEWS_SNAPSHOT_QUERY = f"""
+    SELECT {", ".join(_REVIEWS_SNAPSHOT_COLUMNS)}
+    FROM reviews
+    WHERE (? IS NULL OR review_id > ?)
+    ORDER BY review_id ASC
     LIMIT ?+1
 """
 
@@ -167,10 +182,51 @@ def _handle_snapshot_attempts(handler: "_ReadApiRequestHandler", query: str) -> 
     )
 
 
+def _handle_snapshot_reviews(handler: "_ReadApiRequestHandler", query: str) -> None:
+    parsed = urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)
+    error_detail = _validate_snapshot_query(parsed)
+    if error_detail is not None:
+        handler._respond(400, canonical_response_json({"error": "invalid_query", "detail": error_detail}))
+        return
+
+    limit = int(parsed["limit"][0]) if "limit" in parsed else 100
+    after = parsed["after"][0] if "after" in parsed else None
+
+    connection: sqlite3.Connection | None = None
+    try:
+        runtime_config = RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        connection = sqlite3.connect(
+            f"file:{runtime_config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0,
+        )
+        rows = connection.execute(_REVIEWS_SNAPSHOT_QUERY, (after, after, limit)).fetchall()
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    finally:
+        if connection is not None:
+            connection.close()
+
+    next_after = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_after = rows[-1][_REVIEWS_SNAPSHOT_COLUMNS.index("review_id")]
+
+    reviews = []
+    for row in rows:
+        review = dict(zip(_REVIEWS_SNAPSHOT_COLUMNS, row))
+        review["coverage"] = json.loads(review.pop("coverage_json"))
+        review["findings"] = json.loads(review.pop("findings_json"))
+        reviews.append(review)
+    handler._respond(
+        200, canonical_response_json({"next_after": next_after, "reviews": reviews}),
+    )
+
+
 _ROUTES = {
     "/health": _handle_health,
     "/snapshot/packets": _handle_snapshot_packets,
     "/snapshot/attempts": _handle_snapshot_attempts,
+    "/snapshot/reviews": _handle_snapshot_reviews,
 }
 
 
