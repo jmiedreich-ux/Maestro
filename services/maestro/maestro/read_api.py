@@ -371,7 +371,20 @@ def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[s
         )
         return
 
-    store = OperationalStateStore(RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting))
+    # Constructing the store (and resolving its runtime dir) is guarded the
+    # same way every existing GET route already guards the identical call
+    # (`read_api.py`'s four snapshot handlers) — an independent implementation
+    # review of this slice's first draft found this call left unguarded here,
+    # a real, reproduced uncaught-`RuntimePathError` crash of the request
+    # thread with no HTTP response under a real misconfigured runtime dir.
+    try:
+        store = OperationalStateStore(
+            RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
     try:
         result = store.transition_packet_eligibility(

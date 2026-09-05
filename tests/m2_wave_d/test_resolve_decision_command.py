@@ -10,7 +10,7 @@ from contextlib import closing
 from pathlib import Path
 
 from maestro import read_api
-from maestro.config import DEFAULT_RUNTIME_DIR, RuntimeConfig
+from maestro.config import DEFAULT_RUNTIME_DIR, RuntimeConfig, RuntimePathError
 from maestro.operational_state import Actor, OperationalStateStore
 
 
@@ -377,6 +377,34 @@ class ResolveDecisionCommandTests(unittest.TestCase):
         reopened = OperationalStateStore(self.runtime.config)
         row = reopened.snapshot("Packet", "packet-1")
         self.assertEqual((row["state"], row["version"]), ("Blocked", 2))
+
+    def test_12_real_invalid_runtime_dir_returns_503_database_unavailable(self) -> None:
+        # Reproduces a second real, reachable uncaught-exception path an
+        # independent implementation review found in this slice's first
+        # draft: `RuntimeConfig.from_runtime_dir` (and
+        # `OperationalStateStore.__init__`'s own internal re-validation of
+        # it) raises a real `RuntimePathError` for any runtime dir outside
+        # the repository's real `var/` root (`config.validate_runtime_dir`),
+        # and this was left completely unguarded, unlike the identical call
+        # in every existing GET route in this same file. Not mocked: a real
+        # server is started with a real runtime_dir that genuinely fails
+        # real validation.
+        with tempfile.TemporaryDirectory() as outside_var:
+            with self.assertRaises(RuntimePathError):
+                RuntimeConfig(outside_var)
+
+            server = read_api.ReadApiServer(
+                read_api.ReadApiConfig(port=0, runtime_dir=outside_var)
+            )
+            server.start()
+            try:
+                status, _content_type, body = self._post_to(
+                    server.bound_port, self._base_envelope()
+                )
+            finally:
+                server.stop()
+        self.assertEqual(status, 503)
+        self.assertEqual(body, {"error": "database_unavailable"})
 
 
 if __name__ == "__main__":
