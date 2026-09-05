@@ -1,5 +1,7 @@
+import DesktopShell from "./shell/DesktopShell";
+
 export function App() {
-  return <div>Atlas</div>;
+  return <DesktopShell />;
 }
 
 export default App;

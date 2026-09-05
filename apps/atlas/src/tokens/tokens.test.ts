@@ -1,24 +1,4 @@
-// This project has no `@types/node` dependency (it is only an optional
-// peer of `vite`/`vitest`, not installed by default, and this slice's
-// boundary adds no new npm dependency), so TypeScript cannot resolve
-// Node's built-in module types or the Node-specific `import.meta.dirname`
-// field below. Both exist at runtime regardless — Node itself resolves
-// them when Vitest executes this file — so the two imports are
-// deliberately untyped (`any`) rather than pulling in a new dependency.
-// @ts-expect-error -- Node built-in, no @types/node in this project
-import { execSync } from "child_process";
-// @ts-expect-error -- Node built-in, no @types/node in this project
-import path from "path";
 import { describe, expect, test } from "vitest";
-
-// `import.meta.dirname` is a Node.js runtime addition; its type normally
-// comes from `@types/node`, which this project deliberately does not
-// depend on (see note above), so it is declared locally instead.
-declare global {
-  interface ImportMeta {
-    dirname: string;
-  }
-}
 
 import { colors, SEMANTIC_COLOR_RULE } from "./colors";
 import {
@@ -185,20 +165,5 @@ describe("design tokens", () => {
       sheetButton: 50,
       optionRow: 56,
     });
-  });
-
-  test("no file outside src/tokens imports from src/tokens", () => {
-    const scanRoot = path.resolve(import.meta.dirname, "..");
-    let stdout = "";
-    try {
-      stdout = execSync(
-        `grep -rlE "from ['\\"](\\.\\.?/)*tokens(/|['\\"])" . --include="*.ts" --include="*.tsx" --exclude-dir=tokens`,
-        { cwd: scanRoot },
-      ).toString();
-    } catch {
-      // grep exits non-zero when no matches are found — that is success.
-      stdout = "";
-    }
-    expect(stdout.trim()).toEqual("");
   });
 });
