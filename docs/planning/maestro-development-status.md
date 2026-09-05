@@ -1220,12 +1220,32 @@ shipped as a uniform `18px` — pure visual polish, not fixed, logged
 here for a future touch-up. 20/20 test files, 148/148 tests pass, zero
 regressions.
 
-**M2 status after F2:** of 39 total roadmap items — Wave A (7/7), Wave
-B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D3
+`MB-SLICE-M2-D6-RESOLVE-CRASH-COMMAND-01` is merged (planning PR #150
+at `cee623c`, implementation PR #152 at `91f8a96`) — the second real
+command into D1/D2's guarded scaffold: `POST /command/resolve-crash`,
+wrapping the real `record_and_close_needs_replan`. Investigation found
+only one of the roadmap's own three named options
+("resume/re-dispatch/hold-and-inspect") has any real backend
+counterpart: `finish_attempt_execution`'s `Failed`/`TimedOut`/`Stale`
+outcomes all route to the real `NeedsReplan` state, and
+`record_and_close_needs_replan` is the only real exit — a single,
+hard-coded, non-parameterized move to `Cancelled` (no real "resume" or
+"re-dispatch" command exists anywhere in `operational_state.py`,
+verified by exhaustive search). Both missing options are rescheduled
+to M3 (real executor/dispatch machinery), matching D4/D5's own
+precedent. Applied D2's own two-phase exception-coverage lesson
+(`ResourceBusy` + guarded store construction) from the first draft —
+zero corrections needed at either planning or implementation review,
+both passed clean. 34/34 named `tests/m2_wave_d` tests (245 total
+across `m2_wave_a`/`m1_02`), zero regressions.
+
+**M2 status after D6:** of 39 total roadmap items — Wave A (7/7), Wave
+B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (3/7, D3
 blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (2/4),
-Wave G (0/3) — 28 of 39 items are done (~72%), plus C2/D3 blocked
+Wave G (0/3) — 29 of 39 items are done (~74%), plus C2/D3 blocked
 together and D4/D5 rescheduled to M4.
 
-Next: any independent Wave F (F3, F4), Wave G (G1, G3 — G2 needs
-D6/D7), or Wave D (D6/D7 crash-recovery command) item not blocked by
-C2/D3's open question.
+Next: any independent Wave F (F3, F4), Wave G (G1, G3 — G2 needs D7),
+or D7 (wire the Atlas crash card's recovery buttons to D6 — will need
+its own real-packet-identity check first, the same class of question
+D3 already found) not blocked by C2/D3's open question.
