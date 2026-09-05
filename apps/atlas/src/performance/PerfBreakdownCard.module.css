@@ -1,0 +1,145 @@
+.card {
+  margin-top: 14px;
+  border: 1px solid var(--atlas-brk-card-border);
+  border-radius: 14px;
+  background: var(--atlas-brk-card-surface);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--atlas-brk-header-border);
+}
+
+.headerLabel {
+  font: 600 10.5px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-brk-header-label);
+}
+
+.basisNote {
+  min-width: 0;
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--atlas-brk-basis-note);
+}
+
+.segmented {
+  flex: none;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--atlas-brk-track-bg);
+}
+
+.segButton {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--atlas-brk-seg-unselected-ink);
+}
+
+.segButton:hover {
+  color: var(--atlas-brk-seg-selected-ink);
+}
+
+.segSelected {
+  background: var(--atlas-brk-seg-selected-bg);
+  color: var(--atlas-brk-seg-selected-ink);
+}
+
+.group {
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--atlas-brk-group-border);
+}
+
+.groupName {
+  font: 600 10px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-brk-group-name);
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  margin-top: 9px;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--atlas-brk-track-bg);
+}
+
+.barSegment {
+  display: block;
+}
+
+.segColor0 {
+  background: var(--atlas-brk-seg-color-0);
+}
+
+.segColor1 {
+  background: var(--atlas-brk-seg-color-1);
+}
+
+.segColor2 {
+  background: var(--atlas-brk-seg-color-2);
+}
+
+.segColor3 {
+  background: var(--atlas-brk-seg-color-3);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 11px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.legendLabel {
+  color: var(--atlas-brk-legend-label);
+}
+
+.legendPct {
+  font-family: var(--atlas-font-mono);
+  color: var(--atlas-brk-legend-pct);
+}
+
+.legendAbs {
+  font: 500 11.5px var(--atlas-font-mono);
+  color: var(--atlas-brk-legend-abs);
+}
+
+.caveat {
+  padding: 11px 15px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--atlas-brk-caveat);
+  text-wrap: pretty;
+}
