@@ -1,7 +1,7 @@
 # M1 Packet Acceptance Routing — Candidate 01
 
 **Slice ID:** `MB-SLICE-M1-ACCEPTANCE-ROUTING-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Implementation` (frozen at `70f6c9ed1940d5ca92782addf76c5dba20e73e0a`, approved with zero findings and zero corrections)
 **Base:** `c732eb41fcc6664446358a119f28e4ba8bca7352` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -38,16 +38,16 @@ independently reviewed fresh against current schema.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-ACCEPTANCE-ROUTING-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:c732eb41fcc6664446358a119f28e4ba8bca7352"]` |
+| `evidence_refs` | `["git:base:c732eb41fcc6664446358a119f28e4ba8bca7352","git:full-planning-review-head:70f6c9ed1940d5ca92782addf76c5dba20e73e0a","review:decision-fidelity:approve:no-findings"]` |
 
 ## Candidate authority
 
