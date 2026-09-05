@@ -782,6 +782,26 @@ match to the frozen contract; all 43 `apps/atlas` tests pass (35
 existing + 8 new), build succeeds, C3's sibling files were left
 untouched, `OwnerDecisionCard` is not imported anywhere else yet.
 
-Next: Wave C's remaining items — C5 (Decision Fidelity record
-rendering), C6 (crash card), C7 (header/state-source wiring). C2 stays
-deferred pending Owner input on the real-data synthesis question above.
+`MB-SLICE-M2-C5-FIDELITY-RECORD-01` is merged (planning PR #98 at
+`88329833`, implementation PR #99 at `f9acb22f`): a standalone
+`FidelityRecord` component rendering the Decision Fidelity record's
+exact visual anatomy (eyebrow, subject/evidence header, one row per
+claim, overall-verdict bar). Its content is a real citation of this
+project's own closed C3 Decision Fidelity review (PR #92) — 4 claim
+rows checked against real evidence (a corrected `operational_state.py`
+line citation, the "link to the rule that fired" fix, an absence-of-
+persona audit, and C1's fixture non-reuse), overall verdict `Faithful`
+— rather than the reference mockup's fictional "Architect agent" ruling
+on a sentinel-version question. The record id (`DF-M2-C3`) deliberately
+does not reuse the mockup's literal `DF-2`, to avoid implying
+continuity with that fictional narrative. Full Decision Fidelity review
+returned `APPROVE` with zero findings after exhaustive verification —
+the cleanest review of the program so far. Independent implementation
+review confirmed a byte-exact match to the frozen contract; all 50
+`apps/atlas` tests pass (43 existing + 7 new), build succeeds, C3's/
+C4's sibling files were left untouched, `FidelityRecord` is not
+imported anywhere else yet.
+
+Next: Wave C's remaining items — C6 (crash card), C7 (header/
+state-source wiring). C2 stays deferred pending Owner input on the
+real-data synthesis question above.
