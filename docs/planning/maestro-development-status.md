@@ -965,7 +965,25 @@ implying a disclosed-literal count — including code-comment docstrings
 inside "exact file contents," not only narrative prose — before
 finalizing.
 
+`MB-SLICE-M2-E6-HISTORY-TIMELINE-02` is merged (planning PR #121 at
+`e257fc7`, implementation PR #122 at `a84a459`), closing out the
+History-timeline saga: this fresh candidate reused `-01`'s
+already-independently-verified content and fixed the disclosed-literal
+count consistently to five everywhere, including the code-comment
+docstring `-01`'s correction missed. One targeted planning correction
+was needed for an unrelated defect — the base-commit hash was
+mislabeled as "full" when it was the short form — caught by full DF
+review, fixed, and independently re-verified. A standalone `History`
+component: header, 4 real stats, all 10 real timeline entries, and the
+timeline's own trailing placeholder note, with 5 disclosed color
+literals, each independently cross-checked against `colors.ts`. Full
+Decision Fidelity review and independent implementation review both
+confirmed zero remaining defects (byte-exact match, literal-count
+correctness, test-scoping correctness for the two `"1"`-valued stats);
+all 99 `apps/atlas` tests pass (90 existing + 9 new), build succeeds,
+`History` is not imported anywhere else yet.
+
 Next: the rest of Wave E (per-action detail groups + expand/collapse —
-E2B, Performance breakdown card — E3, Agents roster/contention, a fresh
-History-timeline `-02` candidate), per the M2 roadmap and the standing
-instruction to complete all of M2 where possible.
+E2B, Performance breakdown card — E3, Agents roster/contention), per
+the M2 roadmap and the standing instruction to complete all of M2 where
+possible.
