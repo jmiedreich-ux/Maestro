@@ -419,7 +419,27 @@ Fidelity review and independent implementation review both confirmed
 zero remaining defects; all 105 `apps/atlas` tests pass (99 existing +
 6 net new).
 
-Next: the rest of Wave E (breakdown card, Agents).
+`MB-SLICE-M2-E3-PERF-BREAKDOWN-CARD-01` is merged (planning PR #127,
+implementation PR #128), completing roadmap item 28: a standalone
+`PerfBreakdownCard` rendering the real "m1-a breakdown" card — the
+first genuine multi-value toggle in this codebase
+(`useState<SplitBasisKey>`, real cost/tokens/time segmented control)
+driving two real stacked-bar-plus-legend groups and a real caveat.
+Zero disclosed color literals (20 real B2 tokens, including the first
+real consumers of `colors.segmentedTrack`/`colors.segmentedSelected`).
+One disclosed real-vs-fictional persona adaptation: `cost.role`'s
+fictional `Architect agent` entry replaced with the real `Local Qwen`
+actor, matching the pattern the reference file's own
+`tokens.role`/`time.role` arrays already use. One targeted planning
+correction fixed a color-discrepancy table missing one already-correct
+mapping (row count 19→20). Full Decision Fidelity review and
+independent implementation review both confirmed zero remaining
+defects; all 114 `apps/atlas` tests pass (105 existing + 9 new).
+
+Next: the last of Wave E (Agents roster/contention — E4/E5), per the
+M2 roadmap and the standing instruction to complete all of M2 where
+possible. The real `AGENTS` array includes a fictional `Architect
+agent` entry requiring the same real-mechanism substitution treatment.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
