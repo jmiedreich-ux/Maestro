@@ -1,7 +1,7 @@
 # M2 Wave A — Attempts Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found a wrong `attempt_id` nullability claim, an internally-inconsistent worked JSON example, and an under-specified `Succeeded` fixture that collides with a real `CHECK` constraint
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 3 blocking findings; one targeted planning correction resolved all three and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `7252ea0` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -44,8 +44,8 @@ observable change to `/snapshot/packets`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -53,7 +53,7 @@ observable change to `/snapshot/packets`.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7252ea0","git:full-planning-review-head:c306b6284c1e1c6bc84d8b652bd929d4057daabc","review:decision-fidelity:request-changes:3-blocking-findings"]` |
+| `evidence_refs` | `["git:base:7252ea0","git:full-planning-review-head:c306b6284c1e1c6bc84d8b652bd929d4057daabc","review:decision-fidelity:request-changes:3-blocking-findings","git:corrected-planning-head:1a7add7ea92b28eb3acd4693f3222afb08dd114b","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact route contract
 
