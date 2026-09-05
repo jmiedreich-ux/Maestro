@@ -1,8 +1,8 @@
 # M2 Wave E — History Timeline — Candidate 02
 
 **Slice ID:** `MB-SLICE-M2-E6-HISTORY-TIMELINE-02`
-**Status:** `Draft — Pending Decision Fidelity Review`
-**Base:** `edfa5ed` (full: `edfa5ed`, `origin/master`)
+**Status:** `Draft — Targeted correction applied (base commit hash: mislabeled short hash as "full" → real full 40-character SHA), pending Targeted Decision Fidelity Verification`
+**Base:** `edfa5ed` (full: `edfa5edcf900fde5b4496cc00ab24fd8376fa1f6`, `origin/master`)
 
 **Successor to `MB-SLICE-M2-E6-HISTORY-TIMELINE-01`, terminally
 returned.** Candidate `-01`'s sole defect was a self-contradictory
@@ -214,16 +214,16 @@ color.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E6-HISTORY-TIMELINE-02` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:edfa5ed", "predecessor:MB-SLICE-M2-E6-HISTORY-TIMELINE-01(terminally-returned; disclosed-literal-count-self-contradiction, one location missed by its correction)"]` |
+| `evidence_refs` | `["git:base:edfa5edcf900fde5b4496cc00ab24fd8376fa1f6", "git:planning-review-head:0be624b945f0fc6c160d46a94bf42fcaf34bcfd2", "predecessor:MB-SLICE-M2-E6-HISTORY-TIMELINE-01(terminally-returned; disclosed-literal-count-self-contradiction, one location missed by its correction)", "review:DecisionFidelity:REQUEST_CHANGES:base-hash-mislabeled-as-full-when-short", "docs-only-correction:base-hash-corrected-to-real-full-40-char-sha(header-line,evidence_refs)"]` |
 
 ## Exact file contents
 
