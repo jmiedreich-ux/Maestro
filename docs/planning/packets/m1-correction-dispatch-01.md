@@ -1,7 +1,7 @@
 # M1 Architect-Disposition Correction Dispatch — Candidate 01
 
 **Slice ID:** `MB-SLICE-M1-CORRECTION-DISPATCH-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Implementation` (frozen at `4b6e5e2e9f0d2166e8c8298be37e9d9aa02f0bf8`, approved with zero findings and zero corrections)
 **Base:** `9c78fdbd7ec7668c8dbfeeb13edf573e7be946e6` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -34,16 +34,16 @@ M0-D05, and M0-D12, read from current `origin/master`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-CORRECTION-DISPATCH-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:9c78fdbd7ec7668c8dbfeeb13edf573e7be946e6"]` |
+| `evidence_refs` | `["git:base:9c78fdbd7ec7668c8dbfeeb13edf573e7be946e6","git:full-planning-review-head:4b6e5e2e9f0d2166e8c8298be37e9d9aa02f0bf8","review:decision-fidelity:approve:no-findings"]` |
 
 ## Closed command and route
 
