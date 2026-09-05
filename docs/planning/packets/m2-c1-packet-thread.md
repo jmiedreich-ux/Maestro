@@ -1,7 +1,7 @@
 # M2 Wave C — Packet Thread, Static Fixtures — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C1-PACKET-THREAD-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the test file's own code contains 7 tests, but the contract's proof sections said 6, giving a wrong total of 23 instead of 24; plus one non-blocking wording fix, applied at the same time. Neither fix changes fixture data, tokens, colors, or the grouping logic.
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review exhaustively verified every fixture value byte-accurate against the reference file and found exactly 1 blocking finding (a test-count/total mismatch between the code and the contract's own proof sections) plus 1 non-blocking wording fix; one targeted planning correction resolved both and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `6fc20da` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -147,8 +147,8 @@ nothing yet):
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C1-PACKET-THREAD-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -156,7 +156,7 @@ nothing yet):
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:6fc20da","git:full-planning-review-head:8d7c32f1f32ffdcd298c39b0892b1b984340283a","review:decision-fidelity:request-changes:1-blocking-finding"]` |
+| `evidence_refs` | `["git:base:6fc20da","git:full-planning-review-head:8d7c32f1f32ffdcd298c39b0892b1b984340283a","review:decision-fidelity:request-changes:1-blocking-finding","git:corrected-planning-head:9df116338611460496b74c2e1202b848aee8b4bc","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact file contents
 
