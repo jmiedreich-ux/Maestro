@@ -44,7 +44,7 @@ _HEALTH_BODY = canonical_response_json({"status": "ready"})
 _NOT_FOUND_BODY = canonical_response_json({"error": "not_found"})
 _METHOD_NOT_ALLOWED_BODY = canonical_response_json({"error": "method_not_allowed"})
 
-_VALID_SNAPSHOT_PACKETS_QUERY_KEYS = frozenset({"limit", "after"})
+_VALID_SNAPSHOT_QUERY_KEYS = frozenset({"limit", "after"})
 _LIMIT_LITERAL_RE = re.compile(r"^(0|[1-9][0-9]*)$")
 
 _PACKETS_SNAPSHOT_COLUMNS = (
@@ -60,10 +60,26 @@ _PACKETS_SNAPSHOT_QUERY = f"""
     LIMIT ?+1
 """
 
+_ATTEMPTS_SNAPSHOT_COLUMNS = (
+    "attempt_id", "attempt_kind", "attempt_number", "completion_evidence_reference",
+    "correction_for_review_id", "created_at", "execution_handle", "executor_class",
+    "expected_result", "finished_at", "heartbeat_at", "lease_id", "model_identity",
+    "packet_id", "result_commit", "runtime_identity", "started_at", "state",
+    "updated_at", "version",
+)
 
-def _validate_snapshot_packets_query(parsed: dict[str, list[str]]) -> str | None:
+_ATTEMPTS_SNAPSHOT_QUERY = f"""
+    SELECT {", ".join(_ATTEMPTS_SNAPSHOT_COLUMNS)}
+    FROM attempts
+    WHERE (? IS NULL OR attempt_id > ?)
+    ORDER BY attempt_id ASC
+    LIMIT ?+1
+"""
+
+
+def _validate_snapshot_query(parsed: dict[str, list[str]]) -> str | None:
     for key in parsed:
-        if key not in _VALID_SNAPSHOT_PACKETS_QUERY_KEYS:
+        if key not in _VALID_SNAPSHOT_QUERY_KEYS:
             return f"unknown query parameter: {key}"
     for key in ("limit", "after"):
         if key in parsed and len(parsed[key]) > 1:
@@ -83,7 +99,7 @@ def _handle_health(handler: "_ReadApiRequestHandler", query: str) -> None:
 
 def _handle_snapshot_packets(handler: "_ReadApiRequestHandler", query: str) -> None:
     parsed = urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)
-    error_detail = _validate_snapshot_packets_query(parsed)
+    error_detail = _validate_snapshot_query(parsed)
     if error_detail is not None:
         handler._respond(400, canonical_response_json({"error": "invalid_query", "detail": error_detail}))
         return
@@ -116,9 +132,45 @@ def _handle_snapshot_packets(handler: "_ReadApiRequestHandler", query: str) -> N
     )
 
 
+def _handle_snapshot_attempts(handler: "_ReadApiRequestHandler", query: str) -> None:
+    parsed = urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)
+    error_detail = _validate_snapshot_query(parsed)
+    if error_detail is not None:
+        handler._respond(400, canonical_response_json({"error": "invalid_query", "detail": error_detail}))
+        return
+
+    limit = int(parsed["limit"][0]) if "limit" in parsed else 100
+    after = parsed["after"][0] if "after" in parsed else None
+
+    connection: sqlite3.Connection | None = None
+    try:
+        runtime_config = RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        connection = sqlite3.connect(
+            f"file:{runtime_config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0,
+        )
+        rows = connection.execute(_ATTEMPTS_SNAPSHOT_QUERY, (after, after, limit)).fetchall()
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    finally:
+        if connection is not None:
+            connection.close()
+
+    next_after = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_after = rows[-1][_ATTEMPTS_SNAPSHOT_COLUMNS.index("attempt_id")]
+
+    attempts = [dict(zip(_ATTEMPTS_SNAPSHOT_COLUMNS, row)) for row in rows]
+    handler._respond(
+        200, canonical_response_json({"attempts": attempts, "next_after": next_after}),
+    )
+
+
 _ROUTES = {
     "/health": _handle_health,
     "/snapshot/packets": _handle_snapshot_packets,
+    "/snapshot/attempts": _handle_snapshot_attempts,
 }
 
 
