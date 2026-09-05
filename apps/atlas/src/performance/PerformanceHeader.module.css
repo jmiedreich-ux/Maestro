@@ -1,0 +1,66 @@
+.head {
+  flex: none;
+  padding: 16px 34px 15px;
+  background: var(--atlas-perf-surface);
+  border-bottom: 1px solid var(--atlas-perf-border);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 500 11px var(--atlas-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-perf-eyebrow);
+}
+
+.title {
+  margin: 7px 0 0;
+  font-family: var(--atlas-font-display);
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--atlas-perf-title);
+}
+
+.lede {
+  margin: 7px 0 0;
+  max-width: 70ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--atlas-perf-lede);
+  text-wrap: pretty;
+}
+
+.ledeCode {
+  font-family: var(--atlas-font-mono);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 26px;
+  margin-top: 11px;
+  font-size: 13.5px;
+  color: var(--atlas-perf-lede);
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.statValue {
+  font-family: var(--atlas-font-mono);
+}
+
+.statValueInk {
+  color: var(--atlas-perf-title);
+}
+
+.statValueWarning {
+  color: var(--atlas-perf-warning);
+}
