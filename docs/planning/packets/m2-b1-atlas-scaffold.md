@@ -1,7 +1,7 @@
 # M2 Wave B — Atlas App Scaffold — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found check_06's `--port 0` claim doesn't actually select an ephemeral port in the pinned Vite version (empirically verified by the reviewer), plus two cheap non-blocking fixes (a devDependency miscount, a maintainer-flagged bad patch pin)
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 1 blocking finding (check_06's `--port 0` claim, empirically disproven); one targeted planning correction resolved it and was approved by targeted verification, which also surfaced one more free fix (invoke `vite` directly, not through the `npm run` wrapper, to remove SIGTERM ambiguity) applied here at zero cost. No further planning correction is available for this slice.
 **Base:** `620bc1e` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -31,8 +31,8 @@ none is added by this slice either) is introduced.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -40,7 +40,7 @@ none is added by this slice either) is introduced.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:620bc1e","git:full-planning-review-head:9f84bdd5c6222ae513abc175c1ac1682d38990ef","review:decision-fidelity:request-changes:1-blocking-finding"]` |
+| `evidence_refs` | `["git:base:620bc1e","git:full-planning-review-head:9f84bdd5c6222ae513abc175c1ac1682d38990ef","review:decision-fidelity:request-changes:1-blocking-finding","git:corrected-planning-head:7ca4d7e4f71e37752846f3bcc0a948f509c8bc69","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Dependency-version policy (read this before implementing)
 
@@ -306,15 +306,24 @@ The 7 named checks, run from `apps/atlas/` after `npm install`:
    OS-assigned port (e.g.
    `python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"`
    or the Node/shell equivalent), close that socket, then invoke
-   `npm run dev -- --port <that-port> --strictPort` with the real number.
-   A small close-then-reuse race is possible but is standard, accepted
-   practice for test port allocation (the same pattern this program's own
-   Python `ReadApiServer` tests already use via `port=0` at the socket
-   level in A1). The rest of the check is unchanged: the server starts
-   within a bounded timeout (10s); a `GET /` against
-   `http://127.0.0.1:<that-port>/` returns `200` with `Content-Type:
-   text/html` and a body containing `<div id="root">`; the process is
-   then terminated cleanly (`SIGTERM`, confirm exit).
+   `npx vite --port <that-port> --strictPort` **directly, not through
+   `npm run dev --`** — a non-blocking observation from targeted
+   verification found that signaling the `npm run` wrapper process
+   lets the wrapper exit while its actual `vite` child process (and the
+   port it holds) can survive, letting a literal implementation report a
+   false "clean exit." Invoking `vite` directly (via `npx`, which this
+   pinned `devDependencies` set already makes available with no extra
+   install) makes the process being signaled and the process holding the
+   port the same process, removing the ambiguity entirely. A small
+   close-then-reuse race between the port probe and Vite's own bind is
+   possible but is standard, accepted practice for test port allocation
+   (the same pattern this program's own Python `ReadApiServer` tests
+   already use via `port=0` at the socket level in A1). The rest of the
+   check is unchanged: the server starts within a bounded timeout (10s);
+   a `GET /` against `http://127.0.0.1:<that-port>/` returns `200` with
+   `Content-Type: text/html` and a body containing `<div id="root">`; the
+   process is then terminated cleanly (`SIGTERM` to that same `vite`
+   process, confirm exit and that the port is released).
 7. `check_07_exact_file_boundary` — after `npm install` and running the
    checks above, `git status --porcelain` inside `apps/atlas/` shows
    nothing untracked or modified beyond what `.gitignore` already
