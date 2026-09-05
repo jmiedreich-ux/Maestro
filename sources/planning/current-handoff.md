@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, and NeedsReplan closure
-**Current development state:** M1 internal operational core closed; M2 (Atlas read-only reporting) is next per M0-D15, not yet started
+**Current development state:** M1 internal operational core closed; M2 (Atlas reporting, with named operator-action commands becoming available as built) is next per M0-D15, not yet started
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -263,9 +263,11 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    routing, merge-observation routing, correction dispatch,
    correction-pass review routing, and NeedsReplan closure are all
    integrated.
-3. M2 (Atlas read-only reporting) is the next phase per M0-D15. No M2
-   work is authorized by this record; its canonical contract still
-   requires pre-execution Decision Fidelity approval.
+3. M2 (Atlas reporting, with named operator-action commands becoming
+   available as built — see M0-D01's operator-action amendment) is the
+   next phase per M0-D15. No M2 work is authorized by this record; its
+   canonical contract still requires pre-execution Decision Fidelity
+   approval.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
