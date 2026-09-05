@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`fa060d5`
+`ff74adc`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -671,4 +671,19 @@ implementation review returned `APPROVE` with no findings; all 12
 `apps/atlas` tests pass, and the dev-server smoke test confirmed real
 shell content is served (not the old placeholder).
 
-Wave B4 (mobile shell) is next.
+`MB-SLICE-M2-B4-MOBILE-SHELL-01` is merged at
+`ff74adc5d6137d021aae75358451b9ab26024ca9`: a standalone `MobileShell`
+component (phone body, four-tab bottom bar, in the reference file's real
+order — Now, Chat, Plan, Activity, resolving a real README-vs-reference
+discrepancy per the README's own Fidelity rule), not wired into
+`App.tsx`. Full Decision Fidelity review returned `APPROVE` with 2
+non-blocking findings (a disclosed literal left as a bare CSS value; a
+quoting inconsistency), both fixed at zero cost before freeze — no
+planning correction needed. Independent implementation review returned
+`APPROVE` with no findings; all 17 `apps/atlas` tests pass, build
+succeeds, `MobileShell` correctly absent from the bundle since nothing
+imports it yet.
+
+**Wave B (Atlas app shells) is now complete: the app scaffold (B1),
+design tokens (B2), desktop shell (B3), and mobile shell (B4) are all
+merged.** Wave C (packet thread) is next.
