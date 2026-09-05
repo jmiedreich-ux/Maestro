@@ -863,6 +863,24 @@ is the sole exception, wired via C1B). Wiring the rest together into
 one coherent packet-detail view is real, separately-reviewable future
 work, not silently implied by any single C-wave slice.
 
-Next: Wave E (remaining desktop reporting views — Performance, Agents,
-History, Gate), per the M2 roadmap and the standing instruction to
-complete all of M2 where possible.
+`MB-SLICE-M2-E1-PERFORMANCE-HEADER-01` is merged (planning PR #107 at
+`e11e949d`, implementation PR #108 at `810c5454`): a standalone
+`PerformanceHeader` component (eyebrow, title, lede with inline mono
+`unavailable`, and the 4 real `pfStats` — Actions recorded, Billed,
+Estimated, Hosted time). Every color is a real, existing B2 token —
+zero disclosed literals, the cleanest token match of the M2 program so
+far. Pure reporting content; no persona-fidelity issue at all (unlike
+Wave C, Performance has no "Architect agent" narrative to adapt).
+Roadmap item 26 ("E1 — Performance: header stats + weekly-window
+strip") was deliberately split into two smaller candidates per the
+standing slice-sizing preference; the weekly-window strip is deferred
+to a follow-on `E1B`-style slice. Full Decision Fidelity review found
+zero blocking issues. Independent implementation review confirmed a
+byte-exact match to the frozen contract; all 70 `apps/atlas` tests pass
+(64 existing + 6 new), build succeeds, `PerformanceHeader` is not
+imported anywhere else yet.
+
+Next: the rest of Wave E (Performance's weekly-window strip and
+breakdown card, Agents roster/contention, History timeline, Gate
+criteria), per the M2 roadmap and the standing instruction to complete
+all of M2 where possible.
