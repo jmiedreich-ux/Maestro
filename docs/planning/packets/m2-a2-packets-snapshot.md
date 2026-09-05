@@ -1,7 +1,7 @@
 # M2 Wave A — Packets Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the `RuntimeConfig`/`RuntimePathError` failure path was not covered by the 503 contract and an internal contradiction over when `RuntimeConfig` is resolved
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 2 blocking findings (really one gap seen two ways); one targeted planning correction resolved both and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `08ac872` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -34,8 +34,8 @@ module's private attribute now that a natural place to fix it exists.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -43,7 +43,7 @@ module's private attribute now that a natural place to fix it exists.
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:08ac872","git:full-planning-review-head:32cfd9efe937feb9c369892369c2d49d9c91319e","review:decision-fidelity:request-changes:2-blocking-findings"]` |
+| `evidence_refs` | `["git:base:08ac872","git:full-planning-review-head:32cfd9efe937feb9c369892369c2d49d9c91319e","review:decision-fidelity:request-changes:2-blocking-findings","git:corrected-planning-head:b339eb21d5bfc18735dd6892020af2ab2f20d21e","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact route contract
 
