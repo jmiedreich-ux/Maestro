@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), M2 Wave C1 (packet thread) and C1B (wired into DesktopShell's nav — the shell now shows real fixture content for the first time)
-**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API) and Wave B (Atlas app shells) are both complete; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; next is the rest of Wave C (C2 real-data wiring, C3 decision card, C4 fidelity record, C5 crash card)
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), M2 Wave C1 (packet thread), C1B (wired into DesktopShell's nav — the shell now shows real fixture content for the first time), and C3 (decision card, ruling variant — a standalone `DecisionCard` driven by a real M1 routing-table entry, not the mockup's fictional "Architect agent")
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API) and Wave B (Atlas app shells) are both complete; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) is deliberately deferred pending Owner input — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question, not a routine implementation gap; next is the rest of Wave C (C4 decision card owner variant, C5 Decision Fidelity record, C6 crash card, C7 header/state-source wiring)
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -271,7 +271,13 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    snapshot, A4 reviews snapshot, A5 events snapshot) is complete and
    merged; Wave B (Atlas app shells: B1 app scaffold, B2 design tokens,
    B3 desktop shell candidate `-02` — `-01` was terminally returned, B4
-   mobile shell) is complete and merged; each subsequent wave slice
+   mobile shell) is complete and merged; Wave C1 (packet thread) and
+   C1B (shell wiring) are merged; C2 (real-data wiring) is deliberately
+   deferred pending Owner input on a real architecture question (the
+   backend's data model has no concept matching the mockup's narrative
+   thread messages); C3 (decision card, ruling variant) is merged,
+   driven by a real M1 routing-table entry rather than the mockup's
+   fictional "Architect agent" persona; each subsequent wave slice
    still requires its own pre-execution Decision Fidelity approval
    before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
