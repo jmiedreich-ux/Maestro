@@ -93,6 +93,46 @@ describe("ActivityTab", () => {
     }
   });
 
+  it("renders each real agent's exact progress-bar width, progress label, and due label with the correct urgent styling", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Agents" }));
+
+    for (const agent of AGENTS) {
+      const line = screen.getByText(agent.line);
+      const card = line.closest('[class*="agentCard"]') as HTMLElement;
+      const fill = card.querySelector('[class*="agentBarFill"]') as HTMLElement;
+      expect(fill.style.width).toBe(agent.pct);
+
+      const due = within(card).getByText(agent.due);
+      expect(within(card).getByText(agent.progress)).toBeInTheDocument();
+      // Only Coordinator's real fixture entry has `urgent: true` — every
+      // other real agent must render the non-urgent due class instead.
+      expect(due.className).toContain(agent.urgent ? "agentDueUrgent" : "agentDue");
+      if (!agent.urgent) {
+        expect(due.className).not.toContain("agentDueUrgent");
+      }
+    }
+  });
+
+  it("renders a hollow state dot only for Sol (the real fixture's only 'wait' styleKey), filled for the other 3", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Agents" }));
+
+    for (const agent of AGENTS) {
+      const line = screen.getByText(agent.line);
+      const card = line.closest('[class*="agentCard"]') as HTMLElement;
+      const dot = card.querySelector('[class*="agentStateDot"]') as HTMLElement;
+      const isWait = agent.styleKey === "wait";
+      expect(dot.className.includes("agentStateDotHollow")).toBe(isWait);
+      if (isWait) {
+        expect(dot.style.background).toBe("transparent");
+      } else {
+        expect(dot.style.background).not.toBe("");
+        expect(dot.style.background).not.toBe("transparent");
+      }
+    }
+  });
+
   it("renders no 'Open thread' button on the mobile Agents cards (the real mobile markup has no such control here)", () => {
     render(<ActivityTab />);
     fireEvent.click(screen.getByRole("button", { name: "Agents" }));
