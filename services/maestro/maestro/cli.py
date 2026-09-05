@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import sys
 from pathlib import Path
 
 from .config import RuntimeConfig
 from .packet_wrapper import PacketWrapper
+from .read_api import ReadApiBindError, ReadApiConfig, ReadApiServer, canonical_response_json
 from .review_readiness import (
     canonical_json,
     evaluate_review_readiness,
@@ -28,6 +30,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_packet.add_argument("--runtime-dir", type=Path, default=None, help="local directory for SQLite and fixture evidence")
     readiness = commands.add_parser("review-readiness", help="prove an immutable candidate is ready for review")
     readiness.add_argument("--request", type=Path, required=True, help="closed local review-readiness request JSON")
+    serve_read_api = commands.add_parser("serve-read-api", help="run the loopback-only Atlas read API scaffold")
+    serve_read_api.add_argument("--host", default="127.0.0.1", help="loopback host to bind")
+    serve_read_api.add_argument("--port", type=int, default=8765, help="port to bind (0 for an OS-assigned ephemeral port)")
     return parser
 
 
@@ -62,7 +67,33 @@ def main() -> int:
             result = evaluate_review_readiness(request_bytes)
         sys.stdout.buffer.write(canonical_json(result))
         return result_exit_code(result)
+    if args.command == "serve-read-api":
+        return _serve_read_api(args.host, args.port)
     raise ValueError(f"Unsupported Maestro command: {args.command}")
+
+
+def _serve_read_api(host: str, port: int) -> int:
+    try:
+        config = ReadApiConfig(host=host, port=port)
+    except ReadApiBindError as error:
+        sys.stderr.buffer.write(
+            canonical_response_json({"error": "invalid_host", "detail": str(error)}) + b"\n"
+        )
+        return 2
+    server = ReadApiServer(config)
+    server.start()
+    sys.stdout.buffer.write(
+        canonical_response_json({"host": config.host, "port": server.bound_port, "status": "listening"}) + b"\n"
+    )
+    sys.stdout.flush()
+
+    def _handle_sigint(signum, frame) -> None:
+        server.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _handle_sigint)
+    server._thread.join()
+    return 0
 
 
 if __name__ == "__main__":
