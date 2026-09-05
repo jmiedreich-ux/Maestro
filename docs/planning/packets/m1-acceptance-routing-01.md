@@ -38,16 +38,16 @@ independently reviewed fresh against current schema.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-ACCEPTANCE-ROUTING-01` |
-| `phase` | `PendingImplementation` |
-| `current_actor` | `MaestroDeveloper` |
+| `phase` | `MergeReady` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
-| `implementation_review_count` | `0` |
+| `implementation_review_count` | `1` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:c732eb41fcc6664446358a119f28e4ba8bca7352","git:full-planning-review-head:70f6c9ed1940d5ca92782addf76c5dba20e73e0a","review:decision-fidelity:approve:no-findings"]` |
+| `evidence_refs` | `["git:base:c732eb41fcc6664446358a119f28e4ba8bca7352","git:full-planning-review-head:70f6c9ed1940d5ca92782addf76c5dba20e73e0a","review:decision-fidelity:approve:no-findings","git:implementation-head:043957cfe15db27fa3e2f7ad12848f3b02fede0d","review:independent-implementation:approve:no-findings","tests:256-of-256-passing:1-pre-existing-unrelated-pyyaml-environment-failure"]` |
 
 ## Candidate authority
 
