@@ -318,8 +318,15 @@ other Wave C component (`PacketThread`, `DecisionCard`,
 real, reviewed, and merged but still standalone — none is wired into
 `DesktopShell`'s content pane or `App.tsx` except `PacketThread` (via
 C1B). Wiring the rest together is real, separately-reviewable future
-work. Next: Wave E (remaining desktop reporting views — Performance,
-Agents, History, Gate).
+work. Wave E is underway: E1 (Performance header/stats,
+`MB-SLICE-M2-E1-PERFORMANCE-HEADER-01`) is merged — a standalone
+`PerformanceHeader` (eyebrow, title, lede, 4 real `pfStats`) with zero
+disclosed color literals, the cleanest token match of the program so
+far; pure reporting content transcribed verbatim, no persona-fidelity
+issue. Roadmap item 26 was split into two smaller candidates; the
+weekly-window strip is deferred to a follow-on `E1B`-style slice. Next:
+the rest of Wave E (weekly-window strip, breakdown card, Agents,
+History, Gate).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
