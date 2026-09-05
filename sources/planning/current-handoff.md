@@ -376,9 +376,15 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    blocked, not built: its real `packet_id` is standalone fixture data
    with no backend row, inheriting C2's own still-open real-data-wiring
    question rather than posing a new one — recorded in the roadmap,
-   not yet assigned a milestone. Each subsequent wave slice still
-   requires its own pre-execution Decision Fidelity approval before
-   implementation.
+   not yet assigned a milestone. `MB-SLICE-M2-F2-CHAT-TAB-01` is
+   merged: the mobile Chat tab, reusing C1's real fixture/text-color
+   rule and C7's real header state as chat bubbles, no message
+   composer wired (no real backend send-message command exists);
+   Decision Fidelity review passed with 3 non-blocking notes fixed at
+   zero cost, independent implementation review approved with 1
+   non-blocking styling note logged for later. Each subsequent wave
+   slice still requires its own pre-execution Decision Fidelity
+   approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or

@@ -1195,6 +1195,37 @@ blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (1/4),
 Wave G (0/3) — 27 of 39 items are done (~69%), plus C2/D3 blocked
 together and D4/D5 rescheduled to M4.
 
-Next: any independent Wave F (F2-F4), Wave G (G1, G3 — G2 needs
+`MB-SLICE-M2-F2-CHAT-TAB-01` is merged (planning PR #147 at `a161cb4`,
+implementation PR #148 at `e186dab`) — the mobile "Chat" tab, reusing
+C1's real `PACKET_A2_ENTRIES` fixture and text-color rule (exporting
+`textColorFor` from `PacketThread.tsx`, its only change: one `export`
+keyword) and C7's real `derivePacketHeaderState` for the header,
+restyled as chat bubbles matching the reference file's own mobile
+markup exactly — no backend change. Checked directly before design
+that "reuses C1-C6" means reusing already-established real logic, not
+literally embedding C3-C6's own components: the real mobile markup
+renders only the entries feed and header, no decision/fidelity/crash
+card content inline. No message composer or send control rendered —
+no real backend command exists for sending a chat message, matching
+F1's own established reasoning for its excluded Stop/Start controls.
+Decision Fidelity review returned `PASS WITH 3 non-blocking notes`
+(a mischaracterized attribution of the internal tab-naming fact to the
+wrong prior slice's disclosure; an "exactly one CSS rule" overclaim
+for one legitimately-shared token var; an unacknowledged-but-correctly
+-inherited plan/cadence sub-panel exclusion) — all fixed at zero cost,
+no correction consumed. Independent implementation review returned
+`APPROVE` with 1 non-blocking note: the reference markup's "mine"
+bubble has an asymmetric tail corner (`18px 18px 18px 6px`) that
+shipped as a uniform `18px` — pure visual polish, not fixed, logged
+here for a future touch-up. 20/20 test files, 148/148 tests pass, zero
+regressions.
+
+**M2 status after F2:** of 39 total roadmap items — Wave A (7/7), Wave
+B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D3
+blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (2/4),
+Wave G (0/3) — 28 of 39 items are done (~72%), plus C2/D3 blocked
+together and D4/D5 rescheduled to M4.
+
+Next: any independent Wave F (F3, F4), Wave G (G1, G3 — G2 needs
 D6/D7), or Wave D (D6/D7 crash-recovery command) item not blocked by
 C2/D3's open question.
