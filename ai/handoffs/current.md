@@ -290,9 +290,17 @@ before approval. C5 (Decision Fidelity record rendering,
 `FidelityRecord` component citing this project's own real, closed C3
 Decision Fidelity review (PR #92) as its evidence, rather than the
 mockup's fictional "Architect agent" ruling narrative — its planning
-packet passed full Decision Fidelity review with zero findings. Next:
-Wave C's remaining items — C6 (crash card), C7 (header/state-source
-wiring).
+packet passed full Decision Fidelity review with zero findings. C6
+(crash card, `MB-SLICE-M2-C6-CRASH-CARD-01`) is also merged: a
+standalone `CrashCard` reusing C1's real `A.2` scenario, with no
+persona-swap needed (no fictional content anywhere in the reference
+file's crash-card copy) but 5 pieces of that copy corrected against
+`operational_state.py`'s real `finish_attempt_execution` outcome
+mapping (a Failed outcome always releases its lease, never holds it,
+and no automatic-retry code path exists) — its planning packet needed
+one targeted correction (two of the five corrections were made but not
+disclosed as numbered ones) before approval. Next: Wave C's last
+remaining item — C7 (header/state-source wiring).
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
 remain immutable and non-authoritative.
