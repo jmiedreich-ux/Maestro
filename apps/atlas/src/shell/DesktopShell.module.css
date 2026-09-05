@@ -121,3 +121,47 @@
   color: var(--atlas-ink-muted);
   font: 400 13.5px var(--atlas-font-body);
 }
+
+.packetRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: 400 14px var(--atlas-font-body);
+  color: var(--atlas-nav-text-running);
+}
+
+.packetRow:hover {
+  background: var(--atlas-nav-hover-bg);
+}
+
+.packetRowActive {
+  background: var(--atlas-nav-active-bg);
+  font-weight: 600;
+}
+
+.packetLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packetDot {
+  flex: none;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--atlas-dot-need);
+  box-shadow: 0 0 0 3px var(--atlas-dot-need-halo);
+}

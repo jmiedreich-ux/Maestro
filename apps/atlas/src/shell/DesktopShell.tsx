@@ -1,8 +1,9 @@
 import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
+import PacketThread from "../thread/PacketThread";
 import styles from "./DesktopShell.module.css";
 
-export type DesktopShellView = "performance" | "agents" | "history" | "gate";
+export type DesktopShellView = "performance" | "agents" | "history" | "gate" | "packet";
 
 const NAV_ROWS: ReadonlyArray<{ view: DesktopShellView; label: string }> = [
   { view: "performance", label: "Performance" },
@@ -10,12 +11,14 @@ const NAV_ROWS: ReadonlyArray<{ view: DesktopShellView; label: string }> = [
   { view: "history", label: "History" },
 ];
 
-const VIEW_LABEL: Record<DesktopShellView, string> = {
+const VIEW_LABEL: Record<Exclude<DesktopShellView, "packet">, string> = {
   performance: "Performance",
   agents: "Agents",
   history: "History",
   gate: "M1-B gate",
 };
+
+const PACKET_A2_LABEL = "A.2 · Runtime Package";
 
 /**
  * Every value here is either a direct property of the real, reviewed
@@ -55,6 +58,13 @@ const SHELL_VARS = {
   "--atlas-page-bg-desktop": colors.pageBgDesktop,
   "--atlas-font-body": fontFamily.body,
   "--atlas-font-mono": fontFamily.mono,
+  "--atlas-nav-text-running": colors.navTextActive,
+  "--atlas-dot-need": colors.warning,
+  // Not a token: the reference file's own halo alpha value for this
+  // exact dot state (Atlas Explorations.dc.html's dot() function,
+  // 'need' branch) — colors.warning's RGB (224,163,46) at .26 alpha,
+  // no equivalent token exists for a translucent halo.
+  "--atlas-dot-need-halo": "rgba(224,163,46,.26)",
 } as CSSProperties;
 
 export function DesktopShell() {
@@ -83,6 +93,15 @@ export function DesktopShell() {
               onSelect={setSelected}
             />
           ))}
+          <button
+            type="button"
+            className={`${styles.packetRow} ${selected === "packet" ? styles.packetRowActive : ""}`}
+            aria-current={selected === "packet" ? "true" : undefined}
+            onClick={() => setSelected("packet")}
+          >
+            <span className={styles.packetDot} aria-hidden="true" />
+            <span className={styles.packetLabel}>{PACKET_A2_LABEL}</span>
+          </button>
           <div className={styles.navDivider} />
           <NavRow
             view="gate"
@@ -91,7 +110,9 @@ export function DesktopShell() {
             onSelect={setSelected}
           />
         </nav>
-        <main className={styles.content}>{VIEW_LABEL[selected]} view</main>
+        <main className={styles.content}>
+          {selected === "packet" ? <PacketThread /> : `${VIEW_LABEL[selected]} view`}
+        </main>
       </div>
     </div>
   );
