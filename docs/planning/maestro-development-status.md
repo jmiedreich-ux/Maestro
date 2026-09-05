@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`75c7756`
+`e595248`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -513,7 +513,8 @@ planning correction added those sections, but targeted verification found the
 status carrier still falsely reported zero consumed reviews/corrections and the
 fingerprint remained prose rather than an exact canonical object. No
 implementation occurred. This slice cannot be reopened, corrected, renamed,
-replaced, dispatched, or reused as authority.
+replaced, dispatched, or reused as authority. A new independent slice must
+carry truthful post-review counters/phase and a literal fingerprint schema.
 
 ## M2 progress
 
@@ -532,5 +533,16 @@ a later Wave A slice: `cli.py`'s `serve-read-api` reaches into
 small public `wait_forever()` method would be cleaner but no contract
 behavior is violated and no correction was consumed for it.
 
-Wave A2 (packets snapshot endpoint) is next. A new independent slice must carry
-truthful post-review counters/phase and a literal fingerprint schema.
+`MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01` (Wave A2) is merged at
+`e595248e6fb6346faa250f6d720a39a73c740abc`: a read-only, paginated `GET
+/snapshot/packets` endpoint, plus the recorded A1 `wait_forever()` fix.
+Full Decision Fidelity review found 2 blocking findings (really one gap
+seen two ways: an uncaught `RuntimePathError` on a missing runtime
+directory, and a contradiction over when `RuntimeConfig` is resolved); the
+one available targeted planning correction resolved both, approved by
+targeted verification. Independent implementation review returned
+`APPROVE` with no findings; the 12 named tests and the full 311-test suite
+pass (310/311 — the same pre-existing, unrelated PyYAML-version
+environment failure, not introduced by this slice).
+
+Wave A3 (attempts snapshot endpoint) is next.
