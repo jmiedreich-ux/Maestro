@@ -891,7 +891,23 @@ review confirmed a byte-exact match to the frozen contract; all 75
 `apps/atlas` tests pass (70 existing + 5 new), build succeeds,
 `WeeklyWindowStrip` is not imported anywhere else yet.
 
-Next: the rest of Wave E (Performance's per-action records list — E2,
-already drafted — and breakdown card — E3, Agents roster/contention,
-History timeline, Gate criteria), per the M2 roadmap and the standing
+`MB-SLICE-M2-E2-PERF-RECORDS-LIST-01` is merged (planning PR #113 at
+`24a423cf`, implementation PR #114 at `993dcacf`): a standalone
+`PerfRecordsList` component rendering the collapsed row (action,
+packet/who, model, tokens, cost, elapsed, outcome tag) for all 5 real
+`PERF_RECORDS`, each its own separately bordered card (matching the
+real markup's actual structure, not a shared-border list). Zero
+disclosed color literals. Roadmap item 27 ("per-action records list +
+expand/collapse") was split into two smaller candidates, matching the
+E1/E1B precedent; the expandable detail groups and click-to-expand
+behavior are deferred to a follow-on `E2B`-style slice. Full Decision
+Fidelity review exhaustively verified all 5 records' 8 fields each
+byte-for-byte and found zero blocking issues. Independent
+implementation review confirmed a byte-exact match to the frozen
+contract; all 81 `apps/atlas` tests pass (75 existing + 6 new), build
+succeeds, `PerfRecordsList` is not imported anywhere else yet.
+
+Next: the rest of Wave E (per-action detail groups + expand/collapse —
+E2B, Performance breakdown card — E3, Agents roster/contention, History
+timeline, Gate criteria), per the M2 roadmap and the standing
 instruction to complete all of M2 where possible.

@@ -328,8 +328,13 @@ weekly-window strip is deferred to a follow-on `E1B`-style slice. E1B
 (weekly-window strip, `MB-SLICE-M2-E1B-WEEKLY-WINDOW-STRIP-01`) is
 also merged: a standalone `WeeklyWindowStrip` (label, 4 reconciliation
 figures, meta timestamp, caption), zero disclosed color literals,
-matching E1's own precedent. Next: the rest of Wave E (per-action
-records list, breakdown card, Agents, History, Gate).
+matching E1's own precedent. E2 (per-action records list, collapsed,
+`MB-SLICE-M2-E2-PERF-RECORDS-LIST-01`) is also merged: a standalone
+`PerfRecordsList` (all 5 real `PERF_RECORDS`, each its own bordered
+card), zero disclosed color literals; roadmap item 27 was split, with
+the expandable detail groups and expand/collapse behavior deferred to
+a follow-on `E2B`-style slice. Next: the rest of Wave E (detail
+groups/expand, breakdown card, Agents, History, Gate).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
