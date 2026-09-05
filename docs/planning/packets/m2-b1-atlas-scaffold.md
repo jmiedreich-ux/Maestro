@@ -1,7 +1,7 @@
 # M2 Wave B — Atlas App Scaffold — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found check_06's `--port 0` claim doesn't actually select an ephemeral port in the pinned Vite version (empirically verified by the reviewer), plus two cheap non-blocking fixes (a devDependency miscount, a maintainer-flagged bad patch pin)
 **Base:** `620bc1e` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -31,16 +31,16 @@ none is added by this slice either) is introduced.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:620bc1e"]` |
+| `evidence_refs` | `["git:base:620bc1e","git:full-planning-review-head:9f84bdd5c6222ae513abc175c1ac1682d38990ef","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Dependency-version policy (read this before implementing)
 
@@ -61,6 +61,14 @@ implementation-time judgment call already established for this program
 (e.g. A2's qmark-vs-numbered-SQL-parameter substitution). Jumping to a
 different major version line (e.g. TypeScript 7, Vite 8) is **not**
 authorized by this contract and would need its own review.
+
+**One pin below is deliberately not the newest 6.x patch** (a non-blocking
+Decision Fidelity finding): `@testing-library/jest-dom` is pinned to
+`6.9.1`, not `6.10.0` — `6.10.0`'s own package prints an `npm install`-time
+deprecation warning identifying itself as "an incorrect minor release
+with breaking changes," and directs installers to `6.9.1` or `7.0.0`.
+`6.9.1` is the last release before that regression, still within the
+pinned major/minor line.
 
 ## Exact file contents
 
@@ -85,7 +93,7 @@ authorized by this contract and would need its own review.
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
-    "@testing-library/jest-dom": "6.10.0",
+    "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
@@ -153,9 +161,13 @@ export default tseslint.config(
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
-      // TypeScript itself already catches undefined identifiers with
-      // full type information; eslint:recommended's no-undef is
-      // redundant here and produces false positives on DOM globals.
+      // Explicit and defensive, not a fix for an active false positive:
+      // typescript-eslint's own recommended config already disables
+      // no-undef for .ts/.tsx files (TypeScript's checker already
+      // catches undefined identifiers with full type information), so
+      // this line currently changes nothing observable. It stays as a
+      // literal statement of intent in case a future config change ever
+      // reintroduces the rule for these files.
       "no-undef": "off",
     },
   },
@@ -255,7 +267,7 @@ against the pinned versions above, or their authorized substitutes).
    `.gitignore` above and by a hygiene check before any readiness claim).
 3. `package-lock.json` **is** committed — it is the reproducibility
    record for the exact dependency tree `npm install` resolved.
-4. No dependency outside the two `dependencies` and eleven
+4. No dependency outside the two `dependencies` and twelve
    `devDependencies` named above (or their authorized same-major-line
    substitutes) is added without a new review.
 5. No routing, no data fetching, no design tokens, no reference to
@@ -282,12 +294,27 @@ The 7 named checks, run from `apps/atlas/` after `npm install`:
    `apps/atlas/dist/index.html`.
 5. `check_05_test_suite_passes` — `npm test` exits `0`; the one named
    test, `App > renders the Atlas placeholder`, passes.
-6. `check_06_dev_server_serves_root` — `npm run dev -- --port 0 --strictPort`
-   (or equivalent ephemeral-port invocation) starts within a bounded
-   timeout (10s); a `GET /` against the printed dev-server URL returns
-   `200` with `Content-Type: text/html` and a body containing
-   `<div id="root">`; the process is then terminated cleanly (`SIGTERM`,
-   confirm exit).
+6. `check_06_dev_server_serves_root` — **corrected, blocking finding from
+   Decision Fidelity review:** Vite (verified against the pinned 7.3.6)
+   treats `--port 0` as falsy and silently falls back to its fixed
+   default port `5173`, not an OS-assigned ephemeral port — `--port 0
+   --strictPort` is therefore neither ephemeral nor safe against a
+   colliding process already on `5173` (`--strictPort` turns that
+   collision into a hard failure instead of the intended isolation). The
+   correct mechanism: before invoking Vite, select a genuinely free port
+   by binding a throwaway socket to port `0` and reading back the
+   OS-assigned port (e.g.
+   `python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"`
+   or the Node/shell equivalent), close that socket, then invoke
+   `npm run dev -- --port <that-port> --strictPort` with the real number.
+   A small close-then-reuse race is possible but is standard, accepted
+   practice for test port allocation (the same pattern this program's own
+   Python `ReadApiServer` tests already use via `port=0` at the socket
+   level in A1). The rest of the check is unchanged: the server starts
+   within a bounded timeout (10s); a `GET /` against
+   `http://127.0.0.1:<that-port>/` returns `200` with `Content-Type:
+   text/html` and a body containing `<div id="root">`; the process is
+   then terminated cleanly (`SIGTERM`, confirm exit).
 7. `check_07_exact_file_boundary` — after `npm install` and running the
    checks above, `git status --porcelain` inside `apps/atlas/` shows
    nothing untracked or modified beyond what `.gitignore` already
