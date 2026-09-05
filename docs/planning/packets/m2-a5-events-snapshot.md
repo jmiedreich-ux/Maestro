@@ -1,7 +1,7 @@
 # M2 Wave A — Events Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the "no schema guarantee" justification incomplete (missed the schema-4 `events_validate_v4_shape`/`events_closed_event_type` triggers) and the fixture guidance under-specified for trigger-legal rows
 **Base:** `34f5a8d` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -60,36 +60,69 @@ provably unaffected (they never call this new check at all).
 
 **3. `before_json`/`after_json`/`reason` are projected as raw strings,
 **not** decoded like A4's `findings_json`/`coverage_json`.** This is a
-deliberate, evidence-based difference from A4, not an oversight:
+deliberate, evidence-based difference from A4, not an oversight. **This
+section was corrected after Decision Fidelity review** found the first
+draft's justification incomplete: it cited the absence of a column-level
+`CHECK(json_valid(...))` on these three columns as if no schema-level
+guarantee existed at all, without checking `_apply_schema_four`'s
+trigger set — the review found real triggers that mostly close that gap,
+and the reasoning below is restated accurately against them.
 
-- `events.before_json`/`after_json`/`reason` carry **no**
-  `CHECK(json_valid(...))` constraint in the real schema (verified:
-  `reviews.findings_json`/`coverage_json` have one; `events`'s three
-  `TEXT NOT NULL` payload columns do not). A4's "infallible decode" design
-  depended entirely on that schema-level guarantee; it does not exist here.
-- `reason` is empirically **not always JSON** across the codebase's own
-  history: `storage.py`'s older `record_binding`-era event insert (the
-  `ProjectRegistrationRun`/`AuthorityLoaded` path, still live code) writes
-  `reason` as a **plain human-readable string**
+- `storage.py`'s `_SCHEMA_FOUR_TRIGGERS` installs `events_validate_v4_shape`,
+  a `BEFORE INSERT` trigger whose `WHEN` clause is
+  `NOT (entity_type='ProjectRegistrationRun' AND event_type='AuthorityLoaded') AND (...)`
+  — i.e. it enforces, for **every row except exactly that one legacy
+  combination**, that `before_json`, `after_json`, and `reason` are each
+  `json_valid(...)` **and** `json_type(...)='object'` (plus exact-format
+  checks on `command_fingerprint`/`observed_at`/lengths, and a sibling
+  `events_closed_event_type` trigger restricting `event_type` to a closed
+  ~30-value list for the same non-legacy rows). So a trigger-enforced
+  guarantee **does** exist — it just isn't expressed as a column `CHECK`,
+  and it has exactly one carved-out exception.
+- That one exception is real and still live: `storage.py`'s
+  `record_binding`-era `ProjectRegistrationRun`/`AuthorityLoaded` event
+  insert writes `reason` as a **plain human-readable string**
   (`"candidate authority is reviewable"` / `"authority load is blocked by
-  missing or conflicting facts"`), while `operational_state.py`'s
-  `_insert_event`/`_insert_packet_state_event` family writes `reason` as a
-  `canonical_json({"kind": "reason", ...})` **object**. A single endpoint
-  cannot decode a column that is legitimately either shape depending on
-  which era of code wrote the row, without inventing a fragile
-  try/fallback heuristic this slice has no mandate to design.
-- `before_json`/`after_json` themselves are, in practice, always written
-  through `_json(...)`/`canonical_json(...)` in every current writer, so
-  they likely *would* decode cleanly today — but exposing them decoded
-  while leaving `reason` raw would be an inconsistent, confusing contract
-  (two of three "_json"-suffixed columns decoded, one not, on the same
-  row). This slice keeps all three raw and `_json`-suffixed, honestly
-  matching what they actually are: opaque stored text, exactly as
-  `packets`/`attempts` already treat every other column that isn't
-  specifically decoded. Deciding whether/how to decode `events` payload
-  columns for a specific Wave C history-rendering need is explicitly
-  deferred to whichever later slice actually renders History — it is not
-  this endpoint's job to guess that need now.
+  missing or conflicting facts"`) — not JSON at all — and the trigger's own
+  `WHEN` clause deliberately exempts exactly this `entity_type`/
+  `event_type` pair from the shape check, confirming this is a known,
+  intentional legacy carve-out, not an oversight the schema simply missed.
+  `operational_state.py`'s `_insert_event`/`_insert_packet_state_event`
+  family, by contrast, always writes `reason` as a
+  `canonical_json({"kind": "reason", ...})` **object**, and always uses a
+  closed-list `event_type`, so it always satisfies the trigger.
+- Given that, a generic decode *could* almost certainly be built safely
+  today — `if entity_type == "ProjectRegistrationRun" and event_type ==
+  "AuthorityLoaded": leave reason raw; else: json.loads it` — but that is
+  a one-legacy-row-shape special case baked into a read endpoint, which is
+  disproportionate scope for this slice (M0-D12 proportionality): it
+  would encode a fact about one specific legacy writer's behavior into
+  the read path, rather than fixing or migrating that writer, and would
+  need its own dedicated test coverage of the carve-out. This slice
+  instead keeps all three columns raw and `_json`-suffixed, honestly
+  matching what they literally are: opaque stored text, exactly as
+  `packets`/`attempts` already treat every column that isn't specifically
+  decoded. Deciding whether to special-case-decode `events` payload
+  columns for a specific Wave C history-rendering need — or to migrate
+  the legacy writer instead — is explicitly deferred to whichever later
+  slice actually needs it; this slice's proof does not depend on that
+  decision.
+
+**Fixture-legality note carried into the test list below:** because the
+trigger set is real and does fire on every `INSERT`, any "modern-style"
+fixture event (any `entity_type`/`event_type` other than the exact legacy
+pair) **must** supply non-null `correlation_id`/`actor_type`/`actor_id`,
+a `command_fingerprint` that is exactly 64 lowercase-hex characters, an
+`observed_at` matching `????-??-??T??:??:??.??????Z` (27 characters), an
+`event_type` drawn from the closed production list (e.g.
+`"PacketStateChanged"`), a `causation_event_id` that is either `NULL` or
+`> 0`, and `before_json`/`after_json`/`reason` that are each a valid JSON
+**object** (not array, not scalar) under 1 MiB. The **only** way to build
+a fixture with all 6 nullable columns genuinely `NULL` (needed for one
+half of test 2) is the exact legacy pair,
+`entity_type='ProjectRegistrationRun'`, `event_type='AuthorityLoaded'` —
+and only for that exact pair may `before_json`/`after_json`/`reason` be
+non-object/non-JSON text.
 
 ## Durable status and authority
 
@@ -97,16 +130,16 @@ deliberate, evidence-based difference from A4, not an oversight:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:34f5a8d"]` |
+| `evidence_refs` | `["git:base:34f5a8d","git:full-planning-review-head:15f426ab389eff5a0a80abd4ab76e9df569b263b","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact route contract
 
@@ -215,28 +248,44 @@ is `UNIQUE NOT NULL` — every fixture row needs a distinct value.
 
 1. `test_01_empty_table_returns_empty_page` — a freshly migrated, empty
    database returns `200` and exactly `{"events":[],"next_after":null}`.
-2. `test_02_full_field_projection_raw_strings_and_nulls` — one fixture
-   event with every nullable column populated (non-null `actor_id`,
-   `actor_type`, `causation_event_id` pointing at a second, earlier
-   fixture event's real assigned id, `command_fingerprint`,
-   `correlation_id`, `observed_at`) and one with all 6 nullable columns
-   `NULL`; both returned with exactly the 15 named fields;
-   `before_json`/`after_json`/`reason` render as their literal stored
-   **strings** (proving no decode happens — one fixture's `reason` is
-   deliberately set to a plain, non-JSON sentence like the real
-   `ProjectRegistrationRun` writer produces, and the test asserts it comes
-   back byte-identical, unparsed); `event_id`/`causation_event_id` render
-   as JSON numbers (assert via the raw response bytes, not just a parsed
-   comparison, that no quotes surround them).
-3. `test_03_newest_first_pagination_and_after_semantics` — 5 fixture
-   events inserted in order (ids assigned sequentially by SQLite); a bare
+2. `test_02_full_field_projection_raw_strings_and_nulls` — two fixture
+   events, each satisfying the "fixture-legality note" above exactly:
+   (a) a **modern-shape** row (`event_type="PacketStateChanged"` or any
+   other closed-list value, a real `entity_type` other than
+   `ProjectRegistrationRun`) with every nullable column populated —
+   non-null `actor_id`, `actor_type`, a 64-lowercase-hex
+   `command_fingerprint`, `correlation_id`, a
+   `????-??-??T??:??:??.??????Z`-shaped `observed_at`, and
+   `causation_event_id` pointing at a second, earlier fixture event's
+   real assigned id — and `before_json`/`after_json`/`reason` each a
+   valid JSON **object** (`reason` here is `canonical_json({"kind":
+   "reason", ...})`-shaped, matching the real writer's convention, one
+   key deliberately nested to prove sorted-key rendering is *not*
+   attempted — this endpoint does not decode, so nested key order is
+   whatever was stored, byte-for-byte); (b) the **legacy-shape** row,
+   `entity_type="ProjectRegistrationRun"`, `event_type="AuthorityLoaded"`
+   — the only combination the trigger permits with all 6 nullable
+   columns genuinely `NULL` — with `reason` deliberately set to a plain,
+   non-JSON sentence exactly like the real writer produces (e.g.
+   `"candidate authority is reviewable"`). Both rows returned with
+   exactly the 15 named fields; both fixtures' `before_json`/`after_json`/
+   `reason` render as their literal stored **strings**, byte-identical,
+   unparsed — proving no decode happens regardless of whether the
+   underlying text is a JSON object or plain prose; `event_id`/
+   `causation_event_id` render as JSON numbers (assert via the raw
+   response bytes, not just a parsed comparison, that no quotes surround
+   them).
+3. `test_03_newest_first_pagination_and_after_semantics` — 5
+   modern-shape fixture events (per the fixture-legality note above)
+   inserted in order (ids assigned sequentially by SQLite); a bare
    `GET /snapshot/events?limit=3` returns the 3 **newest** (highest ids)
    in descending order and `next_after` equal to the 3rd-newest's
    `event_id`; `?limit=3&after=<that value>` returns the remaining 2,
    oldest-first-among-themselves-but-still-descending, with `next_after`
    `null`.
 4. `test_04_limit_boundary_values` — identical assertions to A2-A4's
-   test 4 against `/snapshot/events`.
+   test 4 against `/snapshot/events` (fixture rows modern-shape, per the
+   fixture-legality note above).
 5. `test_05_shared_query_validation_identical_across_all_four_endpoints`
    — the four shared malformed-query cases (unknown key, repeated
    `limit`, `limit=0`, `limit=501`) issued against `/snapshot/events`,
@@ -263,10 +312,11 @@ is `UNIQUE NOT NULL` — every fixture row needs a distinct value.
    not), matching A3/A4's established, justified reduction (the
    `RuntimePathError` branch is the same shared, unmodified code A2
    already proved).
-10. `test_10_concurrent_requests_do_not_corrupt_pagination` — 20 fixture
-    events, 10 concurrent threads, `?limit=3`, each thread's concatenated
-    pages reconstruct the exact same 20 `event_id`s in the same
-    (descending) order.
+10. `test_10_concurrent_requests_do_not_corrupt_pagination` — 20
+    modern-shape fixture events (per the fixture-legality note above), 10
+    concurrent threads, `?limit=3`, each thread's concatenated pages
+    reconstruct the exact same 20 `event_id`s in the same (descending)
+    order.
 
 Run the existing 329 named tests (unaffected — no shared function is
 modified by this slice) plus these 10 (339 total):
