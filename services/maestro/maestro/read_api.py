@@ -9,11 +9,20 @@ import sqlite3
 import threading
 import urllib.parse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .config import RuntimeConfig, RuntimePathError
+from .operational_state import (
+    IdempotencyConflict,
+    InvalidRecord,
+    InvalidTransition,
+    OperationalStateStore,
+    ResourceBusy,
+    StaleState,
+)
 
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -302,20 +311,6 @@ _ROUTES = {
 }
 
 
-# Guarded, POST-only command routes. Deliberately empty in this slice — no
-# real command is registered yet (Wave D's D2 onward each add exactly one
-# real entry here). A handler has the signature `(handler, envelope) -> None`,
-# the same shape as a `_ROUTES` handler except it receives the request's
-# already-parsed, already-shape-checked JSON body (a `dict`) instead of a
-# raw query string. `envelope["idempotency_key"]`/`envelope["actor"]` are
-# only checked here for their outer shape (present, right JSON type) — the
-# real closed-shape/field validation these values need (see `_actor()` in
-# `operational_state.py`) is the eventual real command's own job when it
-# calls into `OperationalStateStore`, not this HTTP scaffold's; duplicating
-# that validation here would let the two copies drift.
-_COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], None]] = {}
-
-
 def _validate_command_envelope(body: Any) -> str | None:
     if not isinstance(body, dict):
         return "request body must be a JSON object"
@@ -326,6 +321,138 @@ def _validate_command_envelope(body: Any) -> str | None:
     if not isinstance(actor, dict):
         return "actor is required and must be a JSON object"
     return None
+
+
+# The real, non-fictional resolution of an escalated packet decision. There
+# is no real backend concept of a "frozen contract" or "sentinel version"
+# anywhere in `operational_state.py` (checked directly — "sentinel" and
+# "amend" do not appear at all; "frozen"/"contract" appear only in
+# unrelated real spellings — `@dataclass(frozen=True)`,
+# `input_contract_json`/`output_contract_json`/`role_contract_reference`
+# work-item fields — none of which mean packet-decision freezing) — those
+# are mockup narrative flavor text with no backend representation. This
+# command instead reuses the real,
+# already-tested `transition_packet_eligibility` and the real `Blocked`
+# packet state (`_PACKET_ELIGIBILITY_TRANSITIONS["Blocked"] ==
+# {"Waiting", "Ready", "Cancelled"}`) as the honest backend counterpart of
+# "an escalated packet the owner must resolve" — no new persisted state or
+# schema is introduced by this command. `target_state` is restricted to
+# exactly those 3 real outcomes; the store's own real transition table
+# remains the single source of truth for which source states may legally
+# reach them (this command does not duplicate that check).
+_RESOLVE_DECISION_TARGET_STATES = frozenset({"Cancelled", "Ready", "Waiting"})
+
+
+def _validate_resolve_decision_command(envelope: dict[str, Any]) -> str | None:
+    packet_id = envelope.get("packet_id")
+    if not isinstance(packet_id, str) or packet_id == "":
+        return "packet_id is required and must be a non-empty string"
+    expected_version = envelope.get("expected_version")
+    if (
+        not isinstance(expected_version, int)
+        or isinstance(expected_version, bool)
+        or expected_version <= 0
+    ):
+        return "expected_version is required and must be a positive integer"
+    target_state = envelope.get("target_state")
+    if target_state not in _RESOLVE_DECISION_TARGET_STATES:
+        return "target_state must be one of: Cancelled, Ready, Waiting"
+    reason_payload = envelope.get("reason_payload")
+    if not isinstance(reason_payload, dict):
+        return "reason_payload is required and must be a JSON object"
+    return None
+
+
+def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[str, Any]) -> None:
+    error_detail = _validate_resolve_decision_command(envelope)
+    if error_detail is not None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": error_detail})
+        )
+        return
+
+    # Constructing the store (and resolving its runtime dir) is guarded the
+    # same way every existing GET route already guards the identical call
+    # (`read_api.py`'s four snapshot handlers) — an independent implementation
+    # review of this slice's first draft found this call left unguarded here,
+    # a real, reproduced uncaught-`RuntimePathError` crash of the request
+    # thread with no HTTP response under a real misconfigured runtime dir.
+    try:
+        store = OperationalStateStore(
+            RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    try:
+        result = store.transition_packet_eligibility(
+            envelope["packet_id"],
+            envelope["expected_version"],
+            envelope["target_state"],
+            envelope["reason_payload"],
+            envelope["idempotency_key"],
+            envelope["actor"],
+            now,
+        )
+    except StaleState as error:
+        handler._respond(409, canonical_response_json({"error": "stale_state", "detail": str(error)}))
+        return
+    except InvalidTransition as error:
+        handler._respond(
+            409, canonical_response_json({"error": "invalid_transition", "detail": str(error)})
+        )
+        return
+    except IdempotencyConflict as error:
+        handler._respond(
+            409, canonical_response_json({"error": "idempotency_conflict", "detail": str(error)})
+        )
+        return
+    except InvalidRecord as error:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": str(error)})
+        )
+        return
+    except ResourceBusy as error:
+        # Real, reachable path: `transition_packet_eligibility`'s own
+        # internal `_raise_sqlite` (operational_state.py:2713-2717) raises
+        # this when a competing writer holds the SQLite lock past the
+        # store's real 5-second busy timeout (`storage.SQLITE_BUSY_TIMEOUT_MS`)
+        # — already a real, tested outcome of this exact store
+        # (`tests/m1_02/test_schema_and_records.py`'s
+        # `test_held_writer_returns_resource_busy_on_health_reads_and_mutation`
+        # exercises the identical `_raise_sqlite` path for other mutations).
+        # A Decision Fidelity review of this slice's first draft found this
+        # was left uncaught, which would have crashed the request thread
+        # with no HTTP response under real write contention.
+        handler._respond(503, canonical_response_json({"error": "resource_busy", "detail": str(error)}))
+        return
+    except sqlite3.OperationalError as error:
+        # `_raise_sqlite` re-raises any `sqlite3.OperationalError` whose
+        # message does not contain "locked" or "busy" completely unchanged
+        # (see the same source cited above) — an operational-database
+        # failure this command did not cause and cannot itself recover
+        # from, mapped to the same `database_unavailable` convention the
+        # existing GET snapshot routes already use for a broken database.
+        handler._respond(
+            503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
+        )
+        return
+
+    handler._respond(200, canonical_response_json(result))
+
+
+# Guarded, POST-only command routes. `envelope["idempotency_key"]`/
+# `envelope["actor"]` are only checked by `_validate_command_envelope` for
+# their outer shape (present, right JSON type) — the real closed-shape/field
+# validation these values need (see `_actor()` in `operational_state.py`) is
+# each real command's own job when it calls into `OperationalStateStore`,
+# not this HTTP scaffold's; duplicating that validation here would let the
+# two copies drift.
+_COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], None]] = {
+    "/command/resolve-decision": _handle_resolve_decision,
+}
 
 
 class _ReadApiRequestHandler(BaseHTTPRequestHandler):
