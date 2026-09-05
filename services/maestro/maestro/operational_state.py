@@ -1513,6 +1513,174 @@ class OperationalStateStore:
                 "review coverage allowed_paths does not match the packet owned paths"
             )
 
+    def record_and_accept_packet(
+        self, packet_id, expected_packet_version, acceptance, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("acceptance reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+
+        if not isinstance(acceptance, Mapping):
+            raise InvalidRecord("acceptance has an invalid closed shape")
+        acceptance_row = self._acceptance({**acceptance, "created_at": timestamp})
+
+        facts = {
+            "expected_packet_version": expected_packet_version,
+            "packet_id": packet_id,
+            "reason": reason,
+            "acceptance": acceptance_row,
+        }
+        fingerprint = _fingerprint("record_and_accept_packet", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                packet = connection.execute(
+                    "SELECT state,version,run_id FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version, run_id = (
+                    str(packet[0]), int(packet[1]), str(packet[2]),
+                )
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+
+                if source_state != "MergeReady":
+                    raise InvalidTransition(
+                        "packet acceptance is only permitted from MergeReady"
+                    )
+
+                attempt = connection.execute(
+                    "SELECT result_commit FROM attempts WHERE packet_id=? AND attempt_kind='Initial' "
+                    "AND attempt_number=1 AND state='Succeeded' AND result_commit IS NOT NULL",
+                    (packet_id,),
+                ).fetchone()
+                if attempt is None:
+                    raise InvalidRecord(
+                        "packet has no Succeeded Initial attempt with a result commit"
+                    )
+                result_commit = str(attempt[0])
+                if acceptance_row["exact_head"] != result_commit:
+                    raise InvalidRecord(
+                        "acceptance exact_head does not match the attempt result_commit"
+                    )
+
+                if (
+                    acceptance_row["subject_type"] != "Packet"
+                    or acceptance_row["packet_id"] != packet_id
+                    or acceptance_row["subject_id"] != packet_id
+                    or acceptance_row["run_id"] is not None
+                ):
+                    raise InvalidRecord(
+                        "acceptance does not relate to the accepted packet"
+                    )
+                if (
+                    acceptance_row["sequence_number"] != 1
+                    or acceptance_row["supersedes_acceptance_id"] is not None
+                ):
+                    raise InvalidRecord(
+                        "acceptance sequence is out of scope for this route"
+                    )
+                if acceptance_row["decision"] != "Accepted":
+                    raise InvalidRecord(
+                        "acceptance decision is out of scope for this route"
+                    )
+                run = connection.execute(
+                    "SELECT acceptance_boundary FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet run is missing")
+                if acceptance_row["required_authority"] != str(run[0]):
+                    raise InvalidRecord(
+                        "acceptance required_authority does not match the run "
+                        "acceptance boundary"
+                    )
+
+                coverage = acceptance_row["review_coverage_json"]
+                if (
+                    set(coverage) != {"kind", "review_id"}
+                    or coverage.get("kind") != "acceptance-review-coverage"
+                ):
+                    raise InvalidRecord(
+                        "acceptance review coverage has an invalid closed shape"
+                    )
+                review_id = _text(coverage.get("review_id"), "review_id")
+                review = connection.execute(
+                    "SELECT packet_id,review_kind,result,head_commit,correction_number "
+                    "FROM reviews WHERE review_id=?",
+                    (review_id,),
+                ).fetchone()
+                if review is None:
+                    raise InvalidRecord(
+                        "acceptance review coverage names an unknown review"
+                    )
+                (
+                    review_packet_id, review_kind, review_result,
+                    review_head_commit, review_correction_number,
+                ) = (
+                    str(review[0]), str(review[1]), str(review[2]),
+                    str(review[3]), int(review[4]),
+                )
+                if (
+                    review_packet_id != packet_id
+                    or review_kind != "IndependentImplementation"
+                    or review_result != "Approve"
+                    or review_head_commit != acceptance_row["exact_head"]
+                    or review_correction_number != 0
+                ):
+                    raise InvalidRecord(
+                        "acceptance review coverage does not name a matching "
+                        "Approve review"
+                    )
+
+                packet_before = _state_payload(
+                    "Packet", packet_id, source_state, current_version
+                )
+                packet_after = _state_payload(
+                    "Packet", packet_id, "AwaitingOwner", expected_packet_version + 1
+                )
+                before = {"packet": packet_before}
+                result = {"packet": packet_after, "acceptance": acceptance_row}
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                self._insert(connection, "acceptance_records", acceptance_row)
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (
+                        "AwaitingOwner", timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_acceptance_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("acceptance routing violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_notification(self, notification, idempotency_key, actor, now):
         row = self._notification(notification, now)
         return self._append_one("notifications", "notification_id", row, "Notification", "NotificationRecorded", idempotency_key, actor, now)
@@ -1850,6 +2018,25 @@ class OperationalStateStore:
             """,
             (
                 key, "Packet", packet_id, "ReviewRecorded", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_acceptance_event(
+        connection, key, fingerprint, actor, now, packet_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Packet", packet_id, "AcceptanceRecorded", canonical_json(before),
                 canonical_json(after), canonical_json(reason), actor["correlation_id"],
                 actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
                 fingerprint, now,
