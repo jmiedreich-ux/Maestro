@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, and merge-observation routing
-**Current development state:** Merge-observation routing merged; Architect-disposition correction dispatch and stale-lease reclaim are next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, and correction dispatch
+**Current development state:** Correction dispatch merged; stale-lease reclaim is the last remaining M1 slice
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -129,6 +129,17 @@ concurrency/restart stress passed every run, zero corrections. Adds
 matching prior `Accepted` acceptance record. Excludes the delegated-merge
 bypass, repository/binding cross-checks, and run-level completion.
 
+Independent `MB-SLICE-M1-CORRECTION-DISPATCH-01` is merged through PR #49
+at `c013b57`. Exact reviewed implementation head
+`b04b4f42166ef00940f2186948f1adba6d9ddfed` passed both reviews with zero
+findings, 274/274 named tests (same pre-existing PyYAML failure applies),
+concurrency/restart stress passed every run, zero corrections. Adds
+`record_and_dispatch_correction`: closed `AwaitingArchitect→Leased`,
+creating the packet's one permitted `TargetedCorrection` attempt plus
+lease/locks, gated on a `RequestChanges` review carrying a `CorrectNow`
+disposition and no `ReturnSlice`. Mirrors `claim_packet_assignment`'s
+exact shape; the diff was verified 100% additive.
+
 ## What exists only on side branches
 
 - Alpha-04 readiness reached local correction head
@@ -218,12 +229,11 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    `-01`/`-02`/`-03`/`-04`, non-authoritative.
 2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, assignment claim,
    execution start/heartbeat/finish, review-control routing, packet
-   acceptance routing, and merge-observation routing as integrated, while
-   keeping M1 open.
-3. Have the Project Architect select and materialize the smallest remaining
-   M1 operational-core behavior: Architect-disposition correction dispatch
-   from `AwaitingArchitect`, or the small in-scope stale-lease-reclaim
-   piece of recovery. Neither has a contract yet.
+   acceptance routing, merge-observation routing, and correction dispatch
+   as integrated, while keeping M1 open.
+3. Have the Project Architect materialize the one remaining M1
+   operational-core behavior: the small in-scope stale-lease-reclaim piece
+   of recovery. It has no contract yet.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
