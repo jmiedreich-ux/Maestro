@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
+import { NowTab } from "./NowTab";
 import styles from "./MobileShell.module.css";
 
 export type MobileShellTab = "now" | "chat" | "plan" | "activity";
@@ -51,7 +52,9 @@ export function MobileShell() {
 
   return (
     <div className={styles.shell} style={SHELL_VARS}>
-      <main className={styles.content}>{TAB_LABEL[selected]} tab</main>
+      <main className={styles.content}>
+        {selected === "now" ? <NowTab /> : `${TAB_LABEL[selected]} tab`}
+      </main>
       <nav className={styles.tabBar} aria-label="Atlas tabs">
         {TABS.map((t) => (
           <button
