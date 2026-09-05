@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`ef6e0a5`
+`c013b57`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -52,6 +52,7 @@ dispatch is running.
 | Review-readiness gate | Complete and merged through PR #19 at `6d5c2722380b99db0fb6f829f0afe073a1d49b80`; exact reviewed candidate `5b01acb00e9890beb5a04f0bc483133e73129a08` | Decision Fidelity and implementation review each used one correction and received targeted `APPROVE`. Focused tests passed 27/27 and the explicit regression suite passed 101/101. |
 | M1 packet acceptance routing | Independent slice `MB-SLICE-M1-ACCEPTANCE-ROUTING-01` merged through PR #45 at `04a27f6`; exact reviewed implementation head `043957cfe15db27fa3e2f7ad12848f3b02fede0d` | Both reviews returned `APPROVE` with zero findings; 256/256 named tests (one pre-existing, unrelated PyYAML environmental failure); zero corrections used. Adds `record_and_accept_packet`: closed `MergeReady→AwaitingOwner` for a routine, first-time `Accepted` decision. Deliberately excludes `Returned`/`ReservedChoice`, sequence-2, run-level completion, and `AwaitingOwner→Merged` (next slice). |
 | M1 merge-observation routing | Independent slice `MB-SLICE-M1-MERGE-OBSERVATION-01` merged through PR #47 at `ef6e0a5`; exact reviewed implementation head `372d17b01f61425afba000134ad726cac2ab38d0` | Both reviews returned `APPROVE` with zero findings; 263/263 named tests (one pre-existing, unrelated PyYAML environmental failure); zero corrections used. Adds `record_and_observe_merge`: closed `AwaitingOwner→Merged`, gated on a matching prior `Accepted` acceptance record. Excludes the delegated-merge bypass, repository/binding checks, and run-level completion. |
+| M1 correction dispatch | Independent slice `MB-SLICE-M1-CORRECTION-DISPATCH-01` merged through PR #49 at `c013b57`; exact reviewed implementation head `b04b4f42166ef00940f2186948f1adba6d9ddfed` | Both reviews returned `APPROVE` with zero findings; 274/274 named tests (one pre-existing, unrelated PyYAML environmental failure); zero corrections used. Adds `record_and_dispatch_correction`: closed `AwaitingArchitect→Leased`, creating the one permitted `TargetedCorrection` attempt plus lease/locks, gated on a `RequestChanges` review with a `CorrectNow` disposition and no `ReturnSlice`. Mirrors `claim_packet_assignment` exactly (diff verified 100% additive). |
 | M1-02C, M1-03, M2, M3, M4, attended E2E | Not released | No end-to-end run, live project, GitHub automation, Atlas control, worker dispatch loop, or durable autonomous wake loop is ready. |
 
 ## Terminal M1-02B findings
@@ -402,6 +403,18 @@ gated on a matching prior `Accepted` acceptance record. Remaining smallest
 M1 behaviors: Architect-disposition correction dispatch from
 `AwaitingArchitect`, and a small stale-lease-reclaim primitive; neither
 has a contract yet. M1 remains open.
+
+`MB-SLICE-M1-CORRECTION-DISPATCH-01` completed and merged through PR #49
+at `c013b57`. Its exact reviewed implementation head is
+`b04b4f42166ef00940f2186948f1adba6d9ddfed`. Both reviews returned
+`APPROVE` with zero findings; 274/274 named tests passed (one
+pre-existing, unrelated PyYAML environmental failure); no correction was
+used. It adds `record_and_dispatch_correction`: closed
+`AwaitingArchitect→Leased`, creating the one permitted `TargetedCorrection`
+attempt plus lease/locks, gated on a `RequestChanges` review with a
+`CorrectNow` disposition and no `ReturnSlice`. The one remaining M1
+behavior is a small stale-lease-reclaim primitive; it has no contract
+yet. M1 remains open.
 
 `MB-SLICE-M1-REVIEW-ROUTING-04` is terminally `returned` at
 `2938676a553a1625310efc2b24fb8d4a117ff751` in the local, unmerged worktree

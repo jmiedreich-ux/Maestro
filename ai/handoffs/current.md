@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-05
-**State:** Merge-observation routing merged; Architect-disposition correction dispatch and stale-lease reclaim are next
+**State:** Correction dispatch merged; stale-lease reclaim is the last remaining M1 slice
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -123,6 +123,19 @@ concurrency/restart stress passed every run, zero corrections. Adds
 matching prior `Accepted` acceptance record. Excludes the delegated-merge
 bypass, repository/binding cross-checks, and run-level completion.
 
+Independent `MB-SLICE-M1-CORRECTION-DISPATCH-01` is merged through PR #49
+at `c013b57`. Exact reviewed implementation head
+`b04b4f42166ef00940f2186948f1adba6d9ddfed` passed both reviews with zero
+findings, 274/274 named tests (same pre-existing PyYAML failure applies),
+concurrency/restart stress passed every run, zero corrections. Adds
+`record_and_dispatch_correction`: closed `AwaitingArchitect→Leased`,
+creating the packet's one permitted `TargetedCorrection` attempt
+(`attempt_number=2`) plus lease/locks, gated on a `RequestChanges` review
+carrying a `CorrectNow` disposition and no `ReturnSlice`. Mirrors
+`claim_packet_assignment`'s exact shape; the diff was verified 100%
+additive (zero deletions), confirming that function and its helpers are
+genuinely unmodified.
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -185,19 +198,16 @@ implementation review each used one correction and received targeted
 
 M1-01, M1-02A, run lifecycle, packet eligibility, atomic assignment claim,
 execution start/heartbeat/finish, review-control routing, packet
-acceptance routing, and merge-observation routing are all now integrated,
-but M1 is not closed: nothing yet moves an `AwaitingArchitect` packet
-forward, and no stale/expired lease can be reclaimed. Remaining,
-deliberately small, uncontracted M1 slices: (a) Architect-disposition
-correction dispatch from `AwaitingArchitect` (turning a recorded
-`review-finding` disposition into the one authorized `TargetedCorrection`
-attempt); (b) a small stale-lease/expired-attempt reclaim primitive (the
-in-scope remainder of the never-implemented, terminally-returned
+acceptance routing, merge-observation routing, and correction dispatch are
+all now integrated, but M1 is not closed: no stale/expired lease can yet
+be reclaimed. The one remaining, deliberately small, uncontracted M1
+slice is a stale-lease/expired-attempt reclaim primitive (the in-scope
+remainder of the never-implemented, terminally-returned
 `MB-SLICE-M1-02B-REPLACEMENT-01`'s recovery scope — its larger autonomous
 wake/reconciliation-loop half is out of M1 scope, deferred to M4). No
-implementation is authorized until each new canonical contract receives
-its own pre-execution Decision Fidelity approval. All returned slices
-remain immutable and non-authoritative.
+implementation is authorized until its canonical contract receives
+pre-execution Decision Fidelity approval. All returned slices remain
+immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
