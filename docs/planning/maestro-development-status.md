@@ -1282,8 +1282,26 @@ framing) fixed at zero cost; independent implementation review
 approved with zero findings. 21/21 test files, 157/157 tests pass,
 zero regressions.
 
-Next: any independent Wave F (item 35's own remaining Agents/Cost
-segments, or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6
-only, not D7, which is rescheduled to M3). C2/D3/D7 are all rescheduled
-to M3 and off the current independent-work list entirely — not a
-blocker to track, a milestone assignment already made.
+`MB-SLICE-M2-F3B-ACTIVITY-TAB-AGENTS-01` is merged (planning PR #157
+at `b4bfd8a`, implementation PR #158 at `dbc49c0`) — the Agents
+segment of roadmap item 35, reusing E4's real `AGENTS`/`AGENTS_STATS`/
+`AGENT_STYLE` fixture and style data as fresh mobile-specific cards
+(deliberately not `<AgentsRoster />` mounted as-is, which is
+desktop-only by its own established scope). Decision Fidelity review
+passed with 1 non-blocking note (per-stat color used a raw inline
+style instead of the CSS-custom-property + static-class convention
+`AgentsRoster.tsx` already established for the identical enum) fixed
+at zero cost; independent implementation review approved with 1
+non-blocking note (the Agents-card tests, inherited from the approved
+packet, left due/progress/bar-width/urgent-styling/dot-state
+completely unasserted) — fixed post-merge-review with 2 new tests,
+re-verified, then merged. 21/21 test files, 162/162 tests pass, zero
+regressions. **Item 35 itself is still not complete** — only the Cost
+segment (reusing E1-E3) remains, so Wave F's own completed-item count
+stays at 2/4 until it lands.
+
+Next: any independent Wave F (item 35's own remaining Cost segment,
+or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6 only, not
+D7, which is rescheduled to M3). C2/D3/D7 are all rescheduled to M3
+and off the current independent-work list entirely — not a blocker to
+track, a milestone assignment already made.

@@ -580,10 +580,23 @@ finding D6 already made (the crash fixture's own footer note already
 discloses this). **Rescheduled to M3 alongside C2/D3**, not
 investigated further.
 
-Next: any independent Wave F (item 35's remaining Agents/Cost
-segments, or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6
-only, not D7). C2/D3/D7 are all rescheduled to M3, off the current
-independent-work list.
+`MB-SLICE-M2-F3B-ACTIVITY-TAB-AGENTS-01` is merged (planning PR #157
+at `b4bfd8a`, implementation PR #158 at `dbc49c0`) — the Agents
+segment of roadmap item 35, reusing E4's real fixture/style data as
+fresh mobile-specific cards, not `<AgentsRoster />` (desktop-only by
+its own scope). DF review: 1 non-blocking note (a raw-inline-style
+consistency gap against `AgentsRoster.tsx`'s own established
+CSS-var pattern) fixed at zero cost. Independent implementation
+review: 1 non-blocking note (Agents-card tests left due/progress/
+bar-width/urgent-styling/dot-state unasserted) fixed with 2 new tests
+before merge. 162/162 tests pass, zero regressions. **Item 35 still
+not complete** — only the Cost segment (E1-E3) remains; Wave F's
+completed-item count stays at 2/4.
+
+Next: any independent Wave F (item 35's remaining Cost segment, or
+F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6 only, not D7).
+C2/D3/D7 are all rescheduled to M3, off the current independent-work
+list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
