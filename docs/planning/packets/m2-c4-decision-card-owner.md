@@ -1,7 +1,14 @@
 # M2 Wave C — Decision Card, Owner-Decision Variant — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C4-DECISION-CARD-OWNER-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Corrected — Pending Targeted Decision Fidelity Verification`.
+Full Decision Fidelity review found 1 blocking finding (the `lede`/`why`
+text changed more than the disclosed persona-noun swap — a verb and a
+pronoun were also silently changed) plus 1 non-blocking wording
+inconsistency (a "3 real gaps" header contradicted the table's own 5
+rows); one targeted planning correction resolved both, re-verified
+against the real toolchain. No further planning correction is available
+for this slice.
 **Base:** `431a1fd` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -169,7 +176,9 @@ only applies to the ruling variant) and `o.costColor` is always `blk.ink`
 
 **Color discrepancy table — every owner-variant value checked against
 this codebase's real B2 tokens; a much cleaner token match than C3's
-ruling palette, only 3 real gaps:**
+ruling palette, only 5 real gaps (corrected — the DF review flagged
+this header's earlier "only 3" as inconsistent with the table's own 5
+disclosed-literal rows and the paragraph beneath it):**
 
 | Reference value | Real B2 token | Match? |
 |---|---|---|
@@ -203,16 +212,16 @@ silently substituted with a near-but-wrong token, and never added to
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C4-DECISION-CARD-OWNER-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:431a1fd2f846f1e28f6bda398411c8a9696f3a5e"]` |
+| `evidence_refs` | `["git:base:431a1fd2f846f1e28f6bda398411c8a9696f3a5e","git:full-planning-review-head:251496fef387455ccb97403beeac364d314dba4a","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact file contents
 
@@ -230,6 +239,14 @@ component doesn't need it yet). After that fix: 43/43 tests passed (35
 existing + 8 new), typecheck and lint clean, production build
 succeeded. This is disclosed here so the Decision Fidelity reviewer
 knows the code block below is the corrected, passing version.
+
+**Re-verified after the targeted planning correction below (the
+`lede`/`why` fidelity fix):** all four files, with the correction
+applied, were rebuilt in a scratch copy and `npm run typecheck`, `npm
+run lint`, `npm test`, and `npm run build` were run again for real —
+43/43 tests passed (35 existing + 8 new), typecheck, lint, and build
+all clean. The corrected `lede`/`why` text is now a true 1:1 noun swap
+of the reference file's own text with nothing else changed.
 
 `apps/atlas/src/decision/ownerFixtures.ts` (new — the evidence data and
 its types; no rendering logic):
@@ -283,8 +300,8 @@ export const OWNER_DECISION_EXAMPLE: OwnerDecisionExample = {
   packetId: "A.2",
   age: "waiting 41m",
   headline: "Should a theme-free output get a sentinel version, or does the frozen contract change?",
-  lede: "The Coordinator will not widen a contract you froze, so it escalated instead of guessing. Terra is holding its worktree until you answer.",
-  why: "the Coordinator escalated: this changes a contract you froze",
+  lede: "The Coordinator will not rule on a contract the owner froze, so it escalated instead of guessing. Terra is holding its worktree until you answer.",
+  why: "the Coordinator stopped: this changes a contract you froze",
   options: [
     {
       title: "Allow a sentinel version",
