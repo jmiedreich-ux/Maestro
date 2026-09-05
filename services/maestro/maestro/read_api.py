@@ -11,7 +11,7 @@ import urllib.parse
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from .config import RuntimeConfig, RuntimePathError
 
@@ -44,6 +44,19 @@ def canonical_response_json(payload: Mapping[str, Any]) -> bytes:
 _HEALTH_BODY = canonical_response_json({"status": "ready"})
 _NOT_FOUND_BODY = canonical_response_json({"error": "not_found"})
 _METHOD_NOT_ALLOWED_BODY = canonical_response_json({"error": "method_not_allowed"})
+_INVALID_CONTENT_LENGTH_BODY = canonical_response_json({"error": "invalid_content_length"})
+_INVALID_JSON_BODY = canonical_response_json({"error": "invalid_json"})
+_PAYLOAD_TOO_LARGE_BODY = canonical_response_json({"error": "payload_too_large"})
+
+# A guarded command's own JSON envelope is small (an idempotency key, an
+# actor, and a handful of command-specific fields) — 1 MiB is generous
+# headroom, not a real capacity limit. Rejecting an oversized
+# Content-Length before ever calling `self.rfile.read()` is load-bearing:
+# without this cap, a POST that honestly declares a huge Content-Length
+# but never finishes sending that many bytes blocks the handling thread
+# indefinitely (`BaseHTTPRequestHandler.timeout` is `None` by default, so
+# the socket read has no timeout of its own).
+_MAX_COMMAND_BODY_BYTES = 1_048_576
 
 _VALID_SNAPSHOT_QUERY_KEYS = frozenset({"limit", "after"})
 _LIMIT_LITERAL_RE = re.compile(r"^(0|[1-9][0-9]*)$")
@@ -289,6 +302,32 @@ _ROUTES = {
 }
 
 
+# Guarded, POST-only command routes. Deliberately empty in this slice — no
+# real command is registered yet (Wave D's D2 onward each add exactly one
+# real entry here). A handler has the signature `(handler, envelope) -> None`,
+# the same shape as a `_ROUTES` handler except it receives the request's
+# already-parsed, already-shape-checked JSON body (a `dict`) instead of a
+# raw query string. `envelope["idempotency_key"]`/`envelope["actor"]` are
+# only checked here for their outer shape (present, right JSON type) — the
+# real closed-shape/field validation these values need (see `_actor()` in
+# `operational_state.py`) is the eventual real command's own job when it
+# calls into `OperationalStateStore`, not this HTTP scaffold's; duplicating
+# that validation here would let the two copies drift.
+_COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], None]] = {}
+
+
+def _validate_command_envelope(body: Any) -> str | None:
+    if not isinstance(body, dict):
+        return "request body must be a JSON object"
+    idempotency_key = body.get("idempotency_key")
+    if not isinstance(idempotency_key, str) or idempotency_key == "":
+        return "idempotency_key is required and must be a non-empty string"
+    actor = body.get("actor")
+    if not isinstance(actor, dict):
+        return "actor is required and must be a JSON object"
+    return None
+
+
 class _ReadApiRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - stdlib signature
         return
@@ -316,7 +355,14 @@ class _ReadApiRequestHandler(BaseHTTPRequestHandler):
 
     def _route(self, method: str) -> None:
         split_path = urllib.parse.urlsplit(self.path)
-        route_handler = _ROUTES.get(split_path.path)
+        path = split_path.path
+        if path in _COMMAND_ROUTES:
+            if method != "POST":
+                self._respond(405, _METHOD_NOT_ALLOWED_BODY)
+                return
+            self._dispatch_command(_COMMAND_ROUTES[path])
+            return
+        route_handler = _ROUTES.get(path)
         if route_handler is None:
             self._respond(404, _NOT_FOUND_BODY)
             return
@@ -324,6 +370,40 @@ class _ReadApiRequestHandler(BaseHTTPRequestHandler):
             self._respond(405, _METHOD_NOT_ALLOWED_BODY)
             return
         route_handler(self, split_path.query)
+
+    def _dispatch_command(
+        self, handler: Callable[["_ReadApiRequestHandler", dict[str, Any]], None]
+    ) -> None:
+        content_length_header = self.headers.get("Content-Length")
+        try:
+            content_length = int(content_length_header) if content_length_header is not None else 0
+        except ValueError:
+            content_length = -1
+        if content_length < 0:
+            self._respond(400, _INVALID_CONTENT_LENGTH_BODY)
+            return
+        if content_length > _MAX_COMMAND_BODY_BYTES:
+            self._respond(413, _PAYLOAD_TOO_LARGE_BODY)
+            return
+        raw_body = self.rfile.read(content_length) if content_length > 0 else b""
+
+        if raw_body == b"":
+            body: Any = None
+        else:
+            try:
+                body = json.loads(raw_body)
+            except json.JSONDecodeError:
+                self._respond(400, _INVALID_JSON_BODY)
+                return
+
+        error_detail = _validate_command_envelope(body)
+        if error_detail is not None:
+            self._respond(
+                400, canonical_response_json({"error": "invalid_envelope", "detail": error_detail})
+            )
+            return
+
+        handler(self, body)
 
     def _respond(self, status: int, body: bytes) -> None:
         self.send_response(status)
