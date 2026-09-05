@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`e595248`
+`d2eba95`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -545,4 +545,19 @@ targeted verification. Independent implementation review returned
 pass (310/311 — the same pre-existing, unrelated PyYAML-version
 environment failure, not introduced by this slice).
 
-Wave A3 (attempts snapshot endpoint) is next.
+`MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01` (Wave A3) is merged at
+`d2eba9587b053e8bebdd83c9bd51ce2f518aafa4`: a read-only, paginated `GET
+/snapshot/attempts` endpoint (20 fields), plus generalizing A2's query
+validator (`_validate_snapshot_query`) for reuse across both snapshot
+endpoints. Full Decision Fidelity review found 3 blocking findings (a
+wrong `attempt_id` nullability claim, a mis-ordered worked JSON example,
+an under-specified `Succeeded` fixture that collided with a real `CHECK`
+constraint); the one available targeted planning correction resolved all
+three, approved by targeted verification. Independent implementation
+review returned `APPROVE` with no findings; the 9 named tests, the
+existing 12 packets-snapshot tests (unmodified, proving the shared-
+validator rename is non-breaking), and the full 320-test suite pass
+(319/320 — the same pre-existing, unrelated PyYAML-version environment
+failure, not introduced by this slice).
+
+Wave A4 (reviews snapshot endpoint) is next.
