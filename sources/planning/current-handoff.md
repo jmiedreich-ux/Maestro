@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, and review-control routing
-**Current development state:** Review-control routing merged; M1 acceptance/merge-observation routing and Architect-disposition correction dispatch are next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, and packet acceptance routing
+**Current development state:** Acceptance routing merged; M1 merge-observation routing and Architect-disposition correction dispatch are next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -105,6 +105,21 @@ candidate authority bound to `attempts.result_commit` (never
 dispatch a correction worker, perform acceptance, or record a merge
 observation.
 
+Independent `MB-SLICE-M1-ACCEPTANCE-ROUTING-01` is merged through PR #45 at
+`04a27f6`. Exact reviewed implementation head `043957cfe15db27fa3e2f7ad12848f3b02fede0d`
+passed a full Decision Fidelity review and a full independent
+implementation review with zero blocking findings, 256/256 named tests
+(248 pre-existing plus 8 new; the same pre-existing PyYAML-version
+environmental failure applies), and the concurrency/restart stress test
+passed in every fresh-process run. Zero corrections were used. It adds
+`record_and_accept_packet`: the closed `MergeReady→AwaitingOwner` route for
+a routine, first-time `Accepted` decision, with candidate authority
+chained through the exact matching `Approve` review. Deliberately scoped
+minimal: it does not implement `Returned`/`ReservedChoice`, sequence-2
+superseding acceptance, run-level completion, or the subsequent
+`AwaitingOwner→Merged` transition (`MB-SLICE-M1-MERGE-OBSERVATION-01`, not
+yet authored).
+
 ## What exists only on side branches
 
 - Alpha-04 readiness reached local correction head
@@ -193,12 +208,13 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 1. Keep terminal M1-02B evidence, and terminal review-routing slices
    `-01`/`-02`/`-03`/`-04`, non-authoritative.
 2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, assignment claim,
-   execution start/heartbeat/finish, and review-control routing as
-   integrated, while keeping M1 open.
+   execution start/heartbeat/finish, review-control routing, and packet
+   acceptance routing as integrated, while keeping M1 open.
 3. Have the Project Architect select and materialize the smallest remaining
-   M1 operational-core behavior: acceptance/merge-observation routing from
-   `MergeReady`, or Architect-disposition correction dispatch from
-   `AwaitingArchitect`. Neither has a contract yet.
+   M1 operational-core behavior: merge-observation routing from
+   `AwaitingOwner`, Architect-disposition correction dispatch from
+   `AwaitingArchitect`, or the small in-scope stale-lease-reclaim piece of
+   recovery. None has a contract yet.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
