@@ -1,7 +1,7 @@
 # M2 Wave B — Design Tokens Module — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-B2-DESIGN-TOKENS-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found `performanceSeriesColors` was sourced from outside the Design Tokens section (a real scope violation, mislabeled as coming from the Color table), plus several non-blocking scope/mechanism fixes
 **Base:** `d3275dc` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -18,13 +18,16 @@ is a rendering concern for whichever slice first needs text to render in
 those fonts — B3).
 
 Source of truth is exactly one file:
-`design_handoff_atlas/README.md`'s "Design Tokens" section (## Type,
-### Color, ### Shape & spacing), as supplied by the Owner in the uploaded
-design-handoff zip earlier this session and already the named authority
-for the M2 roadmap's Wave B-D decomposition. Every value in the four
-token modules below is transcribed verbatim from that section — quoted
-alongside each file so a reviewer can check transcription accuracy
-line-by-line without needing the original file open.
+`design_handoff_atlas/README.md`'s "Design Tokens" section (`### Type`,
+`### Color`, `### Shape & spacing`, all three H3s under the `## Design
+Tokens` H2 — corrected heading levels; a prior draft of this paragraph
+mislabeled `### Type` as an H2, caught by Decision Fidelity review), as
+supplied by the Owner in the uploaded design-handoff zip earlier this
+session and already the named authority for the M2 roadmap's Wave B-D
+decomposition. Every value in the four token modules below is
+transcribed verbatim from that section — quoted alongside each file so a
+reviewer can check transcription accuracy line-by-line without needing
+the original file open.
 
 **What this token layer deliberately does NOT capture:** the README's
 per-screen padding/sizing prose (e.g. "Thread: rows on a `36px
@@ -34,12 +37,31 @@ such number into this shared module would be guessing which are
 "tokens" and which are one screen's own layout math, a judgment call
 that belongs to whichever later slice actually builds that screen and
 can check its own rendered output against the reference `.dc.html` file.
-This slice captures only the values the README itself presents as
-general design-system primitives (the Type and Color tables, and the
-"Shape & spacing" section's *radii*, *gutters*, *card padding ranges*,
-*touch-target minimums*, and *the two named animations* — not per-screen
-grid columns or one-off pixel values named only inside a single screen's
-own prose).
+This slice captures only the values the README itself presents, **within
+the Design Tokens section**, as general design-system primitives: the
+Type and Color tables in full; from "Shape & spacing," the *radii*,
+*gutters*, *card padding ranges*, *touch-target minimums*, the two named
+animations, and the "Focus/hover" bullet's four colors (three tinted
+borders plus the lightened-card ground — colors, so they live in
+`colors.ts` even though the bullet they come from is physically inside
+the Shape & spacing subsection). It deliberately excludes the same
+paragraph's box-shadow/elevation values (the timeline-dot halo
+specification) — those describe one specific component's effect, not a
+reusable primitive, the same reasoning that excludes per-screen grid
+columns.
+
+**Corrected — blocking finding from Decision Fidelity review:** an
+earlier draft of this slice also defined `performanceSeriesColors`, four
+hex values quoted from the Performance screen's own prose (`## Desktop
+screens > ### 2. Performance > **M1-A breakdown card**`), not from the
+Design Tokens section at all — a real violation of this slice's own
+sourcing rule, and its "Source quote" block was written in a way that
+made the citation look like it came from the Color table. That constant
+has been removed entirely from this slice. It belongs to whichever later
+slice actually builds the Performance view (Wave E1-E3 per the roadmap),
+which can transcribe it directly from the screen's own prose at the point
+it is actually needed, exactly like every other per-screen value this
+slice already declines to capture.
 
 ## Durable status and authority
 
@@ -47,21 +69,21 @@ own prose).
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B2-DESIGN-TOKENS-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:d3275dc"]` |
+| `evidence_refs` | `["git:base:d3275dc","git:full-planning-review-head:64a98dede86e9eb490a131707ce6ea5dc1a0c669","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact file contents
 
-Source quote (README, "### Color"), for direct comparison against
-`colors.ts` below:
+Source quote (README, "### Color" table in full), for direct comparison
+against `colors.ts` below:
 
 > | Token | Hex | Use |
 > | Nav ground | `#2A2233` | ... | Nav text | `#CFC6D6` | nav body; active
@@ -80,19 +102,29 @@ Source quote (README, "### Color"), for direct comparison against
 > `#A63F36` wash `#FEF7F6` border `#EFC9C4` divider `#F6E2DF` | Review
 > (orange) | `#D08A63` text `#A9522B` wash `#FBEDE7` | Neutral chip |
 > `#F2EEF8` text `#4A4155`/`#6C6376` | Segmented track | `#EDE9F3` /
-> `#F4F1F8` / `#F2EFF7`; selected pill `#FFFFFF` | Focus/hover: ... tinted
-> border (`#E0C79A` amber, `#C9BEDC` neutral, `#EBBDB7` red). | Series
-> colors in order: `#5B34E8`, `#D08A63`, `#2E9B72`, `#B9AFC4`.
+> `#F4F1F8` / `#F2EFF7`; selected pill `#FFFFFF` |
+
+**Second, separate source quote — corrected, per Decision Fidelity
+review: this is from `### Shape & spacing`, not `### Color`**, quoted
+here (not with the block above) because it is the one place `colors.ts`
+draws from outside the Color table, per the "Scope" section's now-explicit
+carve-out:
+
+> Focus/hover: cards lighten to `#FCFBFD` or gain a tinted border
+> (`#E0C79A` amber, `#C9BEDC` neutral, `#EBBDB7` red).
 
 `apps/atlas/src/tokens/colors.ts` (new):
 
 ```ts
 /**
  * Color tokens, transcribed verbatim from
- * design_handoff_atlas/README.md's "### Color" table and its
- * "Semantic rule" paragraph. Do not rename, round, or "clean up" a
- * value without re-checking that file — it is the source of truth,
- * not this one.
+ * design_handoff_atlas/README.md's "### Color" table and "Semantic
+ * rule" paragraph, plus the four `focusHover*` values below, which come
+ * from the "Focus/hover" bullet in the neighboring "### Shape &
+ * spacing" section (they are colors, so they live here regardless of
+ * which subsection of the README states them). Do not rename, round, or
+ * "clean up" a value without re-checking that file — it is the source
+ * of truth, not this one.
  */
 
 export const colors = {
@@ -157,14 +189,6 @@ export const colors = {
   focusHoverBorderNeutral: "#C9BEDC",
   focusHoverBorderRed: "#EBBDB7",
 } as const;
-
-/** Stacked-bar series colors, in order, for the Performance breakdown card. */
-export const performanceSeriesColors = [
-  "#5B34E8",
-  "#D08A63",
-  "#2E9B72",
-  "#B9AFC4",
-] as const;
 
 /**
  * Semantic color rule (README, verbatim): amber = a human is needed;
@@ -363,9 +387,11 @@ npm script is needed):
    `expect(colors).toEqual({...})` against a literal object the test
    itself spells out (independently re-typed in the test file, not
    imported from `colors.ts`, so a copy-paste error in the source file
-   cannot also be present in its own check) covering every key in the
-   quoted source above; a second assertion for `performanceSeriesColors`
-   and `SEMANTIC_COLOR_RULE`.
+   cannot also be present in its own check) covering every key in both
+   quoted sources above (the Color table and the Focus/hover bullet); a
+   second assertion for `SEMANTIC_COLOR_RULE`. (No assertion for
+   `performanceSeriesColors` — that export no longer exists in this
+   slice, per the corrected Scope section above.)
 2. `typography module matches the README transcription exactly` — the
    same `toEqual`-against-an-independently-typed-literal pattern for
    `fontFamily`, `fontWeight`, `displayHeading`, `bodyFontSizePx`,
@@ -375,11 +401,28 @@ npm script is needed):
    pattern for `motion.rise` and `motion.sheet`.
 4. `shape module matches the README transcription exactly` — same
    pattern for `radii`, `spacing`, and `touchTargetPx`.
-5. `no file outside src/tokens imports from src/tokens` — a source-grep
-   check (e.g. `execSync` a `grep -rl "from ['\"].*tokens" ../..` scoped
-   to `apps/atlas/src` excluding the `tokens/` directory itself and its
-   own test file) asserting zero matches, proving this slice adds no
-   consumer.
+5. `no file outside src/tokens imports from src/tokens` — **corrected,
+   non-blocking finding from Decision Fidelity review: the original
+   `../..`-relative mechanism didn't resolve to the right directory from
+   a Vitest process's actual working directory.** The exact, working
+   mechanism: from within `tokens.test.ts`, compute the scan root as
+   `path.resolve(import.meta.dirname, "..")` (i.e. `apps/atlas/src`,
+   derived from the test file's own on-disk location, not from
+   `process.cwd()`, which Vitest does not guarantee), then run
+   ```
+   execSync(
+     `grep -rlE "from ['\\"](\\.\\./)*tokens(/|['\\"])" . --include="*.ts" --include="*.tsx" --exclude-dir=tokens`,
+     { cwd: scanRoot },
+   )
+   ```
+   and assert either the command exits non-zero (grep's own "no matches"
+   exit code) or, if it exits zero, that its stdout is empty. This is a
+   deliberately practical check, not exhaustive static analysis — per
+   M0-D12's proportionality ceiling, it does not resolve TypeScript path
+   aliases (none exist in `apps/atlas/tsconfig.json` today) and can in
+   principle match a future unrelated file's comment containing the word
+   "tokens"; both are accepted, documented limitations of a proportionate
+   sanity check, not a claim of complete import-graph verification.
 
 Run, from `apps/atlas/`: `npm run typecheck`, `npm run lint`, and
 `npm test` (all must exit `0`, including the 5 new tests above alongside
