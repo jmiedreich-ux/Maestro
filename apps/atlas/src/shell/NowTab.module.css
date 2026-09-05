@@ -1,0 +1,172 @@
+.tab {
+  padding: 8px var(--atlas-gutter) 22px;
+  font-family: var(--atlas-font-body);
+}
+
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0 2px;
+}
+
+.eyebrow {
+  font: 600 11px var(--atlas-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-eyebrow);
+}
+
+.live {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--atlas-eyebrow);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atlas-live-dot);
+}
+
+.pageTitle {
+  margin: 6px 0 16px;
+  font-family: var(--atlas-font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.hero {
+  padding: 20px;
+  border-radius: var(--atlas-hero-radius);
+  background: var(--atlas-hero-bg);
+  color: var(--atlas-hero-ink);
+  box-shadow: 0 16px 34px rgba(30, 20, 45, 0.22);
+}
+
+.heroHead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--atlas-hero-avatar-bg);
+  color: var(--atlas-hero-avatar-ink);
+  font: 600 12px var(--atlas-font-mono);
+}
+
+.identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.role {
+  font-size: 12.5px;
+  color: var(--atlas-hero-ink-muted);
+}
+
+.headline {
+  font-family: var(--atlas-font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-top: 16px;
+}
+
+.subline {
+  font-size: 13.5px;
+  color: var(--atlas-subline);
+  margin-top: 3px;
+}
+
+.progressBlock {
+  margin-top: 18px;
+}
+
+.track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--atlas-hero-track);
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--atlas-hero-fill);
+}
+
+.boundaryRow {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  font: 500 11.5px var(--atlas-font-mono);
+  color: var(--atlas-hero-ink-muted);
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.metaCard {
+  padding: 15px 16px;
+  border-radius: var(--atlas-card-radius);
+  background: var(--atlas-card-surface);
+}
+
+.metaLabel {
+  font-size: 12px;
+  color: var(--atlas-eyebrow);
+}
+
+.metaValue {
+  font-size: 19px;
+  font-weight: 600;
+  font-family: var(--atlas-font-mono);
+  margin-top: 2px;
+}
+
+.nextPanel {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: var(--atlas-card-radius);
+  background: var(--atlas-owner-bg);
+}
+
+.nextHeading {
+  font: 600 11px var(--atlas-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-owner-ink);
+}
+
+.nextText {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--atlas-next-text);
+}

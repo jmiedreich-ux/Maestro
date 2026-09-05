@@ -32,6 +32,35 @@ describe("derivePacketHeaderState", () => {
     expect(state.next).toBe("unavailable");
   });
 
+  it("(F1) derives a real 40% progress from PACKET_A2_ENTRIES' own real plan.steps (2 of 5 marked done), not the reference file's fabricated 41%", () => {
+    const state = derivePacketHeaderState(PACKET_A2_ENTRIES);
+    const planEntry = PACKET_A2_ENTRIES.find((entry) => entry.plan !== undefined);
+    expect(planEntry?.plan?.steps.filter((step) => step.status === "done")).toHaveLength(2);
+    expect(planEntry?.plan?.steps).toHaveLength(5);
+    expect(state.progressPercent).toBe(40);
+  });
+
+  it("(F1) derives real boundary timestamps from the first and last real Terra (wk) entries", () => {
+    const state = derivePacketHeaderState(PACKET_A2_ENTRIES);
+    expect(state.boundaryBegin).toBe("13:51");
+    expect(state.boundaryHeld).toBe("14:52");
+  });
+
+  it("(F1) reports headline/subline/progress/boundaries/next-panel as unavailable for a synthetic non-escalated thread", () => {
+    const synthetic: ThreadEntry[] = [
+      { k: "co", who: "Coordinator", text: "Go.", time: "10:00" },
+      { k: "wk", who: "Terra", text: "On it.", time: "10:05" },
+    ];
+    const state = derivePacketHeaderState(synthetic);
+    expect(state.headline).toBe("unavailable");
+    expect(state.subline).toBe("unavailable");
+    expect(state.progressPercent).toBe("unavailable");
+    expect(state.boundaryBegin).toBe("unavailable");
+    expect(state.boundaryHeld).toBe("unavailable");
+    expect(state.nextPanelText).toBe("unavailable");
+    expect(state.nextPanelHeading).toBe("what happens next");
+  });
+
   it("finds the last implementor (wk) report, not simply the last entry overall", () => {
     // Real property of PACKET_A2_ENTRIES: its very last entry is the
     // Coordinator's escalation (14:56), but the last report FROM
