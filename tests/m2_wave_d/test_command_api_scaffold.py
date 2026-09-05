@@ -168,14 +168,19 @@ class CommandApiScaffoldTests(unittest.TestCase):
         self.assertEqual(status, 405)
         self.assertEqual(body, b'{"error":"method_not_allowed"}')
 
-    def test_11_only_the_real_resolve_decision_command_is_registered_in_production_code(self) -> None:
-        # D1 shipped the scaffold with zero commands wired; D2 wires the
-        # first real one (see tests/m2_wave_d/test_resolve_decision_command.py).
-        # This asserts the exact, closed set — not just "non-empty" — so a
-        # future slice accidentally registering an extra route is caught here.
+    def test_11_only_the_real_resolve_decision_and_resolve_crash_commands_are_registered_in_production_code(self) -> None:
+        # D1 shipped the scaffold with zero commands wired; D2 wired the
+        # first real one, D6 the second (see
+        # tests/m2_wave_d/test_resolve_decision_command.py and
+        # tests/m2_wave_d/test_resolve_crash_command.py). This asserts the
+        # exact, closed set — not just "non-empty" — so a future slice
+        # accidentally registering an extra route is caught here.
         self.assertEqual(
             read_api._COMMAND_ROUTES,
-            {"/command/resolve-decision": read_api._handle_resolve_decision},
+            {
+                "/command/resolve-decision": read_api._handle_resolve_decision,
+                "/command/resolve-crash": read_api._handle_resolve_crash,
+            },
         )
 
     def test_12_oversized_content_length_rejected_before_reading_body(self) -> None:
