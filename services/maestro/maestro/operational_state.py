@@ -528,6 +528,73 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def record_and_close_needs_replan(
+        self, packet_id, expected_packet_version, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("needs-replan closure reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "expected_version": expected_packet_version,
+            "packet_id": packet_id,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint(
+            "record_and_close_needs_replan", facts, actor_value
+        )
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+                current = connection.execute(
+                    "SELECT state,version FROM packets WHERE packet_id=?", (packet_id,)
+                ).fetchone()
+                if current is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(current[0]), int(current[1])
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+                if source_state != "NeedsReplan":
+                    raise InvalidTransition(
+                        "needs-replan closure requires a NeedsReplan packet"
+                    )
+                before = _state_payload("Packet", packet_id, source_state, current_version)
+                after = _state_payload(
+                    "Packet", packet_id, "Cancelled", expected_packet_version + 1
+                )
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (
+                        "Cancelled", timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_packet_state_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, after, reason,
+                )
+                connection.commit()
+                return after
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("needs-replan closure violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def claim_packet_assignment(
         self, packet_id, expected_version, lease_request, lock_requests,
         attempt_request, reason_payload, idempotency_key, actor, now,
