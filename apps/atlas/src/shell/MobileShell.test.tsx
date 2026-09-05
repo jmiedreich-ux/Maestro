@@ -48,6 +48,28 @@ describe("MobileShell", () => {
     expect(screen.queryByText("Now tab")).not.toBeInTheDocument();
   });
 
+  it("(F2) tapping Chat renders the real ChatTab (F2) rather than the placeholder", () => {
+    render(<MobileShell />);
+    const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    fireEvent.click(within(nav).getByRole("button", { name: "Chat" }));
+    const current = screen.getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Chat");
+    expect(screen.getByRole("button", { name: "‹ Now" })).toBeInTheDocument();
+    expect(screen.queryByText("Chat tab")).not.toBeInTheDocument();
+  });
+
+  it("(F2) ChatTab's own '‹ Now' back button returns to the real Now tab", () => {
+    render(<MobileShell />);
+    const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    fireEvent.click(within(nav).getByRole("button", { name: "Chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "‹ Now" }));
+    const current = screen.getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Now");
+    expect(screen.getByRole("heading", { name: "Now" })).toBeInTheDocument();
+  });
+
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<MobileShell />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();

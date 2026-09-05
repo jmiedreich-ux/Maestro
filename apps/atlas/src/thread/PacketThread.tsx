@@ -61,7 +61,7 @@ export function computeShowAvatar(entries: ThreadEntry[], index: number): boolea
   return !grouped;
 }
 
-function textColorFor(entry: ThreadEntry): string {
+export function textColorFor(entry: ThreadEntry): string {
   return entry.k === "by" ? colors.inkSecondary : colors.ink;
 }
 
