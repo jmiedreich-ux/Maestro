@@ -733,6 +733,253 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def record_and_dispatch_correction(
+        self, packet_id, expected_packet_version, review_id, lease_request, lock_requests,
+        attempt_request, reason_payload, idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        review_id = _text(review_id, "review_id")
+        lease = _assignment_lease_request(lease_request)
+        locks = _assignment_lock_requests(lock_requests)
+        attempt = _assignment_attempt_request(attempt_request)
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("correction dispatch reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "attempt": attempt,
+            "expected_packet_version": expected_packet_version,
+            "lease": lease,
+            "locks": locks,
+            "packet_id": packet_id,
+            "reason": reason,
+            "review_id": review_id,
+        }
+        fingerprint = _fingerprint("record_and_dispatch_correction", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                packet = connection.execute(
+                    "SELECT state,version,run_id,base_commit,executor_class,resource_claims_json,"
+                    "correction_count FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(packet[0]), int(packet[1])
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+                if source_state != "AwaitingArchitect":
+                    raise InvalidTransition(
+                        "correction dispatch requires an AwaitingArchitect packet"
+                    )
+
+                if int(packet[6]) != 0:
+                    raise InvalidRecord(
+                        "packet has already used its one permitted correction"
+                    )
+
+                review = connection.execute(
+                    "SELECT packet_id,review_kind,result,correction_number,findings_json "
+                    "FROM reviews WHERE review_id=?",
+                    (review_id,),
+                ).fetchone()
+                if (
+                    review is None
+                    or str(review[0]) != packet_id
+                    or str(review[1]) != "IndependentImplementation"
+                    or str(review[2]) != "RequestChanges"
+                    or int(review[3]) != 0
+                ):
+                    raise InvalidRecord(
+                        "review_id does not name a blocking RequestChanges review for this packet"
+                    )
+                findings = json.loads(str(review[4]))
+                reason_codes = {item["disposition"]["reason_code"] for item in findings}
+                if "CorrectNow" not in reason_codes:
+                    raise InvalidRecord(
+                        "review findings contain no CorrectNow disposition"
+                    )
+                if "ReturnSlice" in reason_codes:
+                    raise InvalidRecord(
+                        "review findings contain a ReturnSlice disposition"
+                    )
+
+                run_id = str(packet[2])
+                run = connection.execute(
+                    "SELECT state,run_fingerprint FROM runs WHERE run_id=?", (run_id,)
+                ).fetchone()
+                if run is None:
+                    raise InvalidRecord("packet run is missing")
+                if str(run[0]) != "Running":
+                    raise InvalidTransition("correction dispatch requires a Running run")
+
+                declared_resources = json.loads(str(packet[5]))
+                requested_resources = [item["resource_key"] for item in locks]
+                if requested_resources != declared_resources:
+                    raise InvalidRecord(
+                        "correction locks must exactly cover declared resources"
+                    )
+
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE lease_id=?", (lease["lease_id"],)
+                ).fetchone() is not None:
+                    raise InvalidRecord("correction lease_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE claim_key=?", (key,)
+                ).fetchone() is not None:
+                    raise InvalidRecord("correction claim_key already exists without replay")
+                for lock_id in sorted(item["lock_id"] for item in locks):
+                    if connection.execute(
+                        "SELECT 1 FROM resource_locks WHERE lock_id=?", (lock_id,)
+                    ).fetchone() is not None:
+                        raise InvalidRecord("correction lock_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM attempts WHERE attempt_id=?", (attempt["attempt_id"],)
+                ).fetchone() is not None:
+                    raise InvalidRecord("correction attempt_id already exists")
+                if connection.execute(
+                    "SELECT 1 FROM attempts WHERE packet_id=? AND attempt_number=2", (packet_id,)
+                ).fetchone() is not None:
+                    raise InvalidRecord("packet already has a TargetedCorrection attempt")
+
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE packet_id=? AND state='Active'", (packet_id,)
+                ).fetchone() is not None:
+                    raise ResourceConflict("packet already has an Active lease")
+                if connection.execute(
+                    "SELECT 1 FROM leases WHERE worktree_path=? AND state='Active'",
+                    (lease["worktree_path"],),
+                ).fetchone() is not None:
+                    raise ResourceConflict("worktree already has an Active lease")
+                if requested_resources:
+                    requested_resource_set = set(requested_resources)
+                    active_resources = connection.execute(
+                        "SELECT resource_key FROM resource_locks WHERE state='Active' "
+                        "ORDER BY resource_key"
+                    ).fetchall()
+                    conflicting_resources = [
+                        str(row[0]) for row in active_resources
+                        if str(row[0]) in requested_resource_set
+                    ]
+                    if conflicting_resources:
+                        raise ResourceConflict(
+                            f"resource already has an Active lock: {conflicting_resources[0]}"
+                        )
+
+                packet_before = _state_payload(
+                    "Packet", packet_id, source_state, current_version
+                )
+                packet_after = _state_payload(
+                    "Packet", packet_id, "Leased", expected_packet_version + 1
+                )
+                lease_row = {
+                    "lease_id": lease["lease_id"],
+                    "packet_id": packet_id,
+                    "run_id": run_id,
+                    "claim_key": key,
+                    "run_fingerprint": str(run[1]),
+                    "base_commit": str(packet[3]),
+                    "worktree_path": lease["worktree_path"],
+                    "executor_route": lease["executor_route"],
+                    "holder_id": lease["holder_id"],
+                    "state": "Active",
+                    "acquired_at": timestamp,
+                    "expires_at": lease["expires_at"],
+                    "heartbeat_at": timestamp,
+                    "released_at": None,
+                    "version": 1,
+                }
+                lock_rows = [
+                    {
+                        "lock_id": item["lock_id"],
+                        "resource_key": item["resource_key"],
+                        "lock_kind": item["lock_kind"],
+                        "packet_id": packet_id,
+                        "lease_id": lease["lease_id"],
+                        "state": "Active",
+                        "acquired_at": timestamp,
+                        "expires_at": lease["expires_at"],
+                        "released_at": None,
+                        "version": 1,
+                    }
+                    for item in locks
+                ]
+                attempt_row = self._attempt(
+                    {
+                        "attempt_id": attempt["attempt_id"],
+                        "packet_id": packet_id,
+                        "lease_id": lease["lease_id"],
+                        "attempt_number": 2,
+                        "attempt_kind": "TargetedCorrection",
+                        "executor_class": str(packet[4]),
+                        "model_identity": attempt["model_identity"],
+                        "runtime_identity": attempt["runtime_identity"],
+                        "state": "Planned",
+                        "result_commit": None,
+                        "correction_for_review_id": review_id,
+                        "started_at": None,
+                        "finished_at": None,
+                    },
+                    timestamp,
+                )
+                lock_ids = sorted(item["lock_id"] for item in locks)
+                result = {
+                    "attempt": _state_payload(
+                        "Attempt", attempt["attempt_id"], "Planned", 1
+                    ),
+                    "claim": validate_payload(
+                        {
+                            "kind": "claim",
+                            "lease_id": lease["lease_id"],
+                            "lock_ids": lock_ids,
+                            "packet_id": packet_id,
+                        }
+                    ),
+                    "lease": _state_payload(
+                        "Lease", lease["lease_id"], "Active", 1
+                    ),
+                    "locks": [
+                        _state_payload("ResourceLock", lock_id, "Active", 1)
+                        for lock_id in lock_ids
+                    ],
+                    "packet": packet_after,
+                }
+                canonical_json(result, root_type=dict)
+
+                updated = connection.execute(
+                    "UPDATE packets SET state='Leased',correction_count=1,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=? AND state='AwaitingArchitect'",
+                    (timestamp, expected_packet_version + 1, packet_id, expected_packet_version),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert(connection, "leases", lease_row)
+                for lock_row in lock_rows:
+                    self._insert(connection, "resource_locks", lock_row)
+                self._insert(connection, "attempts", attempt_row)
+                self._insert_packet_claim_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, packet_before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("correction dispatch violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def start_attempt_execution(
         self, attempt_id, expected_attempt_version, expected_packet_version,
         execution_handle, expected_result, reason_payload,
