@@ -1043,6 +1043,28 @@ zero remaining defects (two minor non-blocking notes recorded, neither
 a real defect); all 123 `apps/atlas` tests pass (114 existing + 9 new),
 build succeeds, `AgentsRoster` is not imported anywhere else yet.
 
-Next: `MB-SLICE-M2-E5`, Agents contention/lock card — the final Wave E
-item — per the M2 roadmap and the standing instruction to complete all
-of M2 where possible.
+`MB-SLICE-M2-E5-CONTENTION-CARD-01` is merged (planning PR #134 at
+`3ca3431`, implementation PR #135 at `fd3aec5`), completing roadmap
+item 30. **This closes Wave E: all 7 items are now merged** (E1, E1B,
+E2, E2B, E3, E4, E5 — E6 and E7 each via a `-02` successor candidate
+after a terminally returned `-01`). A standalone `ContentionCard`:
+header ("contention" label, "no overlap" status), all 3 real
+`CONTENTION` rows (`Terra`/`frozen`/`reserved`, no fictional persona),
+and the card's own real trailing caveat. Zero disclosed color literals
+— 13 real B2 tokens. Full Decision Fidelity review passed cleanly, no
+targeted correction needed (the first Wave E slice this session to
+pass on the first attempt); independent implementation review
+confirmed zero remaining defects. All 129 `apps/atlas` tests pass (123
+existing + 6 new), build succeeds, `ContentionCard` is not imported
+anywhere else yet (not wired into `AgentsRoster` or `DesktopShell`).
+
+**M2 status at Wave E's close:** of 39 total roadmap items — Wave A
+(7/7), Wave B (4/4), Wave C (6/7, C2 deliberately deferred pending
+Owner input), Wave D (0/7), **Wave E (7/7, now complete)**, Wave F
+(0/4), Wave G (0/3) — 24 of 39 items are done (~62%), plus the one
+deliberately deferred item.
+
+Next: awaiting direction on Wave D (guarded operator-action commands —
+real backend command API work, a materially different kind and scale
+of complexity than Wave E's read-only reporting UI) versus continuing
+into Wave F or G.
