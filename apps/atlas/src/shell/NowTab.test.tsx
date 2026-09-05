@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { NowTab } from "./NowTab";
 import { derivePacketHeaderState } from "../thread/headerState";
 import { PACKET_A2_ENTRIES } from "../thread/fixtures";
+import { colors } from "../tokens";
 
 afterEach(cleanup);
 
@@ -79,5 +80,25 @@ describe("NowTab", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<NowTab />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  it("defaults to systemState 'normal': live indicator says 'idle', not the reference file's own default 'live' (this app has no real connection), no connection strip", () => {
+    render(<NowTab />);
+    const live = screen.getByText("idle").closest('[class*="live"]') as HTMLElement;
+    expect(live.style.getPropertyValue("--atlas-conn-live-text")).toBe(colors.inkFaint);
+    expect(live.style.getPropertyValue("--atlas-conn-live-dot")).toBe(colors.inkMuted);
+    expect(screen.queryByText("Reconnecting")).toBeNull();
+  });
+
+  it("systemState 'disconnected': live indicator flips to 'reconnecting' and the real mobile connection strip renders with its own real copy (different from desktop's)", () => {
+    render(<NowTab systemState="disconnected" />);
+    expect(screen.getByText("reconnecting")).toBeInTheDocument();
+    expect(screen.getByText("Reconnecting")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Atlas lost its connection at 14:58. Agents keep working — they report to the Coordinator, not to this phone. This is the last state received.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("retry 3")).toBeInTheDocument();
   });
 });
