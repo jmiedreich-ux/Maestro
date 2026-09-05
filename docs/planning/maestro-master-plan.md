@@ -20,7 +20,8 @@ M1–M4 implementation path: M1 is the Linux service core and durable
 operational records; M2 is Atlas as the local operator interface — live
 reporting plus the operator-action commands named in
 [M0-D01's amendment](decisions/m0-d01-operational-database.md#atlas-operator-action-amendment--owner-approved-2026-09-05)
-as each becomes available; M3 replaces
+as each becomes available, decomposed wave-by-wave in the
+[M2 Atlas roadmap](m2-atlas-roadmap.md); M3 replaces
 fixture execution with a real packet compiler, real agent executor, and
 mechanical grading; M4 completes the persistent Development Manager loop
 (real Integration, review, notification, and recovery). Every slice actually
