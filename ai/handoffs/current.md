@@ -542,7 +542,17 @@ posing a new one — recorded in `m2-atlas-roadmap.md`, not assigned a
 milestone yet (unlike D4/D5's clear M4 destination) pending that
 resolution.
 
-Next: any independent Wave F (F2-F4), Wave G (G1, G3), or Wave D
+`MB-SLICE-M2-F2-CHAT-TAB-01` is merged (planning PR #147 at `a161cb4`,
+implementation PR #148 at `e186dab`) — the mobile "Chat" tab, reusing
+C1's real fixture/text-color rule and C7's real header-state function,
+restyled as chat bubbles — no backend change, no message composer (no
+real backend command exists to wire one to). Decision Fidelity review:
+`PASS WITH 3 non-blocking notes`, all fixed at zero cost. Independent
+implementation review: `APPROVE` with 1 non-blocking note (a bubble
+tail-corner styling detail, logged for later). 20/20 test files,
+148/148 tests pass, zero regressions.
+
+Next: any independent Wave F (F3, F4), Wave G (G1, G3), or Wave D
 (D6/D7 crash-recovery command) item not blocked by C2/D3's open
 question.
 
