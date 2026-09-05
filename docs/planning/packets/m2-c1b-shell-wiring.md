@@ -1,7 +1,7 @@
 # M2 Wave C — Wire Packet Thread Into Desktop Shell — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C1B-SHELL-WIRING-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the packet's central "purely additive" claim was false: the reviewer actually built and ran the described diff and found a real typecheck failure (`VIEW_LABEL`'s type) and three real test failures (missing em-dash normalization in two new tests, and a genuine breaking change to one pre-existing test's own expectation). All four are now fixed and disclosed honestly as real edits, not additions.
 **Base:** `a219e57` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -93,16 +93,16 @@ passing.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C1B-SHELL-WIRING-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:a219e57"]` |
+| `evidence_refs` | `["git:base:a219e57","git:full-planning-review-head:2f7b9127c64cbb330f32abc6c942ff0e2a86a1e0","review:decision-fidelity:request-changes:4-blocking-findings"]` |
 
 ## Exact file contents
 
@@ -197,22 +197,49 @@ is unchanged):
      <span className={styles.packetLabel}>{PACKET_A2_LABEL}</span>
    </button>
    ```
-6. Change the content pane from unconditionally rendering
+6. **Corrected — blocking finding from Decision Fidelity review: this
+   step genuinely modifies `VIEW_LABEL`'s type, and the packet must say
+   so honestly rather than claim it is untouched.** An earlier draft
+   claimed `VIEW_LABEL` "needs no `packet` key" and left its type
+   (`Record<DesktopShellView, string>`) unchanged — but TypeScript's
+   structural check on a `Record` over a union type requires every union
+   member as a key, so adding `"packet"` to `DesktopShellView` in step 1
+   makes the existing `VIEW_LABEL` declaration fail to typecheck
+   (`error TS2741: Property 'packet' is missing`) unless its type is
+   also updated. The correct, minimal fix narrows `VIEW_LABEL`'s key
+   type to exactly the views that actually use it, rather than adding an
+   unused `"packet"` entry to satisfy the checker with a dead value:
+   ```ts
+   const VIEW_LABEL: Record<Exclude<DesktopShellView, "packet">, string> = {
+     performance: "Performance",
+     agents: "Agents",
+     history: "History",
+     gate: "M1-B gate",
+   };
+   ```
+   This is a real, disclosed one-line type change to an existing
+   declaration — not an addition — and is named as such rather than
+   claimed away. Change the content pane from unconditionally rendering
    `{VIEW_LABEL[selected]} view` to:
    ```tsx
    <main className={styles.content}>
      {selected === "packet" ? <PacketThread /> : `${VIEW_LABEL[selected]} view`}
    </main>
    ```
-   (`VIEW_LABEL` itself is untouched — it has no `"packet"` key and
-   needs none, since the packet branch never reads it.)
+   TypeScript narrows `selected` to `Exclude<DesktopShellView, "packet">`
+   inside the `: ` branch (the `selected === "packet"` check in the `?`
+   branch already excludes it), so `VIEW_LABEL[selected]` still
+   typechecks correctly with the narrowed key type.
 
 Every other line of `DesktopShell.tsx` — the `NavRow` component, the top
 bar, the four static `NAV_ROWS`, the existing `SHELL_VARS` entries, the
 gate row — is byte-identical to the current merged file.
 
-`apps/atlas/src/shell/DesktopShell.test.tsx` (modified — additive only;
-every existing test is untouched):
+`apps/atlas/src/shell/DesktopShell.test.tsx` (modified — **corrected,
+per two blocking findings from Decision Fidelity review below: this is
+not purely additive after all** — one pre-existing test's own
+expectation must be updated, and the two new tests below needed fixes
+that were only found by actually running them):
 
 ```tsx
 // Added imports, alongside the existing ones:
@@ -222,7 +249,14 @@ import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 
 it("renders the A.2 packet row between History and the M1-B gate row", () => {
   render(<DesktopShell />);
-  const rows = screen.getAllByRole("button").map((r) => r.textContent);
+  // Corrected: the real NavRow always appends a trailing mono count
+  // span ("—") to its own text, exactly like the pre-existing "renders
+  // exactly four static nav rows" test already accounts for — this
+  // test's first draft omitted that same normalization and failed
+  // against the real rendered output.
+  const rows = screen
+    .getAllByRole("button")
+    .map((r) => r.textContent?.replace("—", "").trim());
   expect(rows).toEqual(["Performance", "Agents", "History", "A.2 · Runtime Package", "M1-B gate"]);
 });
 
@@ -241,9 +275,39 @@ it("selecting the A.2 row shows the real packet thread, not a placeholder", () =
 it("selecting a static row after the packet row correctly unmounts the thread", () => {
   render(<DesktopShell />);
   fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Agents" }));
+  // Corrected: the real accessible name is "Agents—" (the trailing
+  // mono count), so the exact string "Agents" never matches — the same
+  // class of fix as the test above, using a regex here instead since
+  // this call needs to select one specific row, not compare a full list.
+  fireEvent.click(screen.getByRole("button", { name: /^Agents/ }));
   expect(screen.getByText("Agents view")).toBeInTheDocument();
   expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).not.toBeInTheDocument();
+});
+```
+
+**One existing test must also be edited — corrected, the second blocking
+finding: this file is not purely additive.** The pre-existing test
+`"renders exactly four static nav rows, in order"` asserts the nav
+contains exactly 4 buttons; inserting the new packet row makes that
+literally false (there are now 5). Decision Fidelity review found this
+by actually running the suite, not by inspection. The fix is a rename
+and a one-line list update to that existing test — no assertion
+methodology changes, since it already uses the same `—`-stripping
+pattern the two corrected tests above now also use:
+
+```tsx
+// Existing test, renamed and updated (was "renders exactly four static
+// nav rows, in order"; the em-dash-stripping mechanism is unchanged):
+it("renders the four static nav rows plus the packet row, in order", () => {
+  render(<DesktopShell />);
+  const rows = screen.getAllByRole("button");
+  expect(rows.map((row) => row.textContent?.replace("—", "").trim())).toEqual([
+    "Performance",
+    "Agents",
+    "History",
+    "A.2 · Runtime Package",
+    "M1-B gate",
+  ]);
 });
 ```
 
@@ -254,27 +318,39 @@ it("selecting a static row after the packet row correctly unmounts the thread", 
 2. `PacketThread.tsx`, `PacketThread.module.css`, `fixtures.ts` are read
    (imported) but not modified — C1's fixture-transcription work is
    reused exactly as merged, not re-verified or re-derived.
-3. Every existing rule in `DesktopShell.module.css` and every existing
-   line of `DesktopShell.tsx`/`DesktopShell.test.tsx` not named above as
-   changed is byte-identical to the currently merged files — this slice
-   is purely additive to both.
+3. **Corrected — blocking findings from Decision Fidelity review: this
+   slice is not purely additive, and claiming so was itself the defect.**
+   Every existing rule in `DesktopShell.module.css` is byte-identical to
+   the currently merged file (true, unaffected by either finding). In
+   `DesktopShell.tsx`, `VIEW_LABEL`'s type declaration is genuinely
+   edited (narrowed), named exactly above, not silently changed. In
+   `DesktopShell.test.tsx`, exactly one pre-existing test (`"renders
+   exactly four static nav rows, in order"`) is renamed and has its
+   expected list updated to include the new row, named exactly above;
+   every other existing test is untouched. No file outside these two
+   named, disclosed edits changes.
 4. No file under `apps/atlas/src/tokens/` is modified.
 
 ## Boundary, proof, and M0-D12
 
 Writable paths are exactly:
 
-- `apps/atlas/src/shell/DesktopShell.module.css` (modified, additive)
-- `apps/atlas/src/shell/DesktopShell.tsx` (modified, additive)
-- `apps/atlas/src/shell/DesktopShell.test.tsx` (modified, additive)
+- `apps/atlas/src/shell/DesktopShell.module.css` (modified, purely additive)
+- `apps/atlas/src/shell/DesktopShell.tsx` (modified, additive plus the
+  one disclosed `VIEW_LABEL` type edit)
+- `apps/atlas/src/shell/DesktopShell.test.tsx` (modified, additive plus
+  the one disclosed existing-test rename/update)
 
 No other path — in particular, nothing under `apps/atlas/src/thread/`
 or `apps/atlas/src/tokens/` changes.
 
 The 3 named tests, run from `apps/atlas/`: `npm run typecheck`, `npm run
-lint`, and `npm test` must all exit `0`, covering the 3 new tests above
-plus every existing `apps/atlas` test continuing to pass unmodified — 27
-total after this slice (24 existing + 3 new). `npm run build` must still
+lint`, and `npm test` must all exit `0`, covering the 3 new tests above,
+the one renamed/updated existing test (still counted among the existing
+24, not as a 4th new test — its assertion changed, its identity as
+"the DesktopShell nav-row-count test" did not), plus every other existing
+`apps/atlas` test continuing to pass unmodified — 27 total after this
+slice (24 existing + 3 new). `npm run build` must still
 succeed; unlike every prior Wave B/C slice, `PacketThread`'s fixture
 content (e.g. `"Terra"`) is now expected to appear in the `dist/` bundle,
 since this slice makes it the shell's first real consumer — the build
