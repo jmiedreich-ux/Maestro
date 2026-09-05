@@ -1,7 +1,7 @@
 # M2 Wave C — Packet Thread, Static Fixtures — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C1-PACKET-THREAD-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the test file's own code contains 7 tests, but the contract's proof sections said 6, giving a wrong total of 23 instead of 24; plus one non-blocking wording fix, applied at the same time. Neither fix changes fixture data, tokens, colors, or the grouping logic.
 **Base:** `6fc20da` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -147,16 +147,16 @@ nothing yet):
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C1-PACKET-THREAD-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:6fc20da"]` |
+| `evidence_refs` | `["git:base:6fc20da","git:full-planning-review-head:8d7c32f1f32ffdcd298c39b0892b1b984340283a","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact file contents
 
@@ -362,11 +362,16 @@ const SHELL_VARS = {
 } as CSSProperties;
 
 /**
- * `AV` from the reference file. Every value here is a direct property
- * of the real `colors` token except `co`'s background, which the
- * contract's discrepancy table discloses as a real, checked mismatch
- * against this codebase's existing `colors.neutralChip` — the
- * reference file's actual value is used, not the token.
+ * `AV` from the reference file. Two values have no equivalent B2 token
+ * and stay disclosed literals, each checked directly against
+ * `Atlas Explorations.dc.html`'s real `AV` constant, not invented:
+ * `co`'s background (`#EFEBF2` — a real, checked mismatch against this
+ * codebase's existing `colors.neutralChip`, see the discrepancy table
+ * above) and `by`'s background (`#FEF3E2` — never rendered by this
+ * slice's chosen `A.2` fixture, which uses only the `co`/`wk` roles,
+ * but included here for a complete, correct palette matching the
+ * README's own "Avatar palettes" enumeration). Every other value below
+ * is a direct property of the real `colors` token.
  */
 const AVATAR_PALETTE: Record<EntryRoleKey, { bg: string; ink: string }> = {
   co: { bg: "#EFEBF2", ink: "#4A4155" },
@@ -571,10 +576,14 @@ No other path — `App.tsx`, `App.test.tsx`, everything under
 `apps/atlas/src/shell/`, and everything under `apps/atlas/src/tokens/`
 are untouched.
 
-The 6 named tests, run from `apps/atlas/`: `npm run typecheck`, `npm run
-lint`, and `npm test` must all exit `0`, covering the new test file
-above plus every existing `apps/atlas` test continuing to pass
-unmodified — 23 total after this slice (17 existing + 6 new). `npm run
+The 7 named tests (**corrected — blocking finding from Decision
+Fidelity review: the test file's code block actually contains 7 `it(...)`
+cases, not 6, and the resulting total is 24, not 23** — the file content
+itself was always correct; only this section's and M0-D12 element 5's
+own counts were wrong), run from `apps/atlas/`: `npm run typecheck`,
+`npm run lint`, and `npm test` must all exit `0`, covering the new test
+file above plus every existing `apps/atlas` test continuing to pass
+unmodified — 24 total after this slice (17 existing + 7 new). `npm run
 build` must still succeed; `PacketThread` is not expected to appear in
 the `dist/` bundle, matching B2's and B4's own build-unaffected proof.
 
@@ -599,8 +608,8 @@ the `dist/` bundle, matching B2's and B4's own build-unaffected proof.
    view with no data dependency and no consumer yet — identical
    assurance posture to B2/B4, with the added rigor this slice's own
    fixture-transcription responsibility requires.
-5. **Acceptance proof:** the 6 named tests, the existing 17 `apps/atlas`
-   tests continuing to pass (23 total), `npm run typecheck`, `npm run
+5. **Acceptance proof:** the 7 named tests, the existing 17 `apps/atlas`
+   tests continuing to pass (24 total), `npm run typecheck`, `npm run
    lint`, and `npm run build`, all passing.
 6. **Implementation boundary:** exactly the four writable paths above;
    no new npm dependency; every color either a real token property or a
