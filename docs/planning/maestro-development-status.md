@@ -824,6 +824,45 @@ Independent implementation review confirmed a byte-exact match to the
 frozen contract; all 57 `apps/atlas` tests pass (50 existing + 7 new),
 build succeeds, `CrashCard` is not imported anywhere else yet.
 
-Next: Wave C's last remaining item — C7 (header/state-source wiring).
-C2 stays deferred pending Owner input on the real-data synthesis
-question above.
+`MB-SLICE-M2-C7-HEADER-STATE-WIRING-01` is merged (planning PR #104 at
+`455d984f`, implementation PR #105 at `da6c26cc`): `derivePacketHeaderState`
+— the README's own single-state-source rule ("header summary... must
+all read from one state value, not be set independently") — plus its
+first consumer, `PacketHeader` (eyebrow, title, state line, and the
+`Last report`/`Blocker`/`Next permitted action` summary row), built
+from C1's real `A.2` fixture. Eyebrow/title transcribed verbatim from
+the reference `PACKETS` array, minus the mockup's own "issue #970"
+segment (checked directly — no such issue exists in this repository).
+Only the real, exercised trajectory (blocked, escalated to the owner)
+is modeled; the not-blocked branch honestly reports `"unavailable"`
+per this project's own real M0-D14 reporting-honesty convention rather
+than fabricating unbacked simulated values. Full Decision Fidelity
+review found every architectural and data claim correct, returning
+`REQUEST_CHANGES_MINOR` with 1 non-blocking finding (an undisclosed
+markup-quote elision); the one available targeted planning correction
+fixed the disclosure — approved by targeted verification. Independent
+implementation review confirmed a byte-exact match to the frozen
+contract; all 64 `apps/atlas` tests pass (57 existing + 7 new), build
+succeeds, `PacketHeader` is not imported anywhere else yet.
+
+**Wave C is now fully complete.** All seven items are merged: C1
+(packet thread, static fixtures), C1B (wired into `DesktopShell`'s
+nav), C3 (decision card, ruling variant), C4 (decision card,
+owner-decision variant), C5 (Decision Fidelity record rendering), C6
+(crash card), and C7 (header/state-source wiring). C2 (packet thread
+wired to real data) remains deliberately deferred — not built, not
+skipped — pending Owner input on a real architecture/product question
+(the backend's structured `packets`/`attempts`/`reviews`/`events` data
+model has no concept matching the mockup's narrative thread messages;
+see `docs/planning/m2-atlas-roadmap.md`'s Wave C section for the full
+ruling). Every other Wave C component (`PacketThread`, `DecisionCard`,
+`OwnerDecisionCard`, `FidelityRecord`, `CrashCard`, `PacketHeader`) is
+real, reviewed, tested, and merged, but still standalone — none is yet
+wired into `DesktopShell`'s content pane or `App.tsx` (`PacketThread`
+is the sole exception, wired via C1B). Wiring the rest together into
+one coherent packet-detail view is real, separately-reviewable future
+work, not silently implied by any single C-wave slice.
+
+Next: Wave E (remaining desktop reporting views — Performance, Agents,
+History, Gate), per the M2 roadmap and the standing instruction to
+complete all of M2 where possible.

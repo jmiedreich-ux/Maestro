@@ -299,8 +299,28 @@ file's crash-card copy) but 5 pieces of that copy corrected against
 mapping (a Failed outcome always releases its lease, never holds it,
 and no automatic-retry code path exists) — its planning packet needed
 one targeted correction (two of the five corrections were made but not
-disclosed as numbered ones) before approval. Next: Wave C's last
-remaining item — C7 (header/state-source wiring).
+disclosed as numbered ones) before approval. C7 (header/state-source
+wiring, `MB-SLICE-M2-C7-HEADER-STATE-WIRING-01`) is also merged:
+`derivePacketHeaderState` — the README's own real single-state-source
+rule — plus its first consumer, `PacketHeader`, both built from C1's
+real `A.2` fixture; its planning packet's full Decision Fidelity
+review found every architectural and data claim correct, returning
+`REQUEST_CHANGES_MINOR` with only 1 non-blocking finding (an
+undisclosed markup-quote elision), fixed by one targeted correction.
+
+**Wave C is now fully complete: C1, C1B, C3, C4, C5, C6, and C7 are
+all merged.** C2 (packet thread wired to real data) remains
+deliberately deferred, not built, pending Owner input on a real
+architecture/product question (the backend's structured data model has
+no concept matching the mockup's narrative thread messages). Every
+other Wave C component (`PacketThread`, `DecisionCard`,
+`OwnerDecisionCard`, `FidelityRecord`, `CrashCard`, `PacketHeader`) is
+real, reviewed, and merged but still standalone — none is wired into
+`DesktopShell`'s content pane or `App.tsx` except `PacketThread` (via
+C1B). Wiring the rest together is real, separately-reviewable future
+work. Next: Wave E (remaining desktop reporting views — Performance,
+Agents, History, Gate).
+
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
 remain immutable and non-authoritative.
