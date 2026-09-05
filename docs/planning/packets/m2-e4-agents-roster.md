@@ -1,7 +1,7 @@
 # M2 Wave E — Agents Roster — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-E4-AGENTS-ROSTER-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Draft — Targeted correction applied (color discrepancy table heading said "except 2 disclosed literals", every other count in the document already correctly said 4), pending Targeted Decision Fidelity Verification`
 **Base:** `f1e73dd` (full: `f1e73dd86c78180260b18875e8b9650e28d809da`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -145,7 +145,7 @@ agStats: [
 established pattern.** Real `<button>` elements, no `onClick` handler
 at all — the click-to-navigate command doesn't exist yet.
 
-## Color discrepancy table — every value is a real, existing B2 token except 2 disclosed literals
+## Color discrepancy table — every value is a real, existing B2 token except 4 disclosed literals
 
 | Reference value | `colors.ts` match | Verdict |
 |---|---|---|
@@ -978,13 +978,13 @@ for this slice, same as every prior slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E4-AGENTS-ROSTER-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:f1e73dd86c78180260b18875e8b9650e28d809da"]` |
+| `evidence_refs` | `["git:base:f1e73dd86c78180260b18875e8b9650e28d809da", "git:planning-review-head:56cce23739333febb2bfe25462ed26b06db562ec", "review:DecisionFidelity:REQUEST_CHANGES:table-heading-said-2-disclosed-literals-should-be-4", "docs-only-correction:heading-corrected-to-4"]` |
