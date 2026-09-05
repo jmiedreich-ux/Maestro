@@ -946,7 +946,26 @@ byte-exact match to the frozen contract; all 90 `apps/atlas` tests pass
 (81 existing + 9 new), build succeeds, `GateCriteriaList` is not
 imported anywhere else yet.
 
+`MB-SLICE-M2-E6-HISTORY-TIMELINE-01` is terminally `returned`. Full
+Decision Fidelity review found exactly 1 blocking finding: three
+mutually inconsistent counts of the packet's own disclosed color
+literals (a table header said "three", a Guards item said "three ...
+four total" self-contradictorily, and the M0-D12 protected-outcome
+sentence said "exactly four"), against a disclosed-literal table that
+actually lists five real rows. The one available targeted correction
+fixed those three flagged sentences to consistently say "five," but a
+fourth location — a code-comment docstring inside `History.tsx`'s own
+"exact file contents" — still said "three disclosed literals" while
+enumerating four, unchanged by the correction. Targeted verification
+caught this remaining inconsistency and returned `REQUEST_CHANGES`;
+per this program's bounded-correction policy, no second correction is
+available, so this candidate is immutable and non-authoritative. A
+fresh `-02` candidate must grep and check every location stating or
+implying a disclosed-literal count — including code-comment docstrings
+inside "exact file contents," not only narrative prose — before
+finalizing.
+
 Next: the rest of Wave E (per-action detail groups + expand/collapse —
-E2B, Performance breakdown card — E3, Agents roster/contention, History
-timeline), per the M2 roadmap and the standing instruction to complete
-all of M2 where possible.
+E2B, Performance breakdown card — E3, Agents roster/contention, a fresh
+History-timeline `-02` candidate), per the M2 roadmap and the standing
+instruction to complete all of M2 where possible.
