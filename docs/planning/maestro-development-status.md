@@ -475,8 +475,10 @@ bootstrap slice has taken).
 A full fresh state-by-state re-check after both merges confirmed: every
 `Packet` state now has a real way in and a real way out except those two
 named, deliberately deferred items. **M1's internal operational core is
-closed.** Per M0-D15's phase sequence, the next phase is M2 (Atlas as a
-local, read-only reporting application); no M2 work is authorized by this
+closed.** Per M0-D15's phase sequence, the next phase is M2 (Atlas as the
+local operator interface — live reporting plus the operator-action
+commands named in M0-D01's amendment, as each becomes available); no M2
+work is authorized by this
 record.
 
 `MB-SLICE-M1-REVIEW-ROUTING-04` is terminally `returned` at
