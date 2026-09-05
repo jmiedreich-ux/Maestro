@@ -1681,6 +1681,140 @@ class OperationalStateStore:
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
+    def record_and_observe_merge(
+        self, packet_id, expected_packet_version, merge_observation, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("merge observation reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+
+        if not isinstance(merge_observation, Mapping):
+            raise InvalidRecord("merge_observation has an invalid closed shape")
+        merge_observation_row = self._merge_observation(
+            {**merge_observation, "observed_at": timestamp}
+        )
+
+        facts = {
+            "expected_packet_version": expected_packet_version,
+            "merge_observation": merge_observation_row,
+            "packet_id": packet_id,
+            "reason": reason,
+        }
+        fingerprint = _fingerprint("record_and_observe_merge", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                packet = connection.execute(
+                    "SELECT state,version,run_id FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version, run_id = (
+                    str(packet[0]), int(packet[1]), str(packet[2]),
+                )
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+
+                if source_state != "AwaitingOwner":
+                    raise InvalidTransition(
+                        "merge observation is only permitted from AwaitingOwner"
+                    )
+
+                if (
+                    merge_observation_row["packet_id"] != packet_id
+                    or merge_observation_row["run_id"] != run_id
+                ):
+                    raise InvalidRecord(
+                        "merge observation does not relate to the observed packet"
+                    )
+
+                if merge_observation_row["acceptance_id"] is None:
+                    raise InvalidRecord(
+                        "merge observation requires an acceptance_id"
+                    )
+                acceptance = connection.execute(
+                    "SELECT packet_id,subject_type,decision,sequence_number,exact_head "
+                    "FROM acceptance_records WHERE acceptance_id=?",
+                    (merge_observation_row["acceptance_id"],),
+                ).fetchone()
+                if acceptance is None:
+                    raise InvalidRecord(
+                        "merge observation names an unknown acceptance record"
+                    )
+                (
+                    acceptance_packet_id, acceptance_subject_type,
+                    acceptance_decision, acceptance_sequence_number,
+                    acceptance_exact_head,
+                ) = (
+                    str(acceptance[0]), str(acceptance[1]), str(acceptance[2]),
+                    int(acceptance[3]), str(acceptance[4]),
+                )
+                if (
+                    acceptance_packet_id != packet_id
+                    or acceptance_subject_type != "Packet"
+                    or acceptance_decision != "Accepted"
+                    or acceptance_sequence_number != 1
+                ):
+                    raise InvalidRecord(
+                        "merge observation acceptance record does not name the "
+                        "required Accepted packet acceptance"
+                    )
+                if merge_observation_row["accepted_head"] != acceptance_exact_head:
+                    raise InvalidRecord(
+                        "merge observation accepted_head does not match the "
+                        "acceptance record exact_head"
+                    )
+
+                packet_before = _state_payload(
+                    "Packet", packet_id, source_state, current_version
+                )
+                packet_after = _state_payload(
+                    "Packet", packet_id, "Merged", expected_packet_version + 1
+                )
+                before = {"packet": packet_before}
+                result = {"packet": packet_after, "merge_observation": merge_observation_row}
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                self._insert(connection, "merge_observations", merge_observation_row)
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (
+                        "Merged", timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_merge_observation_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord(
+                "merge observation routing violates a durable constraint"
+            ) from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_notification(self, notification, idempotency_key, actor, now):
         row = self._notification(notification, now)
         return self._append_one("notifications", "notification_id", row, "Notification", "NotificationRecorded", idempotency_key, actor, now)
@@ -2037,6 +2171,25 @@ class OperationalStateStore:
             """,
             (
                 key, "Packet", packet_id, "AcceptanceRecorded", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_merge_observation_event(
+        connection, key, fingerprint, actor, now, packet_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Packet", packet_id, "MergeObserved", canonical_json(before),
                 canonical_json(after), canonical_json(reason), actor["correlation_id"],
                 actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
                 fingerprint, now,
