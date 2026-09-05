@@ -74,6 +74,12 @@ _REVIEW_ROUTES = {
     ("AwaitingReview", "IndependentImplementation", "Approve"): "MergeReady",
     ("AwaitingReview", "IndependentImplementation", "RequestChanges"): "AwaitingArchitect",
 }
+_CORRECTION_REVIEW_ROUTES = {
+    ("AwaitingIntegration", "Integration", "ValidateOnly"): "AwaitingReview",
+    ("AwaitingIntegration", "Integration", "NeedsReplan"): "NeedsReplan",
+    ("AwaitingReview", "IndependentImplementation", "Approve"): "MergeReady",
+    ("AwaitingReview", "IndependentImplementation", "RequestChanges"): "NeedsReplan",
+}
 _REVIEW_REVIEWER_ROLES = {
     "Integration": "IntegrationAgent",
     "IndependentImplementation": "IndependentImplementationReviewer",
@@ -1717,6 +1723,183 @@ class OperationalStateStore:
                 return result
         except sqlite3.IntegrityError as error:
             raise InvalidRecord("review routing violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
+    def record_and_route_correction_review(
+        self, packet_id, expected_packet_version, review, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("correction review routing reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+
+        if not isinstance(review, Mapping):
+            raise InvalidRecord("review has an invalid closed shape")
+        review_row = self._review({**review, "packet_id": packet_id, "created_at": timestamp})
+        if review_row["correction_number"] != 1:
+            raise InvalidRecord("correction review routing requires correction_number one")
+        review_kind = review_row["review_kind"]
+
+        facts = {
+            "expected_packet_version": expected_packet_version,
+            "packet_id": packet_id,
+            "reason": reason,
+            "review": review_row,
+        }
+        fingerprint = _fingerprint("record_and_route_correction_review", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                packet = connection.execute(
+                    "SELECT state,version,owned_paths_json,correction_count "
+                    "FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(packet[0]), int(packet[1])
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+
+                if int(packet[3]) != 1:
+                    raise InvalidRecord(
+                        "packet correction_count must be one for a correction review route"
+                    )
+
+                target_state = _CORRECTION_REVIEW_ROUTES.get(
+                    (source_state, review_kind, review_row["result"])
+                )
+                if target_state is None:
+                    raise InvalidTransition(
+                        "correction review routing is not permitted for this packet state, "
+                        "review kind, and result"
+                    )
+
+                correction_attempt = connection.execute(
+                    "SELECT attempt_id,model_identity,runtime_identity,lease_id,result_commit "
+                    "FROM attempts WHERE packet_id=? AND attempt_kind='TargetedCorrection' "
+                    "AND attempt_number=2 AND state='Succeeded' AND result_commit IS NOT NULL",
+                    (packet_id,),
+                ).fetchone()
+                if correction_attempt is None:
+                    raise InvalidRecord(
+                        "packet has no Succeeded TargetedCorrection attempt with a result commit"
+                    )
+                model_identity, runtime_identity, lease_id, head_commit = (
+                    str(correction_attempt[1]), str(correction_attempt[2]),
+                    str(correction_attempt[3]), str(correction_attempt[4]),
+                )
+
+                initial_attempt = connection.execute(
+                    "SELECT result_commit FROM attempts WHERE packet_id=? AND attempt_kind='Initial' "
+                    "AND attempt_number=1 AND state='Succeeded' AND result_commit IS NOT NULL",
+                    (packet_id,),
+                ).fetchone()
+                if initial_attempt is None:
+                    raise InvalidRecord(
+                        "packet has no Succeeded Initial attempt with a result commit"
+                    )
+                base_commit = str(initial_attempt[0])
+
+                if review_row["base_commit"] != base_commit:
+                    raise InvalidRecord(
+                        "review base_commit does not match the Initial attempt result_commit"
+                    )
+                if review_row["head_commit"] != head_commit:
+                    raise InvalidRecord(
+                        "review head_commit does not match the TargetedCorrection attempt "
+                        "result_commit"
+                    )
+                if review_row["head_commit"] == review_row["base_commit"]:
+                    raise InvalidRecord("review head_commit must differ from base_commit")
+
+                if target_state == "MergeReady" and int(packet[3]) != 1:
+                    raise InvalidRecord(
+                        "packet correction_count must be one for an approval route"
+                    )
+
+                self._validate_review_coverage(review_row, json.loads(str(packet[2])))
+
+                required_role = _REVIEW_REVIEWER_ROLES[review_kind]
+                if review_row["reviewer_role"] != required_role:
+                    raise InvalidRecord(
+                        "review reviewer_role does not match the review kind"
+                    )
+                lease = connection.execute(
+                    "SELECT holder_id FROM leases WHERE lease_id=?", (lease_id,)
+                ).fetchone()
+                if lease is None:
+                    raise InvalidRecord("attempt lease is missing")
+                holder_id = str(lease[0])
+                reviewer_instance = review_row["reviewer_instance"]
+                if reviewer_instance in {model_identity, runtime_identity, holder_id}:
+                    raise InvalidRecord(
+                        "reviewer_instance is not independent of the attempt or lease"
+                    )
+
+                if review_kind == "IndependentImplementation":
+                    prior_integration = connection.execute(
+                        "SELECT reviewer_instance FROM reviews WHERE packet_id=? "
+                        "AND review_kind='Integration' AND result='ValidateOnly' "
+                        "AND correction_number=1 AND head_commit=?",
+                        (packet_id, review_row["head_commit"]),
+                    ).fetchall()
+                    if len(prior_integration) != 1:
+                        raise InvalidRecord(
+                            "independent implementation correction review requires exactly "
+                            "one prior correction-pass Integration ValidateOnly review on the "
+                            "same packet and head"
+                        )
+                    if reviewer_instance == str(prior_integration[0][0]):
+                        raise InvalidRecord(
+                            "reviewer_instance is not independent of the prior "
+                            "Integration review"
+                        )
+
+                packet_before = _state_payload("Packet", packet_id, source_state, current_version)
+                packet_after = _state_payload(
+                    "Packet", packet_id, target_state, expected_packet_version + 1
+                )
+                before = {"packet": packet_before}
+                result = {"packet": packet_after, "review": review_row}
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                self._insert(connection, "reviews", review_row)
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (
+                        target_state, timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_review_route_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord(
+                "correction review routing violates a durable constraint"
+            ) from error
         except sqlite3.OperationalError as error:
             self._raise_sqlite(error)
 
