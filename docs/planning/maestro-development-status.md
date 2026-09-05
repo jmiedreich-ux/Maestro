@@ -1024,8 +1024,25 @@ both confirmed zero remaining defects; all 114 `apps/atlas` tests pass
 (105 existing + 9 new), build succeeds, `PerfBreakdownCard` is not
 imported anywhere else yet.
 
-Next: the last of Wave E (Agents roster/contention — E4/E5), per the
-M2 roadmap and the standing instruction to complete all of M2 where
-possible. The real `AGENTS` array includes a fictional `Architect
-agent` entry requiring the same real-mechanism substitution treatment
-as C3-C6/E3.
+`MB-SLICE-M2-E4-AGENTS-ROSTER-01` is merged (planning PR #131 at
+`20cff1d`, implementation PR #132 at `c74363a`), completing roadmap
+item 29. A standalone `AgentsRoster`: header (eyebrow, title, 4 real
+stats) and all 4 real roster cards. Two disclosed corrections: the
+fictional `Architect agent` persona replaced with the real
+`Coordinator` actor — reusing this program's own already-established
+real A.2 escalation facts (`OWNER_DECISION_EXAMPLE`,
+`FIDELITY_RECORD_EXAMPLE`) rather than the mockup's invented phrasing —
+and the reference file's own `vennuesign` breadcrumb (an evident
+copy-paste artifact from an unrelated project template; every other
+real M2 screen uses `m1-a`) corrected to `m1-a`. 4 disclosed color
+literals, all individually checked against `colors.ts`. One targeted
+planning correction fixed a table-heading count mismatch (heading said
+"2," the table and every other count already said 4). Full Decision
+Fidelity review and independent implementation review both confirmed
+zero remaining defects (two minor non-blocking notes recorded, neither
+a real defect); all 123 `apps/atlas` tests pass (114 existing + 9 new),
+build succeeds, `AgentsRoster` is not imported anywhere else yet.
+
+Next: `MB-SLICE-M2-E5`, Agents contention/lock card — the final Wave E
+item — per the M2 roadmap and the standing instruction to complete all
+of M2 where possible.
