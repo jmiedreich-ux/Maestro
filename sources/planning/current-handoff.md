@@ -351,7 +351,23 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    used by every internal `OperationalStateStore` command; one targeted
    correction fixed a real hang vector (an unbounded `Content-Length`
    could block a worker thread indefinitely on an oversized body),
-   independently proven load-bearing twice. Each subsequent wave slice
+   independently proven load-bearing twice.
+   `MB-SLICE-M2-D2-RESOLVE-DECISION-COMMAND-01` is merged: the first
+   real command registered into D1's scaffold, `POST
+   /command/resolve-decision`, wrapping the real
+   `transition_packet_eligibility` and the real `Blocked` packet state
+   — no real backend concept of the mockup's own "sentinel version"/
+   "frozen contract"/"amend" options exists, so none are implemented;
+   the Owner explicitly delegated this design decision. Two targeted
+   corrections, one per phase, both closing the same uncaught-exception
+   failure class: `ResourceBusy` under real SQLite contention (planning
+   review), then the store's own unguarded construction (implementation
+   review) — both fixed with the guard-and-503 pattern the existing GET
+   routes already use, each independently reproduced live. `MB-SLICE-M2-F1-NOW-TAB-01`
+   (mobile Now tab) was started in parallel with D2's review, per the
+   Owner's explicit instruction that independent slices should not
+   idle-wait behind one in-flight review — Wave F depends only on the
+   already-complete Waves C/E, not on D2/D3. Each subsequent wave slice
    still requires its own pre-execution Decision Fidelity approval
    before implementation.
 4. Require the executable review-readiness gate before reviewer launch.

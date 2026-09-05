@@ -1105,12 +1105,64 @@ pre-existing, unrelated `m1_01` test failure (a local PyYAML version
 mismatch, `6.0.1` installed vs. `>=6.0.2,<7` required) is disclosed,
 confirmed unchanged by this slice, and out of scope to fix here.
 
-**M2 status after D1:** of 39 total roadmap items — Wave A (7/7), Wave
-B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (1/7, D4/D5
-rescheduled to M4 — effectively 1/5 of Wave D's real remaining scope),
-Wave E (7/7), Wave F (0/4), Wave G (0/3) — 25 of 39 items are done
-(~64%), plus C2 deferred and D4/D5 rescheduled to M4.
+`MB-SLICE-M2-D2-RESOLVE-DECISION-COMMAND-01` is merged (planning PR
+#141 at `ed200d1`, implementation PR #142 at `b21f68e`) — the first
+real command registered into D1's guarded, previously-empty
+`_COMMAND_ROUTES` scaffold: `POST /command/resolve-decision`, wrapping
+the real, already-tested `OperationalStateStore.transition_packet_eligibility`
+and the real `Blocked` packet state
+(`_PACKET_ELIGIBILITY_TRANSITIONS["Blocked"] == {"Waiting", "Ready",
+"Cancelled"}`) as the honest backend counterpart of "an escalated
+packet the owner must resolve." Before writing the design, checked
+directly whether any real backend concept of the mockup's own
+"sentinel version"/"frozen contract"/"amend" language exists anywhere
+in `operational_state.py` — it does not (the roadmap's own item 20
+wording named those options) — so this command implements none of
+them; the Owner explicitly delegated ("design the minimal real state
+machine myself") after this gap was surfaced. `target_state` is
+restricted to exactly the three real `Blocked` outgoing edges. Two
+targeted corrections were used, one at each phase, both for the same
+underlying failure class:
 
-Next: `MB-SLICE-M2-D2`, the smallest real operator-action command
-(Owner resolves a decision — sentinel/amend/defer options), registering
-the first real entry into D1's `_COMMAND_ROUTES`.
+- **Planning (Decision Fidelity review):** the first draft's handler
+  left `ResourceBusy` uncaught — a real, reachable exception
+  `transition_packet_eligibility` propagates via its own internal
+  `_raise_sqlite` fallback under real SQLite writer-lock contention
+  (the same real busy-timeout behavior `tests/m1_02`'s own
+  `test_held_writer_returns_resource_busy_on_health_reads_and_mutation`
+  already exercises for other mutations against this store) — which
+  would have crashed the request thread with no HTTP response. Fixed
+  by adding `except ResourceBusy` (503) and a bare `except
+  sqlite3.OperationalError` (503) fallback, proven against a real held
+  writer lock and the real 5-second busy timeout (not mocked),
+  independently re-verified.
+- **Implementation (independent implementation review):** found a
+  second, equally real instance of the identical failure class the
+  planning review's own correction had just closed for one call site
+  but not another: `OperationalStateStore(RuntimeConfig.from_runtime_dir(...))`
+  sat outside any try/except, unlike the identical call already
+  guarded in this file's four existing GET routes — a real
+  misconfigured runtime directory (`RuntimePathError`) crashed the
+  request thread with no response, reproduced live by the reviewer.
+  Fixed with the same guard-and-503 pattern the GET routes already
+  establish, proven with a real runtime dir outside `var/` (not
+  mocked), independently re-verified.
+
+All 24 named `tests/m2_wave_d` tests, 49 pre-existing Wave A tests, and
+162 pre-existing `tests/m1_02` tests pass — zero regressions. This
+session's now-recurring lesson held again at both review gates: every
+backend slice this session has surfaced at least one real,
+independently-reproduced defect through adversarial exception-path
+tracing, not just citation-checking.
+
+**M2 status after D2:** of 39 total roadmap items — Wave A (7/7), Wave
+B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D4/D5
+rescheduled to M4 — effectively 2/5 of Wave D's real remaining scope),
+Wave E (7/7), Wave F (0/4), Wave G (0/3) — 26 of 39 items are done
+(~67%), plus C2 deferred and D4/D5 rescheduled to M4.
+
+Next: `MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2),
+and, started in parallel per the Owner's explicit instruction that
+independent slices should not idle-wait behind one in-flight review,
+`MB-SLICE-M2-F1-NOW-TAB-01` (mobile Now tab, Wave F — depends only on
+the already-complete Waves C/E, not on D2/D3).

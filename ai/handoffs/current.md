@@ -499,9 +499,34 @@ and confirming a genuine hang/timeout). All 351 `services/maestro`
 tests pass (339 baseline + 12 new; one pre-existing, unrelated `m1_01`
 PyYAML-version failure disclosed and unchanged).
 
-Next: `MB-SLICE-M2-D2`, the smallest real operator-action command
-(Owner resolves a decision — sentinel/amend/defer options), registering
-the first real entry into D1's `_COMMAND_ROUTES`.
+`MB-SLICE-M2-D2-RESOLVE-DECISION-COMMAND-01` is merged (planning PR
+#141 at `ed200d1`, implementation PR #142 at `b21f68e`) — the first
+real command registered into D1's guarded scaffold: `POST
+/command/resolve-decision`, wrapping the real, already-tested
+`transition_packet_eligibility` and the real `Blocked` packet state
+(`_PACKET_ELIGIBILITY_TRANSITIONS["Blocked"] == {"Waiting", "Ready",
+"Cancelled"}`) as the honest backend counterpart of "an escalated
+packet the owner must resolve." No real backend concept of the
+mockup's own "sentinel version"/"frozen contract"/"amend" options
+exists anywhere in `operational_state.py` (checked directly), so none
+are implemented; the Owner explicitly delegated this design decision
+after the gap was surfaced. Two targeted corrections, one at each
+phase, both closing the same failure class (an uncaught exception
+crashing the request thread with no HTTP response): planning review
+found `ResourceBusy` left uncaught under real SQLite writer-lock
+contention; implementation review then found the store's own
+construction (`RuntimeConfig.from_runtime_dir`/`OperationalStateStore`)
+left unguarded, unlike the identical call already guarded in every
+existing GET route. Both fixed with the same guard-and-503 pattern,
+each independently reproduced live and re-verified. All 24 named
+`tests/m2_wave_d` tests, 49 Wave A tests, and 162 `m1_02` tests pass —
+zero regressions.
+
+Next: `MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2).
+Started in parallel — per the Owner's explicit instruction that
+independent slices should not idle-wait behind one in-flight review —
+`MB-SLICE-M2-F1-NOW-TAB-01` (mobile Now tab, Wave F: depends only on
+the already-complete Waves C/E, not on D2/D3).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
