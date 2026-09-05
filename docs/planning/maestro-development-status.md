@@ -720,20 +720,25 @@ not fixed: B3's static nav rows use `13.5px` font-size where the
 reference file actually specifies `14px` — a real but cosmetic
 0.5px issue, recorded here as optional future cleanup, not blocking.
 
-**C2 (packet thread wired to real data) is deferred, not built, and
-this is a deliberate architecture ruling, not a skipped step.**
-Sequencing Wave C surfaced that C2 has an unmet dependency (Wave A
-stopped at A5; A6/A7 were never built) and, more fundamentally, that
-the backend's structured `packets`/`attempts`/`reviews`/`events` data
-model has no concept matching the mockup's narrative chat-style thread
-messages. Producing one requires either a new backend "thread message"
-concept or a structured-to-narrative synthesis layer — a real product/
-architecture decision, recorded in `docs/planning/m2-atlas-roadmap.md`
-(PR #91, merged at `b84f32f`) as an open question for Owner input, not
-resolved unilaterally under the delegated 90% design authority. This
-does not block the rest of Wave C: C3 and onward extend `PacketThread`
-and `DecisionCard`'s own fixture patterns and need no real backend
-wiring.
+**C2 (packet thread wired to real data) is rescheduled to M3, not
+built, and this is a deliberate architecture ruling, not a skipped
+step.** Sequencing Wave C surfaced that C2 has an unmet dependency
+(Wave A stopped at A5; A6/A7 were never built) and, more fundamentally,
+that the backend's structured `packets`/`attempts`/`reviews`/`events`
+data model has no concept matching the mockup's narrative chat-style
+thread messages. Producing one requires either a new backend "thread
+message" concept or a structured-to-narrative synthesis layer — real
+design work of the same kind M3 (the real packet compiler/executor
+milestone, where live structured data first exists to synthesize from)
+already covers, per this roadmap's own "What is explicitly out of
+scope for M2" section. Recorded in `docs/planning/m2-atlas-roadmap.md`
+(PR #91, merged at `b84f32f`; rescheduling correction 2026-09-05) as
+rescheduled to M3, matching the same Owner-confirmed standing policy
+already applied to D4/D5 (M4) — a feature not in scope for the current
+milestone gets a specific future milestone, not left open pending
+further input. This does not block the rest of Wave C: C3 and onward
+extend `PacketThread` and `DecisionCard`'s own fixture patterns and
+need no real backend wiring.
 
 `MB-SLICE-M2-C3-DECISION-CARD-RULING-01` is merged (planning PR #92 at
 `1b4af558`, implementation PR #93 at `0aa3c709`): a standalone
@@ -1176,22 +1181,24 @@ fields (now hardcoded-asserted). All fixes independently re-verified.
 19/19 test files, 140/140 tests pass, zero regressions.
 
 D3 (wire the owner-decision card's buttons to D2) was investigated and
-found genuinely **blocked, not built**: `OwnerDecisionCard`'s
-`packet_id` is standalone fixture data with no real backend row, so
-honestly calling D2's real command requires the same real-backend-
-data-wiring resolution C2 already left open for Owner input — D3
-inherits that exact open question, not a new one, plus a narrower
-issue where one of its two real button labels ("Amend the A.1
-contract") has no honest 1:1 mapping to any D2 target state at all
-(its real effect is dispatching a correction to a *different* packet).
-Per Owner-confirmed standing policy, this is recorded in the roadmap
-as blocked pending C2's resolution, not assigned a milestone yet
-(unlike D4/D5, which had a clear destination) — see
+found to depend on the same real-backend-data gap as C2:
+`OwnerDecisionCard`'s `packet_id` is standalone fixture data with no
+real backend row, so honestly calling D2's real command requires the
+same real-backend-data-wiring resolution C2 needs — D3 inherits that
+exact real dependency, not a new one, plus a narrower issue where one
+of its two real button labels ("Amend the A.1 contract") has no honest
+1:1 mapping to any D2 target state at all (its real effect is
+dispatching a correction to a *different* packet). **Rescheduled to
+M3 alongside C2** (corrected 2026-09-05: an earlier record left this
+as "blocked pending Owner input, no milestone assigned" — inconsistent
+with the same standing policy already applied to D4/D5; the correct
+call is the same milestone assignment C2 itself gets, made directly
+under delegated design authority, not left open) — see
 `m2-atlas-roadmap.md`'s own D3 entry for the full record.
 
 **M2 status after F1:** of 39 total roadmap items — Wave A (7/7), Wave
-B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D3
-blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (1/4),
+B (4/4), Wave C (6/7, C2 rescheduled to M3), Wave D (2/7, D3
+rescheduled to M3, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (1/4),
 Wave G (0/3) — 27 of 39 items are done (~69%), plus C2/D3 blocked
 together and D4/D5 rescheduled to M4.
 
@@ -1240,10 +1247,22 @@ both passed clean. 34/34 named `tests/m2_wave_d` tests (245 total
 across `m2_wave_a`/`m1_02`), zero regressions.
 
 **M2 status after D6:** of 39 total roadmap items — Wave A (7/7), Wave
-B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (3/7, D3
-blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (2/4),
-Wave G (0/3) — 29 of 39 items are done (~74%), plus C2/D3 blocked
-together and D4/D5 rescheduled to M4.
+B (4/4), Wave C (6/7, C2 rescheduled to M3), Wave D (3/7, D3
+rescheduled to M3, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (2/4),
+Wave G (0/3) — 29 of 39 items are done (~74%), plus C2/D3 rescheduled
+to M3 and D4/D5 rescheduled to M4.
+
+D7 (wire the Atlas crash card's recovery buttons to D6) was checked
+immediately after D6 merged and found to hit the identical real gap:
+`CrashCard`'s own fixture (`crash/fixtures.ts`,
+`CRASH_EXAMPLE.packetId = "A.2"`) is standalone fixture data with no
+real backend row — the same gap D3 found for `OwnerDecisionCard` — plus
+the same "only one of three options is real" finding D6 already made
+for its own command (the crash fixture's own already-merged footer
+note discloses this directly: *"NeedsReplan has no automatic resume in
+Maestro today ... none of them dispatch anything yet"*). **Rescheduled
+to M3 alongside C2/D3**, not investigated further, per the same
+standing policy: a specific milestone assignment, not left open.
 
 `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01` is merged (planning PR #151
 at `0b24ff3`, implementation PR #154 at `01b4c8c`) — real progress on
@@ -1264,7 +1283,7 @@ approved with zero findings. 21/21 test files, 157/157 tests pass,
 zero regressions.
 
 Next: any independent Wave F (item 35's own remaining Agents/Cost
-segments, or F4), Wave G (G1, G3 — G2 needs D7), or D7 (wire the Atlas
-crash card's recovery buttons to D6 — will need
-its own real-packet-identity check first, the same class of question
-D3 already found) not blocked by C2/D3's open question.
+segments, or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6
+only, not D7, which is rescheduled to M3). C2/D3/D7 are all rescheduled
+to M3 and off the current independent-work list entirely — not a
+blocker to track, a milestone assignment already made.
