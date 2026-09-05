@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`df9c05c`
+`fa060d5`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -650,4 +650,25 @@ slice that renders anything with them" — the test's assertion was
 always time-boxed to expire once a real consumer arrived by design, not
 a permanent invariant).
 
-`MB-SLICE-M2-B3-DESKTOP-SHELL-02` is next.
+`MB-SLICE-M2-B3-DESKTOP-SHELL-02` is merged at
+`fa060d5ae47a1bcde10f145502572707f3784e86`: the `DesktopShell` component
+(top bar, two-column layout, dark nav with 4 static rows) wired into
+`App.tsx` as Atlas's first real UI, reading design tokens at runtime via
+CSS custom properties, and retiring one now-obsolete B2 test as its own
+named scope. Candidate `-01` was terminally returned (see above) after
+its sole targeted planning correction fixed the original findings but
+broke B2's frozen "no consumer" test, found only in targeted
+verification. `-02`'s own full Decision Fidelity review found 1 blocking
+finding (a guessed idle-indicator color where the reference file
+specifies an exact one); its one targeted planning correction resolved
+it, approved by targeted verification. During implementation, the
+developer found two real jsdom/RTL test-stack bugs and correctly stopped
+without committing rather than touch any file outside the frozen
+writable-path boundary; both were fixable entirely within the
+already-writable test file (no contract change needed) and were fixed
+without consuming a formal implementation correction. Independent
+implementation review returned `APPROVE` with no findings; all 12
+`apps/atlas` tests pass, and the dev-server smoke test confirmed real
+shell content is served (not the old placeholder).
+
+Wave B4 (mobile shell) is next.

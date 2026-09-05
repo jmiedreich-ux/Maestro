@@ -260,12 +260,11 @@ API) is complete and merged: A1 loopback-only read API scaffold
 (`MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01`), A4 reviews snapshot
 (`MB-SLICE-M2-A4-REVIEWS-SNAPSHOT-01`), A5 events snapshot
 (`MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01`). Wave B1 (Atlas app scaffold,
-`MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01`) and Wave B2 (design tokens module,
-`MB-SLICE-M2-B2-DESIGN-TOKENS-01`) are also merged. Wave B3 (desktop
-shell) is next — candidate `MB-SLICE-M2-B3-DESKTOP-SHELL-01` was
-terminally returned (targeted verification found its planning
-correction introduced a new defect; see the status record); `-02` is in
-progress. Each subsequent wave slice still requires its own
+`MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01`), Wave B2 (design tokens module,
+`MB-SLICE-M2-B2-DESIGN-TOKENS-01`), and Wave B3 (desktop shell,
+`MB-SLICE-M2-B3-DESKTOP-SHELL-02` — candidate `-01` was terminally
+returned; see the status record) are also merged. Wave B4 (mobile shell)
+is next. Each subsequent wave slice still requires its own
 pre-execution Decision Fidelity approval before implementation. All
 returned slices remain immutable and non-authoritative.
 
