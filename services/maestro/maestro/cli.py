@@ -92,7 +92,7 @@ def _serve_read_api(host: str, port: int) -> int:
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _handle_sigint)
-    server._thread.join()
+    server.wait_forever()
     return 0
 
 
