@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Chat Tab — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F2-CHAT-TAB-01`
-**Status:** `Draft, pending Decision Fidelity Review`
+**Status:** `Decision Fidelity review returned PASS WITH 3 non-blocking notes (a mischaracterized attribution of an internal tab-id naming fact to the wrong prior slice's disclosure; an "exactly one CSS rule" overclaim for one shared token var; an unacknowledged-but-correctly-inherited plan/cadence sub-panel exclusion) — all three fixed at zero cost before freeze, no planning correction needed`
 **Base:** `633167c` (full: `633167c8c1a5b34caf6231e2024b00f13af67836`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -27,9 +27,14 @@ reference file itself does not do.
 ## Evidence
 
 `Atlas Mobile.dc.html:140-197` is the real mobile "Chat" tab (the
-reference file's own internal name is `isThread`, resolved to real
-`MobileShell` tab id `"chat"` by B4's own already-merged, disclosed
-README-vs-reference discrepancy fix — checked directly, not assumed).
+reference file's own internal name is `isThread`/`tab:'thread'`; B4's
+already-merged `MobileShell.tsx` names the same real tab `"chat"` —
+**corrected per an independent Decision Fidelity review's non-blocking
+note**: B4's own actually-disclosed README-vs-reference discrepancy fix
+was about tab bar *order*, not this internal id naming; citing it as
+that specific fix was a mischaracterization, fixed here to state only
+the real, checked fact — the two names refer to the same real tab,
+without over-attributing which prior slice's disclosure covers it).
 It has three real parts:
 
 1. **Header** (`:141-144`): a "‹ Now" back link, `<h1>A.2 · Runtime
@@ -116,7 +121,13 @@ It has three real parts:
 4. No `DecisionCard`, `OwnerDecisionCard`, `FidelityRecord`, or
    `CrashCard` content is rendered anywhere in `ChatTab.tsx` — see
    "Scope, deliberately minimal" above for why "reuses C1-C6" does not
-   mean embedding all four.
+   mean embedding all four. Two `PACKET_A2_ENTRIES` entries also carry
+   real, unused `plan`/`cadence` fields (Terra's 13:51 and 14:30
+   entries) that the reference file's own markup renders as inline
+   sub-panels within the same bubbles — this slice inherits, not
+   introduces, their exclusion: `fixtures.ts:19-20`'s own already-merged
+   comment discloses them as "not yet rendered by any slice," and C1's
+   own merged `PacketThread.tsx` likewise never renders them.
 5. No message composer, textarea, or send button anywhere in
    `ChatTab.tsx` — a dedicated test
    (`test_04_renders_no_message_composer...` in the file below)
@@ -125,8 +136,12 @@ It has three real parts:
 6. Every color in `ChatTab.tsx`/`ChatTab.module.css` is routed through
    a real token or a disclosed literal — verified by grepping the
    final CSS module for bare hex literals (none found) and confirming
-   every declared `--atlas-*` custom property is consumed by exactly
-   one CSS rule (no orphaned declaration), matching the token-routing
+   every declared `--atlas-*` custom property is consumed by at least
+   one real CSS rule, with none orphaned (one, `--atlas-font-mono`, is
+   legitimately consumed by two rules, `.eyebrow` and `.time`, sharing
+   the same real font token — corrected per an independent Decision
+   Fidelity review's non-blocking note: this item originally
+   overclaimed "exactly one" for every var), matching the token-routing
    discipline an independent review already enforced on F1.
 7. This slice does not implement F3 (Activity tab) or F4 (Plan tab) —
    separate, future roadmap items.
@@ -672,10 +687,32 @@ card layout, which does show avatars) — caught by re-reading the
 actual markup line-by-line before writing tests, removed before any
 test was written against it.
 
-No targeted correction was needed against an external Decision
-Fidelity review for this candidate — every issue above was found
-during this slice's own pre-verification and fixed before submission,
-not after.
+**Independent Decision Fidelity review result:** `PASS WITH MINOR
+NOTES`, zero blocking findings. The review independently reproduced
+every quantitative claim (byte-exact citations, the full real
+`nameColor`/`mine` rule, the token-routing audit, 20/20 test files,
+148/148 tests, the `PacketThread.tsx` diff scope) and found them all
+accurate. Three non-blocking notes were fixed at zero cost before
+freeze, no planning correction consumed — matching this program's own
+established precedent (e.g. M2-B4, M2-E1) for a clean pass with minor
+findings:
+
+1. The Evidence section's attribution of the `isThread`→`"chat"`
+   internal naming fact to "B4's own disclosed README-vs-reference
+   discrepancy fix" was inaccurate — B4's actually-disclosed
+   discrepancy was about tab bar *order*, not this internal id. Fixed
+   to state only the real, checked fact without the wrong attribution.
+2. Guards item 6 overclaimed every `--atlas-*` var is consumed by
+   "exactly one" CSS rule — `--atlas-font-mono` is legitimately
+   consumed by two (`.eyebrow` and `.time`), sharing one real font
+   token. Fixed to state the accurate, still-meaningful claim (no
+   orphaned declaration), not a false stronger one.
+3. `PACKET_A2_ENTRIES`' own `plan`/`cadence` fields (rendered as inline
+   sub-panels in the reference file's real markup) were excluded
+   without acknowledgment. Fixed: Guards item 4 now names this
+   explicitly as an inherited, already-disclosed exclusion (from
+   `fixtures.ts` and C1's own merged `PacketThread.tsx`), not a new gap
+   this slice introduced or hid.
 
 ## M0-D12 bounded quality contract
 
@@ -719,10 +756,10 @@ not after.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F2-CHAT-TAB-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
