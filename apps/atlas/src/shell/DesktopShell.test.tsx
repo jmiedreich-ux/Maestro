@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { colors, fontFamily } from "../tokens";
+import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 import DesktopShell from "./DesktopShell";
 
 afterEach(cleanup);
@@ -36,13 +37,14 @@ describe("DesktopShell", () => {
     expect(screen.getByText("idle")).toBeInTheDocument();
   });
 
-  it("renders exactly four static nav rows, in order", () => {
+  it("renders the four static nav rows plus the packet row, in order", () => {
     render(<DesktopShell />);
     const rows = screen.getAllByRole("button");
     expect(rows.map((row) => row.textContent?.replace("—", "").trim())).toEqual([
       "Performance",
       "Agents",
       "History",
+      "A.2 · Runtime Package",
       "M1-B gate",
     ]);
   });
@@ -74,5 +76,42 @@ describe("DesktopShell", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<DesktopShell />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  it("renders the A.2 packet row between History and the M1-B gate row", () => {
+    render(<DesktopShell />);
+    // Corrected: the real NavRow always appends a trailing mono count
+    // span ("—") to its own text, exactly like the pre-existing "renders
+    // exactly four static nav rows" test already accounts for — this
+    // test's first draft omitted that same normalization and failed
+    // against the real rendered output.
+    const rows = screen
+      .getAllByRole("button")
+      .map((r) => r.textContent?.replace("—", "").trim());
+    expect(rows).toEqual(["Performance", "Agents", "History", "A.2 · Runtime Package", "M1-B gate"]);
+  });
+
+  it("selecting the A.2 row shows the real packet thread, not a placeholder", () => {
+    render(<DesktopShell />);
+    fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
+    const current = screen.getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("A.2");
+    // PacketThread's own first fixture message, proving the real
+    // component rendered, not a "packet view" placeholder string.
+    expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
+    expect(screen.queryByText("packet view")).not.toBeInTheDocument();
+  });
+
+  it("selecting a static row after the packet row correctly unmounts the thread", () => {
+    render(<DesktopShell />);
+    fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
+    // Corrected: the real accessible name is "Agents—" (the trailing
+    // mono count), so the exact string "Agents" never matches — the same
+    // class of fix as the test above, using a regex here instead since
+    // this call needs to select one specific row, not compare a full list.
+    fireEvent.click(screen.getByRole("button", { name: /^Agents/ }));
+    expect(screen.getByText("Agents view")).toBeInTheDocument();
+    expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).not.toBeInTheDocument();
   });
 });
