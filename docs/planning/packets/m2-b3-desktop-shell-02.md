@@ -1,7 +1,7 @@
 # M2 Wave B — Desktop Shell — Candidate 02
 
 **Slice ID:** `MB-SLICE-M2-B3-DESKTOP-SHELL-02`
-**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the idle-indicator grey was an unverified guess (`colors.borderDashed[2]`) rather than the exact value the higher-priority reference file actually specifies (`colors.inkMuted`) — the same class of defect that returned candidate `-01` — plus non-blocking fixes
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review found 1 blocking finding (the idle-indicator grey was an unverified guess rather than the exact value the reference file specifies); one targeted planning correction resolved it and was approved by targeted verification. No further planning correction is available for this slice.
 **Base:** `925b143` (`origin/master`)
 **Supersedes:** `MB-SLICE-M2-B3-DESKTOP-SHELL-01`, terminally `returned`
 (unmerged, never pushed to a PR). `-01`'s complete Decision Fidelity
@@ -130,8 +130,8 @@ roadmap's own wave boundaries:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B3-DESKTOP-SHELL-02` |
-| `phase` | `PendingTargetedVerification` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
 | `planning_correction_count` | `1` |
@@ -139,7 +139,7 @@ roadmap's own wave boundaries:
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:925b143","slice:supersedes:MB-SLICE-M2-B3-DESKTOP-SHELL-01:terminally-returned","git:full-planning-review-head:28d2fafae16446b663563f8448865c0cc7fad9a4","review:decision-fidelity:request-changes:1-blocking-finding"]` |
+| `evidence_refs` | `["git:base:925b143","slice:supersedes:MB-SLICE-M2-B3-DESKTOP-SHELL-01:terminally-returned","git:full-planning-review-head:28d2fafae16446b663563f8448865c0cc7fad9a4","review:decision-fidelity:request-changes:1-blocking-finding","git:corrected-planning-head:c99494b7bed3dbc6b2d3b4377c9a73ca6e8b24b9","review:targeted-decision-fidelity-verification:approve"]` |
 
 ## Exact file contents
 
@@ -548,9 +548,11 @@ nothing else removed.
    string — verified directly by reading its full text in this contract;
    every declaration is `var(--atlas-*)`, each one set exactly once in
    `DesktopShell.tsx`'s `SHELL_VARS` from a real `colors`/`fontFamily`
-   property, or from a literal with an inline comment naming its real,
-   non-token source (the two named exceptions: the nav-divider color,
-   the idle-indicator grey).
+   property. The one remaining non-token literal is the nav-divider color
+   (sourced from the reference file, disclosed inline); the idle-indicator
+   grey and label color are both real, verified `colors` properties
+   (`inkMuted`/`inkFaint`), not disclosed guesses — corrected from an
+   earlier draft that miscategorized them as such.
 3. `App.tsx` and `App.test.tsx` are the only B1 files this slice
    modifies; `tokens.test.ts` is the only B2 file this slice modifies,
    and only by deleting the one obsolete test named above — `colors.ts`,
