@@ -251,10 +251,13 @@ in and out except the two named, deliberately deferred items
 Per M0-D15's phase sequence, the next phase is M2 (Atlas as a local
 reporting application with named, reviewed operator-action commands
 becoming available as they are built — see M0-D01's operator-action
-amendment). No M2 work is authorized by this
-record; a new canonical contract for whichever M2 slice is selected still
-requires its own pre-execution Decision Fidelity approval. All returned
-slices remain immutable and non-authoritative.
+amendment), authorized by the Owner 2026-09-05 and decomposed wave-by-wave
+in `docs/planning/m2-atlas-roadmap.md`, with delegated Project Architect
+authority over design, blockers, and merge. Wave A1 (loopback-only read
+API scaffold, `MB-SLICE-M2-A1-READ-API-SCAFFOLD-01`) is merged; each
+subsequent wave slice still requires its own pre-execution Decision
+Fidelity approval before implementation. All returned slices remain
+immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 

@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`0a59f67`
+`75c7756`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -477,9 +477,11 @@ A full fresh state-by-state re-check after both merges confirmed: every
 named, deliberately deferred items. **M1's internal operational core is
 closed.** Per M0-D15's phase sequence, the next phase is M2 (Atlas as the
 local operator interface — live reporting plus the operator-action
-commands named in M0-D01's amendment, as each becomes available); no M2
-work is authorized by this
-record.
+commands named in M0-D01's amendment, as each becomes available). The
+Owner authorized M2 execution on 2026-09-05, decomposed wave-by-wave in
+[the M2 Atlas roadmap](m2-atlas-roadmap.md), with delegated Project
+Architect authority over design, blockers, and merge; see "M2 progress"
+below for the current wave.
 
 `MB-SLICE-M1-REVIEW-ROUTING-04` is terminally `returned` at
 `2938676a553a1625310efc2b24fb8d4a117ff751` in the local, unmerged worktree
@@ -511,5 +513,24 @@ planning correction added those sections, but targeted verification found the
 status carrier still falsely reported zero consumed reviews/corrections and the
 fingerprint remained prose rather than an exact canonical object. No
 implementation occurred. This slice cannot be reopened, corrected, renamed,
-replaced, dispatched, or reused as authority. A new independent slice must carry
+replaced, dispatched, or reused as authority.
+
+## M2 progress
+
+`MB-SLICE-M2-A1-READ-API-SCAFFOLD-01` (Wave A1 of the
+[M2 Atlas roadmap](m2-atlas-roadmap.md)) is merged at
+`75c7756226b0144a4ce8c8204519924237b1bd15`. Full Decision Fidelity review
+found 2 blocking findings (a JSON-body fingerprint ambiguity; an untested
+in-scope CLI signal-handling claim); the one available targeted planning
+correction resolved both, approved by targeted verification. Independent
+implementation review returned `APPROVE` with no blocking findings; the
+9 named tests and the full 299-test suite pass (298/299 — 1 pre-existing,
+unrelated PyYAML-version environment failure in `tests/m1_01`, not
+introduced by this slice). One non-blocking observation was recorded for
+a later Wave A slice: `cli.py`'s `serve-read-api` reaches into
+`ReadApiServer`'s private `_thread` attribute to block on shutdown; a
+small public `wait_forever()` method would be cleaner but no contract
+behavior is violated and no correction was consumed for it.
+
+Wave A2 (packets snapshot endpoint) is next. A new independent slice must carry
 truthful post-review counters/phase and a literal fingerprint schema.
