@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`0e9b0df`
+`27b3ad1`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -593,5 +593,22 @@ PyYAML-version environment failure, not introduced by this slice).
 
 **Wave A (the backend read API) is now complete: `/health`,
 `/snapshot/packets`, `/snapshot/attempts`, `/snapshot/reviews`, and
-`/snapshot/events` all exist and are reviewed and merged.** Wave B (Atlas
-app shells) is next.
+`/snapshot/events` all exist and are reviewed and merged.**
+
+`MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01` (Wave B1) is merged at
+`27b3ad10ec75049645cd1388d5ce7cd167c8cc0d`: `apps/atlas/`, a React 19 +
+TypeScript 5.9 + Vite 7 scaffold with build/lint/typecheck/test tooling
+and no screens — the first frontend slice in this program. Full Decision
+Fidelity review actually exercised the contract (ran real `npm install`/
+build/test/dev-server commands) and found 1 blocking finding: the
+dev-server smoke test's `--port 0` claim doesn't select an ephemeral port
+on the pinned Vite version. The one available targeted planning
+correction resolved it (a real free-port bind before invoking `vite`
+directly), approved by targeted verification, which also surfaced a free
+SIGTERM-ambiguity fix applied at zero cost. Independent implementation
+review returned `APPROVE` with no findings (byte-for-byte file diff
+against the contract, every command re-run independently, including the
+corrected dev-server check); no dependency substitution was needed — every
+pinned version resolved exactly.
+
+Wave B2 (design tokens module) is next.
