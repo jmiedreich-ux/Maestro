@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("App", () => {
-  it("renders the Atlas placeholder", () => {
+  it("renders the desktop shell", () => {
     render(<App />);
-    expect(screen.getByText("Atlas")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Atlas views" })).toBeInTheDocument();
   });
 });
