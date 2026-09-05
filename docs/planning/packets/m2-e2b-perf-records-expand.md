@@ -1,7 +1,7 @@
 # M2 Wave E — Performance Records: Expand/Collapse — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-E2B-PERF-RECORDS-EXPAND-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Draft — Targeted correction applied (Scope section said "two" while listing 3 files; evidence_refs cited a mistyped base hash), pending Targeted Decision Fidelity Verification`
 **Base:** `424f792` (full: `424f792cc37813f4184744d85846591152623444`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -11,7 +11,7 @@ expand/collapse."* `MB-SLICE-M2-E2-PERF-RECORDS-LIST-01` (merged)
 explicitly deferred "the expandable detail groups and the
 click-to-expand behavior" to "a future `E2B`-style candidate" — this is
 that candidate. Unlike every prior Wave E/C slice this session, this
-one **modifies two already-merged files** (`perfRecords.ts`,
+one **modifies 3 already-merged files** (`perfRecords.ts`,
 `PerfRecordsList.tsx`, `PerfRecordsList.module.css`) rather than adding
 new ones — there is no natural way to add real click-to-expand behavior
 to an existing list's existing rows via a separate, standalone file;
@@ -1057,13 +1057,13 @@ No self-caught bugs this time — first-attempt clean on every check.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E2B-PERF-RECORDS-EXPAND-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:424f792d9c8e7d0e9dbcda4b5c1e5c4c7c1c4c1c"]` |
+| `evidence_refs` | `["git:base:424f792cc37813f4184744d85846591152623444", "git:planning-review-head:b2faf6f32a084397aa1bf2c6807122d6245fd2dc", "review:DecisionFidelity:REQUEST_CHANGES:scope-said-two-files-listed-three;evidence_refs-base-hash-mistyped", "docs-only-correction:scope-file-count-fixed-to-3;evidence_refs-base-hash-corrected"]` |
