@@ -1,7 +1,7 @@
 # M2 Wave B — Desktop Shell — Candidate 02
 
 **Slice ID:** `MB-SLICE-M2-B3-DESKTOP-SHELL-02`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found the idle-indicator grey was an unverified guess (`colors.borderDashed[2]`) rather than the exact value the higher-priority reference file actually specifies (`colors.inkMuted`) — the same class of defect that returned candidate `-01` — plus non-blocking fixes
 **Base:** `925b143` (`origin/master`)
 **Supersedes:** `MB-SLICE-M2-B3-DESKTOP-SHELL-01`, terminally `returned`
 (unmerged, never pushed to a PR). `-01`'s complete Decision Fidelity
@@ -86,15 +86,18 @@ roadmap's own wave boundaries:
   exists — later Wave A/D work, not yet scheduled as its own packet).
 - The live indicator's `live`/`reconnecting` states (no data source
   exists yet; this slice renders the `idle` (grey) state only, since
-  that's the only state true with zero data). **Named gap, not a
-  transcription claim:** the shell quote above says only "idle grey"
-  with no exact hex — unlike `live` (`#A78BFF`) and `reconnecting`
-  (`#E0A32E`), which the quote does give. This slice uses the existing
-  `colors.borderDashed[2]` token (`#B9AFC4`, already used elsewhere for
-  "empty-state placeholders") as the closest already-tokenized grey, not
-  a new invented color — but this is an inference, not a verified
-  transcription, disclosed as such directly in the code (see
-  `DesktopShell.tsx` below).
+  that's the only state true with zero data). The README's own shell
+  quote gives no exact hex for "idle grey" — but the higher-priority
+  reference file (which the README's Fidelity rule says wins on any
+  disagreement) computes this exact color programmatically for the
+  equivalent `sys === 'empty'` state (`Atlas Explorations.dc.html`):
+  dot `#8E8299`, label text `#A79BB4` — exactly `colors.inkMuted` and
+  `colors.inkFaint`, a real, verified match, not an inference.
+  (**Corrected — blocking finding from Decision Fidelity review:** an
+  earlier draft used `colors.borderDashed[2]` here, framed as "the
+  closest already-tokenized grey" — an unverified guess that turned out
+  wrong once the reference file was actually checked, the same class of
+  defect that returned candidate `-01`.)
 - Project name and milestone text (no real project/run data exists yet
   — this slice renders a literal placeholder string, clearly marked as
   one, not a fabricated-looking real name).
@@ -127,16 +130,16 @@ roadmap's own wave boundaries:
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-B3-DESKTOP-SHELL-02` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:925b143","slice:supersedes:MB-SLICE-M2-B3-DESKTOP-SHELL-01:terminally-returned"]` |
+| `evidence_refs` | `["git:base:925b143","slice:supersedes:MB-SLICE-M2-B3-DESKTOP-SHELL-01:terminally-returned","git:full-planning-review-head:28d2fafae16446b663563f8448865c0cc7fad9a4","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact file contents
 
@@ -180,6 +183,7 @@ automatically with no hand-copy step to drift):
   display: flex;
   align-items: center;
   gap: 6px;
+  color: var(--atlas-idle-label);
   font: 600 10.5px var(--atlas-font-mono);
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -316,12 +320,20 @@ const SHELL_VARS = {
   // (Atlas Explorations.dc.html: border-top:1px solid rgba(255,255,255,.08)),
   // no equivalent value exists in colors.ts.
   "--atlas-nav-divider": "rgba(255,255,255,.08)",
-  // Not a verified transcription: the README's shell paragraph names
-  // exact hex for `live` and `reconnecting` but only says "idle grey"
-  // for this state. colors.borderDashed[2] is the closest already-
-  // tokenized grey (also used for empty-state placeholders elsewhere),
-  // used here as the nearest reasonable value, not an invented one.
-  "--atlas-idle-grey": colors.borderDashed[2],
+  // Corrected — blocking finding from Decision Fidelity review: the
+  // README's shell paragraph only says "idle grey" with no exact hex,
+  // but the higher-priority reference file (which the README's own
+  // Fidelity rule says wins on any disagreement) computes this exact
+  // color programmatically for the equivalent `sys === 'empty'` state:
+  // `liveDot: ... sys === 'empty' ? '#8E8299' : ...` (Atlas
+  // Explorations.dc.html). #8E8299 is exactly `colors.inkMuted` (also
+  // equal to `colors.navTextDim`) — a real, exact match, not an
+  // inference.
+  "--atlas-idle-grey": colors.inkMuted,
+  // Same reference-file computation gives the idle label's own text
+  // color as `liveColor: '#A79BB4'` for this state — exactly
+  // `colors.inkFaint`.
+  "--atlas-idle-label": colors.inkFaint,
   "--atlas-page-bg-desktop": colors.pageBgDesktop,
   "--atlas-font-body": fontFamily.body,
   "--atlas-font-mono": fontFamily.mono,
@@ -438,9 +450,24 @@ describe("DesktopShell", () => {
   it("sets every real-token CSS custom property from the actual tokens module, not a hand-copied literal", () => {
     const { container } = render(<DesktopShell />);
     const root = container.firstChild as HTMLElement;
+    // Corrected — non-blocking finding from Decision Fidelity review:
+    // exhaustively checks every SHELL_VARS entry, including the two
+    // disclosed non-token literals and the corrected idle-state values
+    // — a prior draft spot-checked only 5 of 14 entries, which would not
+    // have caught the wrong-value idle-grey defect review found by hand.
     expect(root.style.getPropertyValue("--atlas-surface")).toBe(colors.surface);
+    expect(root.style.getPropertyValue("--atlas-border-divider")).toBe(colors.borderDivider[0]);
+    expect(root.style.getPropertyValue("--atlas-ink")).toBe(colors.ink);
+    expect(root.style.getPropertyValue("--atlas-ink-muted")).toBe(colors.inkMuted);
     expect(root.style.getPropertyValue("--atlas-nav-ground")).toBe(colors.navGround);
+    expect(root.style.getPropertyValue("--atlas-nav-text-inactive")).toBe(colors.navTextInactive);
+    expect(root.style.getPropertyValue("--atlas-nav-text-active")).toBe(colors.navTextActive);
     expect(root.style.getPropertyValue("--atlas-nav-active-bg")).toBe(colors.navActiveBg);
+    expect(root.style.getPropertyValue("--atlas-nav-hover-bg")).toBe(colors.navHoverBg);
+    expect(root.style.getPropertyValue("--atlas-nav-divider")).toBe("rgba(255,255,255,.08)");
+    expect(root.style.getPropertyValue("--atlas-idle-grey")).toBe(colors.inkMuted);
+    expect(root.style.getPropertyValue("--atlas-idle-label")).toBe(colors.inkFaint);
+    expect(root.style.getPropertyValue("--atlas-page-bg-desktop")).toBe(colors.pageBgDesktop);
     expect(root.style.getPropertyValue("--atlas-font-mono")).toBe(fontFamily.mono);
     expect(root.style.getPropertyValue("--atlas-font-body")).toBe(fontFamily.body);
   });
@@ -495,17 +522,21 @@ describe("DesktopShell", () => {
 `apps/atlas/src/tokens/tokens.test.ts` (**modified — this slice's named,
 in-scope retirement of one now-obsolete B2 test**): remove exactly the
 `test("no file outside src/tokens imports from src/tokens", ...)` block
-and the scaffolding that existed only to support it — the
-`@ts-expect-error`-guarded `import { execSync } from "child_process"` and
-`import path from "path"` lines, and the `declare global { interface
-ImportMeta { dirname: string } }` block. The other 4 `describe("design
-tokens", ...)` tests (colors/typography/motion/shape transcription
-checks) and their imports (`colors`, `SEMANTIC_COLOR_RULE`, `fontFamily`,
-`fontWeight`, `displayHeading`, `bodyFontSizePx`, `eyebrowLabel`,
-`typeScalePx`, `motion`, `radii`, `spacing`, `touchTargetPx`) are
-byte-identical to the current file — untouched, not re-verified, not
-re-derived; this slice's diff against `tokens.test.ts` is a pure deletion
-of the one obsolete test and its now-unused imports, nothing added,
+and the scaffolding that existed only to support it — the file's top
+7-line explanatory comment (**corrected — non-blocking finding from
+Decision Fidelity review: an earlier draft omitted this comment from the
+deletion list, which would have left it describing code that no longer
+exists**), the `@ts-expect-error`-guarded `import { execSync } from
+"child_process"` and `import path from "path"` lines, and the `declare
+global { interface ImportMeta { dirname: string } }` block. The other 4
+`describe("design tokens", ...)` tests (colors/typography/motion/shape
+transcription checks) and their imports (`colors`, `SEMANTIC_COLOR_RULE`,
+`fontFamily`, `fontWeight`, `displayHeading`, `bodyFontSizePx`,
+`eyebrowLabel`, `typeScalePx`, `motion`, `radii`, `spacing`,
+`touchTargetPx`) are byte-identical to the current file — untouched, not
+re-verified, not re-derived; this slice's diff against `tokens.test.ts`
+is a pure deletion of the one obsolete test, its now-unused imports, and
+the comment describing only that test, nothing added,
 nothing else removed.
 
 ## Guards and boundary
