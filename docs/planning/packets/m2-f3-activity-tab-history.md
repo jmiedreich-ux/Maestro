@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Activity Tab, History Segment — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01`
-**Status:** `Draft, pending Decision Fidelity Review`
+**Status:** `Decision Fidelity review returned PASS WITH 2 non-blocking notes (a dangling CSS class reference with no rule; an overstated line-range framing for the real isAct block) — both fixed at zero cost, no planning correction needed`
 **Base:** `cf0c25a` (full: `cf0c25ad7d1a5d7f4e659accda83e201adc1b632`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -23,8 +23,15 @@ This slice is frontend-only — no backend file touched.
 
 ## Evidence
 
-`Atlas Mobile.dc.html:219-249` is the real mobile "Activity" tab (the
-reference file's own internal name is `isAct`). It has:
+`Atlas Mobile.dc.html:219-249` covers the header/segmented-control and
+the History segment of the real mobile "Activity" tab (the reference
+file's own internal name is `isAct`) — **corrected per an independent
+Decision Fidelity review's non-blocking note**: the real `isAct` block
+itself continues well past line 249, through the Agents segment
+(lines 252-278) and the Cost segment (line 280 onward), which this
+slice deliberately does not build (see "Scope, deliberately minimal"
+above); the original framing overstated what this line range
+constitutes as "the" Activity tab. It has:
 
 1. **Header** (`:220-227`): a page title `<h1>Activity</h1>` (a
    literal, static UI label, not fixture content) and a real 3-way
@@ -130,8 +137,12 @@ const SEGMENTS: ReadonlyArray<{ key: ActivitySegment; label: string }> = [
 
 /**
  * Mobile Activity-tab colors from `Atlas Mobile.dc.html`'s real `isAct`
- * markup (lines 219-249 of the reference file), checked directly
- * against `colors.ts`. Real token matches: `colors.segmentedTrack[0]`
+ * markup — the header and segmented control (lines 219-227) and the
+ * History segment this slice builds (lines 230-249); the real `isAct`
+ * block itself continues past line 249 through the Agents (252-278)
+ * and Cost (280 onward) segments this slice deliberately does not
+ * build yet (see "Scope, deliberately minimal" in this slice's own
+ * packet) — checked directly against `colors.ts`. Real token matches: `colors.segmentedTrack[0]`
  * (the segmented control's own track background, `#EDE9F3`, line 222 —
  * a different real index of the same array E3's `PerfBreakdownCard`
  * already uses `[1]` from, both real, not invented), `colors.segmentedSelected`
@@ -321,6 +332,11 @@ export default ActivityTab;
   min-height: 0;
   overflow: auto;
   padding: 4px 18px 22px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
 }
 
 .stats {
@@ -725,10 +741,32 @@ selected-state styling used inline `style={{ background: "var(--atlas-x)"
 toggle convention (`styles.segSelected`, matching E3's
 `PerfBreakdownCard`) — fixed before writing tests against it.
 
-No targeted correction was needed against an external Decision
-Fidelity review for this candidate — every issue above was found
-during this slice's own pre-verification and fixed before submission,
-not after.
+**Independent Decision Fidelity review result:** `PASS WITH MINOR
+NOTES`, zero blocking findings. The review independently reproduced
+every quantitative claim (byte-exact citations, 21/21 test files,
+157/157 tests, the fixture-reuse and token-routing audits) and found
+them all accurate. Two non-blocking notes were fixed at zero cost
+before freeze, no planning correction consumed:
+
+1. **Dangling CSS class reference.** `ActivityTab.tsx` rendered
+   `<div className={styles.timeline}>` but `ActivityTab.module.css`
+   defined no `.timeline` rule — harmless under CSS Modules (the
+   attribute resolves to `undefined` and is silently omitted) but a
+   real dangling reference this slice's own "checked directly"
+   diligence should have caught. Fixed: added a minimal, real
+   `.timeline { display: flex; flex-direction: column; }` rule —
+   structural only, inventing no color/spacing value not already
+   grounded in the real markup (the real mobile markup has no explicit
+   wrapper style of its own here at all; this rule only makes the
+   existing block-level stacking explicit).
+2. **Overstated line-range framing.** Both the Evidence section and
+   the `ActivityTab.tsx` doc comment described `Atlas Mobile.dc.html:219-249`
+   as "the real mobile Activity tab," when the real `isAct` block
+   continues through the Agents segment (252-278) and Cost segment
+   (280 onward) — accurate for what this slice actually builds, but
+   overstating what that line range constitutes as the whole tab.
+   Fixed both locations to describe the range precisely as
+   header/segmented-control plus the History segment only.
 
 ## M0-D12 bounded quality contract
 
@@ -770,10 +808,10 @@ not after.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
