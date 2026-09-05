@@ -1,7 +1,7 @@
 # M1 NeedsReplan Closure — Candidate 01
 
 **Slice ID:** `MB-SLICE-M1-NEEDSREPLAN-CLOSURE-01`
-**Status:** `Pending Decision Fidelity`
+**Status:** `Pending Implementation` (frozen at `0de228656bd621cdd4d08d8d912c29c891ec8a5f`, approved with zero findings and zero corrections)
 **Base:** `2436aca58ceb1385d0c3214123a9c025dcc91add` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -38,16 +38,16 @@ read from current `origin/master`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M1-NEEDSREPLAN-CLOSURE-01` |
-| `phase` | `PendingDecisionFidelity` |
-| `current_actor` | `DecisionFidelityReviewer` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `MaestroDeveloper` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:2436aca58ceb1385d0c3214123a9c025dcc91add"]` |
+| `evidence_refs` | `["git:base:2436aca58ceb1385d0c3214123a9c025dcc91add","git:full-planning-review-head:0de228656bd621cdd4d08d8d912c29c891ec8a5f","review:decision-fidelity:approve:no-findings"]` |
 
 ## Closed command and route
 
