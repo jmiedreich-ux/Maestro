@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-05
-**State:** Acceptance routing merged; M1 merge-observation routing and Architect-disposition correction dispatch are next
+**State:** Merge-observation routing merged; Architect-disposition correction dispatch and stale-lease reclaim are next
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -114,6 +114,15 @@ superseding acceptance, run-level completion, or the subsequent
 `AwaitingOwner→Merged` transition (`MB-SLICE-M1-MERGE-OBSERVATION-01`, not
 yet authored).
 
+Independent `MB-SLICE-M1-MERGE-OBSERVATION-01` is merged through PR #47 at
+`ef6e0a5`. Exact reviewed implementation head
+`372d17b01f61425afba000134ad726cac2ab38d0` passed both reviews with zero
+findings, 263/263 named tests (same pre-existing PyYAML failure applies),
+concurrency/restart stress passed every run, zero corrections. Adds
+`record_and_observe_merge`: closed `AwaitingOwner→Merged`, gated on a
+matching prior `Accepted` acceptance record. Excludes the delegated-merge
+bypass, repository/binding cross-checks, and run-level completion.
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -175,21 +184,20 @@ implementation review each used one correction and received targeted
 ## Next authorized action
 
 M1-01, M1-02A, run lifecycle, packet eligibility, atomic assignment claim,
-execution start/heartbeat/finish, review-control routing, and packet
-acceptance routing are all now integrated, but M1 is not closed. A
-`MergeReady` packet now reaches `AwaitingOwner`; nothing yet moves it to
-`Merged`, and nothing yet moves an `AwaitingArchitect` packet forward.
-Remaining, deliberately small, uncontracted M1 slices: (a)
-`MB-SLICE-M1-MERGE-OBSERVATION-01`, `AwaitingOwner→Merged`; (b)
-Architect-disposition correction dispatch from `AwaitingArchitect` (turning
-a recorded `review-finding` disposition into the one authorized
-`TargetedCorrection` attempt); (c) a small stale-lease/expired-attempt
-reclaim primitive (the in-scope remainder of the never-implemented,
-terminally-returned `MB-SLICE-M1-02B-REPLACEMENT-01`'s recovery scope — its
-larger autonomous wake/reconciliation-loop half is out of M1 scope,
-deferred to M4). No implementation is authorized until each new canonical
-contract receives its own pre-execution Decision Fidelity approval. All
-returned slices remain immutable and non-authoritative.
+execution start/heartbeat/finish, review-control routing, packet
+acceptance routing, and merge-observation routing are all now integrated,
+but M1 is not closed: nothing yet moves an `AwaitingArchitect` packet
+forward, and no stale/expired lease can be reclaimed. Remaining,
+deliberately small, uncontracted M1 slices: (a) Architect-disposition
+correction dispatch from `AwaitingArchitect` (turning a recorded
+`review-finding` disposition into the one authorized `TargetedCorrection`
+attempt); (b) a small stale-lease/expired-attempt reclaim primitive (the
+in-scope remainder of the never-implemented, terminally-returned
+`MB-SLICE-M1-02B-REPLACEMENT-01`'s recovery scope — its larger autonomous
+wake/reconciliation-loop half is out of M1 scope, deferred to M4). No
+implementation is authorized until each new canonical contract receives
+its own pre-execution Decision Fidelity approval. All returned slices
+remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
