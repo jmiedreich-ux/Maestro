@@ -1,0 +1,108 @@
+.card {
+  max-width: 66ch;
+  margin-top: 20px;
+  border: 1px solid var(--atlas-gate-border);
+  border-radius: 14px;
+  background: var(--atlas-gate-surface);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--atlas-gate-header-border);
+  font: 600 10.5px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-gate-label);
+}
+
+.metLabel {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  color: var(--atlas-gate-met-label);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--atlas-gate-row-border);
+}
+
+.mark {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border-radius: 5px;
+}
+
+.markYes {
+  background: var(--atlas-gate-mark-yes);
+  border: 0;
+}
+
+.markPart {
+  background: var(--atlas-gate-mark-part);
+  border: 0;
+}
+
+.markNo {
+  background: transparent;
+  border: 1.5px solid var(--atlas-gate-mark-no-border);
+}
+
+.body {
+  min-width: 0;
+}
+
+.title {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.titleUnmet {
+  color: var(--atlas-gate-title-unmet);
+}
+
+.titleDefault {
+  color: var(--atlas-gate-title-default);
+}
+
+.detail {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--atlas-gate-detail);
+  text-wrap: pretty;
+}
+
+.evidence {
+  flex: none;
+  font: 500 11.5px var(--atlas-font-mono);
+}
+
+.evidenceYes {
+  color: var(--atlas-gate-ev-yes);
+}
+
+.evidencePart {
+  color: var(--atlas-gate-ev-part);
+}
+
+.evidenceNo {
+  color: var(--atlas-gate-ev-no);
+}
+
+.footer {
+  padding: 12px 16px;
+  font-size: 12.5px;
+  color: var(--atlas-gate-met-label);
+}
