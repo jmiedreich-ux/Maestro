@@ -77,8 +77,25 @@ Each command is its own slice: a new guarded, idempotent backend command plus th
 19. **D1 — Guarded command API scaffold.** POST endpoint shape, idempotency-key handling, actor/causation envelope — no real command registered yet.
 20. **D2 — Command: Owner resolves a decision (`sentinel` / `amend` / `defer` options).** The smallest real operator-action command; only the owner-decision variant may call it (per the design's own rule that ruling-variant options are read-only).
 21. **D3 — Wire owner-decision card buttons to D2.**
-22. **D4 — Command: "Decide this myself" (Architect variant → Owner takes it over).**
-23. **D5 — Wire the Architect-variant footer button to D4.**
+22. ~~**D4 — Command: "Decide this myself" (Architect variant → Owner takes it over).**~~
+    **Rescheduled to M4.** Depends on the real M4 autonomous Architect
+    loop ([M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)),
+    which does not exist in M2. This roadmap's own architecture ruling
+    above renders exactly two real decision-card variants (ruling,
+    owner-decision) — not a third "Architect variant." The already-merged
+    C3/C4 packets explicitly exclude any Architect-variant option or
+    footer button for this exact reason (`m2-c4-decision-card-owner.md`
+    excludes "Send back to the Architect agent" as depending on "the
+    nonexistent M4 Architect agent," with a test asserting it never
+    renders). D4 as originally worded presupposes UI that is real
+    content for M4, not M2. Owner confirmed 2026-09-05: a feature
+    visible in the mockup that depends on a later milestone's machinery
+    is rescheduled to that milestone when reached — never forced into
+    the current one, never silently dropped. The mockup was built to
+    Maestro's full end-state vision, not just M2's.
+23. ~~**D5 — Wire the Architect-variant footer button to D4.**~~
+    **Rescheduled to M4**, same dependency as D4 — there is no
+    Architect-variant footer button to wire in M2.
 24. **D6 — Command: crash recovery choice (resume / re-dispatch / hold-and-inspect).**
 25. **D7 — Wire crash card recovery buttons to D6; render the post-choice confirmation state.**
 
