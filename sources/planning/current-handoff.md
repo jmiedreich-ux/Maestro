@@ -1,10 +1,10 @@
 # Maestro — Current Handoff
 
-**Date:** 2026-09-04
+**Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, and assignment claim
-**Current development state:** Execution heartbeat/finish merged; completion and review-control routing are next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, and review-control routing
+**Current development state:** Review-control routing merged; M1 acceptance/merge-observation routing and Architect-disposition correction dispatch are next
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -83,6 +83,27 @@ group. One planning correction and zero implementation corrections were used.
 `18c00fadad537d4fbd74149d4c3ef9e36579ffeb`. Exact implementation head
 `f885d1d90bdf0c130140d731fbe8b8627d2e6c74` passed both reviews with no
 findings, 235/235 tests, and 40/40 stress cases with zero corrections.
+
+Independent `MB-SLICE-M1-REVIEW-ROUTING-05` is merged through PR #42 at
+`94915eee36baf129c6a3e07225c61dc72342a531`. Exact reviewed implementation
+head `c92202fc79a9e446e39692fb68cb4d60bb774a90` passed a full Decision
+Fidelity review and a full independent implementation review with zero
+blocking findings, 248/248 named tests (235 pre-existing plus 13 new; one
+pre-existing, unrelated PyYAML-version environmental failure in
+`tests/m1_01` is outside this slice's writable paths), and the
+fingerprint/concurrency/restart stress tests passed in every fresh-process
+run performed by both the implementer and the independent reviewer. Zero
+planning or implementation corrections were used. It adds
+`record_and_route_review`: the closed four-route packet transition
+(`AwaitingIntegration+Integration+ValidateOnly→AwaitingReview`,
+`AwaitingIntegration+Integration+NeedsReplan→NeedsReplan`,
+`AwaitingReview+IndependentImplementation+Approve→MergeReady`,
+`AwaitingReview+IndependentImplementation+RequestChanges→AwaitingArchitect`),
+candidate authority bound to `attempts.result_commit` (never
+`packets.current_head`, which has no writer), and one new closed
+`review-finding` payload kind for `reviews.findings_json`. It does not
+dispatch a correction worker, perform acceptance, or record a merge
+observation.
 
 ## What exists only on side branches
 
@@ -169,11 +190,15 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 
 ## Exact next action
 
-1. Keep terminal M1-02B evidence non-authoritative.
-2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, and assignment
-   claim as integrated, while keeping M1 open.
-3. Have the Project Architect materialize completion and review-control
-   routing from `AwaitingIntegration` through its closed reviewed outcome.
+1. Keep terminal M1-02B evidence, and terminal review-routing slices
+   `-01`/`-02`/`-03`/`-04`, non-authoritative.
+2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, assignment claim,
+   execution start/heartbeat/finish, and review-control routing as
+   integrated, while keeping M1 open.
+3. Have the Project Architect select and materialize the smallest remaining
+   M1 operational-core behavior: acceptance/merge-observation routing from
+   `MergeReady`, or Architect-disposition correction dispatch from
+   `AwaitingArchitect`. Neither has a contract yet.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
@@ -197,6 +222,29 @@ controls any conflicting older handoff or rule language.
 - **Implementation correction:** 0, unused
 - **Correction head:** none; branch HEAD remained equal to reviewed base
 - **Terminal state:** `returned`
+
+## Terminal review-routing slice 04
+
+`MB-SLICE-M1-REVIEW-ROUTING-04` is terminally `returned`, recorded at
+`2938676a553a1625310efc2b24fb8d4a117ff751` in the local worktree
+`/home/jeremy/Development/Maestro-m1-review-routing-04` (unmerged evidence
+only). Its planning contract passed a full Decision Fidelity review, one
+targeted planning correction, and a targeted verification `APPROVE`, then
+reached implementation dispatch — but the Maestro Developer correctly
+stopped, uncommitted, on a real architecture-contract completeness gap: a
+pre-existing test (`tests/m1_02/test_schema_and_records.py`'s `APP-MAP-11`
+trace) hard-coded exactly the permissive `findings_json` behavior the slice
+existed to close, outside its declared two-path writable boundary. An
+in-place "architecture-contract amendment" attempting to widen that
+boundary after freeze was independently reviewed and correctly rejected:
+the Bootstrap Convergence Policy's terminal-correction section requires a
+proof/contract defect discovered against a frozen slice to terminally
+return that slice, not receive a post-freeze patch. The slice cannot be
+reopened, corrected, replaced, renamed, or reused as authority. Its sound
+diagnosis and exact fix were carried forward, correctly declared as an
+originally owned writable path from inception, into
+`MB-SLICE-M1-REVIEW-ROUTING-05`, which received its own fresh full reviews
+and is now merged.
 
 ## Terminal review-routing slice
 

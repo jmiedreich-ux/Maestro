@@ -1,21 +1,27 @@
 # Maestro Development Status and Process-Delay Record
 
-**Recorded:** 2026-09-04
+**Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`18c00fadad537d4fbd74149d4c3ef9e36579ffeb`
+`94915eee36baf129c6a3e07225c61dc72342a531`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
 ## Executive status
 
 Maestro is not ready for end-to-end testing or use by the projects waiting on
-it. Alpha-01 through Alpha-03, M1-01, M1-02A, and the first independent M1
-run-lifecycle behavior are complete on `master`. M1-01 supplies the internal
-exact-commit, read-only project-authority loader and durable candidate
-persistence; M1-02A adds the accepted operational-record validation and
-persistence foundation; the lifecycle slice adds atomic, version-guarded run
-transitions with durable audit events. Later M1 work remains unmerged.
+it. Alpha-01 through Alpha-03, M1-01, M1-02A, the M1 run-lifecycle,
+packet-eligibility, and assignment-claim behaviors, execution start/heartbeat/
+finish, and review-control routing are all complete on `master`. M1-01
+supplies the internal exact-commit, read-only project-authority loader and
+durable candidate persistence; M1-02A adds the accepted operational-record
+validation and persistence foundation; the lifecycle slice adds atomic,
+version-guarded run transitions with durable audit events; review-control
+routing adds the closed four-route packet transition from
+`AwaitingIntegration`/`AwaitingReview` to `MergeReady`/`AwaitingArchitect`/
+`NeedsReplan`, with candidate authority bound to `attempts.result_commit`.
+M1 acceptance/merge-observation routing and Architect-disposition correction
+dispatch remain unreleased.
 
 The Owner approved a bootstrap-governance repair on 2026-09-03. Replacement
 M1-02B slice `MB-SLICE-M1-02B-REPLACEMENT-01` is now terminally `returned`.
@@ -39,6 +45,7 @@ dispatch is running.
 | First attempt-execution slice | `MB-SLICE-M1-ATTEMPT-EXECUTION-01` terminally `returned` at correction head `3462b09d5c17336817bd8adcd9e6ad65c0d1f274` | Its sole targeted Decision Fidelity verification found that the claimed exact heartbeat lease envelope contradicted the five-key state-object rule. No implementation occurred; it cannot be corrected, reopened, renamed, or used as authority. |
 | M1 execution start | `MB-SLICE-M1-EXECUTION-START-01` terminally merged through PR #35 at `0a7be20578671ceaa8b9edb81d583bc94f499bf0`; exact implementation head `c5e3c05799764d02841d2732200e267f19af9beb` | Targeted Decision Fidelity and independent implementation review returned `APPROVE`; 220/220 tests and 10/10 stress runs passed. One planning correction and zero implementation corrections were used. Maestro can record `Running` only with a unique external handle and still-Running parent run. |
 | M1 execution heartbeat/finish | `MB-SLICE-M1-EXECUTION-FINISH-01` terminally merged through PR #37 at `18c00fadad537d4fbd74149d4c3ef9e36579ffeb`; exact implementation head `f885d1d90bdf0c130140d731fbe8b8627d2e6c74` | Both reviews returned `APPROVE` with no findings; 235/235 tests and 40/40 stress cases passed with zero corrections. Maestro renews the exact live execution and atomically records one terminal result, packet route, and released ownership. |
+| M1 review-control routing | Independent slice `MB-SLICE-M1-REVIEW-ROUTING-05` merged through PR #42 at `94915eee36baf129c6a3e07225c61dc72342a531`; exact reviewed implementation head `c92202fc79a9e446e39692fb68cb4d60bb774a90` | Both a full Decision Fidelity review and a full independent implementation review returned `APPROVE` with zero findings; 248/248 named tests passed (one pre-existing, unrelated PyYAML environmental failure outside this slice's paths); zero corrections used. Adds `record_and_route_review`: the closed four-route transition from `AwaitingIntegration`/`AwaitingReview` to `MergeReady`/`AwaitingArchitect`/`NeedsReplan`, candidate authority bound to `attempts.result_commit`, and the closed `review-finding` payload kind. Four prior attempts (`-01` through `-04`) were terminally returned during planning or (for `-04`) at implementation dispatch; see below. |
 | First M1-02B packet | Returned at planning commit `a9af23a` after its normal and final planning corrections | It is immutable, not dispatchable history. No code was implemented from it. |
 | Replacement M1-02B | Terminally `returned`; reviewed base and current branch head are both `ab271ffea42204c44c1894d53ba10e0d5f34ca4f`, so no committed correction range exists | Its sole targeted Decision Fidelity verification returned `REQUEST_CHANGES`. It cannot be corrected, replaced, reopened, approved, or dispatched. B1 remains unauthorized. |
 | Failed correction evidence | Two uncommitted files remain in `/home/jeremy/Development/Maestro-m1-packets`: `docs/planning/contracts/m1-02b-contract.json` (SHA-256 `76303cbdf967a1acae1997a0473d267956ef53adac6616f35f3e485c2ef43e47`) and `docs/planning/packets/m1-02-operational-state-and-recovery-primitives.md` (SHA-256 `92ddb1e1296c65c10e4826b603bd9dafcc136c868f3df3f2e26ecf8d60449c99`) | Preserve these mutable files as failed-attempt evidence only. They are not authority and must not be merged, approved, discarded, or reused as a planning candidate. |
@@ -349,6 +356,39 @@ honest execution identity. The first combined attempt-execution contract was
 terminally returned after its sole targeted verification. The independent
 execution-start and heartbeat/finish slices are now merged. Completion and
 review-control routing is next. M1 remains open.
+
+`MB-SLICE-M1-REVIEW-ROUTING-05` completed and merged through PR #42 at
+`94915eee36baf129c6a3e07225c61dc72342a531`. Its exact reviewed implementation
+head is `c92202fc79a9e446e39692fb68cb4d60bb774a90`. A full Decision Fidelity
+review and a full independent implementation review both returned `APPROVE`
+with zero findings; 248/248 named tests passed (one pre-existing, unrelated
+PyYAML environmental failure outside this slice's writable paths), and
+fingerprint/concurrency/restart stress tests passed in every fresh-process
+run performed by both the implementer and the reviewer; no correction was
+used. It carries forward, from inception, the exact diagnosis and fix that
+`-04` found only at implementation time (see the terminal `-04` record
+below): `tests/m1_02/test_schema_and_records.py`'s `APP-MAP-11` fixture is
+corrected alongside the new `record_and_route_review` primitive. The two
+smallest remaining M1 operational-core behaviors are acceptance/
+merge-observation routing from `MergeReady`, and Architect-disposition
+correction dispatch from `AwaitingArchitect`; neither has a contract yet.
+M1 remains open.
+
+`MB-SLICE-M1-REVIEW-ROUTING-04` is terminally `returned` at
+`2938676a553a1625310efc2b24fb8d4a117ff751` in the local, unmerged worktree
+`/home/jeremy/Development/Maestro-m1-review-routing-04`. Its planning
+contract passed a full Decision Fidelity review, one targeted planning
+correction, and a targeted verification `APPROVE`, then reached
+implementation dispatch — but the Maestro Developer correctly stopped,
+uncommitted, on a real architecture-contract completeness gap: the
+`APP-MAP-11` fixture above hard-coded exactly the permissive `findings_json`
+behavior the slice existed to close, outside its declared two-path writable
+boundary. An in-place "architecture-contract amendment" attempting to widen
+that boundary after freeze was independently reviewed and correctly
+rejected: the Bootstrap Convergence Policy's terminal-correction section
+requires a proof/contract defect discovered against a frozen slice to
+terminally return that slice, not receive a post-freeze patch. This slice
+cannot be reopened, corrected, replaced, renamed, or reused as authority.
 
 `MB-SLICE-M1-REVIEW-ROUTING-03` is terminally `returned`. Its complete
 Decision Fidelity review passed the candidate-head and protocol corrections,
