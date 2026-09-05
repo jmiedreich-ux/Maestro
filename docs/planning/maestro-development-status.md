@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`27b3ad1`
+`df9c05c`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -611,4 +611,22 @@ against the contract, every command re-run independently, including the
 corrected dev-server check); no dependency substitution was needed — every
 pinned version resolved exactly.
 
-Wave B2 (design tokens module) is next.
+`MB-SLICE-M2-B2-DESIGN-TOKENS-01` (Wave B2) is merged at
+`df9c05c8d773f253b031699ace714ab25fb86135`: four TypeScript design-token
+modules (`colors.ts`, `typography.ts`, `motion.ts`, `shape.ts`)
+transcribed verbatim from the Owner's design-handoff README, plus a
+no-consumer boundary test. No consumer yet — B3 is first. Full Decision
+Fidelity review found 1 blocking finding (a color array sourced from
+outside the Design Tokens section, mislabeled); the one available
+targeted planning correction resolved it, approved by targeted
+verification. Independent implementation review found 1 blocking finding
+(the no-consumer test's regex missed same-directory `./tokens` imports,
+exactly the form B3 will write); the one available targeted
+implementation correction fixed it (a one-character regex change),
+approved by targeted verification. All 6 tests pass (5 new + B1's
+existing test); build unaffected. A `@types/node`-avoidance workaround
+in the test file was independently verified as load-bearing; a future
+slice should authorize `@types/node` as a devDependency to remove the
+recurring friction.
+
+Wave B3 (desktop shell) is next.
