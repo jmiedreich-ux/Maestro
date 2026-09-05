@@ -1,0 +1,56 @@
+.thread {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  padding: 0 34px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font: 600 11.5px var(--atlas-font-mono);
+}
+
+.body {
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--atlas-ink);
+}
+
+.role {
+  font-size: 13px;
+  color: var(--atlas-ink-muted);
+}
+
+.time {
+  color: var(--atlas-ink-faint);
+  font: 500 12px var(--atlas-font-mono);
+}
+
+.text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 62ch;
+  text-wrap: pretty;
+}
