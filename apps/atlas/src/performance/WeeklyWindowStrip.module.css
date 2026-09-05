@@ -1,0 +1,51 @@
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border: 1px solid var(--atlas-week-border);
+  border-radius: 12px;
+  background: var(--atlas-week-surface);
+  font-size: 13px;
+}
+
+.label {
+  font: 600 10.5px var(--atlas-font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--atlas-week-label);
+}
+
+.reconciled {
+  min-width: 0;
+  flex: 1;
+  color: var(--atlas-week-label);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.figure {
+  font-family: var(--atlas-font-mono);
+}
+
+.figureInk {
+  color: var(--atlas-week-ink);
+}
+
+.figureWarning {
+  color: var(--atlas-week-warning);
+}
+
+.meta {
+  flex: none;
+  font: 500 11.5px var(--atlas-font-mono);
+  color: var(--atlas-week-meta);
+}
+
+.caption {
+  margin-top: 8px;
+  padding: 0 3px;
+  font-size: 12.5px;
+  color: var(--atlas-week-caption);
+}
