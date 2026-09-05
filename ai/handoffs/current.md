@@ -254,11 +254,12 @@ becoming available as they are built — see M0-D01's operator-action
 amendment), authorized by the Owner 2026-09-05 and decomposed wave-by-wave
 in `docs/planning/m2-atlas-roadmap.md`, with delegated Project Architect
 authority over design, blockers, and merge. Wave A1 (loopback-only read
-API scaffold, `MB-SLICE-M2-A1-READ-API-SCAFFOLD-01`) and Wave A2 (packets
-snapshot endpoint, `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01`) are merged; each
-subsequent wave slice still requires its own pre-execution Decision
-Fidelity approval before implementation. All returned slices remain
-immutable and non-authoritative.
+API scaffold, `MB-SLICE-M2-A1-READ-API-SCAFFOLD-01`), Wave A2 (packets
+snapshot endpoint, `MB-SLICE-M2-A2-PACKETS-SNAPSHOT-01`), and Wave A3
+(attempts snapshot endpoint, `MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01`) are
+merged; each subsequent wave slice still requires its own pre-execution
+Decision Fidelity approval before implementation. All returned slices
+remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 
