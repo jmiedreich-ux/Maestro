@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`d2eba95`
+`f0aa61c`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -560,4 +560,18 @@ validator rename is non-breaking), and the full 320-test suite pass
 (319/320 — the same pre-existing, unrelated PyYAML-version environment
 failure, not introduced by this slice).
 
-Wave A4 (reviews snapshot endpoint) is next.
+`MB-SLICE-M2-A4-REVIEWS-SNAPSHOT-01` (Wave A4) is merged at
+`f0aa61c173181e123de3dff7624415732b7f54fd`: a read-only, paginated `GET
+/snapshot/reviews` endpoint (13 fields), decoding `findings_json`/
+`coverage_json` into real JSON structures (`findings`/`coverage`) rather
+than re-embedding them as strings, plus a module-docstring fix. Full
+Decision Fidelity review returned `APPROVE` with one non-blocking finding
+(a citation pointing at the wrong precedent column) and one minor
+observation (a stale docstring), both fixed at zero cost before freeze —
+no planning correction was needed. Independent implementation review
+returned `APPROVE` with no findings; the 9 named tests, the existing 21
+packets/attempts-snapshot tests (unmodified), and the full 329-test suite
+pass (328/329 — the same pre-existing, unrelated PyYAML-version
+environment failure, not introduced by this slice).
+
+Wave A5 (events snapshot endpoint) is next.
