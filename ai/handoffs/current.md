@@ -309,10 +309,11 @@ review found every architectural and data claim correct, returning
 undisclosed markup-quote elision), fixed by one targeted correction.
 
 **Wave C is now fully complete: C1, C1B, C3, C4, C5, C6, and C7 are
-all merged.** C2 (packet thread wired to real data) remains
-deliberately deferred, not built, pending Owner input on a real
-architecture/product question (the backend's structured data model has
-no concept matching the mockup's narrative thread messages). Every
+all merged.** C2 (packet thread wired to real data) is rescheduled to
+M3, not built: the backend's structured data model has no concept
+matching the mockup's narrative thread messages, and that real design
+work belongs to M3 (real packet compiler/executor), per the same
+standing policy already applied to D4/D5. Every
 other Wave C component (`PacketThread`, `DecisionCard`,
 `OwnerDecisionCard`, `FidelityRecord`, `CrashCard`, `PacketHeader`) is
 real, reviewed, and merged but still standalone — none is wired into
@@ -535,12 +536,10 @@ a stale citation, and tautological test coverage; all independently
 re-verified. 19/19 test files, 140/140 tests pass, zero regressions.
 
 `MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2) was
-investigated and found **blocked, not built**: its real `packet_id`
-is standalone fixture data with no real backend row, so it inherits
-C2's own still-open real-backend-data-wiring question rather than
-posing a new one — recorded in `m2-atlas-roadmap.md`, not assigned a
-milestone yet (unlike D4/D5's clear M4 destination) pending that
-resolution.
+investigated and found to depend on the same real gap as C2: its real
+`packet_id` is standalone fixture data with no real backend row.
+**Rescheduled to M3 alongside C2** — recorded in `m2-atlas-roadmap.md`,
+matching the same standing policy already applied to D4/D5 (M4).
 
 `MB-SLICE-M2-F2-CHAT-TAB-01` is merged (planning PR #147 at `a161cb4`,
 implementation PR #148 at `e186dab`) — the mobile "Chat" tab, reusing
@@ -573,10 +572,18 @@ completed-item count stays at 2/4. Zero corrections needed at either
 review (2 non-blocking DF notes fixed at zero cost). 157/157 tests
 pass, zero regressions.
 
+D7 (wire the Atlas crash card's recovery buttons to D6) was checked
+immediately after D6 merged: `CrashCard`'s own fixture has the
+identical real gap D3 found (`CRASH_EXAMPLE.packetId = "A.2"`, no
+real backend row), plus the same "only one of three options is real"
+finding D6 already made (the crash fixture's own footer note already
+discloses this). **Rescheduled to M3 alongside C2/D3**, not
+investigated further.
+
 Next: any independent Wave F (item 35's remaining Agents/Cost
-segments, or F4), Wave G (G1, G3), or D7 (wire the Atlas crash card's
-recovery buttons to D6 — will need its own real-packet-identity check
-first, like D3) not blocked by C2/D3's open question.
+segments, or F4), or Wave G (G1, G3 — G2 covers `crashed` via C6/D6
+only, not D7). C2/D3/D7 are all rescheduled to M3, off the current
+independent-work list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

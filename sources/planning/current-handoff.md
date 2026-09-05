@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), **M2 Wave C complete** (C1 packet thread, C1B wired into DesktopShell's nav, C3 decision card ruling variant — a standalone `DecisionCard` driven by a real M1 routing-table entry, not the mockup's fictional "Architect agent" — C4 decision card owner-decision variant — reuses C1's real `A.2` escalation scenario with the real Coordinator actor — C5 Decision Fidelity record — cites this project's own real, closed C3 review rather than the mockup's fictional ruling — C6 crash card — reuses C1's real `A.2` scenario, 5 pieces of copy corrected against the real `finish_attempt_execution` outcome mapping — C7 header/state-source wiring — the README's single-state-source rule, `derivePacketHeaderState` plus `PacketHeader`), and Wave E underway (E1 Performance header/stats and E1B weekly-window strip — both zero disclosed color literals)
-**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) remains deliberately deferred pending Owner input — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question, not a routine implementation gap; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; **Wave E is now fully complete, all 7 items merged**: E1 (Performance header/stats), E1B (weekly-window strip), E2 (per-action records list, collapsed), E2B (records expand/collapse, item 27 in full), E3 (Performance breakdown card, item 28), E4 (Agents roster, item 29), E5 (Agents contention/lock card, item 30 — the last item, closing the wave); E6/E7 each merged via a `-02` successor after a terminally returned `-01`; of 39 total M2 roadmap items, 24 are now done (~62%), plus C2 deliberately deferred; Owner directed continuation into Wave D 2026-09-05; D4/D5 rescheduled to M4 (PR #137, depend on the real M4 autonomous Architect loop which doesn't exist in M2 — Owner-confirmed standing policy: mockup features depending on a later milestone's machinery get rescheduled to that milestone, never forced in or dropped); D1 (guarded command API scaffold — the first Wave D slice and the first backend/Python slice merged this session) is merged, completing roadmap item 19; 25 of 39 items now done (~64%); next is D2, the smallest real operator-action command
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) is **rescheduled to M3** — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question this project's own delegated Architect authority resolves by naming the milestone where real project/packet data starts flowing, not by leaving it open pending Owner input; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; **Wave E is now fully complete, all 7 items merged**: E1 (Performance header/stats), E1B (weekly-window strip), E2 (per-action records list, collapsed), E2B (records expand/collapse, item 27 in full), E3 (Performance breakdown card, item 28), E4 (Agents roster, item 29), E5 (Agents contention/lock card, item 30 — the last item, closing the wave); E6/E7 each merged via a `-02` successor after a terminally returned `-01`; of 39 total M2 roadmap items, 24 are now done (~62%), plus C2 rescheduled to M3; Owner directed continuation into Wave D 2026-09-05; D4/D5 rescheduled to M4 (PR #137, depend on the real M4 autonomous Architect loop which doesn't exist in M2 — Owner-confirmed standing policy: mockup features depending on a later milestone's machinery get rescheduled to that milestone, never forced in or dropped); D1 (guarded command API scaffold — the first Wave D slice and the first backend/Python slice merged this session) is merged, completing roadmap item 19; 25 of 39 items now done (~64%); next is D2, the smallest real operator-action command
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -272,10 +272,12 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    merged; Wave B (Atlas app shells: B1 app scaffold, B2 design tokens,
    B3 desktop shell candidate `-02` — `-01` was terminally returned, B4
    mobile shell) is complete and merged; Wave C1 (packet thread) and
-   C1B (shell wiring) are merged; C2 (real-data wiring) is deliberately
-   deferred pending Owner input on a real architecture question (the
-   backend's data model has no concept matching the mockup's narrative
-   thread messages); C3 (decision card, ruling variant) is merged,
+   C1B (shell wiring) are merged; C2 (real-data wiring) is **rescheduled
+   to M3** — the backend's data model has no concept matching the
+   mockup's narrative thread messages, a real architecture question
+   resolved by naming the milestone where real project/packet data
+   starts flowing, not by leaving it open; C3 (decision card, ruling
+   variant) is merged,
    driven by a real M1 routing-table entry rather than the mockup's
    fictional "Architect agent" persona; C4 (decision card,
    owner-decision variant) is merged, reusing C1's real `A.2`
@@ -373,10 +375,9 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    idle-vs-running styling principle), a missed token match, a stale
    citation, and tautological test coverage. `MB-SLICE-M2-D3` (wire
    the owner-decision card's buttons to D2) was investigated and found
-   blocked, not built: its real `packet_id` is standalone fixture data
-   with no backend row, inheriting C2's own still-open real-data-wiring
-   question rather than posing a new one — recorded in the roadmap,
-   not yet assigned a milestone. `MB-SLICE-M2-F2-CHAT-TAB-01` is
+   not buildable now: its real `packet_id` is standalone fixture data
+   with no backend row, the same real-data-wiring gap C2 already
+   found. **Rescheduled to M3 alongside C2.** `MB-SLICE-M2-F2-CHAT-TAB-01` is
    merged: the mobile Chat tab, reusing C1's real fixture/text-color
    rule and C7's real header state as chat bubbles, no message
    composer wired (no real backend send-message command exists);
@@ -388,7 +389,13 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    `record_and_close_needs_replan` — only one of the roadmap's three
    named recovery options has any real backend counterpart, the other
    two rescheduled to M3 matching D4/D5's own precedent; zero
-   corrections needed at either review. `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01`
+   corrections needed at either review. D7 (wire the Atlas crash
+   card's recovery buttons to D6) was checked immediately after D6
+   merged: `CrashCard`'s own fixture has the identical real gap D3
+   found (`CRASH_EXAMPLE.packetId = "A.2"`, no real backend row), plus
+   the same "only one of three options is real" finding D6 already
+   made (the crash fixture's own footer note already discloses this).
+   **Rescheduled to M3 alongside C2/D3.** `MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01`
    is merged: real progress on roadmap item 35 (Activity tab), split
    like E1/E1B and E2/E2B into the real segmented control plus only
    the History segment's real content, reusing E6's fixture/style data

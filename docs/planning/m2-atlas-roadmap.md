@@ -40,32 +40,38 @@ Local-only (loopback-bound, no auth per Owner decision 2026-09-05: single local 
 
 ### Wave C — Packet thread (desktop) / Chat (mobile) — the default view
 12. **C1 — Packet thread, static fixtures.** Thread rendering (rows, avatars, grouping rule) against hardcoded fixtures, per the README's own step 2. No decision card yet.
-13. **C2 — Packet thread wired to real data.** Same view, reads `A2`/`A5`
-    snapshot + `A6` stream instead of fixtures. **Blocked, discovered
-    2026-09-05 while sequencing Wave C execution — not merely a missing
-    dependency, a real architecture gap:** `A6` (the event stream) and
-    `A7` (the reconnect contract) were never built as their own slices —
-    Wave A execution stopped at `A5` (the events *snapshot*, a bounded
-    historical query) — so C2 cannot be *fully* built as scoped even
-    once that gap is closed. More fundamentally, the actual backend data
-    model (`packets`/`attempts`/`reviews`/`events` — all structured
-    records) has no concept of the mockup's narrative chat messages
-    ("Terra, base is 9d3e1a2. You can write one Runtime file...").
-    `events` carries a machine `event_type`, `before_json`/`after_json`,
-    and a `reason` payload — not authored prose. Producing something
+13. ~~**C2 — Packet thread wired to real data.**~~ Same view, reads `A2`/`A5`
+    snapshot + `A6` stream instead of fixtures.
+    **Rescheduled to M3**, discovered 2026-09-05 while sequencing Wave
+    C execution — not merely a missing dependency, a real architecture
+    gap: `A6` (the event stream) and `A7` (the reconnect contract) were
+    never built as their own slices — Wave A execution stopped at `A5`
+    (the events *snapshot*, a bounded historical query) — so C2 cannot
+    be *fully* built as scoped even once that gap is closed. More
+    fundamentally, the actual backend data model
+    (`packets`/`attempts`/`reviews`/`events` — all structured records)
+    has no concept of the mockup's narrative chat messages ("Terra,
+    base is 9d3e1a2. You can write one Runtime file..."). `events`
+    carries a machine `event_type`, `before_json`/`after_json`, and a
+    `reason` payload — not authored prose. Producing something
     resembling C1's fixture thread from real data requires either a new
     backend concept (a real "thread message" record, itself a product
     decision about what a Maestro agent/coordinator actually writes and
     where) or a synthesis layer turning structured events into
-    human-readable narrative (a nontrivial design choice with real
-    fidelity/scope tradeoffs). Deciding which is a reserved product/
-    architecture choice, not a routine implementation detail delegated
-    authority should decide unilaterally — this is recorded here as an
-    open question for the Owner, not silently resolved. **Not a blocker
-    for the rest of Wave C**: C3-C7 all extend `PacketThread`'s existing,
-    already-reviewed fixture data (rendering a decision card, a fidelity
-    record, and a crash card on top of the same `A.2` messages) and need
-    no real backend wiring at all — they proceed in C2's absence.
+    human-readable narrative — real design work of the same kind this
+    roadmap's own "What is explicitly out of scope for M2" section
+    already ties to M3 (the real packet compiler / real agent executor
+    milestone, where live structured data first exists to synthesize
+    from). Per Owner-confirmed standing policy: a feature found not in
+    scope for the current milestone is scheduled into the milestone
+    where its dependency actually lands — never forced in, never
+    dropped, and never left open-ended pending further input when a
+    milestone call can be made directly under delegated design
+    authority. **Not a blocker for the rest of Wave C**: C3-C7 all
+    extend `PacketThread`'s existing, already-reviewed fixture data
+    (rendering a decision card, a fidelity record, and a crash card on
+    top of the same `A.2` messages) and need no real backend wiring at
+    all — they proceed in C2's absence.
 14. **C3 — Decision card, ruling variant.** Read-only rendering, driven by the real routing-table evidence per the ruling above.
 15. **C4 — Decision card, owner-decision variant, read-only.** Options rendered but inert (no command wiring yet — that is Wave D).
 16. **C5 — Decision Fidelity record (`DF-2`) rendering.**
@@ -76,33 +82,26 @@ Local-only (loopback-bound, no auth per Owner decision 2026-09-05: single local 
 Each command is its own slice: a new guarded, idempotent backend command plus the one UI control that calls it. Matches M0-D01's amendment: a command is available through Atlas only once its own guarded command exists and passes review.
 19. **D1 — Guarded command API scaffold.** POST endpoint shape, idempotency-key handling, actor/causation envelope — no real command registered yet.
 20. **D2 — Command: Owner resolves a decision (`sentinel` / `amend` / `defer` options).** The smallest real operator-action command; only the owner-decision variant may call it (per the design's own rule that ruling-variant options are read-only).
-21. **D3 — Wire owner-decision card buttons to D2.**
-    **Blocked, not built.** Investigated 2026-09-05: `OwnerDecisionCard`'s
-    packet id (`"A.2"`) is standalone fixture data
-    (`decision/ownerFixtures.ts`, deliberately independent of
-    `thread/fixtures.ts` per that file's own doc comment) — it has no
-    corresponding row in the real backend database. Honestly calling
+21. ~~**D3 — Wire owner-decision card buttons to D2.**~~
+    **Rescheduled to M3**, same real dependency as C2. Investigated
+    2026-09-05: `OwnerDecisionCard`'s packet id (`"A.2"`) is standalone
+    fixture data (`decision/ownerFixtures.ts`, deliberately independent
+    of `thread/fixtures.ts` per that file's own doc comment) — it has
+    no corresponding row in the real backend database. Honestly calling
     D2's real `POST /command/resolve-decision` requires a real
     `packet_id` and `expected_version`, which requires the same
-    real-backend-data wiring C2 already identified as needing and left
-    open for Owner input (the backend's structured `packets` data model
-    has no established mapping to this UI's fixture content yet — see
-    the C2 entry above). D3 inherits that exact same open question, not
-    a new one. A second, narrower issue compounds this: of
-    `OwnerDecisionCard`'s two real options, only "Allow a sentinel
-    version" (→ "resumes now") has an honest 1:1 mapping to a D2 target
-    state (`Ready`); "Amend the A.1 contract"'s own real described
-    effect is dispatching a correction to a *different* packet (A.1),
-    a distinct real M1 command (`record_and_dispatch_correction`) that
-    D2 does not call and this slice does not implement. Per Owner-
-    confirmed standing policy (2026-09-05): work found not in scope for
-    the current milestone is planned into the correct milestone once
-    the blocking question resolves — never forced in, never silently
-    dropped. Unlike D4/D5 (a clear destination, M4, once the Architect
-    loop exists), D3 has no assigned milestone yet: it stays blocked on
-    C2's own still-open architecture question until the Owner resolves
-    it, at which point both C2 and D3 get scheduled together based on
-    what that resolution actually requires.
+    real-backend-data wiring C2 needs (see the C2 entry above) — D3
+    inherits that exact same real dependency, not a new one, so it is
+    rescheduled alongside C2 to the same milestone (M3) rather than
+    invented a separate destination for the identical gap. A second,
+    narrower issue compounds this: of `OwnerDecisionCard`'s two real
+    options, only "Allow a sentinel version" (→ "resumes now") has an
+    honest 1:1 mapping to a D2 target state (`Ready`); "Amend the A.1
+    contract"'s own real described effect is dispatching a correction
+    to a *different* packet (A.1), a distinct real M1 command
+    (`record_and_dispatch_correction`) that D2 does not call and this
+    slice does not implement — carried forward as part of the same M3
+    scope, not resolved here.
 22. ~~**D4 — Command: "Decide this myself" (Architect variant → Owner takes it over).**~~
     **Rescheduled to M4.** Depends on the real M4 autonomous Architect
     loop ([M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)),
@@ -123,7 +122,19 @@ Each command is its own slice: a new guarded, idempotent backend command plus th
     **Rescheduled to M4**, same dependency as D4 — there is no
     Architect-variant footer button to wire in M2.
 24. **D6 — Command: crash recovery choice (resume / re-dispatch / hold-and-inspect).**
-25. **D7 — Wire crash card recovery buttons to D6; render the post-choice confirmation state.**
+25. ~~**D7 — Wire crash card recovery buttons to D6; render the post-choice confirmation state.**~~
+    **Rescheduled to M3**, same real dependency as C2/D3, checked
+    2026-09-05: `CrashCard`'s own fixture (`crash/fixtures.ts`,
+    `CRASH_EXAMPLE.packetId = "A.2"`) is standalone fixture data with
+    no corresponding real backend row, the identical gap D3 found for
+    `OwnerDecisionCard`. A second, narrower issue compounds this,
+    already self-disclosed in C6's own merged fixture comment: of the
+    crash card's three real options (resume / re-dispatch / hold), only
+    "hold" has any real backend counterpart — the same finding D6
+    independently made for its own command, and the fixture's own
+    footer note already says so verbatim ("NeedsReplan has no automatic
+    resume in Maestro today ... none of them dispatch anything yet").
+    Rescheduled alongside C2/D3 to M3, not investigated further here.
 
 ### Wave E — Remaining desktop reporting views (read-only; can run in parallel with D once C7 lands)
 26. **E1 — Performance: header stats + weekly-window strip.**
@@ -142,13 +153,13 @@ Each command is its own slice: a new guarded, idempotent backend command plus th
 
 ### Wave G — Failure and empty states (desktop + mobile; last, per the README's own ordering)
 37. **G1 — `disconnected` state:** connection strip + live-indicator flip, driven by A7's reconnect contract.
-38. **G2 — `crashed` state:** already covered by C6/D6/D7; this slice is the top-level system banner only.
+38. **G2 — `crashed` state:** covered by C6/D6 (D7 rescheduled to M3 — see D7's own entry); this slice is the top-level system banner only, and does not itself need D7's wiring.
 39. **G3 — `empty` state:** desktop + mobile empty-state screens (no packets yet).
 
 ## What is explicitly out of scope for M2
 
 - The autonomous Architect-agent ruling loop itself (M4).
-- A real packet compiler / real agent executor (M3) — Wave C/D read and act on whatever M1 data exists today, fixture-project or real.
+- A real packet compiler / real agent executor (M3) — Wave C/D read and act on whatever M1 data exists today, fixture-project or real. This is also where C2 (packet thread wired to real data), D3 (wire owner-decision buttons to a real packet), and D7 (wire crash-card recovery buttons to a real packet) are rescheduled to: all three need a real backend concept mapping structured `packets`/`events` data to the UI's narrative content, which only exists once M3's real executor is producing live data to synthesize from.
 - Any authentication/access-control layer (Owner decision 2026-09-05: no change while single local owner).
 - Any network exposure beyond loopback.
 
