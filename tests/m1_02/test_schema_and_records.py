@@ -762,7 +762,22 @@ class RecordRouteTests(unittest.TestCase):
         trace("APP-MAP-08", lambda: OperationalStateStore._attempt(valid["_attempt"], NOW))
         trace("APP-MAP-09", lambda: OperationalStateStore._evidence(valid["_evidence"]))
         trace("APP-MAP-10", lambda: OperationalStateStore._wait(valid["_wait"], NOW))
-        review = dict(valid["_review"], findings_json=[{"kind": "reason", "reason_code": "NONE", "detail_reference": None}])
+        review = dict(
+            valid["_review"],
+            result="RequestChanges",
+            findings_json=[{
+                "kind": "review-finding", "finding_id": "test-app-map-11",
+                "criterion_reference": "test-fixture",
+                "evidence": {
+                    "kind": "evidence-reference", "evidence_id": "test-evidence",
+                    "digest": "0" * 64, "source_reference": None,
+                },
+                "disposition": {
+                    "kind": "reason", "reason_code": "CorrectNow",
+                    "detail_reference": None,
+                },
+            }],
+        )
         trace("APP-MAP-11", lambda: OperationalStateStore._review(review))
         trace("APP-MAP-12", lambda: OperationalStateStore._notification(valid["_notification"], NOW))
         trace("APP-MAP-13", lambda: OperationalStateStore._worker_progress(valid["_worker_progress"]))

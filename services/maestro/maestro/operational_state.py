@@ -18,6 +18,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Sequence
 
+from . import review_readiness
 from .config import RuntimeConfig
 from .storage import SQLiteFoundation
 
@@ -63,6 +64,19 @@ _PACKET_ELIGIBILITY_TRANSITIONS = {
     "Blocked": {"Waiting", "Ready", "Cancelled"},
     "Ready": {"Waiting", "Blocked", "Dispatchable", "Cancelled"},
     "Dispatchable": {"Ready", "Waiting", "Blocked", "Cancelled"},
+}
+_REVIEW_FINDING_REASON_CODES = {
+    "CorrectNow", "AcceptKnownLimitation", "RejectFinding", "ReturnSlice",
+}
+_REVIEW_ROUTES = {
+    ("AwaitingIntegration", "Integration", "ValidateOnly"): "AwaitingReview",
+    ("AwaitingIntegration", "Integration", "NeedsReplan"): "NeedsReplan",
+    ("AwaitingReview", "IndependentImplementation", "Approve"): "MergeReady",
+    ("AwaitingReview", "IndependentImplementation", "RequestChanges"): "AwaitingArchitect",
+}
+_REVIEW_REVIEWER_ROLES = {
+    "Integration": "IntegrationAgent",
+    "IndependentImplementation": "IndependentImplementationReviewer",
 }
 
 
@@ -185,6 +199,9 @@ def validate_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
             "evidence_references", "next_action_reference",
         },
         "reason": {"kind", "reason_code", "detail_reference"},
+        "review-finding": {
+            "kind", "finding_id", "criterion_reference", "evidence", "disposition",
+        },
     }
     if kind not in shapes:
         raise InvalidRecord("payload kind is not a closed production variant")
@@ -228,6 +245,26 @@ def validate_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         value["evidence_references"] = _sorted_unique_text(
             value["evidence_references"], "evidence_references"
         )
+    elif kind == "review-finding":
+        value["finding_id"] = _text(value["finding_id"], "finding_id")
+        value["criterion_reference"] = _text(value["criterion_reference"], "criterion_reference")
+        evidence = validate_payload(value["evidence"])
+        if evidence["kind"] != "evidence-reference":
+            raise InvalidRecord("review finding evidence must be an evidence-reference payload")
+        value["evidence"] = evidence
+        disposition = validate_payload(value["disposition"])
+        if disposition["kind"] != "reason":
+            raise InvalidRecord("review finding disposition must be a reason payload")
+        if disposition["reason_code"] not in _REVIEW_FINDING_REASON_CODES:
+            raise InvalidRecord("review finding disposition reason_code is invalid")
+        if (
+            disposition["reason_code"] == "AcceptKnownLimitation"
+            and disposition["detail_reference"] is None
+        ):
+            raise InvalidRecord(
+                "AcceptKnownLimitation disposition requires a detail_reference"
+            )
+        value["disposition"] = disposition
     else:
         value["reason_code"] = _text(value["reason_code"], "reason_code")
         value["detail_reference"] = _optional_text(value["detail_reference"], "detail_reference")
@@ -1281,6 +1318,201 @@ class OperationalStateStore:
         _timestamp(now, "now")
         return self._append_one("reviews", "review_id", row, "Review", "ReviewRecorded", idempotency_key, actor, now)
 
+    def record_and_route_review(
+        self, packet_id, expected_packet_version, review, reason_payload,
+        idempotency_key, actor, now,
+    ):
+        packet_id = _text(packet_id, "packet_id")
+        expected_packet_version = _positive_int(
+            expected_packet_version, "expected_packet_version"
+        )
+        reason = validate_payload(reason_payload)
+        if reason["kind"] != "reason":
+            raise InvalidRecord("review routing reason must be a reason payload")
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+
+        if not isinstance(review, Mapping):
+            raise InvalidRecord("review has an invalid closed shape")
+        review_row = self._review({**review, "packet_id": packet_id, "created_at": timestamp})
+        if review_row["correction_number"] != 0:
+            raise InvalidRecord("review routing requires correction_number zero")
+        review_kind = review_row["review_kind"]
+
+        facts = {
+            "expected_packet_version": expected_packet_version,
+            "packet_id": packet_id,
+            "reason": reason,
+            "review": review_row,
+        }
+        fingerprint = _fingerprint("record_and_route_review", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                packet = connection.execute(
+                    "SELECT state,version,base_commit,owned_paths_json,correction_count "
+                    "FROM packets WHERE packet_id=?",
+                    (packet_id,),
+                ).fetchone()
+                if packet is None:
+                    raise InvalidRecord("unknown packet")
+                source_state, current_version = str(packet[0]), int(packet[1])
+                if current_version != expected_packet_version:
+                    raise StaleState("packet version is stale")
+
+                target_state = _REVIEW_ROUTES.get(
+                    (source_state, review_kind, review_row["result"])
+                )
+                if target_state is None:
+                    raise InvalidTransition(
+                        "review routing is not permitted for this packet state, "
+                        "review kind, and result"
+                    )
+
+                attempt = connection.execute(
+                    "SELECT attempt_id,model_identity,runtime_identity,lease_id,result_commit "
+                    "FROM attempts WHERE packet_id=? AND attempt_kind='Initial' "
+                    "AND attempt_number=1 AND state='Succeeded' AND result_commit IS NOT NULL",
+                    (packet_id,),
+                ).fetchone()
+                if attempt is None:
+                    raise InvalidRecord(
+                        "packet has no Succeeded Initial attempt with a result commit"
+                    )
+                model_identity, runtime_identity, lease_id, result_commit = (
+                    str(attempt[1]), str(attempt[2]), str(attempt[3]), str(attempt[4]),
+                )
+
+                base_commit = str(packet[2])
+                if review_row["base_commit"] != base_commit:
+                    raise InvalidRecord("review base_commit does not match the packet base_commit")
+                if review_row["head_commit"] != result_commit:
+                    raise InvalidRecord(
+                        "review head_commit does not match the attempt result_commit"
+                    )
+                if review_row["head_commit"] == review_row["base_commit"]:
+                    raise InvalidRecord("review head_commit must differ from base_commit")
+
+                if target_state == "MergeReady" and int(packet[4]) not in (0, 1):
+                    raise InvalidRecord(
+                        "packet correction_count must be zero or one for an approval route"
+                    )
+
+                self._validate_review_coverage(review_row, json.loads(str(packet[3])))
+
+                required_role = _REVIEW_REVIEWER_ROLES[review_kind]
+                if review_row["reviewer_role"] != required_role:
+                    raise InvalidRecord(
+                        "review reviewer_role does not match the review kind"
+                    )
+                lease = connection.execute(
+                    "SELECT holder_id FROM leases WHERE lease_id=?", (lease_id,)
+                ).fetchone()
+                if lease is None:
+                    raise InvalidRecord("attempt lease is missing")
+                holder_id = str(lease[0])
+                reviewer_instance = review_row["reviewer_instance"]
+                if reviewer_instance in {model_identity, runtime_identity, holder_id}:
+                    raise InvalidRecord(
+                        "reviewer_instance is not independent of the attempt or lease"
+                    )
+
+                if review_kind == "IndependentImplementation":
+                    prior_integration = connection.execute(
+                        "SELECT reviewer_instance FROM reviews WHERE packet_id=? "
+                        "AND review_kind='Integration' AND result='ValidateOnly' "
+                        "AND head_commit=?",
+                        (packet_id, review_row["head_commit"]),
+                    ).fetchall()
+                    if len(prior_integration) != 1:
+                        raise InvalidRecord(
+                            "independent implementation review requires exactly one prior "
+                            "Integration ValidateOnly review on the same packet and head"
+                        )
+                    if reviewer_instance == str(prior_integration[0][0]):
+                        raise InvalidRecord(
+                            "reviewer_instance is not independent of the prior "
+                            "Integration review"
+                        )
+
+                packet_before = _state_payload("Packet", packet_id, source_state, current_version)
+                packet_after = _state_payload(
+                    "Packet", packet_id, target_state, expected_packet_version + 1
+                )
+                before = {"packet": packet_before}
+                result = {"packet": packet_after, "review": review_row}
+                canonical_json(before, root_type=dict)
+                canonical_json(result, root_type=dict)
+
+                self._insert(connection, "reviews", review_row)
+                updated = connection.execute(
+                    "UPDATE packets SET state=?,updated_at=?,version=? "
+                    "WHERE packet_id=? AND version=?",
+                    (
+                        target_state, timestamp, expected_packet_version + 1,
+                        packet_id, expected_packet_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("packet version is stale")
+                self._insert_review_route_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    packet_id, before, result, reason,
+                )
+                connection.commit()
+                return result
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord("review routing violates a durable constraint") from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
+    @staticmethod
+    def _validate_review_coverage(review_row, owned_paths):
+        coverage = review_row["coverage_json"]
+        if set(coverage) != {"kind", "result"} or coverage.get("kind") != "review-readiness-coverage":
+            raise InvalidRecord("review coverage_json has an invalid closed shape")
+        coverage_result = coverage["result"]
+        try:
+            review_readiness.validate_result(coverage_result)
+        except review_readiness.ResultError as error:
+            raise InvalidRecord(f"review coverage result is invalid: {error}") from error
+        if coverage_result["ready"] is not True:
+            raise InvalidRecord("review coverage result is not ready")
+        if coverage_result["blockers"] != []:
+            raise InvalidRecord("review coverage result has blockers")
+        if any(check["outcome"] != "Passed" for check in coverage_result["checks"]):
+            raise InvalidRecord("review coverage result has a non-passed check")
+        request = coverage_result["request"]
+        if request is None or request["review_kind"] != "IndependentImplementation":
+            raise InvalidRecord(
+                "review coverage request review_kind must be IndependentImplementation"
+            )
+        if coverage_result["resolved_base"] != review_row["base_commit"]:
+            raise InvalidRecord("review coverage resolved_base does not match")
+        if coverage_result["resolved_head"] != review_row["head_commit"]:
+            raise InvalidRecord("review coverage resolved_head does not match")
+        if coverage_result["checked_out_head_before"] != review_row["head_commit"]:
+            raise InvalidRecord("review coverage checked_out_head_before does not match")
+        if coverage_result["checked_out_head_after"] != review_row["head_commit"]:
+            raise InvalidRecord("review coverage checked_out_head_after does not match")
+        if coverage_result["clean_before"] is not True or coverage_result["clean_after"] is not True:
+            raise InvalidRecord("review coverage result is not clean")
+        changed_paths = coverage_result["changed_paths"]
+        if not changed_paths or changed_paths != sorted(changed_paths):
+            raise InvalidRecord("review coverage changed_paths must be nonempty and sorted")
+        sorted_owned = sorted(owned_paths, key=lambda item: item.encode("utf-8"))
+        if request["allowed_paths"] != sorted_owned:
+            raise InvalidRecord(
+                "review coverage allowed_paths does not match the packet owned paths"
+            )
+
     def record_notification(self, notification, idempotency_key, actor, now):
         row = self._notification(notification, now)
         return self._append_one("notifications", "notification_id", row, "Notification", "NotificationRecorded", idempotency_key, actor, now)
@@ -1606,6 +1838,25 @@ class OperationalStateStore:
         )
 
     @staticmethod
+    def _insert_review_route_event(
+        connection, key, fingerprint, actor, now, packet_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Packet", packet_id, "ReviewRecorded", canonical_json(before),
+                canonical_json(after), canonical_json(reason), actor["correlation_id"],
+                actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
+                fingerprint, now,
+            ),
+        )
+
+    @staticmethod
     def _insert(connection: sqlite3.Connection, table: str, row: Mapping[str, Any]) -> None:
         columns = tuple(row)
         placeholders = ",".join("?" for _ in columns)
@@ -1858,8 +2109,22 @@ class OperationalStateStore:
             raise InvalidRecord("review result is invalid")
         if not isinstance(row["findings_json"], list):
             raise InvalidRecord("review findings must be an array")
-        row["findings_json"] = [validate_payload(item) for item in row["findings_json"]]
+        findings = []
+        for item in row["findings_json"]:
+            finding = validate_payload(item)
+            if finding["kind"] != "review-finding":
+                raise InvalidRecord("review finding must be a review-finding payload")
+            findings.append(finding)
+        row["findings_json"] = findings
         canonical_json(row["findings_json"], root_type=list)
+        if row["result"] in {"Approve", "ValidateOnly"}:
+            if row["findings_json"] != []:
+                raise InvalidRecord("Approve and ValidateOnly reviews must carry no findings")
+        elif row["result"] in {"RequestChanges", "NeedsReplan"}:
+            if not row["findings_json"]:
+                raise InvalidRecord(
+                    "RequestChanges and NeedsReplan reviews require at least one finding"
+                )
         row["coverage_json"] = _json_object(row["coverage_json"], "coverage_json")
         row["correction_number"] = _nonnegative_int(row["correction_number"], "correction_number")
         if row["correction_number"] not in {0, 1}:
