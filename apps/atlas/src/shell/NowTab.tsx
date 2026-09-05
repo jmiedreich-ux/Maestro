@@ -4,13 +4,18 @@ import { derivePacketHeaderState } from "../thread/headerState";
 import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 import { AGENT_STYLE } from "../agents/agentStyle";
 import { OwnerDecisionCard } from "../decision/OwnerDecisionCard";
+import { deriveConnectionState, type SystemState } from "./connectionState";
 import styles from "./NowTab.module.css";
+
+export interface NowTabProps {
+  systemState?: SystemState;
+}
 
 /**
  * Hero-card colors from `Atlas Mobile.dc.html`'s real Now-tab markup
  * (lines 48-63 of the reference file), checked directly against
  * `colors.ts`. Real token matches: `colors.navGround` (card
- * background), `colors.accentLight` (live dot), `colors.navTextInactive`
+ * background), `colors.navTextInactive`
  * (the progress track's fill — the mockup's own real blocked-branch
  * `barColor` is `#B7ADC1`, not `#A78BFF`; `#A78BFF` is that same
  * ternary's *non-blocked* branch, checked directly at
@@ -43,6 +48,24 @@ import styles from "./NowTab.module.css";
  * `NowTab.module.css`) is also a disclosed, unmatched literal — an
  * `rgba` shadow value, not a solid color, so it was not caught by the
  * hex-literal check above; noted here for completeness.
+ *
+ * The live indicator's own dot/text colors, and the connection strip
+ * added below the page title, are no longer static here — they vary
+ * by `systemState` (idle vs. reconnecting), computed per-render by
+ * `deriveConnectionState` and applied as their own small per-render
+ * custom-property object (`connVars`), matching
+ * `DesktopShell.tsx`'s own identical convention (never a raw inline
+ * `style.color`/`style.background`, which a real browser and jsdom
+ * both silently re-serialize to `rgb(...)`, breaking an exact-string
+ * test assertion). This slice also corrects a pre-existing
+ * inconsistency: this file previously hardcoded the live-indicator
+ * text to the literal `"live"` unconditionally, using
+ * `colors.accentLight` for its dot — but this app has no real live
+ * connection (no SSE stream, no polling) to honestly claim, unlike
+ * `DesktopShell.tsx`'s own live indicator, which already correctly
+ * said "idle". Both surfaces now read "idle"/"reconnecting" from the
+ * same one function — see that function's own doc comment in
+ * `connectionState.ts`.
  */
 const SHELL_VARS = {
   "--atlas-hero-bg": colors.navGround,
@@ -56,8 +79,16 @@ const SHELL_VARS = {
   "--atlas-card-radius": `${radii.mobileCardPx.max}px`,
   "--atlas-gutter": `${spacing.mobileGutterPx}px`,
   "--atlas-eyebrow": colors.inkMuted,
-  "--atlas-live-dot": colors.accentLight,
   "--atlas-card-surface": colors.surface,
+  // The connection strip's own body text color is a real, fixed value
+  // (not state-dependent, unlike the strip's bg/border/ink/dot which
+  // do vary by `systemState` and are applied inline). `Atlas
+  // Mobile.dc.html`'s own real `conn.body` color is `#5C5468` — checked
+  // directly against every family in `colors.ts` and matches no real
+  // token (desktop's own equivalent, `#6C6376`, IS `colors.inkSecondary`
+  // — a real but different value, not assumed equal to mobile's). This
+  // stays a disclosed literal.
+  "--atlas-conn-body": "#5C5468",
   "--atlas-subline": "#C6BCD2",
   "--atlas-next-text": "#3D3350",
   "--atlas-owner-bg": colors.warningWash,
@@ -81,21 +112,41 @@ const SHELL_VARS = {
  * all (unlike D2/D3's already-real resolve-decision command) would
  * misrepresent capability this build does not have.
  */
-export function NowTab() {
+export function NowTab({ systemState = "normal" }: NowTabProps = {}) {
   const state = derivePacketHeaderState(PACKET_A2_ENTRIES);
   const progressWidth =
     state.progressPercent === "unavailable" ? "0%" : `${state.progressPercent}%`;
+  const conn = deriveConnectionState(systemState, "mobile");
+  const connVars = {
+    "--atlas-conn-live-dot": conn.liveDotColor,
+    "--atlas-conn-live-text": conn.liveTextColor,
+    "--atlas-conn-strip-bg": conn.strip.bg,
+    "--atlas-conn-strip-border": conn.strip.border,
+    "--atlas-conn-strip-ink": conn.strip.ink,
+    "--atlas-conn-strip-dot": conn.strip.dot,
+  } as CSSProperties;
 
   return (
     <div className={styles.tab} style={SHELL_VARS}>
       <div className={styles.eyebrowRow}>
         <span className={styles.eyebrow}>{state.eyebrow}</span>
-        <span className={styles.live}>
+        <span className={styles.live} style={connVars}>
           <span className={styles.liveDot} aria-hidden="true" />
-          live
+          {conn.liveLabel}
         </span>
       </div>
       <h1 className={styles.pageTitle}>Now</h1>
+
+      {conn.strip.show ? (
+        <div className={styles.connectionStrip} style={connVars}>
+          <div className={styles.connectionTitleRow}>
+            <span className={styles.connectionDot} />
+            {conn.strip.title}
+            <span className={styles.connectionMeta}>{conn.strip.meta}</span>
+          </div>
+          <div className={styles.connectionBody}>{conn.strip.body}</div>
+        </div>
+      ) : null}
 
       <div className={styles.hero}>
         <div className={styles.heroHead}>

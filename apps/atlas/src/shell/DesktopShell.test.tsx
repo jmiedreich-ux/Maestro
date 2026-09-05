@@ -11,10 +11,15 @@ describe("DesktopShell", () => {
     const { container } = render(<DesktopShell />);
     const root = container.firstChild as HTMLElement;
     // Corrected — non-blocking finding from Decision Fidelity review:
-    // exhaustively checks every SHELL_VARS entry, including the two
-    // disclosed non-token literals and the corrected idle-state values
-    // — a prior draft spot-checked only 5 of 14 entries, which would not
-    // have caught the wrong-value idle-grey defect review found by hand.
+    // exhaustively checks every SHELL_VARS entry, including the
+    // disclosed non-token literals — a prior draft spot-checked only 5
+    // of 14 entries, which would not have caught the wrong-value
+    // idle-grey defect review found by hand. G1 removed
+    // `--atlas-idle-grey`/`--atlas-idle-label` (the live indicator's
+    // colors are now computed per-render by `deriveConnectionState`
+    // and applied via inline style, not a fixed custom property) and
+    // added `--atlas-conn-body` (the connection strip's own fixed body
+    // text color) — this list is updated to match.
     expect(root.style.getPropertyValue("--atlas-surface")).toBe(colors.surface);
     expect(root.style.getPropertyValue("--atlas-border-divider")).toBe(colors.borderDivider[0]);
     expect(root.style.getPropertyValue("--atlas-ink")).toBe(colors.ink);
@@ -25,11 +30,33 @@ describe("DesktopShell", () => {
     expect(root.style.getPropertyValue("--atlas-nav-active-bg")).toBe(colors.navActiveBg);
     expect(root.style.getPropertyValue("--atlas-nav-hover-bg")).toBe(colors.navHoverBg);
     expect(root.style.getPropertyValue("--atlas-nav-divider")).toBe("rgba(255,255,255,.08)");
-    expect(root.style.getPropertyValue("--atlas-idle-grey")).toBe(colors.inkMuted);
-    expect(root.style.getPropertyValue("--atlas-idle-label")).toBe(colors.inkFaint);
     expect(root.style.getPropertyValue("--atlas-page-bg-desktop")).toBe(colors.pageBgDesktop);
     expect(root.style.getPropertyValue("--atlas-font-mono")).toBe(fontFamily.mono);
     expect(root.style.getPropertyValue("--atlas-font-body")).toBe(fontFamily.body);
+    expect(root.style.getPropertyValue("--atlas-nav-text-running")).toBe(colors.navTextActive);
+    expect(root.style.getPropertyValue("--atlas-dot-need")).toBe(colors.warning);
+    expect(root.style.getPropertyValue("--atlas-dot-need-halo")).toBe("rgba(224,163,46,.26)");
+    expect(root.style.getPropertyValue("--atlas-conn-body")).toBe(colors.inkSecondary);
+  });
+
+  it("defaults to systemState 'normal': live indicator says 'idle' with real idle-token colors, no connection strip", () => {
+    render(<DesktopShell />);
+    const live = screen.getByText("idle").closest('[class*="liveIndicator"]') as HTMLElement;
+    expect(live.style.getPropertyValue("--atlas-conn-live-text")).toBe(colors.inkFaint);
+    expect(live.style.getPropertyValue("--atlas-conn-live-dot")).toBe(colors.inkMuted);
+    expect(screen.queryByText("Reconnecting")).toBeNull();
+  });
+
+  it("systemState 'disconnected': live indicator flips to 'reconnecting' and the real connection strip renders", () => {
+    render(<DesktopShell systemState="disconnected" />);
+    expect(screen.getByText("reconnecting")).toBeInTheDocument();
+    expect(screen.getByText("Reconnecting")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Atlas lost its connection at 14:58. Agents keep working — they report to the Coordinator, not to this window. What you see below is the last state Atlas received.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("retry 3 · 0:12")).toBeInTheDocument();
   });
 
   it("renders the top bar's idle live indicator", () => {

@@ -1,9 +1,14 @@
 import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import PacketThread from "../thread/PacketThread";
+import { deriveConnectionState, type SystemState } from "./connectionState";
 import styles from "./DesktopShell.module.css";
 
 export type DesktopShellView = "performance" | "agents" | "history" | "gate" | "packet";
+
+export interface DesktopShellProps {
+  systemState?: SystemState;
+}
 
 const NAV_ROWS: ReadonlyArray<{ view: DesktopShellView; label: string }> = [
   { view: "performance", label: "Performance" },
@@ -41,20 +46,20 @@ const SHELL_VARS = {
   // (Atlas Explorations.dc.html: border-top:1px solid rgba(255,255,255,.08)),
   // no equivalent value exists in colors.ts.
   "--atlas-nav-divider": "rgba(255,255,255,.08)",
-  // Corrected — blocking finding from Decision Fidelity review: the
-  // README's shell paragraph only says "idle grey" with no exact hex,
-  // but the higher-priority reference file (which the README's own
-  // Fidelity rule says wins on any disagreement) computes this exact
-  // color programmatically for the equivalent `sys === 'empty'` state:
-  // `liveDot: ... sys === 'empty' ? '#8E8299' : ...` (Atlas
-  // Explorations.dc.html). #8E8299 is exactly `colors.inkMuted` (also
-  // equal to `colors.navTextDim`) — a real, exact match, not an
-  // inference.
-  "--atlas-idle-grey": colors.inkMuted,
-  // Same reference-file computation gives the idle label's own text
-  // color as `liveColor: '#A79BB4'` for this state — exactly
-  // `colors.inkFaint`.
-  "--atlas-idle-label": colors.inkFaint,
+  // The live indicator's own dot/text colors, and the connection
+  // strip's own bg/border/ink/dot, are no longer static here — they
+  // vary by `systemState` (idle vs. reconnecting), so they are
+  // computed per-render by `deriveConnectionState` below and applied
+  // as their own small per-render custom-property object (`connVars`),
+  // the same established convention the private `AgentCard` function's
+  // own `cardVars` uses (`apps/atlas/src/agents/AgentsRoster.tsx`) for
+  // per-item dynamic colors — never as a raw inline `style.color`/
+  // `style.background`, which a real browser (and jsdom) silently
+  // re-serializes to `rgb(...)`, breaking an exact-string test
+  // assertion against the original hex token. See
+  // `connectionState.ts`'s own doc comment for the real token sourcing
+  // (this slice's own G1 packet; the prior "idle grey" finding this
+  // comment used to cite is now folded into that file).
   "--atlas-page-bg-desktop": colors.pageBgDesktop,
   "--atlas-font-body": fontFamily.body,
   "--atlas-font-mono": fontFamily.mono,
@@ -65,10 +70,25 @@ const SHELL_VARS = {
   // 'need' branch) — colors.warning's RGB (224,163,46) at .26 alpha,
   // no equivalent token exists for a translucent halo.
   "--atlas-dot-need-halo": "rgba(224,163,46,.26)",
+  // The connection strip's own body text color is a real, fixed token
+  // (not state-dependent, unlike the strip's bg/border/ink/dot which
+  // do vary by `systemState` and are applied inline) —
+  // `colors.inkSecondary`, matching the reference file's own real
+  // `color:#6C6376` on `conn.body` (Atlas Explorations.dc.html:32).
+  "--atlas-conn-body": colors.inkSecondary,
 } as CSSProperties;
 
-export function DesktopShell() {
+export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {}) {
   const [selected, setSelected] = useState<DesktopShellView>("performance");
+  const conn = deriveConnectionState(systemState, "desktop");
+  const connVars = {
+    "--atlas-conn-live-dot": conn.liveDotColor,
+    "--atlas-conn-live-text": conn.liveTextColor,
+    "--atlas-conn-strip-bg": conn.strip.bg,
+    "--atlas-conn-strip-border": conn.strip.border,
+    "--atlas-conn-strip-ink": conn.strip.ink,
+    "--atlas-conn-strip-dot": conn.strip.dot,
+  } as CSSProperties;
 
   return (
     <div className={styles.shell} style={SHELL_VARS}>
@@ -77,11 +97,21 @@ export function DesktopShell() {
           <span>Project name unavailable</span>
           <span className={styles.milestone}>milestone unavailable</span>
         </div>
-        <div className={styles.liveIndicator}>
-          <span className={`${styles.liveDot} ${styles.liveDotIdle}`} />
-          <span>idle</span>
+        <div className={styles.liveIndicator} style={connVars}>
+          <span className={styles.liveDot} />
+          <span>{conn.liveLabel}</span>
         </div>
       </header>
+      {conn.strip.show ? (
+        <div className={styles.connectionStrip} style={connVars}>
+          <span className={styles.connectionTitle}>
+            <span className={styles.connectionDot} />
+            {conn.strip.title}
+          </span>
+          <span className={styles.connectionBody}>{conn.strip.body}</span>
+          <span className={styles.connectionMeta}>{conn.strip.meta}</span>
+        </div>
+      ) : null}
       <div className={styles.body}>
         <nav className={styles.nav} aria-label="Atlas views">
           {NAV_ROWS.map((row) => (
