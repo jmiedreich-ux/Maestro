@@ -1,7 +1,7 @@
 # M2 Wave A — Reviews Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A4-REVIEWS-SNAPSHOT-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Frozen — Pending Implementation`. Full Decision Fidelity review returned `APPROVE` with one non-blocking finding (a citation pointing at the wrong precedent column, fixed here at zero cost pre-freeze) and one minor observation (a stale module docstring, also fixed here). No blocking findings; no planning correction was needed.
 **Base:** `7b6e4e5` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -36,16 +36,16 @@ constant at all).
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A4-REVIEWS-SNAPSHOT-01` |
-| `phase` | `PendingDecisionFidelityReview` |
-| `current_actor` | `Project Architect` |
+| `phase` | `PendingImplementation` |
+| `current_actor` | `none` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7b6e4e5"]` |
+| `evidence_refs` | `["git:base:7b6e4e5","git:full-planning-review-head:7c24cb7231f23bf8de359c12360e6fa4499262c1","review:decision-fidelity:approve:non-blocking-findings-fixed-pre-freeze"]` |
 
 ## Exact route contract
 
@@ -142,9 +142,15 @@ schema's own `CHECK(json_valid(...))` constraint guarantees every stored
 value is valid JSON before it can ever be committed), so this slice adds
 no `json.JSONDecodeError` handling — decoding a column the database
 itself guarantees is valid JSON is treated as infallible, the same way
-this codebase already treats other `CHECK`-guaranteed invariants (e.g.
-`packets.owned_paths_json`'s `json_valid` guarantee is never re-validated
-by a reader either).
+this codebase already treats this exact guarantee: `operational_state.py`
+already does `json.loads(str(review[4]))` on this very `findings_json`
+column (and the analogous `json.loads` on `packets.resource_claims_json`)
+with no `JSONDecodeError` handling of its own — the same trust boundary,
+not a new one. (Corrected citation, per a non-blocking Decision Fidelity
+observation: an earlier draft of this paragraph pointed at
+`packets.owned_paths_json`, which no code path actually decodes at all —
+a vacuous rather than substantive precedent. The design conclusion was
+unaffected; only the supporting citation needed fixing.)
 
 ## Guards, before any database access
 
@@ -164,7 +170,11 @@ Writable paths are exactly:
   `_REVIEWS_SNAPSHOT_COLUMNS`, `_REVIEWS_SNAPSHOT_QUERY`,
   `_handle_snapshot_reviews`, one new `_ROUTES` entry — `import json` is
   already present in this file from A1's `canonical_response_json`, so no
-  new import is needed)
+  new import is needed. Also: the module docstring, stale since A3 added
+  `/snapshot/attempts` without updating it, is corrected to name all four
+  routes — a one-line fix, zero risk, made cheap only because this slice
+  already touches the file, per the same precedent as A2's `wait_forever()`
+  piggyback fix)
 - `tests/m2_wave_a/test_reviews_snapshot.py` (new file)
 
 No other file changes — `test_packets_snapshot.py`,
