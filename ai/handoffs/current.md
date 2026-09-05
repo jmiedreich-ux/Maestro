@@ -366,8 +366,31 @@ table from scratch and found zero defects; independent implementation
 review confirmed a byte-exact match; all 90 `apps/atlas` tests pass (81
 existing + 9 new).
 
+## Terminal History-timeline slice
+
+`MB-SLICE-M2-E6-HISTORY-TIMELINE-01` is terminally `returned` after its
+sole targeted Decision Fidelity verification returned
+`REQUEST_CHANGES`. Full review found exactly 1 blocking finding: the
+packet's own prose gave three mutually inconsistent counts of its
+disclosed color literals across three locations (a table header said
+"three", a Guards item said "three ... four total" self-contradictorily,
+and the M0-D12 protected-outcome sentence said "exactly four"), when
+the disclosed-literal table itself lists five real rows. The one
+available targeted correction fixed all three flagged sentences to say
+"five" consistently, but missed a fourth location — a code-comment
+docstring inside `History.tsx`'s own "exact file contents" — that still
+said "three disclosed literals" while enumerating four. Targeted
+verification caught this remaining inconsistency and returned
+`REQUEST_CHANGES`. No implementation was dispatched. This slice cannot
+be reopened, corrected, replaced, renamed, or reused as authority. The
+next independent slice must grep and check every location in the
+packet that states or implies a disclosed-literal count — including
+code-comment docstrings inside the "exact file contents" section, not
+only the packet's narrative prose — before finalizing, rather than
+fixing only the locations a review happened to name.
+
 Next: the rest of Wave E (detail groups/expand, breakdown card, Agents,
-History).
+a fresh History-timeline `-02` candidate).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
