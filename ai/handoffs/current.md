@@ -264,8 +264,11 @@ complete:** B1 Atlas app scaffold (`MB-SLICE-M2-B1-ATLAS-SCAFFOLD-01`),
 B2 design tokens module (`MB-SLICE-M2-B2-DESIGN-TOKENS-01`), B3 desktop
 shell (`MB-SLICE-M2-B3-DESKTOP-SHELL-02` — candidate `-01` was
 terminally returned; see the status record), B4 mobile shell
-(`MB-SLICE-M2-B4-MOBILE-SHELL-01`). Wave C (packet thread) is next. Each
-subsequent wave slice still requires its own pre-execution Decision
+(`MB-SLICE-M2-B4-MOBILE-SHELL-01`). Wave C1 (packet thread,
+`MB-SLICE-M2-C1-PACKET-THREAD-01` — standalone, not yet wired into the
+shell) is also merged. Next: wiring `PacketThread` into `DesktopShell`,
+then Wave C's remaining items (C2-C5). Each subsequent wave slice still
+requires its own pre-execution Decision
 Fidelity approval before implementation. All
 returned slices remain immutable and non-authoritative.
 
