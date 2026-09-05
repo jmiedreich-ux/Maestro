@@ -3,15 +3,38 @@
 ## Current delivery checkpoint
 
 The authoritative current status and process-delay record is
-[Maestro Development Status and Process-Delay Record](maestro-development-status.md),
-dated 2026-09-04. Alpha-01 through Alpha-03, the internal M1-01 authority
-loader, and accepted M1-02A schema-4 operational records are integrated.
-M1-02A merged through PR #25 at
-`160dcf48240c90b787a7bcb88e4aeb10d6348b30` after both required reviews
-approved the exact candidate, 163/163 named tests passed, and both ten-run
-fresh-process stress groups passed. Later M1 work remains unmerged, and M1-02B
-is terminally returned. Nothing in its failed-attempt evidence is live-project,
-merge, or end-to-end-test authority.
+[Maestro Development Status and Process-Delay Record](maestro-development-status.md);
+read it, not the summary below, for the exact current state. As of
+2026-09-05: Alpha-01 through Alpha-03, M1-01, M1-02A, run lifecycle, packet
+eligibility, assignment claim, execution start/heartbeat/finish, and
+review-control routing are all integrated on `master`. M1-02B is terminally
+returned; its failed-attempt evidence is not live-project, merge, or
+end-to-end-test authority.
+
+**Roadmap numbering note (read this before proposing new M1-M4 work):**
+Section 9 below still describes the original M0 / Alpha qualification / V1 /
+V2 / V3 phasing. [M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)
+(Owner-approved 2026-09-01, on the unmerged `architecture/m1-m4-packets`
+branch — not yet merged into this file) superseded that phasing with a real
+M1–M4 implementation path: M1 is the Linux service core and durable
+operational records; M2 is Atlas as local read-only reporting; M3 replaces
+fixture execution with a real packet compiler, real agent executor, and
+mechanical grading; M4 completes the persistent Development Manager loop
+(real Integration, review, notification, and recovery). Every slice actually
+merged since M1-01 has used this M1–M4 numbering, not the Alpha/V1/V2/V3
+one — Section 9 has simply not been rewritten to match yet. Separately,
+[M0-D16](decisions/m0-d16-closed-completion-and-learning-loop.md) and
+[M0-D17](decisions/m0-d17-discretionary-final-correction.md) proposed a
+heavier definition-of-done-manifest/two-tier-correction process for this M1–M4
+work; that specific process design was itself superseded two days later by the
+[Bootstrap Convergence Policy](bootstrap-convergence-policy.md)
+(Owner-approved 2026-09-03), which is the simpler one-review/one-correction
+model every merged M1 slice has actually used. A large, detailed M1-02B
+packet was drafted under the M0-D16/D17 model and split into sub-packets
+(`docs/planning/packets/m1-02b*.md` on the `architecture/m1-m4-packets`
+branch); none of it was ever reviewed or implemented, and it is terminally
+non-authoritative. Read the Bootstrap Convergence Policy and the current
+status doc, not that branch, for the process actually in force.
 
 ## 1. Charter
 
