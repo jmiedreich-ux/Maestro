@@ -17,7 +17,10 @@ V2 / V3 phasing. [M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md)
 (Owner-approved 2026-09-01, on the unmerged `architecture/m1-m4-packets`
 branch — not yet merged into this file) superseded that phasing with a real
 M1–M4 implementation path: M1 is the Linux service core and durable
-operational records; M2 is Atlas as local read-only reporting; M3 replaces
+operational records; M2 is Atlas as the local operator interface — live
+reporting plus the operator-action commands named in
+[M0-D01's amendment](decisions/m0-d01-operational-database.md#atlas-operator-action-amendment--owner-approved-2026-09-05)
+as each becomes available; M3 replaces
 fixture execution with a real packet compiler, real agent executor, and
 mechanical grading; M4 completes the persistent Development Manager loop
 (real Integration, review, notification, and recovery). Every slice actually
@@ -104,7 +107,7 @@ flowchart TD
   Workers["Local and cloud workers"] -->|"attempts and evidence"| Core["Maestro coordinator"]
   Sync --> Core
   Core <--> DB[("Operational database")]
-  DB --> Atlas["Local Atlas live reporting UI"]
+  DB <--> Atlas["Local Atlas operator UI"]
   Core --> Murphy["Murphy Azure QA adapter"]
 ```
 
@@ -115,7 +118,7 @@ flowchart TD
 | Project repository / GitHub | Product and engineering records, code, PRs, reviews, CI, approved plan artifacts |
 | Maestro coordinator | State transitions, locks, dispatch, recovery, evidence collection, notifications, gate enforcement |
 | Operational database | Initial SQLite on the Linux AI box; runs, task/graph projections, packets, attempts, events, evidence, waits, retries, notifications, projected GitHub facts |
-| Local Atlas | Live operational reporting for the AI box: queues, routing, status, evidence, blockers, waits, allowance, context, usage, and local capacity. It is not a controller, plan/code editor, provider scraper, or direct database client. |
+| Local Atlas | Live operational reporting for the AI box: queues, routing, status, evidence, blockers, waits, allowance, context, usage, and local capacity — plus the named operator-action commands from M0-D01's amendment, as each becomes available. It is not a plan/code editor, provider scraper, or direct database client, and it never acts outside a named, reviewed guarded command. |
 | Project adapter | Project-specific branch policy, commands, environments, credentials references, records, and exceptions |
 | Murphy adapter | Manual, owner-approved remote QA against deployed Azure environments |
 
