@@ -562,10 +562,21 @@ M3 (real executor/dispatch machinery), matching D4/D5's own precedent.
 Applied D2's own exception-coverage lesson from the first draft; zero
 corrections needed at either review. 245 tests pass, zero regressions.
 
-Next: any independent Wave F (F3, F4), Wave G (G1, G3), or D7 (wire
-the Atlas crash card's recovery buttons to D6 — will need its own
-real-packet-identity check first, like D3) not blocked by C2/D3's open
-question.
+`MB-SLICE-M2-F3-ACTIVITY-TAB-HISTORY-01` is merged (planning PR #151
+at `0b24ff3`, implementation PR #154 at `01b4c8c`) — real progress on
+roadmap item 35 (Activity tab: History/Agents/Cost segmented), split
+like E1/E1B and E2/E2B: the real 3-way segmented control plus real
+content for only the History segment, reusing E6's own fixture/style
+data verbatim. **Item 35 is not yet complete** — Agents (reuses E4)
+and Cost (reuses E1-E3) remain separate future slices; Wave F's own
+completed-item count stays at 2/4. Zero corrections needed at either
+review (2 non-blocking DF notes fixed at zero cost). 157/157 tests
+pass, zero regressions.
+
+Next: any independent Wave F (item 35's remaining Agents/Cost
+segments, or F4), Wave G (G1, G3), or D7 (wire the Atlas crash card's
+recovery buttons to D6 — will need its own real-packet-identity check
+first, like D3) not blocked by C2/D3's open question.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
