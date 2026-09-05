@@ -389,8 +389,23 @@ code-comment docstrings inside the "exact file contents" section, not
 only the packet's narrative prose — before finalizing, rather than
 fixing only the locations a review happened to name.
 
-Next: the rest of Wave E (detail groups/expand, breakdown card, Agents,
-a fresh History-timeline `-02` candidate).
+`MB-SLICE-M2-E6-HISTORY-TIMELINE-02` (the successor candidate) is
+merged (planning PR #121, implementation PR #122): a standalone
+`History` component (header, 4 real stats, all 10 real timeline
+entries, trailing placeholder note), the disclosed-literal count fixed
+consistently to five everywhere, including the code-comment docstring
+`-01`'s correction missed. One targeted planning correction was also
+needed here — the packet's own base-commit hash was mislabeled as
+"full" when it was the 7-character short form — caught by full DF
+review, fixed, and independently re-verified. Full Decision Fidelity
+review, independent implementation review (byte-exact match, all 5
+disclosed literals cross-checked against `colors.ts`, test-scoping
+correctness re-derived), and toolchain reproduction (99 `apps/atlas`
+tests, 90 existing + 9 new) all confirmed clean with zero remaining
+defects.
+
+Next: the rest of Wave E (detail groups/expand, breakdown card,
+Agents).
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
