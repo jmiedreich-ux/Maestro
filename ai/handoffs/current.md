@@ -278,8 +278,14 @@ a standalone `DecisionCard` driven by one real M1 `_REVIEW_ROUTES`
 entry rather than the mockup's fictional "Architect agent" persona, per
 the roadmap's own architecture ruling; its planning packet needed one
 targeted correction (a line-citation error and a missing "link to the
-rule that fired" disclosure) before approval. Next: Wave C's remaining
-items — C4 (decision card, owner-decision variant), C5 (Decision
+rule that fired" disclosure) before approval. C4 (decision card,
+owner-decision variant, `MB-SLICE-M2-C4-DECISION-CARD-OWNER-01`) is
+also merged: a standalone `OwnerDecisionCard` reusing C1's real `A.2`
+escalation scenario, with the mockup's fictional "Architect agent"
+replaced by the real Coordinator actor and its agent-dependent third
+option excluded; its planning packet needed one targeted correction
+(an undisclosed wording change beyond the claimed persona-noun swap)
+before approval. Next: Wave C's remaining items — C5 (Decision
 Fidelity record), C6 (crash card), C7 (header/state-source wiring).
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

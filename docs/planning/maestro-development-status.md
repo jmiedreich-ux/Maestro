@@ -759,7 +759,29 @@ tests pass (27 existing + 8 new), build succeeds, `DecisionCard` is not
 imported anywhere else yet (standalone, like `PacketThread` before
 C1B).
 
-Next: Wave C's remaining items — C4 (decision card, owner-decision
-variant, options rendered but inert), C5 (Decision Fidelity record
+`MB-SLICE-M2-C4-DECISION-CARD-OWNER-01` is merged (planning PR #95 at
+`7eb97743`, implementation PR #96 at `2e993e89`): a standalone
+`OwnerDecisionCard` component rendering the owner-decision variant's
+exact visual anatomy (eyebrow, headline, lede, chain-chip row, and a
+2-item option list — rendered but genuinely inert, real `<button>`
+elements with no `onClick`) — reusing C1's own real `A.2` escalation
+scenario rather than inventing a new one, since that scenario's own
+fixture text is exactly the "no automated route, needs a human" case
+this variant exists for. The mockup's fictional "Architect agent"
+persona is replaced by the real Coordinator actor (the one who actually
+performs this escalation per C1's fixture), and the mockup's third,
+agent-dependent option ("Send back to the Architect agent") is
+excluded rather than adapted, since M2 has nothing real to defer to.
+Full Decision Fidelity review found 1 blocking finding (the `lede`/`why`
+adaptation silently changed a verb and a pronoun beyond the disclosed
+persona-noun swap) plus 1 non-blocking wording inconsistency; the one
+available targeted planning correction fixed both — reverted to a true
+1:1 noun swap of the reference file's own text — approved by targeted
+verification. Independent implementation review confirmed a byte-exact
+match to the frozen contract; all 43 `apps/atlas` tests pass (35
+existing + 8 new), build succeeds, C3's sibling files were left
+untouched, `OwnerDecisionCard` is not imported anywhere else yet.
+
+Next: Wave C's remaining items — C5 (Decision Fidelity record
 rendering), C6 (crash card), C7 (header/state-source wiring). C2 stays
 deferred pending Owner input on the real-data synthesis question above.
