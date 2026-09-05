@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Activity Tab, Agents Segment — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F3B-ACTIVITY-TAB-AGENTS-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `Decision Fidelity review returned PASS WITH NON-BLOCKING NOTES (one undisclosed convention deviation: per-stat color was applied via raw inline style instead of the CSS-custom-property + static-class pattern AgentsRoster.tsx already established for the identical AgentStat["color"] enum) — fixed at zero cost, no planning correction needed`
 **Base:** `a72ab45` (full: `a72ab4503228fe69768d9b46d67b2aa33b433a0d`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -215,6 +215,19 @@ const SEGMENTS: ReadonlyArray<{ key: ActivitySegment; label: string }> = [
  * (`#F3F0F6`, line 274) is `colors.borderDivider[1]` — a different
  * real index of the same array from the bar track's own
  * `colors.borderDivider[2]`, checked directly, not a reused value.
+ *
+ * **Corrected — non-blocking finding from Decision Fidelity review:**
+ * the per-stat value color (`AGENTS_STATS`' own `stat.color` enum) is
+ * the exact same 4-value enum `AgentsRoster.tsx` already handles via
+ * named CSS custom properties (`--atlas-ag-stat-accent` etc.) plus
+ * static classes (`STAT_VALUE_CLASS`) — this file's first draft
+ * instead applied it as a raw inline `style={{ color: ... }}`, an
+ * undisclosed deviation from that sibling component's own established
+ * convention for identical data (both render identically; this was a
+ * consistency gap, not a functional defect). Fixed to match:
+ * `STAT_VALUE_CLASS` below maps each `stat.color` to a static class
+ * consuming one of four new `--atlas-ag-stat-*` vars, exactly mirroring
+ * `AgentsRoster.tsx`'s own already-reviewed pattern.
  */
 const SHELL_VARS = {
   "--atlas-seg-track": colors.segmentedTrack[0],
@@ -239,13 +252,17 @@ const SHELL_VARS = {
   "--atlas-ag-due-urgent": colors.warningText,
   "--atlas-ag-locks": colors.inkMuted,
   "--atlas-ag-wait-dot-border": colors.borderDashed[2],
+  "--atlas-ag-stat-accent": colors.accent,
+  "--atlas-ag-stat-warning": colors.warningText,
+  "--atlas-ag-stat-accent-hover": colors.accentHover,
+  "--atlas-ag-stat-ink": colors.ink,
 } as CSSProperties;
 
-const STAT_VALUE_COLOR: Record<AgentStat["color"], string> = {
-  accent: colors.accent,
-  warningText: colors.warningText,
-  accentHover: colors.accentHover,
-  ink: colors.ink,
+const STAT_VALUE_CLASS: Record<AgentStat["color"], string> = {
+  accent: styles.statValueAccent,
+  warningText: styles.statValueWarning,
+  accentHover: styles.statValueAccentHover,
+  ink: styles.statValueInk,
 };
 
 function HistoryRow({ entry }: { entry: HistoryEntry }) {
@@ -379,9 +396,7 @@ export function ActivityTab() {
               {AGENTS_STATS.map((stat) => (
                 <span key={stat.label} className={styles.stat}>
                   {stat.label}
-                  <b className={styles.statValue} style={{ color: STAT_VALUE_COLOR[stat.color] }}>
-                    {stat.value}
-                  </b>
+                  <b className={`${styles.statValue} ${STAT_VALUE_CLASS[stat.color]}`}>{stat.value}</b>
                 </span>
               ))}
             </div>
@@ -555,6 +570,22 @@ export default ActivityTab;
   padding: 8px 0 0 32px;
   font-size: 12.5px;
   color: var(--atlas-empty-note);
+}
+
+.statValueAccent {
+  color: var(--atlas-ag-stat-accent);
+}
+
+.statValueWarning {
+  color: var(--atlas-ag-stat-warning);
+}
+
+.statValueAccentHover {
+  color: var(--atlas-ag-stat-accent-hover);
+}
+
+.statValueInk {
+  color: var(--atlas-ag-stat-ink);
 }
 
 .agentList {
@@ -792,8 +823,8 @@ This candidate's exact file contents above were applied to this
 scratch worktree (`/tmp/maestro-m2-f3b-agents`, branch
 `architecture/m2-f3b-activity-agents`, base `a72ab45`) and run through
 the real frontend toolchain from `apps/atlas` (`npm install`, then
-each script below), before this packet was finalized. Zero corrections
-were needed — every check passed on the first attempt.
+each script below), before this packet was finalized. The first draft
+passed every check with zero failures on the first attempt:
 
 - `npm run typecheck` (`tsc --noEmit`) — clean.
 - `npm run lint` (`eslint .`) — clean.
@@ -804,6 +835,35 @@ were needed — every check passed on the first attempt.
   which this slice touches).
 - `npm run build` (`vite build`) — clean, `38 modules transformed`, no
   warnings.
+
+**Independent Decision Fidelity review result:** `PASS WITH
+NON-BLOCKING NOTES`, zero blocking findings. The review independently
+re-derived every claim from source rather than trusting the packet's
+prose — re-reading `agents.ts`/`agentStyle.ts`/`AgentsRoster.tsx`/
+`AgentsRoster.module.css`/`colors.ts` directly, re-reading the real
+mockup lines 252-278 itself, confirming E4's and E5's own packets
+really do disclose desktop-only scope and the ContentionCard
+exclusion, and independently re-running the full toolchain against
+the packet's exact proposed files rather than trusting the numbers
+above — and found one non-blocking, zero-cost finding, fixed before
+freeze, no planning correction consumed:
+
+1. **Undisclosed convention deviation.** The first draft handled
+   `AGENTS_STATS`' own `stat.color` enum (`accent`/`warningText`/
+   `accentHover`/`ink`) via a raw inline `style={{ color:
+   STAT_VALUE_COLOR[stat.color] }}` — the exact same 4-value enum
+   `AgentsRoster.tsx` already handles via named CSS custom properties
+   (`--atlas-ag-stat-*`) plus static classes (`STAT_VALUE_CLASS`). Both
+   render identically and all tests passed either way — this was a
+   consistency gap against an established sibling pattern for
+   identical data, not a functional defect, and was not disclosed
+   anywhere in the packet's own rationale. Fixed: this packet's
+   `SHELL_VARS` now declares four `--atlas-ag-stat-*` vars and
+   `STAT_VALUE_CLASS` maps each `stat.color` to a static class
+   (`.statValueAccent` etc.) consuming one, exactly mirroring
+   `AgentsRoster.tsx`'s own already-reviewed pattern. Re-verified after
+   the fix: still 21/21 test files, 160/160 tests, clean typecheck/
+   lint/build.
 
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
@@ -848,10 +908,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F3B-ACTIVITY-TAB-AGENTS-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
