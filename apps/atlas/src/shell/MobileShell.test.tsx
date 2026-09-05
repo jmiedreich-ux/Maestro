@@ -40,12 +40,29 @@ describe("MobileShell", () => {
 
   it("tapping a tab makes it the sole selected tab and updates the content pane", () => {
     render(<MobileShell />);
-    fireEvent.click(screen.getByRole("button", { name: "Activity" }));
-    const current = screen.getAllByRole("button", { current: true });
+    // Plan is the one remaining placeholder tab (Now/Chat/Activity all
+    // render real content as of F1/F2/F3).
+    const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    fireEvent.click(within(nav).getByRole("button", { name: "Plan" }));
+    const current = within(nav).getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Plan");
+    expect(screen.getByText("Plan tab")).toBeInTheDocument();
+    expect(screen.queryByText("Now tab")).not.toBeInTheDocument();
+  });
+
+  it("(F3) tapping Activity renders the real ActivityTab (F3) rather than the placeholder", () => {
+    render(<MobileShell />);
+    // Scoped to the tab bar: ActivityTab's own segmented control also
+    // sets aria-current on its selected segment button, which would
+    // otherwise collide with an unscoped current-button query.
+    const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    fireEvent.click(within(nav).getByRole("button", { name: "Activity" }));
+    const current = within(nav).getAllByRole("button", { current: true });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("Activity");
-    expect(screen.getByText("Activity tab")).toBeInTheDocument();
-    expect(screen.queryByText("Now tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Activity" })).toBeInTheDocument();
+    expect(screen.queryByText("Activity tab")).not.toBeInTheDocument();
   });
 
   it("(F2) tapping Chat renders the real ChatTab (F2) rather than the placeholder", () => {

@@ -1,0 +1,151 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  flex: none;
+  padding: 8px 18px 10px;
+}
+
+.pageTitle {
+  margin: 0 0 10px;
+  font-family: var(--atlas-font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 13px;
+  background: var(--atlas-seg-track);
+}
+
+.segButton {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--atlas-seg-ink);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.segSelected {
+  background: var(--atlas-seg-selected-bg);
+  color: var(--atlas-seg-selected-ink);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 18px 22px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 4px 2px 12px;
+  font-size: 12.5px;
+  color: var(--atlas-stat-label);
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.statValue {
+  font-family: var(--atlas-font-mono);
+  color: var(--atlas-stat-value);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.railCol {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--atlas-rail);
+}
+
+.dot {
+  position: relative;
+  margin-top: 16px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  box-shadow: 0 0 0 4px var(--atlas-dot-ring);
+}
+
+.body {
+  min-width: 0;
+  padding: 12px 0 4px;
+}
+
+.entryLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tag {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font: 600 9.5px var(--atlas-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.entryMeta {
+  margin-left: auto;
+  font: 500 11px var(--atlas-font-mono);
+  color: var(--atlas-empty-note);
+}
+
+.entryTitle {
+  margin-top: 5px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.entryDetail {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--atlas-entry-detail);
+}
+
+.emptyNote {
+  padding: 8px 0 0 32px;
+  font-size: 12.5px;
+  color: var(--atlas-empty-note);
+}

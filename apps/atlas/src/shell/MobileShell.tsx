@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { NowTab } from "./NowTab";
 import { ChatTab } from "./ChatTab";
+import { ActivityTab } from "./ActivityTab";
 import styles from "./MobileShell.module.css";
 
 export type MobileShellTab = "now" | "chat" | "plan" | "activity";
@@ -58,6 +59,8 @@ export function MobileShell() {
           <NowTab />
         ) : selected === "chat" ? (
           <ChatTab onBack={() => setSelected("now")} />
+        ) : selected === "activity" ? (
+          <ActivityTab />
         ) : (
           `${TAB_LABEL[selected]} tab`
         )}
