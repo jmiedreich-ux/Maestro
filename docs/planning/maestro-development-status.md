@@ -1064,7 +1064,53 @@ Owner input), Wave D (0/7), **Wave E (7/7, now complete)**, Wave F
 (0/4), Wave G (0/3) — 24 of 39 items are done (~62%), plus the one
 deliberately deferred item.
 
-Next: awaiting direction on Wave D (guarded operator-action commands —
-real backend command API work, a materially different kind and scale
-of complexity than Wave E's read-only reporting UI) versus continuing
-into Wave F or G.
+Owner directed continuation into Wave D 2026-09-05. Roadmap items D4/D5
+("Decide this myself" / Architect-variant footer button) are rescheduled
+to M4 (PR #137): they depend on the real M4 autonomous Architect loop,
+which does not exist in M2; this roadmap's own architecture ruling and
+the already-merged C3/C4 packets both establish that only two real
+decision-card variants exist in M2, explicitly excluding any
+Architect-variant option or footer button. Item numbers 22/23 are kept
+(not renumbered) to preserve existing cross-references. Owner-confirmed
+standing policy: a mockup feature that depends on a later milestone's
+machinery gets rescheduled to that milestone, never forced into the
+current one or silently dropped — the mockup shows Maestro's full
+end-state vision, not just M2's scope.
+
+`MB-SLICE-M2-D1-COMMAND-API-SCAFFOLD-01` is merged (planning PR #138 at
+`76fe8e6`, implementation PR #139 at `9e1774e`) — the first Wave D
+slice and **the first backend (Python) slice merged this session**.
+Adds a guarded, empty POST-command dispatch scaffold to the existing
+loopback-only read API (`services/maestro/maestro/read_api.py`, Wave
+A): a new `/command/...` route prefix backed by an empty
+`_COMMAND_ROUTES` registry (genuinely no real command registered,
+proven by a dedicated test), real `Content-Length`-bounded body
+reading, and `idempotency_key`/`actor` envelope shape validation
+reusing the real M1 idempotency/actor/causation envelope already used
+by every internal `OperationalStateStore` command (`Actor`, `_actor()`,
+`_replay()`, cited with exact line numbers from `operational_state.py`,
+independently re-verified byte-for-byte by two separate review
+passes). One targeted correction: a Decision Fidelity review found a
+real hang vector — unbounded `Content-Length` could block a worker
+thread indefinitely on an oversized body that never finishes arriving
+— and a false "oversized body is handled" claim in the packet's own
+threat-model section; fixed with a 1 MiB cap checked before
+`self.rfile.read()` is ever called, and independently proven
+load-bearing twice (by two separate reviewers each temporarily
+removing the cap check and confirming the same test genuinely hangs
+and times out without it). All 5 pre-existing GET routes are provably
+unaffected (49/49 Wave A tests pass, unmodified). All 351
+`services/maestro` tests pass (339 baseline + 12 new); one
+pre-existing, unrelated `m1_01` test failure (a local PyYAML version
+mismatch, `6.0.1` installed vs. `>=6.0.2,<7` required) is disclosed,
+confirmed unchanged by this slice, and out of scope to fix here.
+
+**M2 status after D1:** of 39 total roadmap items — Wave A (7/7), Wave
+B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (1/7, D4/D5
+rescheduled to M4 — effectively 1/5 of Wave D's real remaining scope),
+Wave E (7/7), Wave F (0/4), Wave G (0/3) — 25 of 39 items are done
+(~64%), plus C2 deferred and D4/D5 rescheduled to M4.
+
+Next: `MB-SLICE-M2-D2`, the smallest real operator-action command
+(Owner resolves a decision — sentinel/amend/defer options), registering
+the first real entry into D1's `_COMMAND_ROUTES`.
