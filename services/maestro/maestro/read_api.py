@@ -443,6 +443,104 @@ def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[s
     handler._respond(200, canonical_response_json(result))
 
 
+# The real, non-fictional resolution of a crashed/failed packet. The
+# roadmap's own D6 wording names a three-way choice ("resume / re-dispatch
+# / hold-and-inspect"), but only one of those three has any real backend
+# counterpart at all: `finish_attempt_execution`'s `Failed`/`TimedOut`/
+# `Stale` outcomes all route the packet to the real `NeedsReplan` state
+# (operational_state.py:1403-1409), and `record_and_close_needs_replan`
+# is the ONLY real transition out of it — a single, hard-coded, non-
+# parameterized move to `Cancelled` (operational_state.py:531-596; it
+# takes no target_state argument at all, unlike `transition_packet_eligibility`).
+# There is no real "resume from the last boundary" (no command re-opens
+# a dead attempt) and no real "re-dispatch to a different worker"
+# (`claim_packet_assignment`, defined at operational_state.py:598,
+# requires a `Dispatchable` source packet at its own check,
+# operational_state.py:644-645 — never `NeedsReplan` — checked directly).
+# Those two options depend on real M3 packet-compiler/executor machinery
+# that does not exist in M2 (same rescheduling the Owner already
+# confirmed for D4/D5): this command implements only the one real
+# outcome, honestly named `resolve-crash`, not a three-way choice.
+def _validate_resolve_crash_command(envelope: dict[str, Any]) -> str | None:
+    packet_id = envelope.get("packet_id")
+    if not isinstance(packet_id, str) or packet_id == "":
+        return "packet_id is required and must be a non-empty string"
+    expected_version = envelope.get("expected_version")
+    if (
+        not isinstance(expected_version, int)
+        or isinstance(expected_version, bool)
+        or expected_version <= 0
+    ):
+        return "expected_version is required and must be a positive integer"
+    reason_payload = envelope.get("reason_payload")
+    if not isinstance(reason_payload, dict):
+        return "reason_payload is required and must be a JSON object"
+    return None
+
+
+def _handle_resolve_crash(handler: "_ReadApiRequestHandler", envelope: dict[str, Any]) -> None:
+    error_detail = _validate_resolve_crash_command(envelope)
+    if error_detail is not None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": error_detail})
+        )
+        return
+
+    try:
+        store = OperationalStateStore(
+            RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    try:
+        result = store.record_and_close_needs_replan(
+            envelope["packet_id"],
+            envelope["expected_version"],
+            envelope["reason_payload"],
+            envelope["idempotency_key"],
+            envelope["actor"],
+            now,
+        )
+    except StaleState as error:
+        handler._respond(409, canonical_response_json({"error": "stale_state", "detail": str(error)}))
+        return
+    except InvalidTransition as error:
+        handler._respond(
+            409, canonical_response_json({"error": "invalid_transition", "detail": str(error)})
+        )
+        return
+    except IdempotencyConflict as error:
+        handler._respond(
+            409, canonical_response_json({"error": "idempotency_conflict", "detail": str(error)})
+        )
+        return
+    except InvalidRecord as error:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": str(error)})
+        )
+        return
+    except ResourceBusy as error:
+        # Same real, reachable contention path D2's own targeted correction
+        # already found and fixed for `transition_packet_eligibility` —
+        # `record_and_close_needs_replan` shares the identical
+        # `except sqlite3.OperationalError: self._raise_sqlite(error)`
+        # fallback (operational_state.py:595-596), so this slice applies
+        # the same fix from its first draft rather than repeating that
+        # review finding.
+        handler._respond(503, canonical_response_json({"error": "resource_busy", "detail": str(error)}))
+        return
+    except sqlite3.OperationalError as error:
+        handler._respond(
+            503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
+        )
+        return
+
+    handler._respond(200, canonical_response_json(result))
+
+
 # Guarded, POST-only command routes. `envelope["idempotency_key"]`/
 # `envelope["actor"]` are only checked by `_validate_command_envelope` for
 # their outer shape (present, right JSON type) — the real closed-shape/field
@@ -452,6 +550,7 @@ def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[s
 # two copies drift.
 _COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], None]] = {
     "/command/resolve-decision": _handle_resolve_decision,
+    "/command/resolve-crash": _handle_resolve_crash,
 }
 
 
