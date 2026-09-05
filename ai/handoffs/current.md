@@ -1,7 +1,7 @@
 # Maestro — Current Project Handoff
 
 **Date:** 2026-09-05
-**State:** Correction dispatch merged; stale-lease reclaim is the last remaining M1 slice
+**State:** M1 internal operational core is closed — every packet state has a real way in and out except the deliberately deferred `Merged→Complete` step and real project registration
 
 Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
 before taking any Maestro action. It is the current status ledger and records
@@ -136,6 +136,50 @@ carrying a `CorrectNow` disposition and no `ReturnSlice`. Mirrors
 additive (zero deletions), confirming that function and its helpers are
 genuinely unmodified.
 
+## M1 milestone-acceptance check (2026-09-05)
+
+A full systematic pass — every `Packet` state's inbound and outbound
+edges checked against the actual merged code, not just the obvious path —
+found two real dead ends and confirmed one already-known, deliberately
+deferred one:
+
+- **Corrected-review routing.** `record_and_route_review` and
+  `record_and_accept_packet` both explicitly require `correction_number=0`,
+  so a corrected attempt's own review had no route at all. Closed by
+  independent `MB-SLICE-M1-CORRECTION-REVIEW-ROUTING-01`, merged through
+  PR #51 at `c248121`. Exact reviewed implementation head
+  `248bbea9e7fbda3556bf86e6d9ee4c39e8cfc977` passed both reviews with zero
+  findings, 284/284 named tests (same pre-existing PyYAML failure), zero
+  corrections. Adds `record_and_route_correction_review`, mirroring
+  `record_and_route_review` exactly (diff verified 100% additive) with one
+  substantive difference: `RequestChanges` routes to `NeedsReplan`, not
+  `AwaitingArchitect`, since the one correction is already used.
+- **`NeedsReplan` had no exit.** Four routes reach it; nothing ever left
+  it. Closed by independent `MB-SLICE-M1-NEEDSREPLAN-CLOSURE-01`, merged
+  through PR #52 at `0a59f67`. Exact reviewed implementation head
+  `37be8c01e44336b25bd8e0d03c9e40e3c57079ea` passed both reviews with zero
+  findings, 290/290 named tests (same pre-existing PyYAML failure), zero
+  corrections. Adds `record_and_close_needs_replan`: closed
+  `NeedsReplan→Cancelled`, a new standalone function (deliberately not an
+  extension of `_PACKET_ELIGIBILITY_TRANSITIONS`, which remains
+  differently-scoped and untouched). Does not implement an actual
+  replan/retry path — blocked by the `UNIQUE(packet_id,attempt_number)`
+  constraint, a genuinely bigger, separate design question.
+- **`Merged→Complete` remains open, on purpose.** Flagged consistently
+  across `MB-SLICE-M1-ACCEPTANCE-ROUTING-01` and
+  `MB-SLICE-M1-MERGE-OBSERVATION-01`'s own contracts as needing a
+  not-yet-designed post-merge gate; not part of this check's scope.
+- **Real project create/register remains fixture-only, on purpose.**
+  `record_binding` is still an unguarded stub, matching Alpha-03's known
+  trusted-fixture limitation; this needs external/live-repo access, which
+  every bootstrap slice has deliberately stayed away from — separate,
+  larger, Owner-gated work.
+
+After both fixes, a full fresh state-by-state re-check confirmed: every
+`Packet` state now has a real way in and a real way out, except the two
+named, deliberately deferred items above. **M1's internal operational
+core is closed.**
+
 ## Unmerged M1 evidence
 
 - Planning branch: `architecture/m1-m4-packets`
@@ -196,18 +240,19 @@ implementation review each used one correction and received targeted
 
 ## Next authorized action
 
-M1-01, M1-02A, run lifecycle, packet eligibility, atomic assignment claim,
-execution start/heartbeat/finish, review-control routing, packet
-acceptance routing, merge-observation routing, and correction dispatch are
-all now integrated, but M1 is not closed: no stale/expired lease can yet
-be reclaimed. The one remaining, deliberately small, uncontracted M1
-slice is a stale-lease/expired-attempt reclaim primitive (the in-scope
-remainder of the never-implemented, terminally-returned
-`MB-SLICE-M1-02B-REPLACEMENT-01`'s recovery scope — its larger autonomous
-wake/reconciliation-loop half is out of M1 scope, deferred to M4). No
-implementation is authorized until its canonical contract receives
-pre-execution Decision Fidelity approval. All returned slices remain
-immutable and non-authoritative.
+M1's internal operational core is closed: M1-01, M1-02A, run lifecycle,
+packet eligibility, atomic assignment claim, execution start/heartbeat/
+finish, review-control routing, packet acceptance routing,
+merge-observation routing, correction dispatch, correction-pass review
+routing, and NeedsReplan closure are all integrated, and the
+milestone-acceptance check above found every packet state has a real way
+in and out except the two named, deliberately deferred items
+(`Merged→Complete`'s post-merge gate, and real project create/register).
+Per M0-D15's phase sequence, the next phase is M2 (Atlas as a local,
+read-only reporting application). No M2 work is authorized by this
+record; a new canonical contract for whichever M2 slice is selected still
+requires its own pre-execution Decision Fidelity approval. All returned
+slices remain immutable and non-authoritative.
 
 ### Frozen M1-02B slice identity and counters
 

@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, and correction dispatch
-**Current development state:** Correction dispatch merged; stale-lease reclaim is the last remaining M1 slice
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, and NeedsReplan closure
+**Current development state:** M1 internal operational core closed; M2 (Atlas read-only reporting) is next per M0-D15, not yet started
 **Implementation authorization:** none until the Project Architect releases the next approved bootstrap slice
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -140,6 +140,36 @@ lease/locks, gated on a `RequestChanges` review carrying a `CorrectNow`
 disposition and no `ReturnSlice`. Mirrors `claim_packet_assignment`'s
 exact shape; the diff was verified 100% additive.
 
+## M1 milestone-acceptance check (2026-09-05)
+
+A full systematic pass — every `Packet` state's inbound and outbound
+edges checked against the actual merged code — found two real dead ends,
+both now closed:
+
+- **Corrected-review routing**, closed by
+  `MB-SLICE-M1-CORRECTION-REVIEW-ROUTING-01`, merged through PR #51 at
+  `c248121` (implementation head
+  `248bbea9e7fbda3556bf86e6d9ee4c39e8cfc977`). Both reviews `APPROVE`,
+  zero findings, 284/284 tests, zero corrections. Adds
+  `record_and_route_correction_review`, mirroring `record_and_route_review`
+  exactly (100% additive diff); `RequestChanges` routes to `NeedsReplan`
+  instead of `AwaitingArchitect`.
+- **`NeedsReplan` had no exit**, closed by
+  `MB-SLICE-M1-NEEDSREPLAN-CLOSURE-01`, merged through PR #52 at
+  `0a59f67` (implementation head
+  `37be8c01e44336b25bd8e0d03c9e40e3c57079ea`). Both reviews `APPROVE`,
+  zero findings, 290/290 tests, zero corrections. Adds
+  `record_and_close_needs_replan`: `NeedsReplan→Cancelled`, a standalone
+  function, not an extension of `_PACKET_ELIGIBILITY_TRANSITIONS`.
+
+`Merged→Complete` (a not-yet-designed post-merge gate) and real project
+create/register (still fixture-only, needs external access) remain open
+on purpose — flagged in prior contracts, outside this check's scope.
+
+A full fresh re-check after both merges confirmed: every `Packet` state
+now has a real way in and a real way out except those two named,
+deliberately deferred items. **M1's internal operational core is closed.**
+
 ## What exists only on side branches
 
 - Alpha-04 readiness reached local correction head
@@ -227,13 +257,15 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 
 1. Keep terminal M1-02B evidence, and terminal review-routing slices
    `-01`/`-02`/`-03`/`-04`, non-authoritative.
-2. Treat M1-01, M1-02A, run lifecycle, packet eligibility, assignment claim,
-   execution start/heartbeat/finish, review-control routing, packet
-   acceptance routing, merge-observation routing, and correction dispatch
-   as integrated, while keeping M1 open.
-3. Have the Project Architect materialize the one remaining M1
-   operational-core behavior: the small in-scope stale-lease-reclaim piece
-   of recovery. It has no contract yet.
+2. Treat M1's internal operational core as closed: M1-01, M1-02A, run
+   lifecycle, packet eligibility, assignment claim, execution
+   start/heartbeat/finish, review-control routing, packet acceptance
+   routing, merge-observation routing, correction dispatch,
+   correction-pass review routing, and NeedsReplan closure are all
+   integrated.
+3. M2 (Atlas read-only reporting) is the next phase per M0-D15. No M2
+   work is authorized by this record; its canonical contract still
+   requires pre-execution Decision Fidelity approval.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
