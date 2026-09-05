@@ -1155,14 +1155,46 @@ backend slice this session has surfaced at least one real,
 independently-reproduced defect through adversarial exception-path
 tracing, not just citation-checking.
 
-**M2 status after D2:** of 39 total roadmap items — Wave A (7/7), Wave
-B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D4/D5
-rescheduled to M4 — effectively 2/5 of Wave D's real remaining scope),
-Wave E (7/7), Wave F (0/4), Wave G (0/3) — 26 of 39 items are done
-(~67%), plus C2 deferred and D4/D5 rescheduled to M4.
+`MB-SLICE-M2-F1-NOW-TAB-01` is merged (planning PR #144 at `475b78d`,
+implementation PR #145 at `492fac7`) — the mobile "Now" tab: extends
+the already-shared `derivePacketHeaderState` with a genuinely new
+derived value (a real 40% progress figure from `PACKET_A2_ENTRIES`'
+own real `plan.steps`, never rendered by any prior slice, deliberately
+not the reference mockup's own fabricated, unformulated 41%) plus real
+boundary timestamps, and wires a new `NowTab` component into
+`MobileShell`'s `"now"` tab, reusing C4's `OwnerDecisionCard` verbatim
+for the real blocked/escalated trajectory — no backend change. One
+targeted correction: a Decision Fidelity review found the first
+draft's progress-fill color used the mockup's own *non-blocked*
+`barColor` value on a genuinely blocked progress bar, directly
+contradicting this same packet's own already-correctly-applied
+principle (idle styling, not running styling, for this trajectory) —
+fixed to the real blocked-branch token, `colors.navTextInactive`; a
+second missed real token match (`colors.navActiveBg`); a stale
+base-commit citation; and tautological test coverage for three new
+fields (now hardcoded-asserted). All fixes independently re-verified.
+19/19 test files, 140/140 tests pass, zero regressions.
 
-Next: `MB-SLICE-M2-D3` (wire the owner-decision card's buttons to D2),
-and, started in parallel per the Owner's explicit instruction that
-independent slices should not idle-wait behind one in-flight review,
-`MB-SLICE-M2-F1-NOW-TAB-01` (mobile Now tab, Wave F — depends only on
-the already-complete Waves C/E, not on D2/D3).
+D3 (wire the owner-decision card's buttons to D2) was investigated and
+found genuinely **blocked, not built**: `OwnerDecisionCard`'s
+`packet_id` is standalone fixture data with no real backend row, so
+honestly calling D2's real command requires the same real-backend-
+data-wiring resolution C2 already left open for Owner input — D3
+inherits that exact open question, not a new one, plus a narrower
+issue where one of its two real button labels ("Amend the A.1
+contract") has no honest 1:1 mapping to any D2 target state at all
+(its real effect is dispatching a correction to a *different* packet).
+Per Owner-confirmed standing policy, this is recorded in the roadmap
+as blocked pending C2's resolution, not assigned a milestone yet
+(unlike D4/D5, which had a clear destination) — see
+`m2-atlas-roadmap.md`'s own D3 entry for the full record.
+
+**M2 status after F1:** of 39 total roadmap items — Wave A (7/7), Wave
+B (4/4), Wave C (6/7, C2 deliberately deferred), Wave D (2/7, D3
+blocked on C2, D4/D5 rescheduled to M4), Wave E (7/7), Wave F (1/4),
+Wave G (0/3) — 27 of 39 items are done (~69%), plus C2/D3 blocked
+together and D4/D5 rescheduled to M4.
+
+Next: any independent Wave F (F2-F4), Wave G (G1, G3 — G2 needs
+D6/D7), or Wave D (D6/D7 crash-recovery command) item not blocked by
+C2/D3's open question.
