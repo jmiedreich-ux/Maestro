@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), and M2 Wave B1 (Atlas app scaffold)
-**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API) is complete; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; Wave B2 (design tokens module) is next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B1 (Atlas app scaffold), and M2 Wave B2 (design tokens module)
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API) is complete; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; Wave B3 (desktop shell) is next
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -269,9 +269,10 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    decomposed wave-by-wave in the M2 Atlas roadmap. Wave A (the backend
    read API: A1 read API scaffold, A2 packets snapshot, A3 attempts
    snapshot, A4 reviews snapshot, A5 events snapshot) is complete and
-   merged; Wave B1 (Atlas app scaffold) is also merged; each subsequent
-   wave slice still requires its own pre-execution Decision Fidelity
-   approval before implementation.
+   merged; Wave B1 (Atlas app scaffold) and Wave B2 (design tokens
+   module) are also merged; each subsequent wave slice still requires
+   its own pre-execution Decision Fidelity approval before
+   implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
