@@ -382,9 +382,15 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    composer wired (no real backend send-message command exists);
    Decision Fidelity review passed with 3 non-blocking notes fixed at
    zero cost, independent implementation review approved with 1
-   non-blocking styling note logged for later. Each subsequent wave
-   slice still requires its own pre-execution Decision Fidelity
-   approval before implementation.
+   non-blocking styling note logged for later. `MB-SLICE-M2-D6-RESOLVE-CRASH-COMMAND-01`
+   is merged: the second real command into the guarded scaffold,
+   `POST /command/resolve-crash`, wrapping the real
+   `record_and_close_needs_replan` — only one of the roadmap's three
+   named recovery options has any real backend counterpart, the other
+   two rescheduled to M3 matching D4/D5's own precedent; zero
+   corrections needed at either review. Each subsequent wave slice
+   still requires its own pre-execution Decision Fidelity approval
+   before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or

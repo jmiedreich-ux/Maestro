@@ -552,8 +552,19 @@ implementation review: `APPROVE` with 1 non-blocking note (a bubble
 tail-corner styling detail, logged for later). 20/20 test files,
 148/148 tests pass, zero regressions.
 
-Next: any independent Wave F (F3, F4), Wave G (G1, G3), or Wave D
-(D6/D7 crash-recovery command) item not blocked by C2/D3's open
+`MB-SLICE-M2-D6-RESOLVE-CRASH-COMMAND-01` is merged (planning PR #150
+at `cee623c`, implementation PR #152 at `91f8a96`) — the second real
+command into the guarded scaffold: `POST /command/resolve-crash`,
+wrapping the real `record_and_close_needs_replan`. Only one of the
+roadmap's three named options ("resume/re-dispatch/hold-and-inspect")
+has any real backend counterpart — the other two are rescheduled to
+M3 (real executor/dispatch machinery), matching D4/D5's own precedent.
+Applied D2's own exception-coverage lesson from the first draft; zero
+corrections needed at either review. 245 tests pass, zero regressions.
+
+Next: any independent Wave F (F3, F4), Wave G (G1, G3), or D7 (wire
+the Atlas crash card's recovery buttons to D6 — will need its own
+real-packet-identity check first, like D3) not blocked by C2/D3's open
 question.
 
 Each subsequent wave slice still requires its own pre-execution
