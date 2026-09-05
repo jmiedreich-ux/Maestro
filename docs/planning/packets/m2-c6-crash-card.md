@@ -1,7 +1,14 @@
 # M2 Wave C — Crash Card Rendering — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-C6-CRASH-CARD-01`
-**Status:** `Draft — Pending Decision Fidelity Review`
+**Status:** `Corrected — Pending Targeted Decision Fidelity Verification`.
+Full Decision Fidelity review found 1 blocking finding (the headline
+and lede silently adapted two of the same class of unverifiable/
+contradicted claims the packet already disclosed correcting elsewhere,
+without being numbered as corrections themselves); one targeted
+planning correction resolved it — Corrections 1 and 2 added, the
+remaining three renumbered, disclosure wording tightened throughout.
+No further planning correction is available for this slice.
 **Base:** `0945d3c` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -33,12 +40,16 @@ No persona-swap is needed here, unlike C3/C4.
 **This slice's real content work is different in kind: verifying the
 reference file's own factual claims against the real backend state
 machine, not swapping a persona.** Checking the reference file's crash
-data against `services/maestro/maestro/operational_state.py`'s real
-`finish_attempt_execution` method found two claims that this program
-either cannot verify, or that directly contradict the real, already-
-reviewed mechanism. Per this program's standing rule (never invent or
-carry forward an unverified factual claim once a real source is
-available to check it against), both are corrected here, disclosed
+copy against `services/maestro/maestro/operational_state.py`'s real
+`finish_attempt_execution` method found repeated instances of the same
+two failure patterns: a claim about the physical worktree that nothing
+in the real code tracks either way (**unverifiable**), and a claim that
+locks/context are held or preserved after a failure, which the real
+mechanism's `outcome_mapping` directly contradicts (**contradicted**) —
+plus one further claim (an automatic retry) with no corresponding code
+path at all. Per this program's standing rule (never invent or carry
+forward an unverified factual claim once a real source is available to
+check it against), all five instances below are corrected, disclosed
 explicitly — not silently carried over from the mockup and not
 silently dropped.
 
@@ -66,7 +77,31 @@ cancellation — real recovery (resume/re-dispatch) is not yet built,
 which is exactly why the roadmap's own D6/D7 items exist as future
 work, not something this slice can wire to already-real commands.
 
-**Correction 1 — the fact grid.** Reference file's real `crash.facts`
+**Corrections 1 and 2 — the headline and lede (added — blocking finding
+from Decision Fidelity review: an earlier draft of this slice silently
+adapted this text without numbering it as a correction, the exact
+failure mode the other three corrections exist to avoid).** Reference
+file's real headline and lede (verbatim, from the markup quoted in
+full below): *"Terra died mid-step. Its work is still on disk."* and
+*"The process exited during step 3 of 5 without a handoff. The
+worktree and its locks were preserved at the last safe boundary —
+nothing has been discarded and no correction was spent."* Both contain
+the same class of claim already identified as a problem elsewhere in
+this exact card: "still on disk" is an unverifiable physical-worktree
+claim (the same reasoning Correction 3 below gives for excluding
+`Worktree: preserved`), and "its locks... were preserved" is not
+merely unverifiable but **directly contradicts** the real mechanism
+(the same reasoning Correction 4 below gives for excluding "Locks stay
+held" — a `Failed` outcome always releases the lease). Both are
+corrected, not silently carried forward: the headline becomes *"Terra's
+attempt failed mid-step. A.2 is routed to NeedsReplan"* and the lede
+becomes *"The process exited during step 3 of 5 without a handoff. A
+Failed execution outcome routes the packet to NeedsReplan and releases
+its lease, per Maestro's real execution-outcome mapping"* — both
+stating only what `finish_attempt_execution`'s real mapping actually
+does, with no claim about the physical worktree either way.
+
+**Correction 3 — the fact grid.** Reference file's real `crash.facts`
 (verbatim):
 
 ```js
@@ -91,7 +126,7 @@ This slice's fact grid replaces the unverifiable claim with the real
 one: `Outcome: Failed`, citing `finish_attempt_execution`'s own real
 mapping.
 
-**Correction 2 — the third recovery option's body text.** Reference
+**Correction 4 — the third recovery option's body text.** Reference
 file's real `crash.options[2]` (verbatim):
 
 ```js
@@ -109,7 +144,7 @@ read what Terra wrote before deciding."* — preserving the option's real
 intent (don't dispatch anything yet, inspect first) without asserting
 something the real state machine rules out.
 
-**Correction 3 — the footer note.** Reference file's real footer
+**Correction 5 — the footer note.** Reference file's real footer
 (verbatim): *"The Coordinator retried once and the process died the
 same way, so it stopped retrying and surfaced this instead."* No
 automatic-retry mechanism for a `Failed` execution exists anywhere in
@@ -216,16 +251,16 @@ background).
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-C6-CRASH-CARD-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedDecisionFidelityVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:0945d3c5798175ee89f320cd764ea2a5e2ab28d5"]` |
+| `evidence_refs` | `["git:base:0945d3c5798175ee89f320cd764ea2a5e2ab28d5","git:full-planning-review-head:296ed9afcd337e9740276bc7353b3fdae4a7e774","review:decision-fidelity:request-changes:1-blocking-finding"]` |
 
 ## Exact file contents
 
@@ -237,6 +272,16 @@ were run for real from `apps/atlas/`: 57/57 tests passed (50 existing +
 7 new), typecheck and lint clean, production build succeeded — all on
 the first real run, no fix needed.
 
+**The targeted planning correction below (adding Corrections 1 and 2)
+changed only this document's prose and doc comments, not the shipped
+`fixtures.ts`/`CrashCard.tsx` code's runtime content** — the
+`CRASH_EXAMPLE` object's `headline`/`lede` fields shown below were
+already the corrected text at the time of the original real toolchain
+run quoted above; the DF-review finding was that this document had not
+disclosed that correction as one of the numbered ones, not that the
+code was wrong. No re-run of the toolchain was needed or performed for
+this correction.
+
 `apps/atlas/src/crash/fixtures.ts` (new — the evidence data and its
 types; no rendering logic):
 
@@ -244,13 +289,15 @@ types; no rendering logic):
 /**
  * Same real `A.2` scenario C1/C4 already established (the reference
  * file's own `crashed` system-state toggle is scoped to
- * `cur.id === 'A.2'`) — not a new, invented scenario. Two real,
- * mechanically-grounded facts are cited instead of two of the
- * reference file's own claims that this program cannot verify or that
- * contradict the real backend state machine — see this slice's packet
- * contract, Scope section, for the full comparison against
+ * `cur.id === 'A.2'`) — not a new, invented scenario. Five pieces of
+ * the reference file's own copy (the headline, the lede, one fact, one
+ * option's body, and the footer) make a claim this program cannot
+ * verify or that directly contradicts the real backend state machine,
+ * and are corrected here to state only what
  * `services/maestro/maestro/operational_state.py`'s real
- * `finish_attempt_execution` outcome mapping.
+ * `finish_attempt_execution` outcome mapping actually does — see this
+ * slice's packet contract, Scope section, for the full comparison,
+ * numbered as Corrections 1 through 5.
  */
 export interface CrashFact {
   k: string;
@@ -497,13 +544,14 @@ const SHELL_VARS = {
 /**
  * The reference file's `crashed` state is scoped to the same real
  * `A.2` packet C1/C4 already established — not a new scenario. See
- * this slice's packet contract for the two facts and one option's
- * wording that are adapted, not transcribed verbatim: the reference
- * file's own "worktree preserved" fact and "locks stay held" option
- * claim are not verifiable against (and one directly contradicts)
- * `finish_attempt_execution`'s real outcome mapping in
- * `operational_state.py`, which always releases a Failed attempt's
- * lease.
+ * this slice's packet contract (Corrections 1-5) for the headline,
+ * lede, one fact, one option's body, and the footer note, all adapted
+ * rather than transcribed verbatim: the reference file's own "still on
+ * disk", "locks... preserved", "Worktree: preserved", "Locks stay
+ * held", and "Coordinator retried once" claims are either not
+ * verifiable against, or directly contradict, `finish_attempt_execution`'s
+ * real outcome mapping in `operational_state.py`, which always
+ * releases a Failed attempt's lease.
  */
 export function CrashCard() {
   const { age, headline, lede, facts, options, footerNote } = CRASH_EXAMPLE;
@@ -639,10 +687,11 @@ describe("CrashCard", () => {
 3. Every color value is either a real B2 token or a disclosed literal
    checked directly against `Atlas Explorations.dc.html`; none is
    invented or borrowed from a near-but-wrong existing token.
-4. Every fact and option body is either transcribed verbatim from the
-   reference file or explicitly corrected against a real, cited
-   `operational_state.py` mechanism — never silently carried forward
-   unverified and never silently dropped.
+4. Every piece of card copy (headline, lede, each fact, each option's
+   body, the footer note) is either transcribed verbatim from the
+   reference file or explicitly corrected (Corrections 1-5) against a
+   real, cited `operational_state.py` mechanism — never silently
+   carried forward unverified and never silently dropped.
 5. The option list renders exactly 3 real options as inert `<button>`
    elements with no `onClick` — genuinely inert, not merely styled to
    look disabled, matching C4's established pattern.
