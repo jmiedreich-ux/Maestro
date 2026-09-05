@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A1 (loopback-only read API scaffold), M2 Wave A2 (packets snapshot endpoint), M2 Wave A3 (attempts snapshot endpoint), and M2 Wave A4 (reviews snapshot endpoint)
-**Current development state:** M1 internal operational core closed; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; Wave A5 (events snapshot endpoint) is next
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, and M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot)
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API) is complete; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; Wave B (Atlas app shells) is next
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -266,9 +266,9 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
 3. M2 (Atlas reporting, with named operator-action commands becoming
    available as built — see M0-D01's operator-action amendment) is the
    next phase per M0-D15, authorized by the Owner 2026-09-05 and
-   decomposed wave-by-wave in the M2 Atlas roadmap. Wave A1 (read API
-   scaffold), Wave A2 (packets snapshot endpoint), Wave A3 (attempts
-   snapshot endpoint), and Wave A4 (reviews snapshot endpoint) are
+   decomposed wave-by-wave in the M2 Atlas roadmap. Wave A (the backend
+   read API: A1 read API scaffold, A2 packets snapshot, A3 attempts
+   snapshot, A4 reviews snapshot, A5 events snapshot) is complete and
    merged; each subsequent wave slice still requires its own
    pre-execution Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.

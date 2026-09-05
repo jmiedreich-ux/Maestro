@@ -3,7 +3,7 @@
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
-`f0aa61c`
+`0e9b0df`
 **Purpose:** establish one current status record, preserve the causes of the
 development delay, and define the controls required before work resumes.
 
@@ -574,4 +574,24 @@ packets/attempts-snapshot tests (unmodified), and the full 329-test suite
 pass (328/329 — the same pre-existing, unrelated PyYAML-version
 environment failure, not introduced by this slice).
 
-Wave A5 (events snapshot endpoint) is next.
+`MB-SLICE-M2-A5-EVENTS-SNAPSHOT-01` (Wave A5) is merged at
+`0e9b0dfe79f7da36172b3da1ac23faf5b76852fe`: a read-only, **newest-first**
+paginated `GET /snapshot/events` endpoint (15 fields, `before_json`/
+`after_json`/`reason` projected raw/undecoded — a deliberate difference
+from A4's reviews decode, since `events` lacks a column-level
+`json_valid` CHECK and its `reason` column is genuinely mixed-format
+across code eras). Full Decision Fidelity review found 1 blocking finding
+(the first draft's "no schema guarantee" justification missed real
+schema-4 triggers that mostly close that gap, with one legacy write-path
+exception); the one available targeted planning correction resolved it,
+approved by targeted verification. Independent implementation review
+returned `APPROVE` with no findings; the 10 named tests (built against
+real trigger-enforced fixture-shape requirements), the existing 30
+packets/attempts/reviews-snapshot tests (unmodified), and the full
+339-test suite pass (338/339 — the same pre-existing, unrelated
+PyYAML-version environment failure, not introduced by this slice).
+
+**Wave A (the backend read API) is now complete: `/health`,
+`/snapshot/packets`, `/snapshot/attempts`, `/snapshot/reviews`, and
+`/snapshot/events` all exist and are reviewed and merged.** Wave B (Atlas
+app shells) is next.
