@@ -1,7 +1,7 @@
 # M2 Wave A — Attempts Snapshot Endpoint — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01`
-**Status:** `Pending Decision Fidelity Review`
+**Status:** `Pending Targeted Verification` — targeted planning correction applied after Decision Fidelity `REQUEST_CHANGES` found a wrong `attempt_id` nullability claim, an internally-inconsistent worked JSON example, and an under-specified `Succeeded` fixture that collides with a real `CHECK` constraint
 **Base:** `7252ea0` (`origin/master`)
 
 ## Scope, deliberately minimal
@@ -44,16 +44,16 @@ observable change to `/snapshot/packets`.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-A3-ATTEMPTS-SNAPSHOT-01` |
-| `phase` | `PendingDecisionFidelityReview` |
+| `phase` | `PendingTargetedVerification` |
 | `current_actor` | `Project Architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
 | `terminal_state` | `null` |
-| `evidence_refs` | `["git:base:7252ea0"]` |
+| `evidence_refs` | `["git:base:7252ea0","git:full-planning-review-head:c306b6284c1e1c6bc84d8b652bd929d4057daabc","review:decision-fidelity:request-changes:3-blocking-findings"]` |
 
 ## Exact route contract
 
@@ -70,8 +70,14 @@ Success response, `200`, `Content-Type: application/json`, via the
 existing `canonical_response_json` (unmodified):
 
 ```json
-{"attempts":[{"attempt_id":"...","attempt_kind":"Initial","attempt_number":1,"completion_evidence_reference":null,"correction_for_review_id":null,"created_at":"...","executor_class":"...","execution_handle":null,"expected_result":null,"finished_at":null,"heartbeat_at":null,"lease_id":"...","model_identity":"...","packet_id":"...","result_commit":null,"runtime_identity":"...","started_at":null,"state":"Planned","updated_at":"...","version":1}],"next_after":"<attempt_id-or-null>"}
+{"attempts":[{"attempt_id":"...","attempt_kind":"Initial","attempt_number":1,"completion_evidence_reference":null,"correction_for_review_id":null,"created_at":"...","execution_handle":null,"executor_class":"...","expected_result":null,"finished_at":null,"heartbeat_at":null,"lease_id":"...","model_identity":"...","packet_id":"...","result_commit":null,"runtime_identity":"...","started_at":null,"state":"Planned","updated_at":"...","version":1}],"next_after":"<attempt_id-or-null>"}
 ```
+
+(Corrected — blocking finding 2 from Decision Fidelity review: the
+example above had `executor_class` before `execution_handle`, which
+contradicts both the true lexicographic order and this file's own
+alphabetical-order statement below. `execution_handle` sorts before
+`executor_class` — `"i"` < `"o"` at the first differing character.)
 
 Exactly these 20 fields per attempt — every column `attempts` has,
 including the 4 schema-5 execution-carrier columns
@@ -87,17 +93,30 @@ order (canonical JSON sorts keys): `attempt_id`, `attempt_kind`,
 `runtime_identity`, `started_at`, `state`, `updated_at`, `version`.
 
 Nullability (per the real schema, both the base `CREATE TABLE` and the
-schema-5 shape trigger): `completion_evidence_reference`,
+schema-5 shape trigger — **corrected**, blocking finding 1 from Decision
+Fidelity review): `completion_evidence_reference`,
 `correction_for_review_id`, `execution_handle`, `expected_result`,
 `finished_at`, `heartbeat_at`, `result_commit`, `started_at` render as
 JSON `null` when the column is `NULL` — this is normal and expected for a
 `Planned` attempt (all 8 are `NULL`) and partially populated for
 `Running`/terminal states, exactly per the trigger's own shape rules
-(which this slice reads but does not change). The remaining 12 fields
-(`attempt_id`, `attempt_kind`, `attempt_number`, `created_at`,
-`executor_class`, `lease_id`, `model_identity`, `packet_id`,
-`runtime_identity`, `state`, `updated_at`, `version`) are `NOT NULL` in
-the schema and never render as `null`.
+(which this slice reads but does not change). 11 of the remaining 12
+fields (`attempt_kind`, `attempt_number`, `created_at`, `executor_class`,
+`lease_id`, `model_identity`, `packet_id`, `runtime_identity`, `state`,
+`updated_at`, `version`) carry an explicit column-level `NOT NULL` and can
+never render as `null`. **`attempt_id` is the one exception**: it is
+declared only `TEXT PRIMARY KEY CHECK(...)`, and SQLite's well-known
+`INTEGER PRIMARY KEY`-only `NOT NULL` implication does not apply to a
+`TEXT` primary key — `PRAGMA table_info(attempts)` reports `notnull=0`
+for this column, and a direct `INSERT` with a `NULL` `attempt_id`
+succeeds against the real schema (verified). No code path in the actual
+writer service (`operational_state.py`) ever supplies a `NULL`
+`attempt_id`, so this is not a practical concern, but this slice's JSON
+contract does not add a schema guarantee that does not exist: a `NULL`
+`attempt_id`, if one ever existed, renders as JSON `null` like any other
+column, and no test in this slice asserts `attempt_id` can never be
+`null` (tests instead use realistic fixture data, which always supplies
+one).
 
 Query semantics: identical keyset-pagination shape to A2, over
 `attempts.attempt_id` (the primary key) instead of `packets.packet_id`:
@@ -167,11 +186,27 @@ its stated `state`:
 1. `test_01_empty_table_returns_empty_page` — a freshly migrated, empty
    database returns `200` and exactly `{"attempts":[],"next_after":null}`.
 2. `test_02_full_field_projection_planned_and_succeeded` — one fixture
-   attempt in `Planned` shape (all 8 nullable execution/result columns
-   `NULL`) and one in `Succeeded` shape (all 8 populated, `result_commit`
-   a valid 40-hex string); both returned with exactly the 20 named fields,
-   `Planned`'s nullable fields rendering as JSON `null`, `Succeeded`'s
-   rendering as their real values.
+   attempt in `Planned` shape (`attempt_number=1`, `attempt_kind='Initial'`,
+   all 8 nullable execution/result columns `NULL`, `correction_for_review_id`
+   `NULL` — the only legal combination for `attempt_number=1` per the
+   `CHECK` constraint) and one in `Succeeded` shape. **Corrected — blocking
+   finding 3 from Decision Fidelity review:** a legal `Succeeded` fixture
+   with a non-null `correction_for_review_id` is only reachable via
+   `attempt_number=2, attempt_kind='TargetedCorrection'` (the table's
+   `CHECK` constraint forbids `attempt_number=1`/`'Initial'` from ever
+   carrying a non-null `correction_for_review_id`) — use exactly that
+   combination, with `correction_for_review_id` set to any 512-byte-or-
+   shorter non-empty string (no real `reviews` row is needed: the ad-hoc
+   test connection never enables `PRAGMA foreign_keys=ON`, so the
+   `REFERENCES reviews(review_id)` clause is not enforced on it, matching
+   `test_packets_snapshot.py`'s own established pattern for `packets.run_id`/
+   `work_item_id`), all 8 nullable execution/result columns populated,
+   `result_commit` a valid 40-hex string. Both fixtures are returned with
+   exactly the 20 named fields, `Planned`'s nullable fields rendering as
+   JSON `null`, `Succeeded`'s rendering as their real values (including
+   `attempt_number:2` and `attempt_kind:"TargetedCorrection"` — the test's
+   assertion on those two fields must match the fixture it actually built,
+   not a hardcoded `attempt_number:1`).
 3. `test_03_pagination_next_after_and_exact_page_boundary` — 5 fixture
    attempts with known sorted `attempt_id`s; identical boundary assertions
    to A2's test 3, substituting `attempt_id`/`after` for `packet_id`.
