@@ -192,7 +192,7 @@ describe("design tokens", () => {
     let stdout = "";
     try {
       stdout = execSync(
-        `grep -rlE "from ['\\"](\\.\\./)*tokens(/|['\\"])" . --include="*.ts" --include="*.tsx" --exclude-dir=tokens`,
+        `grep -rlE "from ['\\"](\\.\\.?/)*tokens(/|['\\"])" . --include="*.ts" --include="*.tsx" --exclude-dir=tokens`,
         { cwd: scanRoot },
       ).toString();
     } catch {
