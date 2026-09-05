@@ -4,7 +4,7 @@
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
 **Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), **M2 Wave C complete** (C1 packet thread, C1B wired into DesktopShell's nav, C3 decision card ruling variant — a standalone `DecisionCard` driven by a real M1 routing-table entry, not the mockup's fictional "Architect agent" — C4 decision card owner-decision variant — reuses C1's real `A.2` escalation scenario with the real Coordinator actor — C5 Decision Fidelity record — cites this project's own real, closed C3 review rather than the mockup's fictional ruling — C6 crash card — reuses C1's real `A.2` scenario, 5 pieces of copy corrected against the real `finish_attempt_execution` outcome mapping — C7 header/state-source wiring — the README's single-state-source rule, `derivePacketHeaderState` plus `PacketHeader`), and Wave E underway (E1 Performance header/stats and E1B weekly-window strip — both zero disclosed color literals)
-**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) remains deliberately deferred pending Owner input — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question, not a routine implementation gap; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; Wave E is underway — E1 (Performance header/stats) and E1B (weekly-window strip), both zero disclosed color literals, are merged; next is the rest of Wave E (per-action records list, breakdown card, Agents, History, Gate)
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) remains deliberately deferred pending Owner input — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question, not a routine implementation gap; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; Wave E is underway — E1 (Performance header/stats), E1B (weekly-window strip), and E2 (per-action records list, collapsed), all zero disclosed color literals, are merged; next is the rest of Wave E (detail groups/expand, breakdown card, Agents, History, Gate)
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -295,11 +295,12 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    standalone (not wired into `DesktopShell`'s content pane, except
    `PacketThread` via C1B) — that wiring is separate future work, not
    silently implied by any one slice. Wave E is underway: E1
-   (Performance header/stats) and E1B (weekly-window strip) are
-   merged — both standalone, zero disclosed color literals, pure
-   reporting content transcribed verbatim from the reference file.
-   Each subsequent wave slice still requires its own pre-execution
-   Decision Fidelity approval before implementation.
+   (Performance header/stats), E1B (weekly-window strip), and E2
+   (per-action records list, collapsed) are merged — all standalone,
+   zero disclosed color literals, pure reporting content transcribed
+   verbatim from the reference file. Each subsequent wave slice still
+   requires its own pre-execution Decision Fidelity approval before
+   implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
