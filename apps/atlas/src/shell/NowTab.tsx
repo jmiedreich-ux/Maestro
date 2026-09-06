@@ -187,7 +187,7 @@ export function NowTab({ systemState = "normal" }: NowTabProps = {}) {
         </div>
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Blocker</div>
-          <div className={styles.metaValue}>{state.blocker}</div>
+          <div className={styles.metaValueProse}>{state.blocker}</div>
         </div>
       </div>
 
