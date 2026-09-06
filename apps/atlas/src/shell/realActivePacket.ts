@@ -7,4 +7,4 @@
  * state instead. Shared by DesktopShell and MobileShell/ChatTab so both
  * surfaces point at the same real packet.
  */
-export const REAL_ACTIVE_PACKET_ID = "packet-foundry-cg-m4-20";
+export const REAL_ACTIVE_PACKET_ID = "packet-foundry-cg-m4-20-v2";
