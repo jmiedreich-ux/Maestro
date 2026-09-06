@@ -20,9 +20,12 @@ export interface OwnerDecisionCardProps {
   /**
    * M3 E5 — when supplied, both option buttons dispatch the real D2/D3
    * commands (record_and_route_review's resolve-decision, and
-   * record_and_dispatch_correction via dispatch-correction). Omitted
-   * (the default, and every existing caller), both buttons render
-   * exactly as before: inert, no onClick at all.
+   * record_and_dispatch_correction via dispatch-correction). Omitted,
+   * both buttons render `disabled` instead of a silent no-op: an
+   * earlier version left them clickable-looking but inert, which gave
+   * a real user tapping them no feedback at all (found by
+   * `$impeccable audit`, P1) — `disabled` is the honest, native way to
+   * say "not actionable here" without inventing new copy.
    */
   real?: OwnerDecisionCardRealContext;
 }
@@ -129,7 +132,7 @@ export function OwnerDecisionCard({ real }: OwnerDecisionCardProps = {}) {
               key={option.title}
               type="button"
               className={styles.option}
-              disabled={real ? pendingIndex !== null : undefined}
+              disabled={!real || pendingIndex !== null}
               onClick={real ? () => void handleOptionClick(index) : undefined}
             >
               <div className={styles.optionRow}>

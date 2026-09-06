@@ -89,9 +89,9 @@ describe("PacketThread", () => {
     });
     const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
     expect(bodies).toEqual([
-      "Packet packet-test-thread: Planned → Ready (WORK_STARTED)",
-      "Packet packet-test-thread: Ready → Leased (WORK_STARTED)",
-      "Packet packet-test-thread: Leased → Running (WORK_STARTED)",
+      "Planned → Ready — work started",
+      "Ready → Leased — work started",
+      "Leased → Running — work started",
     ]);
   });
 
@@ -186,9 +186,9 @@ describe("PacketThread", () => {
     // as <p> elements, so the crash card's lede is the real 4th match.)
     const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
     expect(bodies).toEqual([
-      "Packet packet-test-thread: Planned → Ready (WORK_STARTED)",
-      "Packet packet-test-thread: Ready → Leased (WORK_STARTED)",
-      "Packet packet-test-thread: Leased → Running (WORK_STARTED)",
+      "Planned → Ready — work started",
+      "Ready → Leased — work started",
+      "Leased → Running — work started",
       CRASH_EXAMPLE.lede,
     ]);
   });

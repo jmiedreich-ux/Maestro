@@ -106,7 +106,7 @@ export function PacketThread({ systemState = "normal", packetId }: PacketThreadP
   const entries = real.entries;
 
   return (
-    <div className={styles.thread} style={SHELL_VARS}>
+    <div className={styles.thread} style={SHELL_VARS} aria-live="polite">
       {real.resyncRequired && (
         <p className={styles.text} role="status">
           Connection to Maestro was interrupted — refreshing.

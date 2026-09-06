@@ -77,10 +77,10 @@ describe("OwnerDecisionCard", () => {
       vi.unstubAllGlobals();
     });
 
-    it("does not attach a click handler when real is omitted (every existing caller)", () => {
+    it("renders both options disabled, with no click handler, when real is omitted", () => {
       render(<OwnerDecisionCard />);
       const button = screen.getByRole("button", { name: /Allow a sentinel version/ });
-      expect(button).not.toBeDisabled();
+      expect(button).toBeDisabled();
     });
 
     it("posts the real resolve-decision command when the sentinel option is clicked", async () => {
