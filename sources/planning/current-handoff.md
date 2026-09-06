@@ -439,8 +439,20 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    fixed with a hex-to-rgb helper (jsdom re-serializes raw inline hex
    on readback, the same defect class G1 found). 173 tests pass, zero
    regressions — item 35 still not complete, only "Per action" records
-   remain. Each subsequent wave slice still requires its own
-   pre-execution Decision Fidelity approval before implementation.
+   remain. `MB-SLICE-M2-E7B-GATE-HEADER-01` is merged: the standalone
+   `GateHeader` component (title/state-line/disabled-button header,
+   corrected lede, approver/releases panels), substituting the real
+   Coordinator for the fictional "Architect agent" and correcting the
+   mockup's own fictional autonomous-gate-opening claim to an honest
+   "no automated opening exists yet" note. DF review: 1 non-blocking
+   note (an undisclosed "below" drop) disclosed at zero cost.
+   Implementation review: a second, similarly undisclosed omission
+   (the approverNote's own "waiving a criterion" clause) disclosed on
+   the same footing; an inherited missing-`aria-describedby` gap,
+   pre-existing, not new. 179 tests pass, zero regressions — not wired
+   into `DesktopShell` yet (a future `E7C`-style candidate). Each
+   subsequent wave slice still requires its own pre-execution Decision
+   Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or

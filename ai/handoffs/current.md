@@ -630,11 +630,26 @@ helper (jsdom re-serializes raw inline hex on readback, same defect
 class G1 found). 173/173 tests pass, zero regressions. Item 35 still
 not complete — only "Per action" records remain.
 
-Next: E7B and F4A are authored/DF-reviewed and mid-pipeline. Remaining
-after those: F3D (records list), F4B (gate bottom sheet), G2 (real
-remaining work — mount `CrashCard` via a `systemState` switch,
-extending G1's `connectionState.ts`), G3 (not started). C2/D3/D7 stay
-rescheduled to M3, off the current independent-work list.
+`MB-SLICE-M2-E7B-GATE-HEADER-01` is merged (planning PR #165 at
+`3303379`, implementation PR #166 at `a56a214`) — the standalone
+`GateHeader` component (title/state-line/disabled-button header,
+corrected lede, approver/releases panels), substituting the real
+Coordinator for the fictional "Architect agent" and correcting the
+mockup's own fictional autonomous-gate-opening claim to an honest
+"no automated opening exists yet" note. DF review: 1 non-blocking note
+(an undisclosed "below" drop) disclosed at zero cost. Implementation
+review: a second similarly undisclosed omission (the approverNote's
+own "waiving a criterion" clause) disclosed on the same footing; an
+inherited missing-`aria-describedby` gap, pre-existing, not new.
+179/179 tests pass, zero regressions. Not wired into `DesktopShell`
+yet — a future `E7C`-style candidate.
+
+Next: F4A is authored/DF-reviewed and mid-pipeline. Remaining after
+that: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
+F3D (records list), F4B (gate bottom sheet), G2 (real remaining
+work — mount `CrashCard` via a `systemState` switch, extending G1's
+`connectionState.ts`), G3 (not started). C2/D3/D7 stay rescheduled to
+M3, off the current independent-work list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

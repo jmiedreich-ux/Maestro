@@ -1369,9 +1369,28 @@ introduced here). 22/22 test files, 173/173 tests pass, zero
 regressions. **Item 35 still not complete** — only the "Per action"
 records list remains; Wave F's own completed-item count stays at 2/4.
 
-Next: E7B (gate header/approver/releases panel) and F4A (Plan tab
-packet list) are both authored, DF-reviewed, and in the implementation/
-review pipeline as of this recording. Remaining after those:
+`MB-SLICE-M2-E7B-GATE-HEADER-01` is merged (planning PR #165 at
+`3303379`, implementation PR #166 at `a56a214`) — the standalone
+`GateHeader` component: title/state-line/disabled-button header, a
+corrected lede, and approver/releases panels, substituting the real
+Coordinator actor for the fictional "Architect agent" and correcting
+the mockup's own fictional autonomous-gate-opening claim to an honest
+"no automated opening exists yet" note. Decision Fidelity review
+passed with 1 non-blocking note (an undisclosed second wording
+edit — the lede's own "below" was silently dropped alongside the
+persona substitution) disclosed at zero cost. Independent
+implementation review approved with non-blocking notes (a second,
+similarly undisclosed omission — the approverNote's own "waiving a
+criterion" clause — disclosed on the same footing; an inherited
+missing-`aria-describedby` link between the disabled button and its
+own blocked-reason note, a pre-existing codebase-wide gap, not
+introduced here). 23/23 test files, 179/179 tests pass, zero
+regressions. Not wired into `DesktopShell` — that remains a future
+`E7C`-style candidate.
+
+Next: F4A (Plan tab packet list) is authored, DF-reviewed, and in the
+implementation/review pipeline as of this recording. Remaining after
+that: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
 F3D (item 35's own "Per action" records list), F4B (the gate bottom
 sheet), G2 (the real, now-corrected remaining work: mount `CrashCard`
 from a real `systemState`-driven switch, extending G1's own
