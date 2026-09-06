@@ -1330,8 +1330,52 @@ caller passes `systemState="disconnected"` yet). 22/22 test files,
 render anywhere in the running app today** — this is disclosed, not
 silent: the real trigger is M3's own job.
 
-Next: any independent Wave F (item 35's own remaining Cost segment,
-or F4), or Wave G (G3 — G2 covers `crashed` via C6/D6 only, not D7,
-which is rescheduled to M3). C2/D3/D7 are all rescheduled to M3 and
-off the current independent-work list entirely — not a blocker to
-track, a milestone assignment already made.
+**Exhaustive M2-completion audit (2026-09-06).** Per the Owner's
+instruction to complete M2 end to end, every one of the 39 roadmap
+items was re-checked against the real codebase, not just this doc's
+own running prose. Two real gaps were found that this doc's own prior
+framing had understated:
+
+1. **E7 (item 32) is only half-built.** `GateCriteriaList.tsx` (the
+   criteria-list half) is real and merged, but the "gate-open state"
+   half (header, disabled button, approver/releases panels) was never
+   built — its own packet explicitly deferred it to "a future
+   `E7B`-style candidate," which this doc had not yet tracked as
+   outstanding work.
+2. **G2 (item 38, "crashed" state) was never actually built**, despite
+   this doc's own prior "G2 covers `crashed` via C6/D6" framing.
+   `CrashCard` (C6) and the crash-recovery command (D6) are both real,
+   but nothing anywhere mounts `CrashCard` from any top-level
+   `systemState`-driven switch — the actual top-level banner item 38
+   names was never built by any slice. Corrected here; real work
+   remains.
+
+`MB-SLICE-M2-F3C-ACTIVITY-COST-SPLIT-01` is merged (planning PR #163
+at `b1ebcfa`, implementation PR #164 at `62bf199`) — the first two real
+blocks of the Cost segment (weekly-window card + "m1-a split" card,
+reusing E1B's/E3's fixture data verbatim). Decision Fidelity review
+passed with 4 non-blocking notes (a wrong baseline test-count
+narrative, a miscited color precedent, a minor CSS-value wording
+imprecision — all 3 fixed at zero cost; a disclosed latent test-query
+risk for a future slice, not fixed since no current test is affected).
+Independent implementation review approved with non-blocking notes
+(missing color/width assertions on the split card's own bar segments
+and legend dots — fixed with a new test using a hex-to-rgb helper,
+since jsdom re-serializes raw inline hex colors on readback, the same
+defect class G1 already established; an inherited low-contrast token
+note and an inherited missing-ARIA-selection-state note on the inner
+basis toggle, both pre-existing in `PerfBreakdownCard.tsx`, not
+introduced here). 22/22 test files, 173/173 tests pass, zero
+regressions. **Item 35 still not complete** — only the "Per action"
+records list remains; Wave F's own completed-item count stays at 2/4.
+
+Next: E7B (gate header/approver/releases panel) and F4A (Plan tab
+packet list) are both authored, DF-reviewed, and in the implementation/
+review pipeline as of this recording. Remaining after those:
+F3D (item 35's own "Per action" records list), F4B (the gate bottom
+sheet), G2 (the real, now-corrected remaining work: mount `CrashCard`
+from a real `systemState`-driven switch, extending G1's own
+`connectionState.ts` mechanism), and G3 (empty state, not started).
+C2/D3/D7 are all rescheduled to M3 and off the current independent-work
+list entirely — not a blocker to track, a milestone assignment already
+made.

@@ -424,9 +424,23 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    review: 1 non-blocking note fixed (`text-wrap:pretty`), 1 accepted
    as a known limitation (no `aria-live` region — pre-existing
    codebase-wide gap, moot since the strip never renders today).
-   170 tests pass, zero regressions. Each subsequent wave slice still
-   requires its own pre-execution Decision Fidelity approval before
-   implementation.
+   170 tests pass, zero regressions. **Exhaustive M2-completion audit
+   (2026-09-06)** re-checked all 39 roadmap items against real code and
+   found two real gaps beyond this doc's prior framing: E7 (item 32) is
+   only half-built (`GateCriteriaList` merged; header/approver/releases
+   half deferred to a future `E7B`-style candidate); G2 (item 38,
+   "crashed" state) was never actually built despite prior "covers
+   `crashed` via C6/D6" framing — nothing mounts `CrashCard` from any
+   `systemState`-driven switch. `MB-SLICE-M2-F3C-ACTIVITY-COST-SPLIT-01`
+   is merged: the Cost segment's weekly-window + "m1-a split" cards,
+   reusing E1B's/E3's fixture data verbatim. DF review: 4 non-blocking
+   notes, 3 fixed at zero cost, 1 disclosed for a future slice.
+   Implementation review: missing bar/dot color-and-width coverage,
+   fixed with a hex-to-rgb helper (jsdom re-serializes raw inline hex
+   on readback, the same defect class G1 found). 173 tests pass, zero
+   regressions — item 35 still not complete, only "Per action" records
+   remain. Each subsequent wave slice still requires its own
+   pre-execution Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
