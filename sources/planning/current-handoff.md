@@ -539,15 +539,46 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    proving no global keydown-listener leak across multiple
    mount/unmount cycles, and independent verification that focus
    genuinely moves to the Close button on open and genuinely returns
-   to the gate row on close. With F3D and F4B both now complete, only
-   G2 (mount `CrashCard` from a real `systemState`-driven switch,
-   extending G1's `connectionState.ts`) and G3 (empty state, not
-   started) remain as independent-work items — sequenced one after the
-   other, not in parallel, since both extend the same
-   `connectionState.ts` `SystemState` type and both touch
-   `DesktopShell.tsx` (G3 also touches `MobileShell.tsx`). Each
-   subsequent wave slice still requires its own pre-execution Decision
-   Fidelity approval before implementation.
+   to the gate row on close. `MB-SLICE-M2-G2-CRASHED-STATE-01` is
+   merged (planning PR #181 at `b0b76e7`, review result recorded in
+   doc-only PR #182, implementation PR #183 at `df1fd54`) — completes
+   roadmap item 38 (G2 — `crashed` state) for the desktop surface:
+   extends `connectionState.ts`'s `SystemState` union with `"crashed"`
+   and a new danger-toned connection-strip branch, wires the
+   already-real, already-merged `CrashCard` (C6) into `PacketThread.tsx`
+   appended after the real thread entries when `systemState ===
+   "crashed"`, and threads `DesktopShell.tsx`'s own existing
+   `systemState` prop one level deeper into `PacketThread`. Real,
+   checked correction of this slice's own initial scope assumption: the
+   roadmap's "top-level system banner only" phrasing could be misread
+   as excluding `CrashCard` itself — checking the real mockup directly
+   disproved this, revealing two separate, simultaneously-real UI
+   elements (the connection-strip banner AND a full `CrashCard` feed
+   entry appended to the packet thread) — both built here. DF review:
+   PASS WITH NON-BLOCKING NOTES, two pre-existing gaps unrelated to this
+   slice and not fixed here (missing `aria-live`/`role="alert"` on
+   connection strips generally, already present on the older
+   `disconnected` strip too; a pre-existing 4px-vs-5px `translateY`
+   discrepancy between the `motion.rise` token and the mockup's own
+   global animation, predating this slice). Implementation review:
+   APPROVE WITH NON-BLOCKING NOTES, byte-exact match, two separate
+   successful mutation tests (danger-color derivation and the
+   crash-mounting condition each proven load-bearing), zero
+   regressions, zero CSS orphans, and one non-blocking test-coverage
+   observation (parity with the pre-existing disconnected-state test's
+   own same omission, not a new gap). Explicitly deferred, not silently
+   dropped: the mobile equivalent (wiring `ChatTab.tsx` with its own
+   fresh crash-card markup, matching the established mobile-reuse
+   convention) is a separate, smaller, independently-schedulable future
+   `G2B`-style candidate. With G2 now complete, only G3 (item 39, the
+   empty state, not started) remains as an independent-work item to
+   complete M2's roadmap in full — with real design ambiguities its own
+   planning packet will need to resolve (does the desktop nav sidebar
+   disappear in the empty state? the mockup itself is internally
+   inconsistent on this point). G2B stays a smaller,
+   independently-schedulable item, separate from the G3 critical path.
+   Each subsequent wave slice still requires its own pre-execution
+   Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
