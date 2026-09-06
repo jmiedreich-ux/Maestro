@@ -1,7 +1,7 @@
 # M2 Wave G — `empty` system state (desktop) — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-G3-EMPTY-STATE-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `MergeReady`
 **Base:** `c8919dd` (full: `c8919dd2aa20db5c461788da0dd0374196357908`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -154,6 +154,25 @@ intended.
    with no `onClick` — no real command exists to wire them to.
 5. No fictional "Architect agent" autonomous-planning claim, and no
    invented specific project name, render anywhere in the empty state.
+
+## Decision Fidelity review result: PASS
+
+An independent review returned a clean **PASS** with rigorous,
+targeted scrutiny of this packet's own central, unusually strong
+claim — that the real mockup contains a genuine self-contradiction
+between the empty panel's full-span sizing and the nav sidebar's own
+unconditional visibility rule. The review independently confirmed,
+directly against the mockup file: `showNav`'s own formula never checks
+`sys`, `empty` is the only real state where this creates a conflict
+(`crashed`/`disconnected` have none), and the header/connection-strip
+mechanism genuinely sits outside the affected grid. The review also
+independently proved the "no new `deriveConnectionState` branch
+needed" claim by adding a distinct branch in a scratch copy and
+confirming it produced byte-identical output to the no-branch version.
+Every color token, the two disclosed content corrections, the diff
+scope, and zero CSS orphans were all independently reproduced. No
+correction was required; this packet's own code blocks below are
+unchanged from what the review verified.
 
 ## `apps/atlas/src/shell/connectionState.ts` (modified — full new content)
 
@@ -1409,10 +1428,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-G3-EMPTY-STATE-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
