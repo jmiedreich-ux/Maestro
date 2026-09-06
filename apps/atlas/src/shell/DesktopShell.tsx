@@ -4,17 +4,8 @@ import PacketThread from "../thread/PacketThread";
 import { GateHeader } from "../gate/GateHeader";
 import { GateCriteriaList } from "../gate/GateCriteriaList";
 import { deriveConnectionState, type SystemState } from "./connectionState";
+import { REAL_ACTIVE_PACKET_ID } from "./realActivePacket";
 import styles from "./DesktopShell.module.css";
-
-/**
- * M3 real-data wiring — a genuine, disclosed stopgap: there is no real
- * "list active packets, pick the current one" mechanism/API yet (that's
- * a separate, real feature this doesn't build), so the one currently
- * in-progress real packet is named directly. When a real packet
- * selector exists, replace this with its own real current-selection
- * state instead.
- */
-const REAL_ACTIVE_PACKET_ID = "packet-foundry-cg-m4-20";
 
 export type DesktopShellView = "performance" | "agents" | "history" | "gate" | "packet";
 
@@ -303,7 +294,7 @@ export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {})
               className={selected === "gate" ? styles.contentGate : styles.content}
             >
               {selected === "packet" ? (
-                <PacketThread systemState={systemState} realPacketId={REAL_ACTIVE_PACKET_ID} />
+                <PacketThread systemState={systemState} packetId={REAL_ACTIVE_PACKET_ID} />
               ) : selected === "gate" ? (
                 <>
                   <GateHeader />

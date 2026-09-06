@@ -4,6 +4,7 @@ import { NowTab } from "./NowTab";
 import { ChatTab } from "./ChatTab";
 import { ActivityTab } from "./ActivityTab";
 import { PlanTab } from "./PlanTab";
+import { REAL_ACTIVE_PACKET_ID } from "./realActivePacket";
 import styles from "./MobileShell.module.css";
 
 export type MobileShellTab = "now" | "chat" | "plan" | "activity";
@@ -52,7 +53,7 @@ export function MobileShell() {
         {selected === "now" ? (
           <NowTab />
         ) : selected === "chat" ? (
-          <ChatTab onBack={() => setSelected("now")} />
+          <ChatTab onBack={() => setSelected("now")} packetId={REAL_ACTIVE_PACKET_ID} />
         ) : selected === "activity" ? (
           <ActivityTab />
         ) : (
