@@ -18,10 +18,19 @@ M1 already provides a real, tested packet state machine — claim, execution
 start/heartbeat/finish, review-control routing (with one bounded correction
 pass), acceptance routing, merge-observation routing, correction dispatch —
 but every packet that has moved through it so far has been fixture data.
-No packet compiler, executor, or grading code exists anywhere in
-`services/maestro` today: M3 is greenfield on top of a real but narrow state
-machine, not an extension of partial work. This roadmap is the one place
-that greenfield build gets decomposed, so no packet has to re-derive it.
+No packet-compiler, executor, or grading *business logic* exists anywhere
+in `services/maestro` today. **Correction (found looking ahead before
+packetizing):** this is narrower than an earlier draft's blanket claim —
+M1 already built real, validated durable-state *storage* for several of
+M3's needs (`record_binding`/`project_bindings`,
+`record_graph_projection`/`graph_projections`/`work_items`,
+`record_secret_reference`/`secret_reference_observations`), but every one
+of those methods has zero callers and zero tests: schema and validation
+exist, the logic that would actually call them for real does not. M3 is
+greenfield on the *logic* layer, wiring real business logic onto storage
+that mostly already exists — not building new tables from nothing. This
+roadmap is the one place that build gets decomposed, so no packet has to
+re-derive it.
 
 ## What "packet compiler," "real agent executor," and "mechanical grading"
 concretely mean
@@ -58,9 +67,21 @@ real repository depends on this one — even Wave A's read-only discovery,
 since M0-D03 rule 1 forbids an ad-hoc personal access token standing in for
 a real scoped identity.
 
-1. **W0.1 — Select the local Linux secret provider.** M0-D03's remaining
-   choice 1: pick and configure the provider that injects secret values at
-   run time; the database only ever stores a reference, never a value.
+1. **W0.1 — Select and wire the local Linux secret provider.** M0-D03's
+   remaining choice 1. **Correction (found looking ahead before
+   packetizing):** M1 already built the full observation/bookkeeping side
+   of this — `secret_reference_observations` table, `record_secret_reference`
+   command, `SecretReferenceObservation` state machine (`Active`/`Stale`/
+   `Revoked`/`Unavailable`), and manifest-level `operations.secret_references`
+   identifier validation (`project_manifest.py`). `provider` is a free-form,
+   regex-constrained string (`operational_state.py`'s `_provider`/`_PROVIDER`)
+   — the provider name itself is genuinely undecided, but the ledger that
+   tracks it is not new work. This slice is: (a) stand up one real local
+   mechanism that resolves a reference name to a real secret value at
+   run time (e.g. a permission-locked local file store, matching the
+   ad-hoc pattern already used for Foundry's GitHub App key this session),
+   and (b) call the existing `record_secret_reference` to observe it as
+   `Active` — not build new tracking infrastructure.
 2. **W0.2 — Register/configure Foundry's GitHub identity.** M0-D03's
    remaining choice 2. **Status (2026-09-06):** the App is provisioned and
    verified directly against the GitHub API — App ID `4746601`
@@ -101,7 +122,17 @@ run before any registration, and a general flow means any future project
 5. **A1 — Read-only project discovery.** Given a repository reference, walk
    its declared structure (manifest, SOP, environments, gates) per
    `agent-workforce-control-plane.md` §12's adapter requirements. No writes,
-   no binding yet. Uses Wave 0's GitHub identity. **Foundry-specific note:**
+   no binding yet. Uses Wave 0's GitHub identity. **Correction (found
+   looking ahead before packetizing):** `record_discovery_evidence` and its
+   `discovery_evidence` table already exist, are already tested, and are
+   already called for real — but only from `packet_wrapper.py`'s Alpha-era
+   synthetic lifecycle wrapper, fed by `synthetic_discovery.py`'s
+   fixture-based `build_inventory`/`build_proposed_binding`. This slice does
+   not build new storage — it builds a real inventory/proposed-binding
+   producer (walking an actual repository) that emits the same shape
+   `synthetic_discovery.py` already produces from a fixture, then calls the
+   existing `record_discovery_evidence` the same way. **Foundry-specific
+   note:**
    `docs/registrations/foundry-read-only-discovery.md` already exists but is
    explicitly self-described as stale — it references packet/assignment
    state (e.g. CG-M4-18's disputed status across Issue #6, `tracker/
@@ -113,6 +144,11 @@ run before any registration, and a general flow means any future project
    reviewable, Owner-approvable binding record: branch/PR/merge policy,
    authoritative SOP path, environment/credential-reference policy, gate
    commands. Not yet active. This is M0-D10's proving-sequence step 1.
+   **Correction (found looking ahead before packetizing):**
+   `record_binding` and the `project_bindings` table already exist, fully
+   validated — but have zero callers and zero tests anywhere in the repo.
+   This slice wires the existing method to a real approval flow; it is not
+   new storage design.
 7. **A3 — Non-dispatching dry run.** Validate an approved binding against
    the project's declared paths and gates without dispatching any work —
    proves the binding is honest before anything real depends on it. This is
@@ -130,6 +166,11 @@ run before any registration, and a general flow means any future project
 9. **B1 — Graph node ingestion.** Read one approved graph node (§6.1 fields:
    stable ID, outcome, dependencies, allowed change domains) from a
    registered project's declared graph source at an exact commit.
+   **Correction (found looking ahead before packetizing):**
+   `record_graph_projection` and the `graph_projections`/`work_items`
+   tables already exist, fully validated — but have zero callers and zero
+   tests anywhere in the repo. This slice wires the existing method to a
+   real graph reader; it is not new storage design.
 10. **B2 — Packet materialization.** Compile one ingested node into a real
     packet record (§6.2: base commit, expected branch, exact allowed/
     forbidden paths, validation commands, evidence format, reviewer route) —
