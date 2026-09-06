@@ -18,9 +18,54 @@ function event(overrides: Partial<RealEvent> = {}): RealEvent {
 }
 
 describe("synthesizeThreadEntry", () => {
-  it("describes a real before/after state transition honestly, never inventing dialogue", () => {
+  it("describes a real before/after state transition in plain, user-facing labels, never the raw state codes", () => {
     const entry = synthesizeThreadEntry(event());
-    expect(entry.text).toBe("Planned → Waiting — work started");
+    expect(entry.text).toBe("Queued → Waiting — work started");
+  });
+
+  it("collapses to a single label, not a false 'X → X' arrow, when two distinct real states share one plain label", () => {
+    const entry = synthesizeThreadEntry(
+      event({ before_json: { state: "Ready" }, after_json: { state: "Dispatchable" } }),
+    );
+    expect(entry.text).toBe("Ready to start — work started");
+  });
+
+  it("parses before_json/after_json/reason when the real backend sends them as JSON-encoded strings, not objects", () => {
+    // The real read API's own /snapshot/events response encodes these
+    // three fields as JSON strings, not parsed objects — a real bug
+    // this test guards against regressing.
+    const entry = synthesizeThreadEntry(
+      event({
+        before_json: JSON.stringify({ state: "Ready" }),
+        after_json: JSON.stringify({ state: "Dispatchable" }),
+        reason: JSON.stringify({ kind: "reason", reason_code: "WORK_STARTED", detail_reference: null }),
+      }),
+    );
+    expect(entry.text).toBe("Ready to start — work started");
+    expect(entry.afterState).toBe("Dispatchable");
+  });
+
+  it("reads a nested packet.state when the real after_json is a compound command envelope (e.g. claim_packet_assignment)", () => {
+    const entry = synthesizeThreadEntry(
+      event({
+        event_type: "PacketClaimed",
+        before_json: JSON.stringify({ state: "Dispatchable" }),
+        after_json: JSON.stringify({
+          claim: { kind: "claim" },
+          lease: { state: "Active" },
+          packet: { entity_id: "packet-foundry-cg-m4-19", state: "Leased", version: 5 },
+        }),
+      }),
+    );
+    expect(entry.text).toBe("Ready to start → Assigned — work started");
+    expect(entry.afterState).toBe("Leased");
+  });
+
+  it("falls back to a real state's own humanized name when it has no plain-label mapping yet", () => {
+    const entry = synthesizeThreadEntry(
+      event({ before_json: { state: "SomeFutureState" }, after_json: { state: "Waiting" } }),
+    );
+    expect(entry.text).toBe("Some future state → Waiting — work started");
   });
 
   it("falls back to a humanized real event_type when before/after state is absent", () => {
@@ -94,8 +139,8 @@ describe("synthesizeThreadEntries", () => {
     ];
     const entries = synthesizeThreadEntries(events);
     expect(entries).toHaveLength(2);
-    expect(entries[0].text).toContain("Planned → Waiting");
-    expect(entries[1].text).toContain("Waiting → Ready");
+    expect(entries[0].text).toContain("Queued → Waiting");
+    expect(entries[1].text).toContain("Waiting → Ready to start");
   });
 
   it("returns an empty array for no real events, never inventing placeholder content", () => {

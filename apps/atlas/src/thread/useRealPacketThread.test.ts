@@ -76,8 +76,8 @@ describe("useRealPacketThread", () => {
     const { result } = renderHook(() => useRealPacketThread("packet-foundry-cg-m4-19"));
 
     await waitFor(() => expect(result.current.entries).toHaveLength(2));
-    expect(result.current.entries[0].text).toContain("Planned → Waiting");
-    expect(result.current.entries[1].text).toContain("Waiting → Ready");
+    expect(result.current.entries[0].text).toContain("Queued → Waiting");
+    expect(result.current.entries[1].text).toContain("Waiting → Ready to start");
   });
 
   it("opens the real stream with after= the real max snapshot event id", async () => {
@@ -107,7 +107,7 @@ describe("useRealPacketThread", () => {
     });
 
     await waitFor(() => expect(result.current.entries).toHaveLength(1));
-    expect(result.current.entries[0].text).toContain("Ready → Dispatchable");
+    expect(result.current.entries[0].text).toContain("Ready to start");
   });
 
   it("ignores a real live event for a different packet", async () => {

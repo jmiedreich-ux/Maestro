@@ -22,17 +22,59 @@ import type { EntryRoleKey, ThreadEntry } from "./fixtures";
  * recorded.
  */
 
+/**
+ * The read API's real `/snapshot/events` response encodes
+ * `before_json`/`after_json`/`reason` as JSON-encoded *strings*
+ * (confirmed against a live packet's own real events), not parsed
+ * objects — a genuine gap this module used to silently fail on: every
+ * `event.before_json["state"]` lookup below was reading a string
+ * index, always `undefined`, so every real transition fell through to
+ * the generic event_type fallback ("State changed" x3, with no
+ * before/after ever shown). These three fields accept either shape so
+ * a real backend response and a test's own plain-object fixture both
+ * work.
+ */
 export interface RealEvent {
   event_id: number;
   entity_type: string;
   entity_id: string;
   event_type: string;
-  before_json: Record<string, unknown>;
-  after_json: Record<string, unknown>;
-  reason: { kind: string; reason_code: string; detail_reference: string | null };
+  before_json: Record<string, unknown> | string;
+  after_json: Record<string, unknown> | string;
+  reason: { kind: string; reason_code: string; detail_reference: string | null } | string;
   actor_type: string;
   actor_id: string;
   created_at: string;
+}
+
+function parseMaybeJson(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object") return value as Record<string, unknown>;
+  if (typeof value === "string" && value.length > 0) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * A packet state usually lives at the top level (`{state: "..."}`),
+ * but a compound command envelope (e.g. claim_packet_assignment's own
+ * real `after_json`, which carries `attempt`/`lease`/`locks`/`claim`
+ * alongside the packet) nests it under `packet.state` instead — read
+ * whichever one is actually present, never guess a value neither
+ * carries.
+ */
+function readState(parsed: Record<string, unknown>): string | null {
+  if (typeof parsed["state"] === "string") return parsed["state"] as string;
+  const nestedPacket = parsed["packet"];
+  if (nestedPacket && typeof nestedPacket === "object" && typeof (nestedPacket as Record<string, unknown>)["state"] === "string") {
+    return (nestedPacket as Record<string, unknown>)["state"] as string;
+  }
+  return null;
 }
 
 /**
@@ -88,6 +130,41 @@ function humanizeIdentifier(identifier: string): string {
 }
 
 /**
+ * Plain, user-facing labels for the real operational states this
+ * program's own state machine (`operational_state.py`) actually emits
+ * — never a guessed or expanded set. Names not in this table (a future
+ * real state this UI hasn't been taught yet) fall back to their own
+ * humanized identifier rather than a guess.
+ */
+const STATE_LABELS: Record<string, string> = {
+  Planned: "Queued",
+  Waiting: "Waiting",
+  Ready: "Ready to start",
+  Dispatchable: "Ready to start",
+  Leased: "Assigned",
+  Running: "In progress",
+  NeedsReplan: "Needs a decision",
+  MergeReady: "Ready to merge",
+  Cancelled: "Cancelled",
+};
+
+export function labelForState(state: string): string {
+  return STATE_LABELS[state] ?? humanizeIdentifier(state);
+}
+
+/**
+ * Drops a leading, redundant `entity_type` word from an `event_type`
+ * before humanizing it — every event this thread renders already
+ * belongs to the one entity its own header identifies (e.g.
+ * "PacketMaterialized" on a Packet event reads as "Materialized", not
+ * "Packet materialized").
+ */
+function humanizeEventType(eventType: string, entityType: string): string {
+  const withoutEntityPrefix = eventType.startsWith(entityType) ? eventType.slice(entityType.length) : eventType;
+  return humanizeIdentifier(withoutEntityPrefix || eventType);
+}
+
+/**
  * One honest, plain-language description of a real state transition —
  * never invented dialogue. Cites the real before/after state (when
  * present) and the real reason_code, in concise, humanized words
@@ -97,16 +174,27 @@ function humanizeIdentifier(identifier: string): string {
  * not information.
  */
 function describeEvent(event: RealEvent): string {
-  const before = typeof event.before_json?.["state"] === "string" ? (event.before_json["state"] as string) : null;
-  const after = typeof event.after_json?.["state"] === "string" ? (event.after_json["state"] as string) : null;
-  const reasonCode = event.reason?.reason_code;
+  const before = readState(parseMaybeJson(event.before_json));
+  const after = readState(parseMaybeJson(event.after_json));
+  const reasonCode = parseMaybeJson(event.reason)["reason_code"];
+  const reasonCodeText = typeof reasonCode === "string" ? reasonCode : undefined;
 
-  const body = before && after ? `${before} → ${after}` : humanizeIdentifier(event.event_type);
-  return reasonCode ? `${body} — ${humanizeWords(reasonCode)}` : body;
+  let body: string;
+  if (before && after) {
+    const beforeLabel = labelForState(before);
+    const afterLabel = labelForState(after);
+    // Two distinct real internal states (e.g. Ready/Dispatchable) can
+    // share one plain label — showing "X → X" would look like nothing
+    // happened, so collapse to the single label instead of a false arrow.
+    body = beforeLabel === afterLabel ? afterLabel : `${beforeLabel} → ${afterLabel}`;
+  } else {
+    body = humanizeEventType(event.event_type, event.entity_type);
+  }
+  return reasonCodeText ? `${body} — ${humanizeWords(reasonCodeText)}` : body;
 }
 
 export function synthesizeThreadEntry(event: RealEvent): ThreadEntry {
-  const after = typeof event.after_json?.["state"] === "string" ? (event.after_json["state"] as string) : undefined;
+  const after = readState(parseMaybeJson(event.after_json)) ?? undefined;
   return {
     k: roleKeyForActorType(event.actor_type),
     who: event.actor_type,
