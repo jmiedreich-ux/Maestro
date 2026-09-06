@@ -1,10 +1,16 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "../tokens";
 import { CrashCard } from "./CrashCard";
 import { CRASH_EXAMPLE } from "./fixtures";
 
 afterEach(cleanup);
+
+const REAL_CONTEXT = {
+  packetId: "packet-1",
+  expectedVersion: 1,
+  actor: { actor_type: "Owner", actor_id: "owner-1", correlation_id: "correlation-1" },
+};
 
 describe("CrashCard", () => {
   it("renders the eyebrow badge and age, and the adapted headline naming the real Failed/NeedsReplan mechanism", () => {
@@ -68,5 +74,64 @@ describe("CrashCard", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<CrashCard />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  describe("(M3 E6) real prop — wired to the real redispatch-crash/resolve-crash commands", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("never wires 'Resume Terra from the last boundary' — no real backend counterpart, real or not", () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<CrashCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Resume Terra from the last boundary/ }));
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("posts the real redispatch-crash command when re-dispatch is clicked", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ closed_packet: { state: "Cancelled" }, redispatched_packet: { state: "Planned" } }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<CrashCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Re-dispatch A\.2 to another implementor/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toBe("http://127.0.0.1:8765/command/redispatch-crash");
+    });
+
+    it("posts the real resolve-crash command when hold is clicked", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ packet: { state: "Cancelled" } }) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<CrashCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Hold A\.2 and inspect the worktree/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const [url] = fetchMock.mock.calls[0];
+      expect(url).toBe("http://127.0.0.1:8765/command/resolve-crash");
+    });
+
+    it("shows the real server error when a real command fails", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ error: "stale_state" }) })
+      );
+
+      render(<CrashCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Hold A\.2 and inspect the worktree/ }));
+
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("stale_state"));
+    });
+
+    it("does not attach click handlers to the wired options when real is omitted (every existing caller)", () => {
+      render(<CrashCard />);
+      expect(screen.getByRole("button", { name: /Re-dispatch A\.2 to another implementor/ })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: /Hold A\.2 and inspect the worktree/ })).not.toBeDisabled();
+    });
   });
 });

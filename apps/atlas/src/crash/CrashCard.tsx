@@ -1,7 +1,26 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { CRASH_EXAMPLE } from "./fixtures";
+import { redispatchCrash, resolveCrashHold, type RealActor } from "./realCrashCommands";
 import styles from "./CrashCard.module.css";
+
+export interface CrashCardRealContext {
+  packetId: string;
+  expectedVersion: number;
+  actor: RealActor;
+}
+
+export interface CrashCardProps {
+  /**
+   * M3 E6 — when supplied, the "Re-dispatch" and "Hold" option buttons
+   * dispatch the real redispatch-crash/resolve-crash commands. Omitted
+   * (the default, and every existing caller), all three buttons render
+   * exactly as before: inert, no onClick. "Resume Terra from the last
+   * boundary" is never wired, real or not — see realCrashCommands.ts's
+   * own module docstring for why: it has no real backend counterpart.
+   */
+  real?: CrashCardRealContext;
+}
 
 /**
  * Colors from `Atlas Explorations.dc.html`'s real, non-templated crash
@@ -43,8 +62,41 @@ const SHELL_VARS = {
  * real outcome mapping in `operational_state.py`, which always
  * releases a Failed attempt's lease.
  */
-export function CrashCard() {
+export function CrashCard({ real }: CrashCardProps = {}) {
   const { age, headline, lede, facts, options, footerNote } = CRASH_EXAMPLE;
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleOptionClick(index: number) {
+    // Real mapping, matching each option's own real body text above:
+    // index 0 ("Resume...") has no real backend counterpart and is
+    // never wired; index 1 ("Re-dispatch...") is the real
+    // redispatch-crash command; index 2 ("Hold...") is the already-real
+    // resolve-crash command.
+    if (!real || index === 0 || pendingIndex !== null) return;
+    setErrorMessage(null);
+    setPendingIndex(index);
+    try {
+      if (index === 1) {
+        await redispatchCrash({
+          packetId: real.packetId,
+          expectedVersion: real.expectedVersion,
+          actor: real.actor,
+        });
+      } else {
+        await resolveCrashHold({
+          packetId: real.packetId,
+          expectedVersion: real.expectedVersion,
+          actor: real.actor,
+        });
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPendingIndex(null);
+    }
+  }
+
   return (
     <div className={styles.row} style={SHELL_VARS}>
       <span aria-hidden="true" />
@@ -67,16 +119,29 @@ export function CrashCard() {
           </div>
         </div>
         <div className={styles.optionList}>
-          {options.map((option) => (
-            <button key={option.title} type="button" className={styles.option}>
+          {options.map((option, index) => (
+            <button
+              key={option.title}
+              type="button"
+              className={styles.option}
+              disabled={real && index !== 0 ? pendingIndex !== null : undefined}
+              onClick={real && index !== 0 ? () => void handleOptionClick(index) : undefined}
+            >
               <div className={styles.optionRow}>
                 <b className={styles.optionTitle}>{option.title}</b>
-                <span className={styles.optionCost}>{option.cost}</span>
+                <span className={styles.optionCost}>
+                  {real && pendingIndex === index ? "sending…" : option.cost}
+                </span>
               </div>
               <div className={styles.optionBody}>{option.body}</div>
             </button>
           ))}
         </div>
+        {real && errorMessage && (
+          <p className={styles.optionBody} role="alert">
+            {errorMessage}
+          </p>
+        )}
         <div className={styles.footer}>{footerNote}</div>
       </div>
     </div>
