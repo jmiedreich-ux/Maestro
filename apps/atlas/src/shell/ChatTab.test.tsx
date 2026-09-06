@@ -51,7 +51,7 @@ describe("ChatTab", () => {
     render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     expect(screen.getByText("test-chat")).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Leased" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Assigned" })).toBeInTheDocument();
     });
     expect(screen.getByText("2 real events recorded")).toBeInTheDocument();
   });
@@ -79,8 +79,8 @@ describe("ChatTab", () => {
     // shared entries shape, and ChatTab reverses it back — the most
     // recent real event (event_id 2) is visible first, no scrolling.
     expect(bubbles.map((b) => b.textContent)).toEqual([
-      "Leased → Running — work started",
-      "Ready → Leased — work started",
+      "Assigned → In progress — work started",
+      "Ready to start → Assigned — work started",
     ]);
   });
 

@@ -1,4 +1,5 @@
 import type { ThreadEntry } from "./fixtures";
+import { labelForState } from "./realEventSynthesis";
 
 /**
  * A real-data header state — distinct from `headerState.ts`'s own
@@ -16,17 +17,11 @@ export interface RealHeaderState {
   stateLine: string;
 }
 
-/** Same humanizing rule realEventSynthesis.ts uses for its own event/reason text, applied to a state name like "NeedsReplan". */
-function humanizeState(state: string): string {
-  const spaced = state.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
 export function deriveRealHeaderState(packetId: string, entries: ThreadEntry[]): RealHeaderState {
   const latestWithState = [...entries].reverse().find((entry) => entry.afterState !== undefined);
   return {
     eyebrow: packetId.replace(/^packet-/, ""),
-    title: latestWithState ? humanizeState(latestWithState.afterState as string) : "Waiting for events",
+    title: latestWithState ? labelForState(latestWithState.afterState as string) : "Waiting for events",
     stateLine:
       entries.length === 0
         ? "No real events recorded yet"
