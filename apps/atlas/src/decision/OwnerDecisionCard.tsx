@@ -1,7 +1,31 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { OWNER_DECISION_EXAMPLE } from "./ownerFixtures";
+import {
+  dispatchCorrection,
+  resolveDecisionSentinel,
+  type RealActor,
+} from "./realDecisionCommands";
 import styles from "./OwnerDecisionCard.module.css";
+
+export interface OwnerDecisionCardRealContext {
+  packetId: string;
+  expectedVersion: number;
+  /** Required only for the "Amend the A.1 contract" option's real command. */
+  reviewId: string;
+  actor: RealActor;
+}
+
+export interface OwnerDecisionCardProps {
+  /**
+   * M3 E5 — when supplied, both option buttons dispatch the real D2/D3
+   * commands (record_and_route_review's resolve-decision, and
+   * record_and_dispatch_correction via dispatch-correction). Omitted
+   * (the default, and every existing caller), both buttons render
+   * exactly as before: inert, no onClick at all.
+   */
+  real?: OwnerDecisionCardRealContext;
+}
 
 /**
  * Owner-decision-variant colors from `Atlas Explorations.dc.html`'s
@@ -40,8 +64,41 @@ const SHELL_VARS = {
   "--atlas-font-mono": fontFamily.mono,
 } as CSSProperties;
 
-export function OwnerDecisionCard() {
+export function OwnerDecisionCard({ real }: OwnerDecisionCardProps = {}) {
   const { age, headline, lede, why, options } = OWNER_DECISION_EXAMPLE;
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleOptionClick(index: number) {
+    if (!real || pendingIndex !== null) return;
+    setErrorMessage(null);
+    setPendingIndex(index);
+    try {
+      // Real mapping, matching each option's own real body text above:
+      // index 0 ("Allow a sentinel version") is D2's real Ready
+      // transition; index 1 ("Amend the A.1 contract") is D3's real
+      // correction dispatch — the only two options this fixture has.
+      if (index === 0) {
+        await resolveDecisionSentinel({
+          packetId: real.packetId,
+          expectedVersion: real.expectedVersion,
+          actor: real.actor,
+        });
+      } else {
+        await dispatchCorrection({
+          packetId: real.packetId,
+          expectedVersion: real.expectedVersion,
+          reviewId: real.reviewId,
+          actor: real.actor,
+        });
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPendingIndex(null);
+    }
+  }
+
   return (
     <div className={styles.row} style={SHELL_VARS}>
       <span aria-hidden="true" />
@@ -68,16 +125,29 @@ export function OwnerDecisionCard() {
           </div>
         </div>
         <div className={styles.optionList}>
-          {options.map((option) => (
-            <button key={option.title} type="button" className={styles.option}>
+          {options.map((option, index) => (
+            <button
+              key={option.title}
+              type="button"
+              className={styles.option}
+              disabled={real ? pendingIndex !== null : undefined}
+              onClick={real ? () => void handleOptionClick(index) : undefined}
+            >
               <div className={styles.optionRow}>
                 <b className={styles.optionTitle}>{option.title}</b>
-                <span className={styles.optionCost}>{option.cost}</span>
+                <span className={styles.optionCost}>
+                  {real && pendingIndex === index ? "sending…" : option.cost}
+                </span>
               </div>
               <div className={styles.optionBody}>{option.body}</div>
             </button>
           ))}
         </div>
+        {real && errorMessage && (
+          <p className={styles.why} role="alert">
+            {errorMessage}
+          </p>
+        )}
       </div>
     </div>
   );

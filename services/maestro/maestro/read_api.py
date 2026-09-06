@@ -10,7 +10,7 @@ import threading
 import time
 import urllib.parse
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -469,6 +469,7 @@ def _validate_command_envelope(body: Any) -> str | None:
 # remains the single source of truth for which source states may legally
 # reach them (this command does not duplicate that check).
 _RESOLVE_DECISION_TARGET_STATES = frozenset({"Cancelled", "Ready", "Waiting"})
+_CORRECTION_LEASE_DURATION = timedelta(hours=1)
 
 
 def _validate_resolve_decision_command(envelope: dict[str, Any]) -> str | None:
@@ -563,6 +564,151 @@ def _handle_resolve_decision(handler: "_ReadApiRequestHandler", envelope: dict[s
         # failure this command did not cause and cannot itself recover
         # from, mapped to the same `database_unavailable` convention the
         # existing GET snapshot routes already use for a broken database.
+        handler._respond(
+            503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
+        )
+        return
+
+    handler._respond(200, canonical_response_json(result))
+
+
+# M3 E5 — real wiring for the owner-decision card's "Amend the A.1
+# contract" option (m2-atlas-roadmap.md D3): `record_and_dispatch_correction`
+# already existed as a real, tested M1 command (operational_state.py:809)
+# with zero real callers anywhere — found during M3 roadmap scoping. This
+# is that wiring, not new command design: the actual dispatch logic,
+# state-machine transitions, and every precondition are exactly M1's own.
+#
+# A real correction dispatch requires a full new lease/lock/attempt
+# assignment (the same shape claim_packet_assignment itself takes) — an
+# owner clicking "Amend" in Atlas has no reason to know low-level lease
+# IDs or lock kinds, so this command generates them server-side from the
+# packet's own real, already-recorded `resource_claims_json`, rather than
+# accepting them from the client.
+_RESOURCE_CLAIM_KIND = {"finite": "FiniteResource", "path": "Path", "shared": "SharedBoundary"}
+
+
+def _lock_requests_from_resource_claims(resource_claims: list[str]) -> list[dict[str, str]]:
+    """Build lock requests whose `resource_key` is the packet's own real,
+    already-recorded resource_claims_json entry verbatim (e.g.
+    "finite:gpu") — record_and_dispatch_correction requires these to
+    match its declared claims exactly, by value and by order.
+    materialize_packet's own _packet validator already stores
+    resource_claims_json pre-sorted, which is also the order
+    _assignment_lock_requests itself requires."""
+    locks = []
+    for index, claim in enumerate(resource_claims):
+        prefix, separator, _ = claim.partition(":")
+        lock_kind = _RESOURCE_CLAIM_KIND.get(prefix) if separator else None
+        if lock_kind is None:
+            raise InvalidRecord(f"packet resource claim has an unrecognized shape: {claim!r}")
+        locks.append({"lock_id": f"correction-lock-{index}", "lock_kind": lock_kind, "resource_key": claim})
+    return locks
+
+
+def _validate_dispatch_correction_command(envelope: dict[str, Any]) -> str | None:
+    packet_id = envelope.get("packet_id")
+    if not isinstance(packet_id, str) or packet_id == "":
+        return "packet_id is required and must be a non-empty string"
+    expected_version = envelope.get("expected_version")
+    if (
+        not isinstance(expected_version, int)
+        or isinstance(expected_version, bool)
+        or expected_version <= 0
+    ):
+        return "expected_version is required and must be a positive integer"
+    review_id = envelope.get("review_id")
+    if not isinstance(review_id, str) or review_id == "":
+        return "review_id is required and must be a non-empty string"
+    reason_payload = envelope.get("reason_payload")
+    if not isinstance(reason_payload, dict):
+        return "reason_payload is required and must be a JSON object"
+    return None
+
+
+def _handle_dispatch_correction(handler: "_ReadApiRequestHandler", envelope: dict[str, Any]) -> None:
+    error_detail = _validate_dispatch_correction_command(envelope)
+    if error_detail is not None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": error_detail})
+        )
+        return
+
+    try:
+        store = OperationalStateStore(
+            RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
+    packet_id = envelope["packet_id"]
+    try:
+        packet_row = store.snapshot("Packet", packet_id)
+    except sqlite3.Error:
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    if packet_row is None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": "unknown packet_id"})
+        )
+        return
+
+    now = datetime.now(timezone.utc)
+    now_text = now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    correction_key = f"correction-{packet_id}-{envelope['idempotency_key']}"
+    lease = {
+        "executor_route": "owner-triggered-correction",
+        "expires_at": (now.replace(microsecond=0) + _CORRECTION_LEASE_DURATION).strftime(
+            "%Y-%m-%dT%H:%M:%S.%f"
+        ) + "Z",
+        "holder_id": envelope["actor"].get("actor_id", "owner"),
+        "lease_id": f"correction-lease-{correction_key}",
+        "worktree_path": f"/runtime/correction/{correction_key}",
+    }
+    attempt = {
+        "attempt_id": f"correction-attempt-{correction_key}",
+        "model_identity": "owner-triggered",
+        "runtime_identity": "owner-triggered-correction",
+    }
+
+    try:
+        resource_claims = packet_row.get("resource_claims_json") or []
+        locks = _lock_requests_from_resource_claims(resource_claims)
+        result = store.record_and_dispatch_correction(
+            packet_id,
+            envelope["expected_version"],
+            envelope["review_id"],
+            lease,
+            locks,
+            attempt,
+            envelope["reason_payload"],
+            envelope["idempotency_key"],
+            envelope["actor"],
+            now_text,
+        )
+    except StaleState as error:
+        handler._respond(409, canonical_response_json({"error": "stale_state", "detail": str(error)}))
+        return
+    except InvalidTransition as error:
+        handler._respond(
+            409, canonical_response_json({"error": "invalid_transition", "detail": str(error)})
+        )
+        return
+    except IdempotencyConflict as error:
+        handler._respond(
+            409, canonical_response_json({"error": "idempotency_conflict", "detail": str(error)})
+        )
+        return
+    except InvalidRecord as error:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": str(error)})
+        )
+        return
+    except ResourceBusy as error:
+        handler._respond(503, canonical_response_json({"error": "resource_busy", "detail": str(error)}))
+        return
+    except sqlite3.OperationalError as error:
         handler._respond(
             503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
         )
@@ -678,6 +824,7 @@ def _handle_resolve_crash(handler: "_ReadApiRequestHandler", envelope: dict[str,
 # two copies drift.
 _COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], None]] = {
     "/command/resolve-decision": _handle_resolve_decision,
+    "/command/dispatch-correction": _handle_dispatch_correction,
     "/command/resolve-crash": _handle_resolve_crash,
 }
 
