@@ -118,7 +118,7 @@ export function PacketThread({ systemState = "normal", packetId }: PacketThreadP
         const initials = INITIALS_BY_NAME[entry.who] ?? FALLBACK_INITIALS[entry.k];
         return (
           <div
-            key={`${entry.who}-${entry.time}`}
+            key={`${index}-${entry.who}-${entry.time}`}
             className={styles.row}
             style={{ paddingTop: showAvatar ? 16 : 2, paddingBottom: showAvatar ? 16 : 2 }}
           >

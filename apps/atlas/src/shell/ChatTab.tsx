@@ -128,10 +128,14 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
         </div>
       </div>
       <div className={styles.feed}>
-        {entries.map((entry) => {
+        {/* Newest first, so the most recent real event is visible
+            immediately without scrolling — unlike C1's desktop
+            PacketThread, which keeps the reference file's own
+            oldest-first order for a continuous scroll-to-read feed. */}
+        {[...entries].reverse().map((entry, index) => {
           const mine = isMine(entry.k);
           return (
-            <div key={`${entry.who}-${entry.time}`} className={styles.row}>
+            <div key={`${index}-${entry.who}-${entry.time}`} className={styles.row}>
               <div className={styles.nameRow}>
                 <span className={styles.name} style={{ color: nameColorFor(entry.k) }}>
                   {entry.who}
