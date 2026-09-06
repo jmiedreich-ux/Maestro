@@ -1,7 +1,7 @@
 # M2 Wave F — Gate bottom sheet, wired to the Plan tab's gate row — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F4B-GATE-SHEET-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `MergeReady`
 **Base:** `ae1a090` (full: `ae1a090b54090f02cc7b0740409f4b90daef7cbd`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -145,8 +145,9 @@ deliberately excludes.
    need.
 5. **Real, disclosed literal, not a rounded token.** The disabled
    Open-gate button's own background (`#F1EEF6`) is a real, different
-   value from `colors.neutralChip`'s `#F2EEF8` — one digit apart,
-   checked directly, not treated as a typo of a close-looking token.
+   value from `colors.neutralChip`'s `#F2EEF8` — two of the three hex
+   byte-pairs differ (`F2`→`F1`, `F8`→`F6`), checked directly, not
+   treated as a typo of a close-looking token.
 
 ## Guards
 
@@ -169,6 +170,24 @@ deliberately excludes.
 5. The disabled "Open gate" button stays genuinely disabled
    (`disabled` attribute) — no real gate-opening command exists to
    wire it to; this stays inert.
+
+## Corrected — Decision Fidelity review finding (RESOLVED)
+
+An independent Decision Fidelity review returned **PASS** — every
+functional, accessibility, token, and fixture-reuse claim was
+independently reproduced and confirmed accurate, including the real
+mockup markup, the real 4-way `GATE_CRITERIA` wording discrepancy, the
+token-reuse claims, and every accessibility mechanic (dialog role,
+Escape, backdrop click, focus-on-open, focus-return-on-close via a
+real, passing test). One minor, non-blocking wording imprecision was
+noted and fixed at zero cost before finalizing this packet as
+`MergeReady`: Design rationale #5 (and the matching code comment)
+described `#F1EEF6` vs. `colors.neutralChip`'s `#F2EEF8` as "one digit
+apart" — imprecise, since two of the three hex byte-pairs actually
+differ (`F2`→`F1`, `F8`→`F6`), not one digit. The substantive claim
+(these are different real literals, not an accidental typo of the
+token) was already correct and remains unchanged; only the wording is
+corrected, in both the prose and the shipped code comment below.
 
 ## `apps/atlas/src/gate/GateSheet.tsx` (new file)
 
@@ -207,10 +226,11 @@ const TOTAL_COUNT = GATE_CRITERIA.length;
  * `ActivityTab.tsx`'s own `--atlas-ag-footer-border` already
  * discloses, reused here as the same real fact), and the disabled
  * button's own background (`#F1EEF6` — a real, different value from
- * `colors.neutralChip`'s `#F2EEF8`, one digit apart, not a typo of it,
- * checked directly — matching this program's own established
- * discipline of never rounding a close-but-different real hex to a
- * similar-looking token).
+ * `colors.neutralChip`'s `#F2EEF8`; two of the three hex byte-pairs
+ * differ (`F2`→`F1`, `F8`→`F6`), not a typo of it, checked directly —
+ * matching this program's own established discipline of never
+ * rounding a close-but-different real hex to a similar-looking
+ * token).
  *
  * **Real, disclosed fact, not a mismatch:** the mechanism note below
  * uses `colors.inkMuted` (`#8E8299`), a genuinely different real token
@@ -1183,11 +1203,11 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F4B-GATE-SHEET-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
