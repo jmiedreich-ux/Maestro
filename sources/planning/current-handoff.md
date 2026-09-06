@@ -488,9 +488,29 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    `APPROVE`, re-confirming the mutation test and a byte-exact match,
    zero regressions, one non-blocking note (a stray "185/185" vs.
    "184/184" test-count mismatch between two sections of the packet's
-   own prose — documentation-only, not a code defect). Each
-   subsequent wave slice still requires its own pre-execution Decision
-   Fidelity approval before implementation.
+   own prose — documentation-only, not a code defect).
+   `MB-SLICE-M2-F3D-PER-ACTION-RECORDS-01` is merged: the Cost
+   segment's third and final block, the "Per action" records list,
+   reusing E2/E2B's real `PERF_RECORDS` fixture data and its
+   already-reviewed color-derivation mapping from `PerfRecordsList.tsx`
+   verbatim, as fresh mobile-specific `RecordsList`/`RecordCard`
+   components (deliberately not `<PerfRecordsList />` mounted as-is,
+   matching the established mobile-reuse convention). Completes
+   roadmap item 35 in full — F3, F3B, F3C, and F3D are all merged,
+   moving Wave F's completed-item count from 2/4 to 3/4; only item
+   36/F4B remains. DF review: PASS WITH NON-BLOCKING NOTES — two
+   citation-only defects (a wrong line-number citation in a shipped
+   code comment, a miscounted line range in the packet's own Evidence
+   section quote), both fixed at zero cost, no functional or test
+   change. Implementation review: APPROVE WITH NON-BLOCKING NOTES —
+   byte-exact match to the packet, mutation-tested confirmation of the
+   color-reuse claim and of a disclosed test-scoping trap (a record
+   row's own "Cost" label colliding with the outer segmented control's
+   own "Cost" tab), zero regressions, and one non-blocking
+   accessibility note (missing `aria-expanded` on the accordion toggle
+   button — parity with `PerfRecordsList.tsx`'s own same omission, not
+   a new regression). Each subsequent wave slice still requires its
+   own pre-execution Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
