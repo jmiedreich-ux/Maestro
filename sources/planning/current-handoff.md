@@ -3,8 +3,8 @@
 **Date:** 2026-09-05
 **Repository:** `jmiedreich-ux/Maestro`
 **Branch:** `master`
-**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), **M2 Wave C complete** (C1 packet thread, C1B wired into DesktopShell's nav, C3 decision card ruling variant — a standalone `DecisionCard` driven by a real M1 routing-table entry, not the mockup's fictional "Architect agent" — C4 decision card owner-decision variant — reuses C1's real `A.2` escalation scenario with the real Coordinator actor — C5 Decision Fidelity record — cites this project's own real, closed C3 review rather than the mockup's fictional ruling — C6 crash card — reuses C1's real `A.2` scenario, 5 pieces of copy corrected against the real `finish_attempt_execution` outcome mapping — C7 header/state-source wiring — the README's single-state-source rule, `derivePacketHeaderState` plus `PacketHeader`), and Wave E underway (E1 Performance header/stats and E1B weekly-window strip — both zero disclosed color literals)
-**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) is **rescheduled to M3** — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question this project's own delegated Architect authority resolves by naming the milestone where real project/packet data starts flowing, not by leaving it open pending Owner input; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; **Wave E is now fully complete, all 7 items merged**: E1 (Performance header/stats), E1B (weekly-window strip), E2 (per-action records list, collapsed), E2B (records expand/collapse, item 27 in full), E3 (Performance breakdown card, item 28), E4 (Agents roster, item 29), E5 (Agents contention/lock card, item 30 — the last item, closing the wave); E6/E7 each merged via a `-02` successor after a terminally returned `-01`; of 39 total M2 roadmap items, 24 are now done (~62%), plus C2 rescheduled to M3; Owner directed continuation into Wave D 2026-09-05; D4/D5 rescheduled to M4 (PR #137, depend on the real M4 autonomous Architect loop which doesn't exist in M2 — Owner-confirmed standing policy: mockup features depending on a later milestone's machinery get rescheduled to that milestone, never forced in or dropped); D1 (guarded command API scaffold — the first Wave D slice and the first backend/Python slice merged this session) is merged, completing roadmap item 19; 25 of 39 items now done (~64%); next is D2, the smallest real operator-action command
+**Current integrated product state:** Alpha-01 through Alpha-03 plus M1 authority, operational state, run lifecycle, packet eligibility, assignment claim, execution start/heartbeat/finish, review-control routing, packet acceptance routing, merge-observation routing, correction dispatch, correction-pass review routing, NeedsReplan closure, M2 Wave A complete (A1 read API scaffold, A2 packets snapshot, A3 attempts snapshot, A4 reviews snapshot, A5 events snapshot), M2 Wave B complete (B1 Atlas app scaffold, B2 design tokens, B3 desktop shell candidate `-02`, B4 mobile shell), **M2 Wave C complete** (C1 packet thread, C1B wired into DesktopShell's nav, C3 decision card ruling variant — a standalone `DecisionCard` driven by a real M1 routing-table entry, not the mockup's fictional "Architect agent" — C4 decision card owner-decision variant — reuses C1's real `A.2` escalation scenario with the real Coordinator actor — C5 Decision Fidelity record — cites this project's own real, closed C3 review rather than the mockup's fictional ruling — C6 crash card — reuses C1's real `A.2` scenario, 5 pieces of copy corrected against the real `finish_attempt_execution` outcome mapping — C7 header/state-source wiring — the README's single-state-source rule, `derivePacketHeaderState` plus `PacketHeader`), Wave E complete (all 7 items: E1 Performance header/stats, E1B weekly-window strip, E2 per-action records list, E2B records expand/collapse, E3 Performance breakdown card, E4 Agents roster, E5 Agents contention/lock card), Wave F complete (F1 Now tab, F2 Chat tab, F3/F3B/F3C/F3D Activity tab segments, F4A Plan tab packet list, F4B gate bottom sheet), and **Wave G complete** (G1 `disconnected` state, G2 `crashed` state, G3 `empty` state — `MB-SLICE-M2-G3-EMPTY-STATE-01`, PRs #185/#186/#187 — the last item on the M2 roadmap, desktop surface), with D1/D2/D6 merged (guarded command API scaffold, resolve-decision command, resolve-crash command) and C2/D3/D7 rescheduled to M3, D4/D5 rescheduled to M4 — **M2's roadmap-item list (all 39 items) is now fully addressed for its independently-scheduled desktop-first scope**; G2B (mobile crashed-state wiring) and G3B (mobile empty-state wiring) remain as smaller, separately-schedulable deferred follow-ups, not blockers
+**Current development state:** M1 internal operational core closed; M2 Wave A (backend read API), Wave B (Atlas app shells), and **Wave C (packet thread / decision cards / fidelity record / crash card / header state — all 7 items) are now all complete**; M2 execution authorized by the Owner 2026-09-05 per [the M2 Atlas roadmap](../../docs/planning/m2-atlas-roadmap.md), with delegated Project Architect authority over design, blockers, and merge; C2 (real-data wiring) is **rescheduled to M3** — the backend's structured data model has no concept matching the mockup's narrative thread messages, a real architecture/product question this project's own delegated Architect authority resolves by naming the milestone where real project/packet data starts flowing, not by leaving it open pending Owner input; every other Wave C component is real, reviewed, and merged but still standalone (not wired into `DesktopShell`'s content pane, except `PacketThread` via C1B) — that wiring is separate future work; **Wave E is now fully complete, all 7 items merged**: E1 (Performance header/stats), E1B (weekly-window strip), E2 (per-action records list, collapsed), E2B (records expand/collapse, item 27 in full), E3 (Performance breakdown card, item 28), E4 (Agents roster, item 29), E5 (Agents contention/lock card, item 30 — the last item, closing the wave); E6/E7 each merged via a `-02` successor after a terminally returned `-01`; of 39 total M2 roadmap items, 24 are now done (~62%), plus C2 rescheduled to M3; Owner directed continuation into Wave D 2026-09-05; D4/D5 rescheduled to M4 (PR #137, depend on the real M4 autonomous Architect loop which doesn't exist in M2 — Owner-confirmed standing policy: mockup features depending on a later milestone's machinery get rescheduled to that milestone, never forced in or dropped); D1 (guarded command API scaffold — the first Wave D slice and the first backend/Python slice merged this session) is merged, completing roadmap item 19; D2 (resolve-decision command) and D6 (resolve-crash command) are also merged, the only two of the roadmap's named recovery/decision options with a real backend counterpart; D3/D7 (wiring those commands' own UI buttons to real backend data) are rescheduled to M3 alongside C2 — same real-data-wiring gap; D4/D5 (Architect-variant footer button) are rescheduled to M4, depending on the M4 autonomous Architect loop which does not exist in M2; Wave E, Wave F, and Wave G (G1 `disconnected`, G2 `crashed`, G3 `empty`) are now all complete, closing out the M2 roadmap's own desktop-first scope in full: **all 39 M2 roadmap items are now addressed** — 34 merged, 5 deliberately rescheduled to a named later milestone (C2/D3/D7 to M3, D4/D5 to M4), none left open or silently dropped; two smaller, explicitly deferred mobile items remain as separate, independently-schedulable follow-up work, not blockers to calling M2 complete — G2B (mobile crashed-state wiring, `ChatTab.tsx`) and G3B (mobile empty-state wiring, `MobileShell.tsx`); mobile parity with desktop does not yet exist for `crashed`/`empty`, disclosed not claimed otherwise; next is M3 scoping
 **Implementation authorization:** M2 waves per the roadmap, under delegated Project Architect authority; any reserved Owner-level decision still returns to the Owner
 
 The full current ledger, delay analysis, interim controls, and exact recovery
@@ -570,13 +570,56 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    dropped: the mobile equivalent (wiring `ChatTab.tsx` with its own
    fresh crash-card markup, matching the established mobile-reuse
    convention) is a separate, smaller, independently-schedulable future
-   `G2B`-style candidate. With G2 now complete, only G3 (item 39, the
-   empty state, not started) remains as an independent-work item to
-   complete M2's roadmap in full — with real design ambiguities its own
-   planning packet will need to resolve (does the desktop nav sidebar
-   disappear in the empty state? the mockup itself is internally
-   inconsistent on this point). G2B stays a smaller,
-   independently-schedulable item, separate from the G3 critical path.
+   `G2B`-style candidate. `MB-SLICE-M2-G3-EMPTY-STATE-01` is merged
+   (planning PR #185 at `74e0308`, review result recorded in doc-only
+   PR #186, implementation PR #187 at `05a14c5` — commit `7036e9a` plus
+   a small post-review accessibility-fix commit `5865750`) — completes
+   roadmap item 39 (G3 — `empty` state) for the desktop surface, the
+   last item on the entire M2 roadmap: adds `"empty"` as the fourth and
+   final `SystemState` value and wires a full-bleed empty-state panel
+   into `DesktopShell.tsx` that replaces the nav sidebar and main
+   content area entirely when empty. Real self-contradiction found and
+   resolved in the actual mockup: the empty panel is sized full-width
+   (`grid-column:1/-1`, spanning where the nav sidebar sits), but the
+   mockup's own `showNav` formula never checks `sys === 'empty'` — read
+   literally its own code would render both simultaneously, an
+   incoherent layout; discussed directly with the Owner mid-session, who
+   confirmed the resolution (hide the nav when empty) before it was
+   built, and DF review independently re-verified this exact claim
+   structurally against the real mockup file, returning a clean PASS.
+   Also corrected: a fictional "Architect agent writes the packet plan"
+   claim (same class as `GateHeader`/`GateSheet`'s own fixes), and an
+   invented project name ("Foundry") replaced with the app's own
+   established "Project name unavailable" framing ("This project has no
+   packets yet"). Implementation review: APPROVE WITH NON-BLOCKING
+   NOTES — byte-exact match, a structural trace confirming the nav
+   sidebar is genuinely unreachable, two successful mutation tests
+   (empty-state branch load-bearing; `empty`/`normal` share the same
+   `deriveConnectionState` path), zero regressions, zero CSS orphans,
+   and one non-blocking accessibility finding (a bare `<div>` instead of
+   a real `<main>` landmark) fixed immediately in follow-up commit
+   `5865750` before merging. Explicitly deferred, not silently dropped:
+   the mobile equivalent (`MobileShell.tsx`'s own first-ever
+   `systemState` prop plus fresh empty-state markup) is a separate,
+   smaller, independently-schedulable future `G3B`-style candidate,
+   matching this session's own G2/G2B split precedent.
+
+   **M2 is now fully complete for its independently-scheduled
+   desktop-first scope.** Of 39 total roadmap items: Wave A (7/7), Wave
+   B (4/4), Wave C (6/7, C2 to M3), Wave D (3/7, D3/D7 to M3, D4/D5 to
+   M4), Wave E (7/7), Wave F (4/4), Wave G (3/3 — G1/G2/G3, all
+   desktop) — 34 of 39 items merged, plus 5 items already deliberately
+   rescheduled to a named later milestone (not dropped, not left open).
+   Every one of the 39 M2 roadmap items now has a real, decided
+   disposition. Only two smaller, explicitly deferred mobile items
+   remain as separate, independently-schedulable follow-up work, not
+   blockers to calling M2 complete: G2B (mobile crashed-state wiring,
+   `ChatTab.tsx`) and G3B (mobile empty-state wiring, `MobileShell.tsx`
+   plus its own tab components). Mobile parity with desktop does not
+   yet exist for `crashed`/`empty` — disclosed, not claimed otherwise.
+   With M2 complete, the next phase is M3 per M0-D15's phase sequence,
+   which needs its own scoping and roadmap before any slice work begins
+   there; G2B/G3B remain available separately, whenever picked up.
    Each subsequent wave slice still requires its own pre-execution
    Decision Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
