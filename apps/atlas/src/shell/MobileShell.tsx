@@ -3,6 +3,7 @@ import { colors, fontFamily } from "../tokens";
 import { NowTab } from "./NowTab";
 import { ChatTab } from "./ChatTab";
 import { ActivityTab } from "./ActivityTab";
+import { PlanTab } from "./PlanTab";
 import styles from "./MobileShell.module.css";
 
 export type MobileShellTab = "now" | "chat" | "plan" | "activity";
@@ -42,13 +43,6 @@ const SHELL_VARS = {
   "--atlas-tab-inactive": "#9A90A6",
 } as CSSProperties;
 
-const TAB_LABEL: Record<MobileShellTab, string> = {
-  now: "Now",
-  chat: "Chat",
-  plan: "Plan",
-  activity: "Activity",
-};
-
 export function MobileShell() {
   const [selected, setSelected] = useState<MobileShellTab>("now");
 
@@ -62,7 +56,7 @@ export function MobileShell() {
         ) : selected === "activity" ? (
           <ActivityTab />
         ) : (
-          `${TAB_LABEL[selected]} tab`
+          <PlanTab />
         )}
       </main>
       <nav className={styles.tabBar} aria-label="Atlas tabs">
