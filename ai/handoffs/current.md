@@ -610,10 +610,31 @@ Implementation review: 1 non-blocking note fixed (`text-wrap:pretty`),
 codebase-wide gap, moot since the strip never renders today). 170/170
 tests pass, zero regressions.
 
-Next: any independent Wave F (item 35's remaining Cost segment, or
-F4), or Wave G (G3 — G2 covers `crashed` via C6/D6 only, not D7).
-C2/D3/D7 are all rescheduled to M3, off the current independent-work
-list.
+**Exhaustive M2-completion audit (2026-09-06):** re-checked all 39
+roadmap items against real code. Two real gaps found beyond this doc's
+prior framing: **E7 (item 32) is only half-built** (`GateCriteriaList`
+merged; the header/approver/releases half was deferred to a future
+`E7B`-style candidate, not yet tracked here as outstanding); **G2
+(item 38, "crashed" state) was never actually built** despite this
+doc's own prior "covers `crashed` via C6/D6" framing — `CrashCard`/D6
+are real, but nothing mounts `CrashCard` from any `systemState`-driven
+switch.
+
+`MB-SLICE-M2-F3C-ACTIVITY-COST-SPLIT-01` is merged (planning PR #163
+at `b1ebcfa`, implementation PR #164 at `62bf199`) — the Cost
+segment's weekly-window + "m1-a split" cards, reusing E1B's/E3's
+fixture data verbatim. DF review: 4 non-blocking notes, 3 fixed at
+zero cost, 1 disclosed for a future slice. Implementation review:
+missing bar/dot color-and-width test coverage, fixed with a hex-to-rgb
+helper (jsdom re-serializes raw inline hex on readback, same defect
+class G1 found). 173/173 tests pass, zero regressions. Item 35 still
+not complete — only "Per action" records remain.
+
+Next: E7B and F4A are authored/DF-reviewed and mid-pipeline. Remaining
+after those: F3D (records list), F4B (gate bottom sheet), G2 (real
+remaining work — mount `CrashCard` via a `systemState` switch,
+extending G1's `connectionState.ts`), G3 (not started). C2/D3/D7 stay
+rescheduled to M3, off the current independent-work list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
