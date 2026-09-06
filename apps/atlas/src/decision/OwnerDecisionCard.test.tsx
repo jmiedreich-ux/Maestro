@@ -1,10 +1,17 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "../tokens";
 import { OwnerDecisionCard } from "./OwnerDecisionCard";
 import { OWNER_DECISION_EXAMPLE } from "./ownerFixtures";
 
 afterEach(cleanup);
+
+const REAL_CONTEXT = {
+  packetId: "packet-foundry-cg-m4-19",
+  expectedVersion: 4,
+  reviewId: "review-request-changes",
+  actor: { actor_type: "Owner", actor_id: "owner-1", correlation_id: "correlation-1" },
+};
 
 describe("OwnerDecisionCard", () => {
   it("renders the real chain-chip actors (Terra, Coordinator, you), never the reference file's fictional Architect agent target", () => {
@@ -63,5 +70,76 @@ describe("OwnerDecisionCard", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<OwnerDecisionCard />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  describe("(M3 E5) real prop — wired to the real D2/D3 commands", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("does not attach a click handler when real is omitted (every existing caller)", () => {
+      render(<OwnerDecisionCard />);
+      const button = screen.getByRole("button", { name: /Allow a sentinel version/ });
+      expect(button).not.toBeDisabled();
+    });
+
+    it("posts the real resolve-decision command when the sentinel option is clicked", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ packet: { state: "Ready" } }) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<OwnerDecisionCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Allow a sentinel version/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const [url, options] = fetchMock.mock.calls[0];
+      expect(url).toBe("http://127.0.0.1:8765/command/resolve-decision");
+      const body = JSON.parse(options.body as string);
+      expect(body.target_state).toBe("Ready");
+      expect(body.packet_id).toBe(REAL_CONTEXT.packetId);
+    });
+
+    it("posts the real dispatch-correction command when the amend option is clicked", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ packet: { state: "Leased" } }) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<OwnerDecisionCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Amend the A.1 contract/ }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const [url, options] = fetchMock.mock.calls[0];
+      expect(url).toBe("http://127.0.0.1:8765/command/dispatch-correction");
+      const body = JSON.parse(options.body as string);
+      expect(body.review_id).toBe(REAL_CONTEXT.reviewId);
+    });
+
+    it("shows the real server error and clears the pending state when a real command fails", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ error: "stale_state" }) })
+      );
+
+      render(<OwnerDecisionCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Allow a sentinel version/ }));
+
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("stale_state"));
+      expect(screen.getByRole("button", { name: /Allow a sentinel version/ })).not.toBeDisabled();
+    });
+
+    it("disables both options while a real command is pending", async () => {
+      let resolveFetch: (value: unknown) => void = () => {};
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockReturnValue(new Promise((resolve) => { resolveFetch = resolve; }))
+      );
+
+      render(<OwnerDecisionCard real={REAL_CONTEXT} />);
+      fireEvent.click(screen.getByRole("button", { name: /Allow a sentinel version/ }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /Amend the A.1 contract/ })).toBeDisabled();
+      });
+
+      resolveFetch({ ok: true, json: async () => ({ packet: { state: "Ready" } }) });
+    });
   });
 });

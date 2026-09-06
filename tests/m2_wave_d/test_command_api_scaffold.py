@@ -168,17 +168,21 @@ class CommandApiScaffoldTests(unittest.TestCase):
         self.assertEqual(status, 405)
         self.assertEqual(body, b'{"error":"method_not_allowed"}')
 
-    def test_11_only_the_real_resolve_decision_and_resolve_crash_commands_are_registered_in_production_code(self) -> None:
+    def test_11_only_the_real_resolve_decision_dispatch_correction_and_resolve_crash_commands_are_registered_in_production_code(self) -> None:
         # D1 shipped the scaffold with zero commands wired; D2 wired the
         # first real one, D6 the second (see
         # tests/m2_wave_d/test_resolve_decision_command.py and
-        # tests/m2_wave_d/test_resolve_crash_command.py). This asserts the
-        # exact, closed set — not just "non-empty" — so a future slice
-        # accidentally registering an extra route is caught here.
+        # tests/m2_wave_d/test_resolve_crash_command.py). M3 E5 wired a
+        # third — dispatch-correction (see
+        # tests/m3_wave_e/test_dispatch_correction_command.py). This
+        # asserts the exact, closed set — not just "non-empty" — so a
+        # future slice accidentally registering an extra route is
+        # caught here.
         self.assertEqual(
             read_api._COMMAND_ROUTES,
             {
                 "/command/resolve-decision": read_api._handle_resolve_decision,
+                "/command/dispatch-correction": read_api._handle_dispatch_correction,
                 "/command/resolve-crash": read_api._handle_resolve_crash,
             },
         )
