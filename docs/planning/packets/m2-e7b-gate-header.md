@@ -1,7 +1,7 @@
 # M2 Wave E — Gate Header, Approver, and Releases Panel — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-E7B-GATE-HEADER-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `Decision Fidelity review returned PASS WITH NON-BLOCKING NOTES (an undisclosed second wording edit — the lede's own "below" was silently dropped alongside the persona substitution — mischaracterized as solely a persona swap) — disclosed at zero cost, no planning correction needed`
 **Base:** `8aa33ce` (full: `8aa33ce5787e296d95dee0b4921ebd77e2b752dd`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -91,7 +91,18 @@ for general reuse), and the disabled button's own background
    them against records" to "the Coordinator verifies them against
    records" — the same real, sound claim (M1's own Coordinator role
    already does exactly this kind of record-based verification, per
-   this session's own D2/D6 findings), just the real actor's name.
+   this session's own D2/D6 findings), the real actor's name.
+   **Corrected — non-blocking finding from Decision Fidelity review:**
+   a second, undisclosed wording change also shipped in the first
+   draft — the reference file's own lede reads "Every criterion
+   **below** has to be true," and "below" was silently dropped. This
+   drop is itself defensible (this standalone component never renders
+   a criteria list beneath it — that lives in the separately-merged,
+   not-yet-wired `GateCriteriaList`, so "below" would dangle), but the
+   first draft's own rationale mischaracterized the whole lede edit as
+   solely the persona substitution. Disclosed explicitly here now;
+   revisit "below"'s accuracy once a future `E7C`-style candidate
+   actually wires `GateHeader` directly above `GateCriteriaList`.
 2. **Real-mechanism correction, not just a persona swap.** The
    reference file's own `approverNote` claims the gate opens itself
    "on its own... no human step" — a fully autonomous decision, the
@@ -201,8 +212,16 @@ const RELEASES = [
  * agent verifies them against records" to "the Coordinator verifies
  * them against records" — the same real, sound claim (M1's own
  * Coordinator role already does exactly this kind of record-based
- * verification, per this session's own D2/D6 findings), just the real
- * actor's name.
+ * verification, per this session's own D2/D6 findings), the real
+ * actor's name. **Corrected — non-blocking finding from Decision
+ * Fidelity review:** a second, undisclosed wording change also shipped
+ * in the first draft — the reference file's own lede reads "Every
+ * criterion **below** has to be true," and "below" was silently
+ * dropped. Defensible (this standalone component never renders a
+ * criteria list beneath it — that lives in the separately-merged,
+ * not-yet-wired `GateCriteriaList`), but not previously disclosed;
+ * disclosed explicitly now. Revisit once a future `E7C`-style
+ * candidate wires `GateHeader` directly above `GateCriteriaList`.
  *
  * **Real-mechanism correction, not just a persona swap.** The
  * reference file's own `approverNote` claims *"The Architect agent
@@ -661,6 +680,34 @@ needed — every check passed on the first attempt.
   programmatically against `GateHeader.module.css`'s own `var(...)`
   references — zero orphans either direction.
 
+**Independent Decision Fidelity review result:** `PASS WITH
+NON-BLOCKING NOTES`, zero blocking findings. The review independently
+re-derived every claim from source — re-reading the real mockup lines
+214-266 and 845-862 directly, re-checking every hex literal in
+`colors.ts` (51 values), independently confirming no autonomous
+milestone-gate-opening code exists anywhere in
+`services/maestro/maestro/*.py` (searched beyond just the word "gate"),
+verifying the D4/D5/D6 precedent citations against the real roadmap
+and packet docs, and independently re-applying this packet's exact
+proposed files to re-run the full toolchain, reproducing 179/179
+exactly — and found one non-blocking finding, disclosed at zero cost,
+no planning correction consumed:
+
+1. **Undisclosed second wording edit.** The reference file's own lede
+   reads *"Every criterion **below** has to be true..."* — this
+   packet's own corrected lede silently dropped "below" alongside the
+   persona substitution, and the Design rationale described the whole
+   edit as solely "the real actor's name," which understated it. The
+   drop itself is defensible (this standalone component never renders
+   a criteria list beneath it) but was not previously disclosed as its
+   own, separate edit. Fixed: both the Design rationale and the
+   component's own doc comment now disclose this second edit
+   explicitly, with a note to revisit "below"'s accuracy once a future
+   `E7C`-style candidate wires `GateHeader` directly above
+   `GateCriteriaList`. No code change — this is a documentation-only
+   correction; re-verified after the fix: still 23/23 test files,
+   179/179 tests, clean typecheck/lint/build.
+
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
 slice.
@@ -708,10 +755,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E7B-GATE-HEADER-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
