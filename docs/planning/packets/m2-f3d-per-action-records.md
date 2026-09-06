@@ -1,7 +1,7 @@
 # M2 Wave F — Activity tab's "Per action" records list (mobile Cost segment) — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F3D-PER-ACTION-RECORDS-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `MergeReady`
 **Base:** `57b788f` (full: `57b788f54d45f663063c906df5138894e8c937e9`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -41,12 +41,12 @@ immediately following the split card (`:280-309`, F3C) inside the same
 319:   </button>
 320:   <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
 321:   <div style="border-top:1px solid #F0ECF5;background:#FCFBFD;padding:12px 15px 14px;animation:rise .18s ease-out">
-322-336: (per-group name + per-row label/value, identical shape to the desktop version's own `record.groups`)
-337:   </div>
-338:   </sc-if>
-339: </div>
-340: </sc-for>
-341: </div>
+322-331: (per-group name + per-row label/value, identical shape to the desktop version's own `record.groups`)
+333:   </div>
+334:   </sc-if>
+335: </div>
+336: </sc-for>
+337: </div>
 ```
 
 **Real fact, checked directly:** the mockup's own `{{ p.tagBg }}`,
@@ -131,6 +131,40 @@ the `.splitCard` block.
 5. The records list starts fully closed (no `openId` pre-selected),
    matching the real mockup's own `hint-placeholder-val="{{ false }}"`
    default for `p.open`.
+
+## Corrected — Decision Fidelity review findings (RESOLVED)
+
+An independent Decision Fidelity review returned **PASS WITH
+NON-BLOCKING NOTES** — two citation/bookkeeping defects, no functional
+defects, both fixed at zero cost before finalizing this packet as
+`MergeReady`:
+
+1. **Wrong line citation in shipped code (fixed).** `ActivityTab.tsx`'s
+   own `SHELL_VARS` doc comment cited `Atlas Mobile.dc.html:319,321`
+   for the claim that the action/tokens spans set no explicit color of
+   their own — real lines 319/321 are `</button>` and the detail
+   panel's own opening `<div>`, neither the spans in question. The
+   correct real lines are **316, 318** (confirmed directly against the
+   mockup file). Corrected in the code block below.
+2. **Miscounted collapsed line range in this packet's own Evidence
+   section (fixed).** The quoted excerpt's collapsed placeholder
+   ("322-336: (per-group name + per-row label/value...)") was followed
+   by closing tags mislabeled 337-341; the real file's corresponding
+   closing tags are at **333-337** (the collapsed range should have
+   read "322-331," 10 lines, not 15). Every trailing line number in the
+   Evidence section's quote was off by 4 — corrected above.
+
+Neither finding affected the shipped component's behavior, the test
+suite, or the build — both are transcription/citation defects (a
+comment string), caught and fixed before merge. Re-verified after the
+fix, in isolation: clean typecheck, clean lint, clean build, and
+`ActivityTab.test.tsx` itself unchanged at 21/21 passing (the fix
+touches only a code comment, not any executable line or test
+assertion) — re-confirmed a second time alongside this session's own
+concurrent, unrelated F4B work sharing the same scratch worktree at
+verification time (25/25 test files, 216/216 tests passing there,
+`ActivityTab.test.tsx` itself still exactly 21 tests within that
+total).
 
 ## `apps/atlas/src/shell/ActivityTab.tsx` (modified — full new content)
 
@@ -344,7 +378,7 @@ const SHELL_VARS = {
   // re-deriving a third copy) is a real fact, not an assumption.
   "--atlas-records-card-surface": colors.surface,
   // The real mobile markup's own action/tokens spans set no explicit
-  // color of their own (`Atlas Mobile.dc.html:319,321`) — unlike the
+  // color of their own (`Atlas Mobile.dc.html:316,318`) — unlike the
   // desktop `.action`/`.tokens` classes, which do (`colors.ink`). Since
   // both surfaces share the identical underlying `PERF_RECORDS` data
   // and derivation, and this program's own established discipline is
@@ -1875,11 +1909,11 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F3D-PER-ACTION-RECORDS-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
