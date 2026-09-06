@@ -5,6 +5,25 @@ import { HISTORY_EMPTY_NOTE, HISTORY_ENTRIES, HISTORY_STATS } from "../history/f
 import { AGENTS, AGENTS_STATS } from "../agents/agents";
 import { WEEKLY_WINDOW } from "../performance/weeklyWindow";
 import { SPLIT, SPLIT_BASES } from "../performance/perfBreakdown";
+import { colors } from "../tokens";
+
+const SPLIT_COLORS = [colors.accent, colors.review, colors.success, colors.borderDashed[2]];
+
+/**
+ * jsdom (like real browsers) silently re-serializes a raw inline hex
+ * color to `rgb(...)` when read back via `.style.background` — so an
+ * exact-string comparison against the original hex literal must
+ * convert through the same normalization first, matching the
+ * discipline this program's own `connectionState.ts` (G1) already
+ * established for exactly this defect class.
+ */
+function hexToRgb(hex: string): string {
+  const value = hex.replace("#", "");
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 afterEach(cleanup);
 
@@ -89,6 +108,29 @@ describe("ActivityTab", () => {
       const item = label.closest('[class*="splitLegendItem"]') as HTMLElement;
       expect(within(item).getByText(`${part.pct}%`)).toBeInTheDocument();
       expect(within(item).getByText(part.abs)).toBeInTheDocument();
+    }
+  });
+
+  it("renders each real split part's own bar-segment width (with the real 0.6% floor) and legend-dot color by real index", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    for (const group of [SPLIT.cost.role, SPLIT.cost.work]) {
+      group.forEach((part, index) => {
+        const label = screen.getByText(part.label);
+        const item = label.closest('[class*="splitLegendItem"]') as HTMLElement;
+        const dot = item.querySelector('[class*="splitLegendDot"]') as HTMLElement;
+        expect(dot.style.background).toBe(hexToRgb(SPLIT_COLORS[index]));
+
+        // Every real 0%-share part still renders a thin, visible sliver
+        // (Math.max(pct, 0.6)), never a fully collapsed 0% bar segment.
+        const group2 = item.closest('[class*="splitGroup"]') as HTMLElement;
+        const bar = group2.querySelector('[class*="splitBar"]') as HTMLElement;
+        const segment = bar.children[index] as HTMLElement;
+        const expectedWidth = `${Math.max(part.pct, 0.6)}%`;
+        expect(segment.style.width).toBe(expectedWidth);
+        expect(segment.style.background).toBe(hexToRgb(SPLIT_COLORS[index]));
+      });
     }
   });
 
