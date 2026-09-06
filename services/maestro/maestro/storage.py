@@ -45,6 +45,16 @@ class PacketClaim:
     worktree_path: str | None
 
 
+@dataclass(frozen=True)
+class ProjectRegistration:
+    """Real outcome of promoting a Candidate project to Registered."""
+
+    project_id: str
+    binding_id: str
+    registration_state: str
+    applied: bool
+
+
 class SQLiteFoundation:
     """The service-owned writer for Alpha runtime and packet lifecycle state."""
 
@@ -289,6 +299,54 @@ class SQLiteFoundation:
             except Exception:
                 connection.rollback()
                 raise
+
+    def register_project(self, project_id: str, binding_id: str) -> ProjectRegistration:
+        """Promote a Candidate project to Registered, activating one
+        Candidate binding that belongs to it (M3 A4).
+
+        Real preconditions, checked against durable state, not trusted
+        from the caller: the project must exist and be Candidate; the
+        binding must exist, belong to this exact project, and be
+        Candidate. A project or binding not in the required state is a
+        real no-op (``applied=False`` with the current real state
+        returned), never a silent partial update — mirrors
+        ``start_packet``/``finish_packet``'s own established
+        precondition-check-then-transition shape, not
+        ``record_project_authority_load``'s idempotency-key ledger
+        (registration has no retried-inputs concept to reconcile; a
+        repeat call against an already-Registered project is simply a
+        no-op, not a fact to replay).
+        """
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            project_row = connection.execute(
+                "SELECT registration_state FROM projects WHERE project_id = ?", (project_id,)
+            ).fetchone()
+            if project_row is None:
+                connection.commit()
+                raise ValueError(f"project {project_id} has no durable Candidate record")
+            if project_row[0] != "Candidate":
+                connection.commit()
+                return ProjectRegistration(project_id, binding_id, str(project_row[0]), False)
+
+            binding_row = connection.execute(
+                "SELECT project_id, binding_revision, state FROM project_bindings WHERE binding_id = ?",
+                (binding_id,),
+            ).fetchone()
+            if binding_row is None or binding_row[0] != project_id:
+                connection.commit()
+                raise ValueError(f"binding {binding_id} does not belong to project {project_id}")
+            if binding_row[2] != "Candidate":
+                connection.commit()
+                return ProjectRegistration(project_id, binding_id, str(project_row[0]), False)
+
+            connection.execute(
+                "UPDATE projects SET registration_state = 'Registered', active_binding_revision = ?, "
+                "updated_at = CURRENT_TIMESTAMP WHERE project_id = ?",
+                (binding_row[1], project_id),
+            )
+            connection.commit()
+        return ProjectRegistration(project_id, binding_id, "Registered", True)
 
     def project_authority_snapshot(self, request_id: str) -> dict[str, Any] | None:
         """Return the exact durable authority result, including after reopen."""
