@@ -5,6 +5,7 @@ import { HISTORY_EMPTY_NOTE, HISTORY_ENTRIES, HISTORY_STATS } from "../history/f
 import { AGENTS, AGENTS_STATS } from "../agents/agents";
 import { WEEKLY_WINDOW } from "../performance/weeklyWindow";
 import { SPLIT, SPLIT_BASES } from "../performance/perfBreakdown";
+import { PERF_RECORDS } from "../performance/perfRecords";
 import { colors } from "../tokens";
 
 const SPLIT_COLORS = [colors.accent, colors.review, colors.success, colors.borderDashed[2]];
@@ -159,6 +160,148 @@ describe("ActivityTab", () => {
         expect(within(item).getByText(part.abs)).toBeInTheDocument();
       }
     }
+  });
+
+  it("(F3D) renders the real 'Per action' header with a derived, not hand-typed, record count", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    expect(screen.getByText("Per action")).toBeInTheDocument();
+    expect(screen.getByText(`${PERF_RECORDS.length} records`)).toBeInTheDocument();
+  });
+
+  it("(F3D) renders every real PERF_RECORDS card, closed by default, with its exact action/outcome/meta/stat-line text", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    for (const record of PERF_RECORDS) {
+      const action = screen.getByText(record.action);
+      const card = action.closest('[class*="recordCard"]') as HTMLElement;
+      expect(within(card).getByText(record.outcome)).toBeInTheDocument();
+      expect(
+        within(card).getByText(`${record.packet} · ${record.who} · ${record.model}`),
+      ).toBeInTheDocument();
+      expect(within(card).getByText(record.tokens)).toBeInTheDocument();
+      expect(within(card).getByText(record.cost)).toBeInTheDocument();
+      expect(within(card).getByText(record.elapsed)).toBeInTheDocument();
+      // Closed by default: no detail group name or note text is present.
+      for (const group of record.groups) {
+        expect(within(card).queryByText(group.name)).toBeNull();
+      }
+      expect(within(card).queryByText(record.note)).toBeNull();
+    }
+  });
+
+  it("(F3D) each real record's own outcome tag and cost carry the exact real token color class, transcribed from PerfRecordsList's own mapping", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    // These colors are applied via a CSS-module class (matching
+    // PerfRecordsList.tsx's own established convention for this exact
+    // outcome/cost mapping), not an inline style — so, matching that
+    // file's own test convention, this asserts class membership, not
+    // `.style`, which jsdom never populates for CSS-module rules.
+    const outcomeClassName: Record<string, string> = {
+      blocked: "recordsOutcomeBlocked",
+      approved: "recordsOutcomeGood",
+      passed: "recordsOutcomeGood",
+      complete: "recordsOutcomeNeutral",
+    };
+    const costClassName: Record<string, string> = {
+      billed: "recordCostBilled",
+      est: "recordCostEst",
+      none: "recordCostNone",
+    };
+
+    for (const record of PERF_RECORDS) {
+      const action = screen.getByText(record.action);
+      const card = action.closest('[class*="recordCard"]') as HTMLElement;
+      const outcome = within(card).getByText(record.outcome);
+      expect(outcome.className).toContain(outcomeClassName[record.outcome]);
+
+      const cost = within(card).getByText(record.cost);
+      expect(cost.className).toContain(costClassName[record.costKind]);
+    }
+  });
+
+  it("(F3D) clicking a record's own button opens its real detail groups/rows/note, and closes whichever other record was open (single accordion state)", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    const first = PERF_RECORDS[0];
+    const second = PERF_RECORDS[1];
+
+    fireEvent.click(screen.getByText(first.action));
+    const firstCard = screen.getByText(first.action).closest('[class*="recordCard"]') as HTMLElement;
+    expect(first.groups).toHaveLength(3);
+    for (const group of first.groups) {
+      // Some real records repeat a value string across two rows within
+      // the same open card (e.g. p1's "unavailable" appears twice, and
+      // p1's own elapsed "0.9s" repeats between the closed button row
+      // and its own detail row) — so, matching PerfRecordsList.test.tsx's
+      // own established pattern, this scopes to each group's own name
+      // node's `parentElement` and only asserts row *labels* here
+      // (always unique per group), not row values.
+      const groupNode = screen.getByText(group.name).parentElement as HTMLElement;
+      const groupScope = within(groupNode);
+      for (const row of group.rows) {
+        expect(groupScope.getByText(row.label)).toBeInTheDocument();
+      }
+    }
+    expect(within(firstCard).getByText(first.note)).toBeInTheDocument();
+
+    // Opening the second record closes the first — a single shared
+    // `openId`, not one independent boolean per record.
+    fireEvent.click(screen.getByText(second.action));
+    const secondCard = screen.getByText(second.action).closest('[class*="recordCard"]') as HTMLElement;
+    expect(within(secondCard).getByText(second.note)).toBeInTheDocument();
+    expect(within(firstCard).queryByText(first.note)).toBeNull();
+
+    // Clicking the open record again closes it.
+    fireEvent.click(screen.getByText(second.action));
+    expect(within(secondCard).queryByText(second.note)).toBeNull();
+  });
+
+  it("(F3D) each real detail row's own value carries the exact real token color class for its PerfDetailKind, transcribed from PerfRecordsList's own mapping", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    const detailValueClassName: Record<string, string> = {
+      "": "recordDetailValueDefault",
+      est: "recordDetailValueEst",
+      ok: "recordDetailValueOk",
+      warn: "recordDetailValueWarn",
+      na: "recordDetailValueNa",
+    };
+
+    // Every kind must appear at least once across the real fixture, or
+    // this test would pass vacuously without ever exercising a branch.
+    const seenKinds = new Set<string>();
+
+    for (const record of PERF_RECORDS) {
+      const action = screen.getByText(record.action);
+      const card = action.closest('[class*="recordCard"]') as HTMLElement;
+      fireEvent.click(action);
+      for (const group of record.groups) {
+        for (const row of group.rows) {
+          seenKinds.add(row.kind);
+          // Scoped to this record's own card first (its row label, e.g.
+          // "Cost", would otherwise collide with the outer segmented
+          // control's own "Cost" tab and the split card's own "Cost"
+          // basis button — the exact latent test-scoping trap the F3C
+          // Decision Fidelity review pre-disclosed for this slice), then
+          // to the row's own label -> parentElement, matching
+          // PerfRecordsList.test.tsx's own established pattern (some
+          // real records also repeat a value string across two rows).
+          const rowNode = within(card).getByText(row.label).parentElement as HTMLElement;
+          const value = within(rowNode).getByText(row.value);
+          expect(value.className).toContain(detailValueClassName[row.kind]);
+        }
+      }
+      fireEvent.click(action);
+    }
+
+    expect(seenKinds.size).toBeGreaterThan(1);
   });
 
   it("tapping Agents switches the segmented control's own selection and renders the real AGENTS_STATS", () => {

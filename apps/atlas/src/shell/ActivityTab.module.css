@@ -445,3 +445,199 @@
   color: var(--atlas-split-caveat);
   text-wrap: pretty;
 }
+
+.recordsHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 20px 2px 8px;
+}
+
+.recordsTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atlas-records-row-ink);
+}
+
+.recordsCount {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--atlas-records-row-muted);
+}
+
+.recordsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recordCard {
+  border-radius: 18px;
+  background: var(--atlas-records-card-surface);
+  overflow: hidden;
+}
+
+.recordButton {
+  display: block;
+  width: 100%;
+  padding: 13px 15px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.recordTopLine {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.recordAction {
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-wrap: pretty;
+  color: var(--atlas-records-row-ink);
+}
+
+.recordOutcome {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font: 600 9.5px var(--atlas-font-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.recordsOutcomeBlocked {
+  background: var(--atlas-records-tag-blocked-bg);
+  color: var(--atlas-records-tag-blocked-ink);
+}
+
+.recordsOutcomeGood {
+  background: var(--atlas-records-tag-good-bg);
+  color: var(--atlas-records-tag-good-ink);
+}
+
+.recordsOutcomeNeutral {
+  background: var(--atlas-records-tag-neutral-bg);
+  color: var(--atlas-records-tag-neutral-ink);
+}
+
+.recordMeta {
+  margin-top: 3px;
+  font: 500 11px var(--atlas-font-mono);
+  color: var(--atlas-records-row-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordStatLine {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font: 500 12px var(--atlas-font-mono);
+  color: var(--atlas-records-row-ink);
+}
+
+.recordCostBilled {
+  color: var(--atlas-records-row-ink);
+}
+
+.recordCostEst {
+  color: var(--atlas-records-row-warning);
+}
+
+.recordCostNone {
+  color: var(--atlas-records-row-muted);
+}
+
+.recordElapsed {
+  margin-left: auto;
+  color: var(--atlas-records-row-muted);
+}
+
+.recordDetail {
+  border-top: 1px solid var(--atlas-records-detail-border);
+  background: var(--atlas-records-detail-bg);
+  padding: 12px 15px 14px;
+  animation: recordsRise var(--atlas-records-rise-duration) var(--atlas-records-rise-easing);
+}
+
+@keyframes recordsRise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--atlas-records-rise-translate));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recordDetailGroup {
+  margin-bottom: 12px;
+}
+
+.recordDetailGroupName {
+  font: 600 9.5px var(--atlas-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-records-detail-group-name);
+}
+
+.recordDetailRows {
+  margin-top: 6px;
+}
+
+.recordDetailRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--atlas-records-detail-row-divider);
+  font-size: 13px;
+}
+
+.recordDetailLabel {
+  min-width: 0;
+  flex: 1;
+  color: var(--atlas-records-detail-label);
+}
+
+.recordDetailValue {
+  flex: none;
+  font-family: var(--atlas-font-mono);
+  font-weight: 600;
+}
+
+.recordDetailValueDefault {
+  color: var(--atlas-records-detail-value-default);
+}
+
+.recordDetailValueOk {
+  color: var(--atlas-records-detail-value-ok);
+}
+
+.recordDetailValueEst {
+  color: var(--atlas-records-detail-value-est);
+}
+
+.recordDetailValueWarn {
+  color: var(--atlas-records-detail-value-warn);
+}
+
+.recordDetailValueNa {
+  color: var(--atlas-records-detail-value-na);
+}
+
+.recordDetailNote {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--atlas-records-detail-note);
+  text-wrap: pretty;
+}
