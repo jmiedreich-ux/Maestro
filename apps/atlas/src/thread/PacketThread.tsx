@@ -9,10 +9,18 @@ import {
   type EntryRoleKey,
   type ThreadEntry,
 } from "./fixtures";
+import { useRealPacketThread } from "./useRealPacketThread";
 import styles from "./PacketThread.module.css";
 
 export interface PacketThreadProps {
   systemState?: SystemState;
+  /**
+   * M3 E4 — when a real registered packet id is supplied, the thread
+   * renders real backend events (via useRealPacketThread) instead of
+   * the fixture. Omitted (the default, and every existing caller),
+   * this component is completely unchanged: PACKET_A2_ENTRIES.
+   */
+  realPacketId?: string;
 }
 
 /**
@@ -104,11 +112,19 @@ export function textColorFor(entry: ThreadEntry): string {
  * reference file's own `cur.id === 'A.2'` guard on its equivalent
  * `crashed` flag is always true here.
  */
-export function PacketThread({ systemState = "normal" }: PacketThreadProps = {}) {
+export function PacketThread({ systemState = "normal", realPacketId }: PacketThreadProps = {}) {
+  const real = useRealPacketThread(realPacketId);
+  const entries = realPacketId !== undefined ? real.entries : PACKET_A2_ENTRIES;
+
   return (
     <div className={styles.thread} style={SHELL_VARS}>
-      {PACKET_A2_ENTRIES.map((entry, index) => {
-        const showAvatar = computeShowAvatar(PACKET_A2_ENTRIES, index);
+      {realPacketId !== undefined && real.resyncRequired && (
+        <p className={styles.text} role="status">
+          Connection to Maestro was interrupted — refreshing.
+        </p>
+      )}
+      {entries.map((entry, index) => {
+        const showAvatar = computeShowAvatar(entries, index);
         const palette = AVATAR_PALETTE[entry.k];
         const initials = INITIALS_BY_NAME[entry.who] ?? FALLBACK_INITIALS[entry.k];
         return (

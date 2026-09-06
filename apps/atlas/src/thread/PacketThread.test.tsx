@@ -1,5 +1,5 @@
-import { render, screen, cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { colors } from "../tokens";
 import { computeShowAvatar, PacketThread } from "./PacketThread";
 import { PACKET_A2_ENTRIES, type ThreadEntry } from "./fixtures";
@@ -99,5 +99,35 @@ describe("PacketThread", () => {
     // as <p> elements, so the crash card's lede is the real 7th match.)
     const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
     expect(bodies).toEqual([...PACKET_A2_ENTRIES.map((e) => e.text), CRASH_EXAMPLE.lede]);
+  });
+
+  describe("(M3 E4) realPacketId — wired to real backend data", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: [] }) }));
+      vi.stubGlobal(
+        "EventSource",
+        class {
+          onmessage: unknown = null;
+          addEventListener() {}
+          close() {}
+        }
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("does not render the fixture-driven entries when realPacketId is supplied", async () => {
+      render(<PacketThread realPacketId="packet-foundry-cg-m4-19" />);
+      await waitFor(() => {
+        expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).toBeNull();
+      });
+    });
+
+    it("still renders the fixture-driven entries when realPacketId is omitted (every existing caller)", () => {
+      render(<PacketThread />);
+      expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
+    });
   });
 });
