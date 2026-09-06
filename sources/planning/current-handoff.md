@@ -509,8 +509,45 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    own "Cost" tab), zero regressions, and one non-blocking
    accessibility note (missing `aria-expanded` on the accordion toggle
    button — parity with `PerfRecordsList.tsx`'s own same omission, not
-   a new regression). Each subsequent wave slice still requires its
-   own pre-execution Decision Fidelity approval before implementation.
+   a new regression). `MB-SLICE-M2-F4B-GATE-SHEET-01` is merged: the
+   gate row's own bottom sheet, `GateSheet`, the app's first
+   bottom-sheet/modal-style overlay component with no prior precedent
+   in `apps/atlas/src`, wired to the previously-inert `PlanTab.tsx`
+   gate row's `onClick`. Reuses the already-real `GATE_CRITERIA`
+   fixture and `GateCriteriaList.tsx`'s own already-reviewed 3-state
+   color-derivation mapping verbatim, plus `GateHeader.tsx`'s own
+   already-corrected real-mechanism note (no fictional "Architect
+   agent opens the gate on its own" claim) restated verbatim —
+   independently verified character-for-character identical.
+   Originates a deliberately minimal, disclosed accessibility
+   baseline: real `role="dialog"`/`aria-modal="true"`/
+   `aria-labelledby`, Escape-to-close, backdrop-click-to-close (not
+   sheet-click), focus-to-Close-button on open, focus-return-to-gate-
+   row on close — full keyboard focus-trapping explicitly excluded as
+   a larger, separate concern with no existing precedent to reuse.
+   Completes roadmap item 36 in full — Wave F's completed-item count
+   moves from 3/4 to 4/4; Wave F is now fully complete. DF review: a
+   clean PASS, every functional, accessibility, token, and
+   fixture-reuse claim independently reproduced, including the real
+   mockup markup and a real 4-way wording discrepancy between the
+   mockup's own separate `GATE_CRITERIA` copy and the real fixture
+   (confirming the real fixture wins, not the mockup's copy); one
+   non-blocking wording imprecision fixed at zero cost (a "one digit
+   apart" hex-comparison description corrected to "two of three
+   byte-pairs differ"), no functional or test change. Implementation
+   review: `APPROVE`, including an independently-written script
+   proving no global keydown-listener leak across multiple
+   mount/unmount cycles, and independent verification that focus
+   genuinely moves to the Close button on open and genuinely returns
+   to the gate row on close. With F3D and F4B both now complete, only
+   G2 (mount `CrashCard` from a real `systemState`-driven switch,
+   extending G1's `connectionState.ts`) and G3 (empty state, not
+   started) remain as independent-work items — sequenced one after the
+   other, not in parallel, since both extend the same
+   `connectionState.ts` `SystemState` type and both touch
+   `DesktopShell.tsx` (G3 also touches `MobileShell.tsx`). Each
+   subsequent wave slice still requires its own pre-execution Decision
+   Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
 5. Before correction dispatch, disposition every implementation finding as
    `correct now`, `accept known limitation`, `reject finding`, or
