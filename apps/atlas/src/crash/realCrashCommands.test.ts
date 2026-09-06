@@ -15,7 +15,7 @@ describe("resolveCrashHold", () => {
     const result = await resolveCrashHold({ packetId: "packet-1", expectedVersion: 1, actor: ACTOR });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8765/command/resolve-crash",
+      "http://localhost:8765/command/resolve-crash",
       expect.objectContaining({ method: "POST" })
     );
     const [, options] = fetchMock.mock.calls[0];
@@ -47,7 +47,7 @@ describe("redispatchCrash", () => {
     const result = await redispatchCrash({ packetId: "packet-1", expectedVersion: 1, actor: ACTOR });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8765/command/redispatch-crash",
+      "http://localhost:8765/command/redispatch-crash",
       expect.objectContaining({ method: "POST" })
     );
     expect(result).toEqual({ closed_packet: { state: "Cancelled" }, redispatched_packet: { state: "Planned" } });

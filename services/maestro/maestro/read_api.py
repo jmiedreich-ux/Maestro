@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import threading
@@ -28,6 +29,13 @@ from .operational_state import (
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
+# Owner-approved, explicit exception (2026-09-06) to the loopback-only
+# boundary m2-atlas-roadmap.md's own "out of scope" section named — this
+# API includes real command/write endpoints, not just reads, so the
+# exception is one specific host read from an env var, never a blanket
+# 0.0.0.0, and must be set explicitly per session, not defaulted on.
+_EXTRA_ALLOWED_HOST = os.environ.get("MAESTRO_READ_API_ALLOWED_HOST")
+
 
 class ReadApiBindError(ValueError):
     """Raised before any socket exists when a host is outside the loopback allowlist."""
@@ -40,7 +48,8 @@ class ReadApiConfig:
     runtime_dir: str | Path | None = None  # inert; RuntimeConfig's own default when None
 
     def __post_init__(self) -> None:
-        if self.host not in _LOOPBACK_HOSTS:
+        allowed = _LOOPBACK_HOSTS | ({_EXTRA_ALLOWED_HOST} if _EXTRA_ALLOWED_HOST else set())
+        if self.host not in allowed:
             raise ReadApiBindError(f"Host is not in the loopback allowlist: {self.host}")
 
 

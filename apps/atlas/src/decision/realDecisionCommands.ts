@@ -9,7 +9,7 @@
  * M1 command with zero real callers until now.
  */
 
-const READ_API_BASE_URL = "http://127.0.0.1:8765";
+import { readApiBaseUrl } from "../readApiBaseUrl";
 
 export interface RealActor {
   actor_type: string;
@@ -28,7 +28,7 @@ export interface RealCorrectionContext extends RealDecisionContext {
 }
 
 async function postCommand(path: string, body: Record<string, unknown>): Promise<unknown> {
-  const response = await fetch(`${READ_API_BASE_URL}${path}`, {
+  const response = await fetch(`${readApiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

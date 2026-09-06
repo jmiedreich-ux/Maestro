@@ -92,7 +92,7 @@ describe("OwnerDecisionCard", () => {
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       const [url, options] = fetchMock.mock.calls[0];
-      expect(url).toBe("http://127.0.0.1:8765/command/resolve-decision");
+      expect(url).toBe("http://localhost:8765/command/resolve-decision");
       const body = JSON.parse(options.body as string);
       expect(body.target_state).toBe("Ready");
       expect(body.packet_id).toBe(REAL_CONTEXT.packetId);
@@ -107,7 +107,7 @@ describe("OwnerDecisionCard", () => {
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       const [url, options] = fetchMock.mock.calls[0];
-      expect(url).toBe("http://127.0.0.1:8765/command/dispatch-correction");
+      expect(url).toBe("http://localhost:8765/command/dispatch-correction");
       const body = JSON.parse(options.body as string);
       expect(body.review_id).toBe(REAL_CONTEXT.reviewId);
     });

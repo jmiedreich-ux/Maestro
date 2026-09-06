@@ -101,7 +101,7 @@ describe("CrashCard", () => {
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       const [url] = fetchMock.mock.calls[0];
-      expect(url).toBe("http://127.0.0.1:8765/command/redispatch-crash");
+      expect(url).toBe("http://localhost:8765/command/redispatch-crash");
     });
 
     it("posts the real resolve-crash command when hold is clicked", async () => {
@@ -113,7 +113,7 @@ describe("CrashCard", () => {
 
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       const [url] = fetchMock.mock.calls[0];
-      expect(url).toBe("http://127.0.0.1:8765/command/resolve-crash");
+      expect(url).toBe("http://localhost:8765/command/resolve-crash");
     });
 
     it("shows the real server error when a real command fails", async () => {

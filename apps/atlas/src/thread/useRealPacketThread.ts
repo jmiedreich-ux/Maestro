@@ -14,7 +14,7 @@ import { synthesizeThreadEntry, type RealEvent } from "./realEventSynthesis";
  * via a real `packetId`, the fixture-driven default path is untouched.
  */
 
-const READ_API_BASE_URL = "http://127.0.0.1:8765";
+import { readApiBaseUrl } from "../readApiBaseUrl";
 
 export interface UseRealPacketThreadResult {
   entries: ThreadEntry[];
@@ -39,7 +39,7 @@ export function useRealPacketThread(packetId: string | undefined): UseRealPacket
     async function loadSnapshotThenStream() {
       let lastEventId = 0;
       try {
-        const response = await fetch(`${READ_API_BASE_URL}/snapshot/events?limit=500`);
+        const response = await fetch(`${readApiBaseUrl()}/snapshot/events?limit=500`);
         if (response.ok) {
           const data = (await response.json()) as { events?: RealEvent[] };
           const relevant = (data.events ?? [])
@@ -63,7 +63,7 @@ export function useRealPacketThread(packetId: string | undefined): UseRealPacket
 
       if (cancelled) return;
 
-      eventSource = new EventSource(`${READ_API_BASE_URL}/stream/events?after=${lastEventId}`);
+      eventSource = new EventSource(`${readApiBaseUrl()}/stream/events?after=${lastEventId}`);
       eventSource.onmessage = (message: MessageEvent<string>) => {
         if (cancelled) return;
         const event = JSON.parse(message.data) as RealEvent;
