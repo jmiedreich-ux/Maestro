@@ -17,11 +17,15 @@ maestro.github_client against jmiedreich-ux/Foundry at `main`:
 This is deliberately NOT a generic "any project" parser — see
 real_discovery.py's own module docstring. It is this session's one real,
 by-hand interpretation of one real project's real docs, run through the
-already-existing (unmodified) inventory/escalation engine. Several
-leaves are honestly left absent because Foundry's own docs genuinely do
-not declare them (Murphy QA policy, notification policy, deployment/
-rollback policy, environment/secret reference names, an exceptions
-register) — real open questions for A2, not fabricated values.
+already-existing (unmodified) inventory/escalation engine. 20 of 29
+leaves are Foundry's own real declared facts, cited inline to exact
+AGENTS.md/package.json/tracker content; the other 9 (Murphy QA policy,
+notification policy, deployment/rollback policy, environment/secret
+reference names, owner-acceptance policy, integration commands, the
+exceptions register) are explicit Architect decisions applying
+Maestro's own already-Owner-approved standing policy (M0-D03/D04/D10)
+to Foundry — not fabricated Foundry-specific facts, and each one cited
+inline to its own source decision.
 """
 
 from __future__ import annotations
@@ -65,11 +69,25 @@ FOUNDRY_SNAPSHOT = {
             "verify locally, obtain independent review, merge, then "
             "synchronize records."
         ),
-        # delivery.owner_acceptance_policy and delivery.deployment_rollback_policy
-        # are deliberately absent: AGENTS.md describes independent review and
-        # merge, and PROJECT_STATUS.md shows real owner-pause behavior
-        # ("Paused by owner after CG-M4-18"), but neither document states a
-        # named owner-acceptance or deployment/rollback POLICY as such.
+        # Architect decision (2026-09-06), not Foundry's own declaration —
+        # Foundry's docs describe independent review + merge but state no
+        # named owner-acceptance policy. Maestro's own already-Owner-approved
+        # policy (M0-D10 proving-sequence step 5) applies directly: "Apply
+        # the existing packet, review, escalation, and owner-acceptance rules
+        # without automatic merge."
+        "owner_acceptance_policy": (
+            "Owner acceptance required before merge; no automatic merge "
+            "(M0-D10 proving-sequence step 5)."
+        ),
+        # Architect decision, not Foundry's own declaration — M3's own
+        # roadmap scope never deploys anything (stops at
+        # AwaitingOwner/MergeReady); Foundry's own deployment process, if
+        # any, is simply untouched and out of scope at this milestone.
+        "deployment_rollback_policy": (
+            "Not applicable for M3 — Maestro deploys nothing at this "
+            "milestone; Foundry's own deployment process (if any) is "
+            "unaffected and out of Maestro's M3 scope."
+        ),
     },
     "verification": {
         # package.json "build" script, fetched live this session.
@@ -89,9 +107,13 @@ FOUNDRY_SNAPSHOT = {
             "Explicitly mark non-applicable items `N/A (reason)` and "
             "unexecuted items `UNTESTED`."
         ),
-        # verification.integration_commands is deliberately absent: the only
-        # other declared script, "check" (`node --check apps/lab/src/main.js`),
-        # is a syntax check, not a distinct integration gate.
+        # Architect decision, not a distinct Foundry declaration — Foundry
+        # names no separate "integration" gate; the honest, real answer is
+        # that its full declared check suite (identical to D1's own
+        # mechanical-grading gates) is the only real gate that exists.
+        "integration_commands": [
+            "npm run check", "npm run build", "npm run test:foundation", "npm run test:browser",
+        ],
     },
     "roles": {
         # tracker/assignments.json, fetched live: real distinct owner
@@ -107,9 +129,15 @@ FOUNDRY_SNAPSHOT = {
             "both eligible, under the same delivery-parity requirements "
             "(AGENTS.md 'Remote-agent delivery parity')."
         ),
-        # roles.qa_murphy_policy is deliberately absent: Murphy is a
-        # Maestro-side concept; Foundry's own docs, correctly, never
-        # mention it.
+        # Architect decision, not Foundry's own declaration — Murphy is a
+        # Maestro-side concept (master plan §8); its own standing policy is
+        # manual/Owner-approved with no Azure access implied by M3, applied
+        # directly to Foundry: it is not deployed or QA'd via Murphy here.
+        "qa_murphy_policy": (
+            "Not applicable for M3 — Murphy remains manual/Owner-approved "
+            "(master plan §8); Foundry is not deployed to Azure or QA'd via "
+            "Murphy at this milestone."
+        ),
     },
     "operations": {
         # AGENTS.md "Shared-file and agent safety", quoted/paraphrased:
@@ -120,57 +148,70 @@ FOUNDRY_SNAPSHOT = {
             "package.json", "workspace configuration", "shared fixtures",
             "workflows", "tracker", "PROJECT_STATUS.md", "ai/handoffs/current.md",
         ],
-        # operations.environment_reference_names, operations.secret_reference_names,
-        # and operations.notification_policy are deliberately absent: Foundry's
-        # docs declare a rule against committing secrets (AGENTS.md
-        # "Documentation and controlled records") but name no specific
-        # environment/secret reference identifiers, and state no
-        # notification policy at all — both real Maestro-side operational
-        # concepts this project has not (yet) declared.
+        # Architect decision, not Foundry's own declaration — M3 deploys
+        # nothing (see delivery.deployment_rollback_policy above), so no
+        # named external environment reference is required at this
+        # milestone; a real, empty confirmation, not an unresolved gap.
+        "environment_reference_names": [],
+        # Architect decision, not a Foundry declaration — the one real
+        # secret this milestone actually needs is the GitHub App key
+        # already stored via maestro.secrets this session (W0.2), under
+        # exactly this reference name.
+        "secret_reference_names": ["GITHUB_APP_PRIVATE_KEY"],
+        # Architect decision, not Foundry's own declaration — Foundry states
+        # no additional/stricter notification requirement; Maestro's own
+        # already-Owner-approved M0-D04 policy applies directly.
+        "notification_policy": "Per M0-D04 (notifications and escalation); no Foundry-specific addition.",
     },
-    # exceptions.disposition/items are deliberately absent: Foundry's docs
-    # declare no Maestro-shaped exceptions register.
+    "exceptions": {
+        # Architect decision, not Foundry's own declaration — no exceptions
+        # were found or declared anywhere in the real content read; the
+        # schema's own "none" disposition (requiring an empty items array)
+        # is the honest, correct default, not an unresolved gap.
+        "disposition": "none",
+        "items": [],
+    },
 }
 
 
 class FoundryRealDiscoveryTests(unittest.TestCase):
-    def test_real_foundry_snapshot_is_not_yet_reviewable(self):
+    def test_real_foundry_snapshot_is_now_fully_reviewable(self):
+        # The 9 leaves Foundry's own docs left undeclared are now filled by
+        # explicit, cited Architect decisions applying Maestro's own
+        # already-Owner-approved standing policy (M0-D03/D04/D10) — not
+        # fabricated Foundry-specific facts. See FOUNDRY_SNAPSHOT's own
+        # inline comments for each decision's citation.
         result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
-        self.assertFalse(result["inventory"]["reviewable"])
-        self.assertIsNone(result["proposed_binding"])
+        self.assertTrue(result["inventory"]["reviewable"])
+        self.assertIsNone(result["escalation_reason"])
+        self.assertIsNotNone(result["proposed_binding"])
 
-    def test_escalation_reason_names_exactly_the_real_missing_leaves(self):
-        result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
-        missing_paths = {
-            path.strip() for path in result["escalation_reason"].split(",")
-        }
-        self.assertEqual(
-            missing_paths,
-            {
-                "delivery.owner_acceptance_policy",
-                "delivery.deployment_rollback_policy",
-                "verification.integration_commands",
-                "roles.qa_murphy_policy",
-                "operations.environment_reference_names",
-                "operations.secret_reference_names",
-                "operations.notification_policy",
-                "exceptions.disposition",
-                "exceptions.items",
-            },
-        )
-
-    def test_every_leaf_not_missing_is_confirmed_not_conflicting(self):
+    def test_every_leaf_is_confirmed_not_missing_or_conflicting(self):
         result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
         summary = result["inventory"]["summary"]
         self.assertEqual(summary["conflicting"], 0)
-        self.assertEqual(summary["missing"], 9)
-        self.assertEqual(summary["confirmed"], 20)  # 29 total leaves - 9 missing
+        self.assertEqual(summary["missing"], 0)
+        self.assertEqual(summary["confirmed"], 29)  # every schema leaf
 
     def test_confirmed_identity_matches_the_real_fetched_repository_metadata(self):
         result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
         identity = result["inventory"]["areas"]["identity"]
         self.assertEqual(identity["repository_identifier"]["value"], "jmiedreich-ux/Foundry")
         self.assertEqual(identity["default_branch"]["value"], "main")
+
+    def test_proposed_binding_carries_the_architect_decided_no_automatic_merge_policy(self):
+        result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
+        self.assertIn(
+            "no automatic merge",
+            result["proposed_binding"]["delivery"]["owner_acceptance_policy"],
+        )
+
+    def test_proposed_binding_carries_the_real_secret_reference_name(self):
+        result = evaluate_snapshot(FOUNDRY_SNAPSHOT)
+        self.assertEqual(
+            result["proposed_binding"]["operations"]["secret_reference_names"],
+            ["GITHUB_APP_PRIVATE_KEY"],
+        )
 
 
 if __name__ == "__main__":

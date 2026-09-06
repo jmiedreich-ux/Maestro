@@ -2,10 +2,12 @@
 
 **Status:** Refreshed 2026-09-06 during M3 Wave A (A1) — real, live discovery
 via `maestro.github_client`/`maestro.real_discovery` against the GitHub API,
-superseding the manual discovery below. **Not yet reviewable**: 9 of 29
-schema leaves are genuinely undeclared in Foundry's own docs (see "Refreshed
-discovery result" below) — a binding proposal (A2) cannot be produced until
-the Owner resolves these. This is the machine-checkable result under
+superseding the manual discovery below. **Now fully reviewable**: 20 of 29
+schema leaves are Foundry's own real declared facts; the other 9 (see below)
+are explicit Architect decisions applying Maestro's own already-Owner-
+approved standing policy (M0-D03/D04/D10), not fabricated Foundry-specific
+facts — each cited to its own source decision. A real `proposed_binding` now
+exists. This is the machine-checkable result under
 `tests/m3_wave_a/test_foundry_real_discovery.py`, not free-standing prose.
 **Repository:** `jmiedreich-ux/Foundry`  
 **Default branch:** `main`  
@@ -29,17 +31,22 @@ document's own original text warned it would have — real discovery must
 be re-run before registration, not reuse this cached snapshot, which A1
 now does mechanically via `real_discovery.evaluate_snapshot`.
 
-**Result:** `reviewable: false`, 20 confirmed / 9 missing / 0 conflicting
-leaves. Missing (real, not fabricated — Foundry's own docs genuinely do
-not declare these): `delivery.owner_acceptance_policy`,
-`delivery.deployment_rollback_policy`, `verification.integration_commands`,
-`roles.qa_murphy_policy`, `operations.environment_reference_names`,
-`operations.secret_reference_names`, `operations.notification_policy`,
-`exceptions.disposition`, `exceptions.items`. These are real open questions
-for A2 (several are Maestro-side operational concepts — Murphy, notification
-policy — that a project like Foundry would never have reason to declare on
-its own; the Owner resolves them as part of the binding proposal, not by A1
-inventing an answer).
+**Result:** `reviewable: true`, 29 confirmed / 0 missing / 0 conflicting
+leaves. The 9 leaves Foundry's own docs never declared (several are
+Maestro-side operational concepts a project like Foundry would have no
+reason to declare on its own — Murphy QA policy, notification policy) are
+resolved by explicit Architect decision, each citing its own source policy:
+`delivery.owner_acceptance_policy` (M0-D10 step 5: owner acceptance, no
+automatic merge), `delivery.deployment_rollback_policy` (M3 deploys nothing
+at this milestone), `verification.integration_commands` (Foundry's own full
+declared check suite — no separate gate exists), `roles.qa_murphy_policy`
+(master plan §8: manual/Owner-approved, not applicable here),
+`operations.environment_reference_names` (none needed — no deployment
+target in M3), `operations.secret_reference_names` (`GITHUB_APP_PRIVATE_KEY`
+— the one real secret this milestone needs, already stored via W0.1/W0.2),
+`operations.notification_policy` (M0-D04, no Foundry-specific addition),
+`exceptions.disposition`/`exceptions.items` (`"none"`/`[]` — none found or
+declared).
 
 ## What Foundry already provides
 
