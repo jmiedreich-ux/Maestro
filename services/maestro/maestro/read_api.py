@@ -342,7 +342,21 @@ def _send_sse_headers(handler: "_ReadApiRequestHandler") -> None:
     handler.send_header("Content-Type", "text/event-stream")
     handler.send_header("Cache-Control", "no-cache")
     handler.send_header("Connection", "keep-alive")
+    _send_cors_headers(handler)
     handler.end_headers()
+
+
+def _send_cors_headers(handler: "_ReadApiRequestHandler") -> None:
+    # Atlas's dev server and this read API run on different ports (5173
+    # vs 8765), so even same-host (loopback or the one disclosed
+    # Tailscale exception) requests are cross-origin per the browser's
+    # own same-origin policy. This API is already restricted to
+    # loopback/one explicit host at the TCP layer (_LOOPBACK_HOSTS/
+    # MAESTRO_READ_API_ALLOWED_HOST) and carries no cookies/credentials,
+    # so a wildcard origin here does not widen who can reach it.
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    handler.send_header("Access-Control-Allow-Headers", "Content-Type")
 
 
 def _write_sse_frame(handler: "_ReadApiRequestHandler", frame: bytes) -> bool:
@@ -1024,6 +1038,11 @@ class _ReadApiRequestHandler(BaseHTTPRequestHandler):
         self._route("OPTIONS")
 
     def _route(self, method: str) -> None:
+        if method == "OPTIONS":
+            self.send_response(204)
+            _send_cors_headers(self)
+            self.end_headers()
+            return
         split_path = urllib.parse.urlsplit(self.path)
         path = split_path.path
         if path in _COMMAND_ROUTES:
@@ -1079,6 +1098,7 @@ class _ReadApiRequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        _send_cors_headers(self)
         self.end_headers()
         self.wfile.write(body)
 
