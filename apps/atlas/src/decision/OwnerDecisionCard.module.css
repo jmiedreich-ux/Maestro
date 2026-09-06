@@ -1,13 +1,11 @@
 .row {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 14px;
-  padding: 4px 34px 8px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 4px 0 8px;
 }
 
 .card {
   min-width: 0;
-  max-width: 60ch;
   border: 1px solid var(--atlas-owner-border);
   border-radius: 14px;
   background: var(--atlas-owner-bg);

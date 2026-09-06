@@ -101,7 +101,6 @@ export function OwnerDecisionCard({ real }: OwnerDecisionCardProps = {}) {
 
   return (
     <div className={styles.row} style={SHELL_VARS}>
-      <span aria-hidden="true" />
       <div className={styles.card}>
         <div className={styles.head}>
           <div className={styles.eyebrow}>

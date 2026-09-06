@@ -188,6 +188,22 @@
   margin-top: 2px;
 }
 
+/**
+ * A prose value (e.g. the Blocker card's own free-text sentence) reads
+ * badly at the stat-readout size/weight above — long words wrap one per
+ * line and the card balloons in height. Matches the same distinction
+ * PacketHeader.module.css's desktop equivalent already makes between
+ * its own `.reportValue` (mono, for a short stat) and `.blockerValue`
+ * (regular prose weight, no mono).
+ */
+.metaValueProse {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .nextPanel {
   margin-top: 12px;
   padding: 16px;
