@@ -38,16 +38,18 @@ describe("MobileShell", () => {
     expect(screen.queryByText("Now tab")).not.toBeInTheDocument();
   });
 
-  it("tapping a tab makes it the sole selected tab and updates the content pane", () => {
+  it("(F4A) tapping Plan renders the real PlanTab rather than the placeholder", () => {
     render(<MobileShell />);
-    // Plan is the one remaining placeholder tab (Now/Chat/Activity all
-    // render real content as of F1/F2/F3).
+    // Scoped to the tab bar: PlanTab's own packet rows and gate row are
+    // also real buttons, which would otherwise collide with an unscoped
+    // current-button query.
     const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
     fireEvent.click(within(nav).getByRole("button", { name: "Plan" }));
     const current = within(nav).getAllByRole("button", { current: true });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("Plan");
-    expect(screen.getByText("Plan tab")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
+    expect(screen.queryByText("Plan tab")).not.toBeInTheDocument();
     expect(screen.queryByText("Now tab")).not.toBeInTheDocument();
   });
 
