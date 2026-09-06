@@ -1,11 +1,18 @@
 import { useState, type CSSProperties } from "react";
-import { colors, fontFamily } from "../tokens";
+import { colors, fontFamily, motion } from "../tokens";
 import { HISTORY_EMPTY_NOTE, HISTORY_ENTRIES, HISTORY_STATS, type HistoryEntry } from "../history/fixtures";
 import { HISTORY_KIND_STYLE } from "../history/historyStyle";
 import { AGENTS, AGENTS_STATS, type AgentEntry, type AgentStat } from "../agents/agents";
 import { AGENT_STYLE } from "../agents/agentStyle";
 import { WEEKLY_WINDOW } from "../performance/weeklyWindow";
 import { SPLIT, SPLIT_BASES, type SplitBasisKey, type SplitPart } from "../performance/perfBreakdown";
+import {
+  PERF_RECORDS,
+  type PerfCostKind,
+  type PerfDetailKind,
+  type PerfOutcome,
+  type PerfRecord,
+} from "../performance/perfRecords";
 import styles from "./ActivityTab.module.css";
 
 type ActivitySegment = "hist" | "agents" | "cost";
@@ -188,6 +195,50 @@ const SHELL_VARS = {
   "--atlas-split-legend-pct": colors.ink,
   "--atlas-split-legend-abs": colors.inkFaint,
   "--atlas-split-caveat": colors.inkMuted,
+  // The "Per action" records list's own colors — every one a real
+  // token, transcribed verbatim from `PerfRecordsList.tsx`'s own
+  // `SHELL_VARS` (E2/E2B), which already derived this exact mapping
+  // from `Atlas Explorations.dc.html`'s real per-record derivation
+  // logic. The mobile mockup (`Atlas Mobile.dc.html:311-337`) renders
+  // the same `{{ p.tagBg }}`/`{{ p.costColor }}`/detail-row `{{ r.color
+  // }}` template placeholders with no literal values of its own —
+  // confirming both surfaces share the same underlying data-derivation
+  // function, so reusing the desktop mapping exactly (rather than
+  // re-deriving a third copy) is a real fact, not an assumption.
+  "--atlas-records-card-surface": colors.surface,
+  // The real mobile markup's own action/tokens spans set no explicit
+  // color of their own (`Atlas Mobile.dc.html:316,318`) — unlike the
+  // desktop `.action`/`.tokens` classes, which do (`colors.ink`). Since
+  // both surfaces share the identical underlying `PERF_RECORDS` data
+  // and derivation, and this program's own established discipline is
+  // "every color is a real token, never an unset default," this slice
+  // applies the same real `colors.ink` explicitly here too, rather than
+  // leaving it to an unstyled browser default — a disclosed, minor
+  // adaptation, not a fabricated value.
+  "--atlas-records-row-ink": colors.ink,
+  "--atlas-records-row-faint": colors.inkFaint,
+  "--atlas-records-row-muted": colors.inkMuted,
+  "--atlas-records-row-warning": colors.warningText,
+  "--atlas-records-tag-blocked-bg": colors.warningChip,
+  "--atlas-records-tag-blocked-ink": colors.warningText,
+  "--atlas-records-tag-good-bg": colors.successWash,
+  "--atlas-records-tag-good-ink": colors.successText,
+  "--atlas-records-tag-neutral-bg": colors.neutralChip,
+  "--atlas-records-tag-neutral-ink": colors.inkSecondary,
+  "--atlas-records-detail-border": colors.borderDivider[2],
+  "--atlas-records-detail-bg": colors.focusHoverCard,
+  "--atlas-records-detail-row-divider": colors.borderDivider[1],
+  "--atlas-records-detail-group-name": colors.inkFaint,
+  "--atlas-records-detail-label": colors.inkSecondary,
+  "--atlas-records-detail-note": colors.inkMuted,
+  "--atlas-records-detail-value-default": colors.ink,
+  "--atlas-records-detail-value-ok": colors.successText,
+  "--atlas-records-detail-value-est": colors.warningText,
+  "--atlas-records-detail-value-warn": colors.dangerText,
+  "--atlas-records-detail-value-na": colors.inkFaint,
+  "--atlas-records-rise-translate": `${motion.rise.translateYPx}px`,
+  "--atlas-records-rise-duration": `${motion.rise.durationS.min}s`,
+  "--atlas-records-rise-easing": motion.rise.easing,
 } as CSSProperties;
 
 const SPLIT_COLORS = [colors.accent, colors.review, colors.success, colors.borderDashed[2]];
@@ -301,6 +352,121 @@ function CostSplitGroup({ name, parts }: { name: string; parts: SplitPart[] }) {
   );
 }
 
+const RECORDS_COST_CLASS: Record<PerfCostKind, string> = {
+  billed: styles.recordCostBilled,
+  est: styles.recordCostEst,
+  none: styles.recordCostNone,
+};
+
+const RECORDS_DETAIL_VALUE_CLASS: Record<PerfDetailKind, string> = {
+  "": styles.recordDetailValueDefault,
+  est: styles.recordDetailValueEst,
+  ok: styles.recordDetailValueOk,
+  warn: styles.recordDetailValueWarn,
+  na: styles.recordDetailValueNa,
+};
+
+function recordsOutcomeClass(outcome: PerfOutcome): string {
+  if (outcome === "blocked") return styles.recordsOutcomeBlocked;
+  if (outcome === "approved" || outcome === "passed") return styles.recordsOutcomeGood;
+  return styles.recordsOutcomeNeutral;
+}
+
+/**
+ * The mobile-specific row/card markup transcribed from `Atlas Mobile
+ * .dc.html:314-337` — a single stacked card per record (action + tag,
+ * then packet·who·model, then tokens/cost/elapsed), not the desktop
+ * `PerfRecordsList.tsx`'s own 5-column grid row, which has no mobile
+ * equivalent (real markup confirms a narrower single-column layout
+ * throughout). The expandable detail panel below reuses the exact
+ * same real per-group/per-row shape and color derivation as the
+ * desktop version (`record.groups`), since both surfaces render the
+ * identical real `PERF_RECORDS` data.
+ */
+function RecordCard({
+  record,
+  open,
+  onToggle,
+}: {
+  record: PerfRecord;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className={styles.recordCard}>
+      <button type="button" className={styles.recordButton} onClick={onToggle}>
+        <div className={styles.recordTopLine}>
+          <span className={styles.recordAction}>{record.action}</span>
+          <span className={`${styles.recordOutcome} ${recordsOutcomeClass(record.outcome)}`}>
+            {record.outcome}
+          </span>
+        </div>
+        <div className={styles.recordMeta}>
+          {record.packet} · {record.who} · {record.model}
+        </div>
+        <div className={styles.recordStatLine}>
+          <span>{record.tokens}</span>
+          <span className={RECORDS_COST_CLASS[record.costKind]}>{record.cost}</span>
+          <span className={styles.recordElapsed}>{record.elapsed}</span>
+        </div>
+      </button>
+      {open && (
+        <div className={styles.recordDetail}>
+          {record.groups.map((group) => (
+            <div key={group.name} className={styles.recordDetailGroup}>
+              <div className={styles.recordDetailGroupName}>{group.name}</div>
+              <div className={styles.recordDetailRows}>
+                {group.rows.map((row) => (
+                  <div key={row.label} className={styles.recordDetailRow}>
+                    <span className={styles.recordDetailLabel}>{row.label}</span>
+                    <b
+                      className={`${styles.recordDetailValue} ${RECORDS_DETAIL_VALUE_CLASS[row.kind]}`}
+                    >
+                      {row.value}
+                    </b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className={styles.recordDetailNote}>{record.note}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Real accordion: matching `PerfRecordsList.tsx`'s own single `openId`
+ * state (E2/E2B) — opening one record's detail closes whichever other
+ * record was open, not one independent boolean per record. `pfCount`
+ * is derived from the real `PERF_RECORDS.length`, never a hand-typed
+ * literal that happens to currently match (this program's own C7/E7B
+ * precedent for any displayed count).
+ */
+function RecordsList() {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <>
+      <div className={styles.recordsHead}>
+        <span className={styles.recordsTitle}>Per action</span>
+        <span className={styles.recordsCount}>{PERF_RECORDS.length} records</span>
+      </div>
+      <div className={styles.recordsList}>
+        {PERF_RECORDS.map((record) => (
+          <RecordCard
+            key={record.id}
+            record={record}
+            open={openId === record.id}
+            onToggle={() => setOpenId((current) => (current === record.id ? null : record.id))}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 function CostSegment() {
   const [basis, setBasis] = useState<SplitBasisKey>("cost");
   const data = SPLIT[basis];
@@ -339,6 +505,8 @@ function CostSegment() {
         <CostSplitGroup name="by kind of work" parts={data.work} />
         <div className={styles.splitCaveat}>{data.caveat}</div>
       </div>
+
+      <RecordsList />
     </>
   );
 }
@@ -356,13 +524,13 @@ function CostSegment() {
  * fixture and style data as fresh mobile-specific cards (see
  * `AgentCardMobile` above — not `<AgentsRoster />`, which is
  * desktop-only by its own established scope). The Cost segment's real
- * content, reusing E1B's/E3's own fixture data (see `CostSegment`
- * above), begins with this slice — the weekly-window card and the
- * "m1-a split" card. The "Per action" records list (reusing E2/E2B's
- * data) is separate, future work (roadmap item 35's own remaining
- * scope), matching this program's own established pattern of
- * splitting an oversized roadmap item into independently reviewable
- * slices (E1/E1B, E2/E2B, F3/F3B).
+ * content, reusing E1B's/E3's own fixture data — the weekly-window
+ * card and the "m1-a split" card (F3C) — plus the "Per action" records
+ * list (F3D, this slice), reusing E2/E2B's own `PERF_RECORDS` fixture
+ * data as fresh mobile-specific cards (see `RecordsList`/`RecordCard`
+ * above — not `<PerfRecordsList />`, which is desktop-only by its own
+ * established scope, matching `AgentCardMobile`'s own precedent).
+ * Completes roadmap item 35.
  */
 export function ActivityTab() {
   const [segment, setSegment] = useState<ActivitySegment>("hist");
