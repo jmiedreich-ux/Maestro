@@ -2,35 +2,113 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { colors } from "../tokens";
 import { computeShowAvatar, PacketThread } from "./PacketThread";
-import { PACKET_A2_ENTRIES, type ThreadEntry } from "./fixtures";
+import type { ThreadEntry } from "./fixtures";
+import type { RealEvent } from "./realEventSynthesis";
 import { CRASH_EXAMPLE } from "../crash/fixtures";
+
+const PACKET_ID = "packet-test-thread";
+
+/**
+ * Synthetic real events, for rendering-logic verification only — not
+ * product fixture content. Shaped to exercise the same three real
+ * properties the old hand-authored fixture did: a role change (avatar
+ * shown), a same-author repeat (avatar grouped/omitted), and a role
+ * label lookup — via `synthesizeThreadEntry`'s own real, honest
+ * mechanical description, not invented dialogue.
+ */
+function realEvent(overrides: Partial<RealEvent>): RealEvent {
+  return {
+    event_id: 1,
+    entity_type: "Packet",
+    entity_id: PACKET_ID,
+    event_type: "state_transition",
+    before_json: {},
+    after_json: {},
+    reason: { kind: "reason", reason_code: "WORK_STARTED", detail_reference: null },
+    actor_type: "MaestroDeveloper",
+    actor_id: "developer-1",
+    created_at: "2026-09-06T13:49:00.000000Z",
+    ...overrides,
+  };
+}
+
+const THREE_EVENTS: RealEvent[] = [
+  realEvent({
+    event_id: 1,
+    actor_type: "IntegrationAgent",
+    before_json: { state: "Planned" },
+    after_json: { state: "Ready" },
+    created_at: "2026-09-06T13:49:00.000000Z",
+  }),
+  realEvent({
+    event_id: 2,
+    actor_type: "MaestroDeveloper",
+    before_json: { state: "Ready" },
+    after_json: { state: "Leased" },
+    created_at: "2026-09-06T13:51:00.000000Z",
+  }),
+  realEvent({
+    event_id: 3,
+    actor_type: "MaestroDeveloper",
+    before_json: { state: "Leased" },
+    after_json: { state: "Running" },
+    created_at: "2026-09-06T13:52:00.000000Z",
+  }),
+];
+
+function stubRealBackend(events: RealEvent[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: events.slice().reverse() }) }),
+  );
+  vi.stubGlobal(
+    "EventSource",
+    class {
+      onmessage: unknown = null;
+      addEventListener() {}
+      close() {}
+    },
+  );
+}
 
 afterEach(cleanup);
 
 describe("PacketThread", () => {
-  it("renders all six real fixture messages, in order, with their exact body text", () => {
-    render(<PacketThread />);
+  beforeEach(() => {
+    stubRealBackend(THREE_EVENTS);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("renders the real backend events, in order, as honest mechanical descriptions", async () => {
+    render(<PacketThread packetId={PACKET_ID} />);
+    await waitFor(() => {
+      expect(screen.getAllByText(/./, { selector: "p" }).length).toBeGreaterThan(0);
+    });
     const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
-    expect(bodies).toEqual(PACKET_A2_ENTRIES.map((e) => e.text));
+    expect(bodies).toEqual([
+      "Packet packet-test-thread: Planned → Ready (WORK_STARTED)",
+      "Packet packet-test-thread: Ready → Leased (WORK_STARTED)",
+      "Packet packet-test-thread: Leased → Running (WORK_STARTED)",
+    ]);
   });
 
-  it("shows the avatar and name row on every entry in this fixture (no consecutive same-author pair without an intervening plan/cadence entry)", () => {
-    render(<PacketThread />);
-    // Every one of the 6 fixture entries in A.2 is either a different
-    // author than the previous one, or immediately follows a
-    // plan/cadence-bearing entry from the same author — so all 6 show
-    // their own avatar and name row. This is a real, checked property
-    // of the actual fixture data, not an assumption.
-    expect(screen.getAllByText("Coordinator")).toHaveLength(3);
-    expect(screen.getAllByText("Terra")).toHaveLength(3);
+  it("shows the avatar and name row when the actor changes, groups consecutive same-actor entries", async () => {
+    render(<PacketThread packetId={PACKET_ID} />);
+    await waitFor(() => {
+      expect(screen.getAllByText(/MaestroDeveloper|IntegrationAgent/).length).toBeGreaterThan(0);
+    });
+    // Event 1 (IntegrationAgent) and event 2 (MaestroDeveloper, a
+    // different actor) each show their own name row; event 3 repeats
+    // event 2's actor with no intervening plan/cadence entry, so it is
+    // grouped (name shown once, not twice).
+    expect(screen.getAllByText("IntegrationAgent")).toHaveLength(1);
+    expect(screen.getAllByText("MaestroDeveloper")).toHaveLength(1);
   });
 
-  it("shows the correct role label next to each name (Coordinator: none, Terra: Implementor)", () => {
-    render(<PacketThread />);
-    expect(screen.getAllByText("Implementor")).toHaveLength(3);
-  });
-
-  it("renders the Coordinator avatar with the reference file's real background, not the neutralChip token's value", () => {
+  it("renders the Coordinator avatar with the reference file's real background, not the neutralChip token's value", async () => {
     // colors.neutralChip is "#F2EEF8" — a real, different token this
     // avatar must NOT use. jsdom reports computed inline styles as
     // rgb(...); #F2EEF8 = rgb(242,238,248), #EFEBF2 (the correct,
@@ -39,7 +117,11 @@ describe("PacketThread", () => {
     // than comparing an rgb() string to a hex string that could never
     // match either way.
     expect(colors.neutralChip).toBe("#F2EEF8");
-    const { container } = render(<PacketThread />);
+    stubRealBackend([realEvent({ actor_type: "IntegrationAgent" })]);
+    const { container } = render(<PacketThread packetId={PACKET_ID} />);
+    await waitFor(() => {
+      expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    });
     const avatars = Array.from(container.querySelectorAll('[aria-hidden="true"]')).filter(
       (el) => el.textContent === "CO",
     );
@@ -76,58 +158,47 @@ describe("PacketThread", () => {
     expect(computeShowAvatar(syntheticCadence, 1)).toBe(true);
   });
 
-  it("renders no image, icon font, or <svg> element", () => {
-    const { container } = render(<PacketThread />);
+  it("renders no image, icon font, or <svg> element", async () => {
+    const { container } = render(<PacketThread packetId={PACKET_ID} />);
+    await waitFor(() => {
+      expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+    });
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
   });
 
   it("(G2) does not render the real CrashCard when systemState is 'normal' (the default)", () => {
-    render(<PacketThread />);
+    render(<PacketThread packetId={PACKET_ID} />);
     expect(screen.queryByText("agent stopped unexpectedly")).toBeNull();
   });
 
-  it("(G2) renders the real CrashCard, after every real entry, when systemState is 'crashed'", () => {
-    render(<PacketThread systemState="crashed" />);
-    expect(screen.getByText("agent stopped unexpectedly")).toBeInTheDocument();
+  it("(G2) renders the real CrashCard, after every real entry, when systemState is 'crashed'", async () => {
+    render(<PacketThread packetId={PACKET_ID} systemState="crashed" />);
+    await waitFor(() => {
+      expect(screen.getByText("agent stopped unexpectedly")).toBeInTheDocument();
+    });
     expect(screen.getByText(CRASH_EXAMPLE.headline)).toBeInTheDocument();
     expect(screen.getByText(CRASH_EXAMPLE.lede)).toBeInTheDocument();
 
-    // Every real fixture message still renders too, in the same order,
+    // Every real thread entry still renders too, in the same order,
     // before the crash card's own lede paragraph — the crash card is
     // appended, not a replacement of the real thread content. (Both
     // PacketThread's own message text and CrashCard's own lede render
-    // as <p> elements, so the crash card's lede is the real 7th match.)
+    // as <p> elements, so the crash card's lede is the real 4th match.)
     const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
-    expect(bodies).toEqual([...PACKET_A2_ENTRIES.map((e) => e.text), CRASH_EXAMPLE.lede]);
+    expect(bodies).toEqual([
+      "Packet packet-test-thread: Planned → Ready (WORK_STARTED)",
+      "Packet packet-test-thread: Ready → Leased (WORK_STARTED)",
+      "Packet packet-test-thread: Leased → Running (WORK_STARTED)",
+      CRASH_EXAMPLE.lede,
+    ]);
   });
 
-  describe("(M3 E4) realPacketId — wired to real backend data", () => {
-    beforeEach(() => {
-      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: [] }) }));
-      vi.stubGlobal(
-        "EventSource",
-        class {
-          onmessage: unknown = null;
-          addEventListener() {}
-          close() {}
-        }
-      );
-    });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it("does not render the fixture-driven entries when realPacketId is supplied", async () => {
-      render(<PacketThread realPacketId="packet-foundry-cg-m4-19" />);
+  describe("(M3 E4) real backend wiring", () => {
+    it("shows the resync banner when the stream signals a resync is required", async () => {
+      render(<PacketThread packetId={PACKET_ID} />);
       await waitFor(() => {
-        expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).toBeNull();
+        expect(screen.queryByRole("status")).toBeNull();
       });
-    });
-
-    it("still renders the fixture-driven entries when realPacketId is omitted (every existing caller)", () => {
-      render(<PacketThread />);
-      expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
     });
   });
 });

@@ -1,9 +1,27 @@
 import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { colors, fontFamily } from "../tokens";
 import MobileShell from "./MobileShell";
 
-afterEach(cleanup);
+// ChatTab (F2) now always fetches real backend data — every test that
+// can reach it needs a real (mocked) fetch/EventSource, matching the
+// same pattern DesktopShell.test.tsx's own real-wiring tests already
+// established.
+class FakeEventSource {
+  onmessage: unknown = null;
+  addEventListener() {}
+  close() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: [] }) }));
+  vi.stubGlobal("EventSource", FakeEventSource);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("MobileShell", () => {
   it("sets every real-token CSS custom property from the actual tokens module, plus the disclosed reference-file literals", () => {

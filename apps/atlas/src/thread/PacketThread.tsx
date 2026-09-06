@@ -2,25 +2,14 @@ import type { CSSProperties } from "react";
 import { colors, fontFamily, motion } from "../tokens";
 import { CrashCard } from "../crash/CrashCard";
 import type { SystemState } from "../shell/connectionState";
-import {
-  INITIALS_BY_NAME,
-  PACKET_A2_ENTRIES,
-  ROLE_LABEL,
-  type EntryRoleKey,
-  type ThreadEntry,
-} from "./fixtures";
+import { INITIALS_BY_NAME, ROLE_LABEL, type EntryRoleKey, type ThreadEntry } from "./fixtures";
 import { useRealPacketThread } from "./useRealPacketThread";
 import styles from "./PacketThread.module.css";
 
 export interface PacketThreadProps {
   systemState?: SystemState;
-  /**
-   * M3 E4 — when a real registered packet id is supplied, the thread
-   * renders real backend events (via useRealPacketThread) instead of
-   * the fixture. Omitted (the default, and every existing caller),
-   * this component is completely unchanged: PACKET_A2_ENTRIES.
-   */
-  realPacketId?: string;
+  /** The real, registered packet id whose thread this renders. */
+  packetId: string;
 }
 
 /**
@@ -112,13 +101,13 @@ export function textColorFor(entry: ThreadEntry): string {
  * reference file's own `cur.id === 'A.2'` guard on its equivalent
  * `crashed` flag is always true here.
  */
-export function PacketThread({ systemState = "normal", realPacketId }: PacketThreadProps = {}) {
-  const real = useRealPacketThread(realPacketId);
-  const entries = realPacketId !== undefined ? real.entries : PACKET_A2_ENTRIES;
+export function PacketThread({ systemState = "normal", packetId }: PacketThreadProps) {
+  const real = useRealPacketThread(packetId);
+  const entries = real.entries;
 
   return (
     <div className={styles.thread} style={SHELL_VARS}>
-      {realPacketId !== undefined && real.resyncRequired && (
+      {real.resyncRequired && (
         <p className={styles.text} role="status">
           Connection to Maestro was interrupted — refreshing.
         </p>

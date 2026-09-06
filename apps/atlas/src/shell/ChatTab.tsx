@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { derivePacketHeaderState } from "../thread/headerState";
 import { textColorFor } from "../thread/PacketThread";
-import { PACKET_A2_ENTRIES, ROLE_LABEL, type EntryRoleKey } from "../thread/fixtures";
+import { ROLE_LABEL, type EntryRoleKey } from "../thread/fixtures";
+import { useRealPacketThread } from "../thread/useRealPacketThread";
 import styles from "./ChatTab.module.css";
 
 /**
@@ -93,7 +94,8 @@ function nameColorFor(role: EntryRoleKey): string {
 
 /**
  * Mobile "Chat" tab — the reference file's own `isThread` view,
- * reusing C1's real fixture (`PACKET_A2_ENTRIES`), role labels, and
+ * rendering the real packet thread (via `useRealPacketThread`, the same
+ * hook `PacketThread.tsx` uses), reusing its role labels and
  * text-color rule (`textColorFor`, exported from `PacketThread.tsx`
  * for this reuse), restyled as chat bubbles per the reference file's
  * own mobile markup, and C7's real `derivePacketHeaderState` for the
@@ -107,8 +109,10 @@ function nameColorFor(role: EntryRoleKey): string {
  * reasoning F1's `NowTab` already applied to its own excluded
  * Stop/Start/Open-conversation controls.
  */
-export function ChatTab({ onBack }: { onBack: () => void }) {
-  const state = derivePacketHeaderState(PACKET_A2_ENTRIES);
+export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: string }) {
+  const real = useRealPacketThread(packetId);
+  const entries = real.entries;
+  const state = derivePacketHeaderState(entries);
 
   return (
     <div className={styles.tab} style={SHELL_VARS}>
@@ -124,7 +128,7 @@ export function ChatTab({ onBack }: { onBack: () => void }) {
         </div>
       </div>
       <div className={styles.feed}>
-        {PACKET_A2_ENTRIES.map((entry) => {
+        {entries.map((entry) => {
           const mine = isMine(entry.k);
           return (
             <div key={`${entry.who}-${entry.time}`} className={styles.row}>
