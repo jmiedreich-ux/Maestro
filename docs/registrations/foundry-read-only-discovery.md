@@ -48,6 +48,32 @@ target in M3), `operations.secret_reference_names` (`GITHUB_APP_PRIVATE_KEY`
 `exceptions.disposition`/`exceptions.items` (`"none"`/`[]` — none found or
 declared).
 
+## A2 — real registration proof (2026-09-06)
+
+Ran the real `maestro.project.yaml` (translating the facts above into
+`project_manifest.py`'s actual schema — a different schema from the
+inventory shape used for A1) through the real, already-accepted
+`ProjectAuthorityLoader` against a locally-cloned, never-pushed copy of
+Foundry at its real current HEAD (`5e01f5a0d02c78ced41a915042b49dd8ffd666c9`).
+Result: `disposition: Reviewable`, 41/41 facts confirmed, and a real
+`projects` row genuinely created
+(`('foundry', 'jmiedreich-ux/Foundry', 'main', 'Candidate')`). Permanent,
+network-free regression test: `tests/m3_wave_a/test_foundry_real_registration.py`.
+
+## A3 — real dry run (2026-09-06)
+
+Ran Foundry's actual declared gates for real against a clean clone of its
+real current HEAD (same commit as above), via `maestro.check_runner`:
+
+- `npm run check` — real pass.
+- `npm run build` — real pass (Vite build, 82 modules, `dist/` produced).
+- `npm run test:foundation` — real pass, 11/11 (Vitest).
+- `npm run test:browser` — real pass, 83/83 (Playwright, Chromium).
+
+Confirms Foundry's binding is currently honest: every declared gate is
+real, runnable, and green on its actual current state, before anything
+depends on it. No packet was claimed or dispatched.
+
 ## What Foundry already provides
 
 - A mature repository contract in `AGENTS.md`, including scoped packets, required commits, exact gates, independent review, handoff, and owner acceptance rules.
