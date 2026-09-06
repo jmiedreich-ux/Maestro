@@ -1,6 +1,8 @@
 import { useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import PacketThread from "../thread/PacketThread";
+import { GateHeader } from "../gate/GateHeader";
+import { GateCriteriaList } from "../gate/GateCriteriaList";
 import { deriveConnectionState, type SystemState } from "./connectionState";
 import styles from "./DesktopShell.module.css";
 
@@ -78,6 +80,31 @@ const SHELL_VARS = {
   "--atlas-conn-body": colors.inkSecondary,
 } as CSSProperties;
 
+/**
+ * The "gate" nav view renders E7's two already-real, already-reviewed
+ * components stacked — `GateHeader` (title/state/button/lede/approver/
+ * releases) then `GateCriteriaList` (the entry-criteria card) — the
+ * first real wiring of either into any shell. Neither component is
+ * modified here: this slice only composes them.
+ *
+ * `GateHeader` already carries its own full real padding (a full-bleed
+ * top bar plus its own `22px 34px 30px` body wrapper), matching the
+ * real mockup's own unpadded `<main>` — so the "gate" view uses
+ * `.contentGate` (no padding) instead of the generic `.content` (which
+ * every other view already relies on for its own 34px gutter), letting
+ * `GateHeader`'s own chrome reach the real edges instead of doubling
+ * up. `GateCriteriaList` is wrapped in `.gateCriteriaWrap` (horizontal
+ * gutter + bottom breathing room only) since it was built as a
+ * standalone component assuming its own container already supplies
+ * that gutter. **Disclosed, not silently accepted:** the real mockup's
+ * own vertical gap between the releases panel and the criteria card is
+ * one continuous ~20px; composing these two already-merged components
+ * without modifying either yields a slightly larger real gap (`
+ * GateHeader`'s own 30px bottom padding plus `GateCriteriaList`'s own
+ * 20px top margin) — more generous whitespace, not a broken or
+ * reversed layout, and a smaller compromise than modifying either
+ * component's own already-reviewed internals for a wiring-only slice.
+ */
 export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {}) {
   const [selected, setSelected] = useState<DesktopShellView>("performance");
   const conn = deriveConnectionState(systemState, "desktop");
@@ -140,8 +167,22 @@ export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {})
             onSelect={setSelected}
           />
         </nav>
-        <main className={styles.content}>
-          {selected === "packet" ? <PacketThread /> : `${VIEW_LABEL[selected]} view`}
+        <main
+          data-testid="desktop-shell-main"
+          className={selected === "gate" ? styles.contentGate : styles.content}
+        >
+          {selected === "packet" ? (
+            <PacketThread />
+          ) : selected === "gate" ? (
+            <>
+              <GateHeader />
+              <div className={styles.gateCriteriaWrap}>
+                <GateCriteriaList />
+              </div>
+            </>
+          ) : (
+            `${VIEW_LABEL[selected]} view`
+          )}
         </main>
       </div>
     </div>

@@ -160,6 +160,15 @@
   font: 400 13.5px var(--atlas-font-body);
 }
 
+.contentGate {
+  background: var(--atlas-page-bg-desktop);
+  overflow-y: auto;
+}
+
+.gateCriteriaWrap {
+  padding: 0 34px 30px;
+}
+
 .packetRow {
   display: flex;
   align-items: center;
