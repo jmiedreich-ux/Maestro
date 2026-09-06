@@ -172,7 +172,7 @@ export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {})
           className={selected === "gate" ? styles.contentGate : styles.content}
         >
           {selected === "packet" ? (
-            <PacketThread />
+            <PacketThread systemState={systemState} />
           ) : selected === "gate" ? (
             <>
               <GateHeader />

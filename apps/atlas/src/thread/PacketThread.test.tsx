@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { colors } from "../tokens";
 import { computeShowAvatar, PacketThread } from "./PacketThread";
 import { PACKET_A2_ENTRIES, type ThreadEntry } from "./fixtures";
+import { CRASH_EXAMPLE } from "../crash/fixtures";
 
 afterEach(cleanup);
 
@@ -78,5 +79,25 @@ describe("PacketThread", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<PacketThread />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  it("(G2) does not render the real CrashCard when systemState is 'normal' (the default)", () => {
+    render(<PacketThread />);
+    expect(screen.queryByText("agent stopped unexpectedly")).toBeNull();
+  });
+
+  it("(G2) renders the real CrashCard, after every real entry, when systemState is 'crashed'", () => {
+    render(<PacketThread systemState="crashed" />);
+    expect(screen.getByText("agent stopped unexpectedly")).toBeInTheDocument();
+    expect(screen.getByText(CRASH_EXAMPLE.headline)).toBeInTheDocument();
+    expect(screen.getByText(CRASH_EXAMPLE.lede)).toBeInTheDocument();
+
+    // Every real fixture message still renders too, in the same order,
+    // before the crash card's own lede paragraph — the crash card is
+    // appended, not a replacement of the real thread content. (Both
+    // PacketThread's own message text and CrashCard's own lede render
+    // as <p> elements, so the crash card's lede is the real 7th match.)
+    const bodies = screen.getAllByText(/./, { selector: "p" }).map((p) => p.textContent);
+    expect(bodies).toEqual([...PACKET_A2_ENTRIES.map((e) => e.text), CRASH_EXAMPLE.lede]);
   });
 });

@@ -39,4 +39,34 @@ describe("deriveConnectionState", () => {
     expect(desktop.strip.meta).toBe("retry 3 · 0:12");
     expect(mobile.strip.meta).toBe("retry 3");
   });
+
+  it("(G2) crashed: live indicator stays 'idle' (this app has no real live connection to claim, even mid-crash)", () => {
+    const state = deriveConnectionState("crashed", "desktop");
+    expect(state.liveLabel).toBe("idle");
+    expect(state.liveDotColor).toBe(colors.inkMuted);
+    expect(state.liveTextColor).toBe(colors.inkFaint);
+  });
+
+  it("(G2) crashed: strip is shown with the real danger-token colors, matching CrashCard's own mapping", () => {
+    const state = deriveConnectionState("crashed", "desktop");
+    expect(state.strip.show).toBe(true);
+    expect(state.strip.bg).toBe(colors.dangerWash);
+    expect(state.strip.border).toBe(colors.dangerBorder);
+    expect(state.strip.ink).toBe(colors.dangerText);
+    expect(state.strip.dot).toBe(colors.danger);
+    expect(state.strip.title).toBe("Terra is not running");
+    expect(state.strip.meta).toBe("stopped 14:58");
+  });
+
+  it("(G2) crashed: desktop and mobile strips have different real copy, not a shared string", () => {
+    const desktop = deriveConnectionState("crashed", "desktop");
+    const mobile = deriveConnectionState("crashed", "mobile");
+    expect(desktop.strip.body).toBe(
+      "A.2 stopped without a handoff. Its worktree and locks are held, so A.3 stays undispatchable until this is resolved.",
+    );
+    expect(mobile.strip.body).toBe(
+      "A.2 stopped without a handoff. Worktree and locks are held, so A.3 stays undispatchable.",
+    );
+    expect(desktop.strip.body).not.toBe(mobile.strip.body);
+  });
 });

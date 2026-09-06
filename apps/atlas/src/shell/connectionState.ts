@@ -2,13 +2,12 @@ import { colors } from "../tokens";
 
 /**
  * `systemState` mirrors the reference files' own real prop (`normal |
- * crashed | disconnected | empty`), but this slice's own derivation
- * only handles the two branches roadmap item 37 (G1) is scoped to —
- * `normal` and `disconnected`. `crashed` (G2) and `empty` (G3) are
- * separate, future slices; passing either of those literal strings
- * here would be a type error, not a silently-wrong render.
+ * crashed | disconnected | empty`). This slice (G2) adds `crashed` to
+ * G1's own `normal`/`disconnected` derivation. `empty` (G3) remains a
+ * separate, future slice; passing it here would still be a type
+ * error, not a silently-wrong render.
  */
-export type SystemState = "normal" | "disconnected";
+export type SystemState = "normal" | "disconnected" | "crashed";
 
 export type ConnectionSurface = "desktop" | "mobile";
 
@@ -73,11 +72,55 @@ const HIDDEN_STRIP: ConnectionStrip = {
  * mobile: "...not to this phone...", `meta: 'retry 3'`, no timer
  * suffix — a real, checked difference between the two surfaces, not a
  * transcription slip).
+ *
+ * `systemState === "crashed"` (G2) strip colors are real B2 tokens,
+ * checked directly against `colors.ts`: `colors.dangerWash` (bg,
+ * `#FEF7F6`), `colors.dangerBorder` (border, `#EFC9C4`),
+ * `colors.dangerText` (ink, `#A63F36`), `colors.danger` (dot,
+ * `#C4564A`) — the same 4 real tokens `CrashCard.tsx` (C6) already
+ * establishes, an exact match on all four. `title`/`meta` ("Terra is
+ * not running" / "stopped 14:58") are identical in both reference
+ * files. `body` differs by real surface, transcribed verbatim:
+ * `Atlas Explorations.dc.html` desktop: "A.2 stopped without a
+ * handoff. Its worktree and locks are held, so A.3 stays
+ * undispatchable until this is resolved."; `Atlas Mobile.dc.html`
+ * mobile: "A.2 stopped without a handoff. Worktree and locks are
+ * held, so A.3 stays undispatchable." — a real, checked, shorter
+ * mobile variant (drops "Its" and the trailing "until this is
+ * resolved" clause), not a transcription slip, matching the same
+ * per-surface-body-copy convention `disconnected` above already
+ * established. Both reference files gate this strip only on
+ * `systemState`, never on a separate "which packet is open" check —
+ * this app has no multi-packet-selection concept at all (every real
+ * surface always shows A.2), so the reference files' own `cur.id ===
+ * 'A.2'` guard on their equivalent `crashed` flag is always true here
+ * and is correctly omitted, not silently dropped.
  */
 export function deriveConnectionState(
   systemState: SystemState,
   surface: ConnectionSurface,
 ): ConnectionState {
+  if (systemState === "crashed") {
+    return {
+      liveLabel: "idle",
+      liveDotColor: colors.inkMuted,
+      liveTextColor: colors.inkFaint,
+      strip: {
+        show: true,
+        bg: colors.dangerWash,
+        border: colors.dangerBorder,
+        ink: colors.dangerText,
+        dot: colors.danger,
+        title: "Terra is not running",
+        body:
+          surface === "desktop"
+            ? "A.2 stopped without a handoff. Its worktree and locks are held, so A.3 stays undispatchable until this is resolved."
+            : "A.2 stopped without a handoff. Worktree and locks are held, so A.3 stays undispatchable.",
+        meta: "stopped 14:58",
+      },
+    };
+  }
+
   if (systemState === "disconnected") {
     return {
       liveLabel: "reconnecting",

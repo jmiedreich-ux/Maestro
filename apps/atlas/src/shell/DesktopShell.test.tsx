@@ -60,6 +60,36 @@ describe("DesktopShell", () => {
     expect(screen.getByText("retry 3 · 0:12")).toBeInTheDocument();
   });
 
+  it("(G2) systemState 'crashed': the real danger-toned connection strip renders on every view, not just the packet view", () => {
+    render(<DesktopShell systemState="crashed" />);
+    expect(screen.getByText("Terra is not running")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "A.2 stopped without a handoff. Its worktree and locks are held, so A.3 stays undispatchable until this is resolved.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("stopped 14:58")).toBeInTheDocument();
+    // The live indicator itself stays "idle" even mid-crash — this app
+    // has no real live connection to claim either way.
+    expect(screen.getByText("idle")).toBeInTheDocument();
+  });
+
+  it("(G2) systemState 'crashed': selecting the A.2 packet row renders the real CrashCard appended to the real thread", () => {
+    render(<DesktopShell systemState="crashed" />);
+    fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
+    expect(screen.getByText("agent stopped unexpectedly")).toBeInTheDocument();
+    // The real thread content is still there too — the crash card is
+    // appended, not a replacement.
+    expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
+  });
+
+  it("(G2) systemState 'crashed' has no effect on any other view's own content", () => {
+    render(<DesktopShell systemState="crashed" />);
+    fireEvent.click(screen.getByRole("button", { name: /^History/ }));
+    expect(screen.getByText("History view")).toBeInTheDocument();
+    expect(screen.queryByText("agent stopped unexpectedly")).toBeNull();
+  });
+
   it("renders the top bar's idle live indicator", () => {
     render(<DesktopShell />);
     expect(screen.getByText("idle")).toBeInTheDocument();

@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
-import { colors, fontFamily } from "../tokens";
+import { colors, fontFamily, motion } from "../tokens";
+import { CrashCard } from "../crash/CrashCard";
+import type { SystemState } from "../shell/connectionState";
 import {
   INITIALS_BY_NAME,
   PACKET_A2_ENTRIES,
@@ -9,11 +11,28 @@ import {
 } from "./fixtures";
 import styles from "./PacketThread.module.css";
 
+export interface PacketThreadProps {
+  systemState?: SystemState;
+}
+
+/**
+ * `--atlas-crash-row-rise-*`: the real crash row's own entrance
+ * animation (`Atlas Explorations.dc.html:417`, `animation:rise .22s
+ * ease-out`) reuses the same real `motion.rise` token every other
+ * reveal in this program already consumes, but at its own real
+ * `durationS.max` (`0.22s`) — a different, real value from
+ * `PerfRecordsList.tsx`/`ActivityTab.tsx`'s own `.min` (`0.18s`)
+ * reveals, checked directly against the reference file, not a
+ * mismatch.
+ */
 const SHELL_VARS = {
   "--atlas-ink": colors.ink,
   "--atlas-ink-muted": colors.inkMuted,
   "--atlas-ink-faint": colors.inkFaint,
   "--atlas-font-mono": fontFamily.mono,
+  "--atlas-crash-row-rise-translate": `${motion.rise.translateYPx}px`,
+  "--atlas-crash-row-rise-duration": `${motion.rise.durationS.max}s`,
+  "--atlas-crash-row-rise-easing": motion.rise.easing,
 } as CSSProperties;
 
 /**
@@ -65,7 +84,27 @@ export function textColorFor(entry: ThreadEntry): string {
   return entry.k === "by" ? colors.inkSecondary : colors.ink;
 }
 
-export function PacketThread() {
+/**
+ * `systemState === "crashed"` (G2) appends the real `CrashCard` (C6)
+ * after every real entry, matching `Atlas Explorations.dc.html`'s own
+ * exact placement (`crash.show`, immediately after the entries'
+ * `</sc-for>`, inside the same scrolling feed — not a separate
+ * top-level banner or a `DesktopShell`-level insertion). `CrashCard`
+ * is mounted as-is, unmodified — its own `.row` grid
+ * (`36px minmax(0,1fr)`) already matches this file's own `.row`
+ * exactly, confirming both were built from the same real reference
+ * grid, not merely similar-looking, and already supplies its own real
+ * padding — so the wrapping `.crashRow` here is animation-only (the
+ * real entrance `animation:rise .22s ease-out` the reference file
+ * applies to this exact element, which `CrashCard.tsx`'s own CSS does
+ * not itself carry — a disclosed, minor gap in that already-merged
+ * component, not fixed here since modifying it is outside this
+ * wiring-only slice's own proportional scope), not a second, duplicate
+ * grid/padding wrapper. This app has no multi-packet selection, so the
+ * reference file's own `cur.id === 'A.2'` guard on its equivalent
+ * `crashed` flag is always true here.
+ */
+export function PacketThread({ systemState = "normal" }: PacketThreadProps = {}) {
   return (
     <div className={styles.thread} style={SHELL_VARS}>
       {PACKET_A2_ENTRIES.map((entry, index) => {
@@ -104,6 +143,11 @@ export function PacketThread() {
           </div>
         );
       })}
+      {systemState === "crashed" && (
+        <div className={styles.crashRow}>
+          <CrashCard />
+        </div>
+      )}
     </div>
   );
 }
