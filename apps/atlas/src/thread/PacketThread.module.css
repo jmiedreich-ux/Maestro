@@ -54,3 +54,18 @@
   max-width: 62ch;
   text-wrap: pretty;
 }
+
+.crashRow {
+  animation: crashRise var(--atlas-crash-row-rise-duration) var(--atlas-crash-row-rise-easing);
+}
+
+@keyframes crashRise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--atlas-crash-row-rise-translate));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
