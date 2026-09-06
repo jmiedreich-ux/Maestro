@@ -1,5 +1,5 @@
 """Loopback-only read API: `/health`, `/snapshot/packets`, `/snapshot/attempts`,
-`/snapshot/reviews`, and `/snapshot/events`."""
+`/snapshot/reviews`, `/snapshot/events`, and `/stream/events`."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import re
 import sqlite3
 import threading
+import time
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -302,12 +303,139 @@ def _handle_snapshot_events(handler: "_ReadApiRequestHandler", query: str) -> No
     )
 
 
+# M3 E1/E2 — real SSE event stream + reconnect/resync contract. Named in
+# m2-atlas-roadmap.md as A6/A7, carried to M3's own roadmap: this is
+# real live data first existing to synthesize from. Every consuming
+# component (Atlas's own frontend) was, until now, fixture-driven only —
+# no route, no SSE handling, existed anywhere in this repository.
+_STREAM_EVENTS_QUERY = f"""
+    SELECT {", ".join(_EVENTS_SNAPSHOT_COLUMNS)}
+    FROM events
+    WHERE event_id > ?
+    ORDER BY event_id ASC
+    LIMIT ?
+"""
+_STREAM_POLL_INTERVAL_SECONDS = 0.2
+_STREAM_BATCH_LIMIT = 200
+
+
+def _sse_frame(event_id: int, payload: Mapping[str, Any], *, event_name: str | None = None) -> bytes:
+    lines = []
+    if event_name is not None:
+        lines.append(f"event: {event_name}")
+    lines.append(f"id: {event_id}")
+    lines.append(f"data: {canonical_response_json(payload).decode('utf-8')}")
+    return ("\n".join(lines) + "\n\n").encode("utf-8")
+
+
+def _send_sse_headers(handler: "_ReadApiRequestHandler") -> None:
+    handler.send_response(200)
+    handler.send_header("Content-Type", "text/event-stream")
+    handler.send_header("Cache-Control", "no-cache")
+    handler.send_header("Connection", "keep-alive")
+    handler.end_headers()
+
+
+def _write_sse_frame(handler: "_ReadApiRequestHandler", frame: bytes) -> bool:
+    """Write one frame; return False the moment the client has disconnected."""
+    try:
+        handler.wfile.write(frame)
+        handler.wfile.flush()
+        return True
+    except (BrokenPipeError, ConnectionResetError, OSError):
+        return False
+
+
+def _handle_stream_events(handler: "_ReadApiRequestHandler", query: str) -> None:
+    parsed = urllib.parse.parse_qs(query, strict_parsing=False, keep_blank_values=True)
+    if any(key != "after" for key in parsed) or len(parsed.get("after", [])) > 1:
+        handler._respond(
+            400,
+            canonical_response_json(
+                {"error": "invalid_query", "detail": "only a single 'after' parameter is accepted"}
+            ),
+        )
+        return
+
+    # Real reconnect contract: prefer the browser's own automatic
+    # `Last-Event-ID` reconnection header; a query param lets any other
+    # client supply the same last-seen id explicitly.
+    raw_after = handler.headers.get("Last-Event-ID")
+    if raw_after is None:
+        raw_after = parsed["after"][0] if "after" in parsed else None
+    if raw_after is not None and raw_after != "" and not _LIMIT_LITERAL_RE.match(raw_after):
+        handler._respond(
+            400,
+            canonical_response_json(
+                {"error": "invalid_query", "detail": "after/Last-Event-ID must be a non-negative integer"}
+            ),
+        )
+        return
+
+    try:
+        runtime_config = RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        connection = sqlite3.connect(
+            f"file:{runtime_config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0,
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
+    try:
+        max_row = connection.execute("SELECT MAX(event_id) FROM events").fetchone()
+        current_max = max_row[0] if max_row and max_row[0] is not None else 0
+
+        if raw_after is None or raw_after == "":
+            # A fresh connection with no prior snapshot: start from now,
+            # emitting only genuinely new events — a client that wants
+            # history fetches /snapshot/events first, then opens the
+            # stream with that snapshot's own last event id.
+            last_seen = current_max
+        else:
+            requested = int(raw_after)
+            if requested != 0:
+                exists = connection.execute(
+                    "SELECT 1 FROM events WHERE event_id = ?", (requested,)
+                ).fetchone()
+                if exists is None:
+                    # Real gap: the client's last-seen id no longer
+                    # resolves — signal resync-from-snapshot rather than
+                    # silently guessing a starting point.
+                    _send_sse_headers(handler)
+                    _write_sse_frame(
+                        handler,
+                        _sse_frame(
+                            current_max,
+                            {"resync_required": True, "current_max_event_id": current_max},
+                            event_name="resync",
+                        ),
+                    )
+                    return
+            last_seen = requested
+
+        _send_sse_headers(handler)
+        while True:
+            try:
+                rows = connection.execute(_STREAM_EVENTS_QUERY, (last_seen, _STREAM_BATCH_LIMIT)).fetchall()
+            except sqlite3.Error:
+                return
+            for row in rows:
+                event = dict(zip(_EVENTS_SNAPSHOT_COLUMNS, row))
+                last_seen = event["event_id"]
+                if not _write_sse_frame(handler, _sse_frame(event["event_id"], event)):
+                    return
+            time.sleep(_STREAM_POLL_INTERVAL_SECONDS)
+    finally:
+        connection.close()
+
+
 _ROUTES = {
     "/health": _handle_health,
     "/snapshot/packets": _handle_snapshot_packets,
     "/snapshot/attempts": _handle_snapshot_attempts,
     "/snapshot/reviews": _handle_snapshot_reviews,
     "/snapshot/events": _handle_snapshot_events,
+    "/stream/events": _handle_stream_events,
 }
 
 
