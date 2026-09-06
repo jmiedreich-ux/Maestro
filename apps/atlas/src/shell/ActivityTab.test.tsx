@@ -3,6 +3,27 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ActivityTab } from "./ActivityTab";
 import { HISTORY_EMPTY_NOTE, HISTORY_ENTRIES, HISTORY_STATS } from "../history/fixtures";
 import { AGENTS, AGENTS_STATS } from "../agents/agents";
+import { WEEKLY_WINDOW } from "../performance/weeklyWindow";
+import { SPLIT, SPLIT_BASES } from "../performance/perfBreakdown";
+import { colors } from "../tokens";
+
+const SPLIT_COLORS = [colors.accent, colors.review, colors.success, colors.borderDashed[2]];
+
+/**
+ * jsdom (like real browsers) silently re-serializes a raw inline hex
+ * color to `rgb(...)` when read back via `.style.background` — so an
+ * exact-string comparison against the original hex literal must
+ * convert through the same normalization first, matching the
+ * discipline this program's own `connectionState.ts` (G1) already
+ * established for exactly this defect class.
+ */
+function hexToRgb(hex: string): string {
+  const value = hex.replace("#", "");
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 afterEach(cleanup);
 
@@ -51,13 +72,93 @@ describe("ActivityTab", () => {
     expect(screen.queryByRole("button", { name: /open .* thread/i })).toBeNull();
   });
 
-  it("tapping Cost switches the segmented control's own selection and shows a placeholder", () => {
+  it("tapping Cost switches the segmented control's own selection and renders the real weekly-window card", () => {
     render(<ActivityTab />);
     fireEvent.click(screen.getByRole("button", { name: "Cost" }));
     const current = screen.getAllByRole("button", { current: true });
+    // Scoped to the outer segmented control only: the split card's own
+    // segmented control (Cost/Tokens/Time) also uses `aria-current`-free
+    // plain buttons here, but its own selected button carries no
+    // `current` role attribute, so this stays unambiguous.
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("Cost");
-    expect(screen.getByText("Cost segment")).toBeInTheDocument();
+
+    expect(screen.getByText("openai weekly window")).toBeInTheDocument();
+    // Real fixture fields, not the mobile mockup's own shorter,
+    // compressed single line — see this file's own doc comment.
+    expect(screen.getByText(WEEKLY_WINDOW.meta)).toBeInTheDocument();
+    expect(screen.getByText(WEEKLY_WINDOW.caption)).toBeInTheDocument();
+    expect(screen.getByText(`${WEEKLY_WINDOW.unattributedPercent} unattributed`)).toBeInTheDocument();
+    expect(screen.getByText(`${WEEKLY_WINDOW.observedChangePercent}`)).toBeInTheDocument();
+  });
+
+  it("renders the real 'm1-a split' card defaulting to the Cost basis, with all real role and work parts", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    expect(screen.getByText("m1-a split")).toBeInTheDocument();
+    expect(screen.getByText("by role")).toBeInTheDocument();
+    expect(screen.getByText("by kind of work")).toBeInTheDocument();
+
+    const data = SPLIT.cost;
+    expect(screen.getByText(`share of ${data.note}`)).toBeInTheDocument();
+    expect(screen.getByText(data.caveat)).toBeInTheDocument();
+    for (const part of [...data.role, ...data.work]) {
+      const label = screen.getByText(part.label);
+      const item = label.closest('[class*="splitLegendItem"]') as HTMLElement;
+      expect(within(item).getByText(`${part.pct}%`)).toBeInTheDocument();
+      expect(within(item).getByText(part.abs)).toBeInTheDocument();
+    }
+  });
+
+  it("renders each real split part's own bar-segment width (with the real 0.6% floor) and legend-dot color by real index", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    for (const group of [SPLIT.cost.role, SPLIT.cost.work]) {
+      group.forEach((part, index) => {
+        const label = screen.getByText(part.label);
+        const item = label.closest('[class*="splitLegendItem"]') as HTMLElement;
+        const dot = item.querySelector('[class*="splitLegendDot"]') as HTMLElement;
+        expect(dot.style.background).toBe(hexToRgb(SPLIT_COLORS[index]));
+
+        // Every real 0%-share part still renders a thin, visible sliver
+        // (Math.max(pct, 0.6)), never a fully collapsed 0% bar segment.
+        const group2 = item.closest('[class*="splitGroup"]') as HTMLElement;
+        const bar = group2.querySelector('[class*="splitBar"]') as HTMLElement;
+        const segment = bar.children[index] as HTMLElement;
+        const expectedWidth = `${Math.max(part.pct, 0.6)}%`;
+        expect(segment.style.width).toBe(expectedWidth);
+        expect(segment.style.background).toBe(hexToRgb(SPLIT_COLORS[index]));
+      });
+    }
+  });
+
+  it("tapping Tokens or Time in the split card's own segmented control switches to that basis's real data", () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByRole("button", { name: "Cost" }));
+
+    for (const basis of SPLIT_BASES) {
+      if (basis.key === "cost") continue;
+      fireEvent.click(screen.getByRole("button", { name: basis.label }));
+      const data = SPLIT[basis.key];
+      expect(screen.getByText(`share of ${data.note}`)).toBeInTheDocument();
+      expect(screen.getByText(data.caveat)).toBeInTheDocument();
+      // The previous basis's own caveat must not linger.
+      for (const other of SPLIT_BASES) {
+        if (other.key === basis.key) continue;
+        expect(screen.queryByText(SPLIT[other.key].caveat)).toBeNull();
+      }
+      // Every real role/work part for this basis, not just the note/caveat
+      // strings — proves the switch re-derives the whole group, not just
+      // the two summary lines.
+      for (const part of [...data.role, ...data.work]) {
+        const label = screen.getByText(part.label);
+        const item = label.closest('[class*="splitLegendItem"]') as HTMLElement;
+        expect(within(item).getByText(`${part.pct}%`)).toBeInTheDocument();
+        expect(within(item).getByText(part.abs)).toBeInTheDocument();
+      }
+    }
   });
 
   it("tapping Agents switches the segmented control's own selection and renders the real AGENTS_STATS", () => {

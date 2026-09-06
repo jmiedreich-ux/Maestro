@@ -4,6 +4,8 @@ import { HISTORY_EMPTY_NOTE, HISTORY_ENTRIES, HISTORY_STATS, type HistoryEntry }
 import { HISTORY_KIND_STYLE } from "../history/historyStyle";
 import { AGENTS, AGENTS_STATS, type AgentEntry, type AgentStat } from "../agents/agents";
 import { AGENT_STYLE } from "../agents/agentStyle";
+import { WEEKLY_WINDOW } from "../performance/weeklyWindow";
+import { SPLIT, SPLIT_BASES, type SplitBasisKey, type SplitPart } from "../performance/perfBreakdown";
 import styles from "./ActivityTab.module.css";
 
 type ActivitySegment = "hist" | "agents" | "cost";
@@ -96,6 +98,52 @@ const SEGMENTS: ReadonlyArray<{ key: ActivitySegment; label: string }> = [
  * `STAT_VALUE_CLASS` below maps each `stat.color` to a static class
  * consuming one of four new `--atlas-ag-stat-*` vars, exactly mirroring
  * `AgentsRoster.tsx`'s own already-reviewed pattern.
+ *
+ * The Cost segment's first two real blocks this slice adds
+ * (`Atlas Mobile.dc.html:280-309`) reuse E1B's real `WEEKLY_WINDOW`
+ * fixture and E3's real `SPLIT`/`SPLIT_BASES` fixture data verbatim —
+ * both already real, reviewed, and (for `SPLIT.cost.role`) already
+ * carrying the real Local-Qwen persona correction for the fictional
+ * "Architect agent," not re-litigated here. Real token matches for the
+ * new `--atlas-week-*`/`--atlas-split-*` vars: `colors.inkMuted`
+ * (`#8E8299`, both eyebrows — "openai weekly window" line 282,
+ * "m1-a split" line 288), `colors.warningText` (`#8A5A08`, the
+ * unattributed figure, line 283), `colors.inkFaint` (`#A79BB4` — the
+ * weekly-window meta line, matching the real mobile mockup's own
+ * literal directly, and separately the split card's own group-name/
+ * legend-abs colors, matching E3's own `PerfBreakdownCard.tsx` token
+ * choices exactly; **not** a `WeeklyWindowStrip.tsx` precedent for
+ * those latter two fields, which has no group/legend layout at all —
+ * `WeeklyWindowStrip.tsx`'s own meta field uses `colors.inkMuted`, not
+ * `inkFaint` — corrected per Decision Fidelity review),
+ * `colors.inkSecondary` (`#6C6376`, the legend label, line 303 — the
+ * same token this file's own `--atlas-entry-detail` and `--atlas-ag-line`
+ * already use), `colors.segmentedTrack[2]` (`#F2EFF7`, both the
+ * segmented control's own track and the bar's own track, lines 289/298
+ * — the third real index of the array this file's own outer segmented
+ * control already uses `[0]` from), and the same 4 real
+ * `SPLIT_COLORS` E3's own `PerfBreakdownCard.tsx` already discloses
+ * (`colors.accent`/`colors.review`/`colors.success`/`colors.borderDashed[2]`),
+ * applied here via inline per-index style rather than E3's own static
+ * CSS classes — matching this file's own established convention for
+ * per-item dynamic coloring (`HistoryRow`, `AgentCardMobile`), not
+ * duplicating four new always-identical CSS classes. The weekly-window
+ * sentence's own body-text color (`#4C4457`, line 283) is a disclosed
+ * literal, checked against every color family in `colors.ts` — no
+ * token matches.
+ *
+ * **Real fact, disclosed, not silently reused:** this slice reuses
+ * `WEEKLY_WINDOW`'s own already-real `meta` ("observed 15:02 · resets
+ * Mon 00:00") and `caption` ("Local Qwen is shown as capacity and time
+ * only...") fields as two separate lines — exactly matching E1B's own
+ * `WeeklyWindowStrip.tsx` rendering — rather than transcribing the
+ * mobile mockup's own shorter, compressed single line ("observed 15:02
+ * · local Qwen kept separate", line 284), which paraphrases both real
+ * fields into one and drops real information. This is the same
+ * single-source-of-identity precedent F3's own `HISTORY_EMPTY_NOTE`
+ * reuse and F2's own C7 eyebrow/title reuse already established: state
+ * the one real fact once, not a second, lossier mockup-specific
+ * abbreviation of it.
  */
 const SHELL_VARS = {
   "--atlas-seg-track": colors.segmentedTrack[0],
@@ -124,7 +172,34 @@ const SHELL_VARS = {
   "--atlas-ag-stat-warning": colors.warningText,
   "--atlas-ag-stat-accent-hover": colors.accentHover,
   "--atlas-ag-stat-ink": colors.ink,
+  "--atlas-cost-card-surface": colors.surface,
+  "--atlas-week-label": colors.inkMuted,
+  "--atlas-week-body": "#4C4457",
+  "--atlas-week-warning": colors.warningText,
+  "--atlas-week-meta": colors.inkFaint,
+  "--atlas-week-caption": colors.inkFaint,
+  "--atlas-split-track": colors.segmentedTrack[2],
+  "--atlas-split-seg-selected-bg": colors.segmentedSelected,
+  "--atlas-split-seg-selected-ink": colors.ink,
+  "--atlas-split-seg-ink": colors.inkMuted,
+  "--atlas-split-basis-note": colors.inkMuted,
+  "--atlas-split-group-name": colors.inkFaint,
+  "--atlas-split-legend-label": colors.inkSecondary,
+  "--atlas-split-legend-pct": colors.ink,
+  "--atlas-split-legend-abs": colors.inkFaint,
+  "--atlas-split-caveat": colors.inkMuted,
 } as CSSProperties;
+
+const SPLIT_COLORS = [colors.accent, colors.review, colors.success, colors.borderDashed[2]];
+
+/**
+ * Transcribed verbatim from `PerfBreakdownCard.tsx`'s own bar-width
+ * derivation (`w: Math.max(pct, 0.6) + '%'`) — a 0%-share part still
+ * renders a thin, visible sliver rather than vanishing entirely.
+ */
+function barWidth(pct: number): string {
+  return `${Math.max(pct, 0.6)}%`;
+}
 
 const STAT_VALUE_CLASS: Record<AgentStat["color"], string> = {
   accent: styles.statValueAccent,
@@ -199,6 +274,75 @@ function AgentCardMobile({ agent }: { agent: AgentEntry }) {
   );
 }
 
+function CostSplitGroup({ name, parts }: { name: string; parts: SplitPart[] }) {
+  return (
+    <div className={styles.splitGroup}>
+      <div className={styles.splitGroupName}>{name}</div>
+      <div className={styles.splitBar}>
+        {parts.map((part, index) => (
+          <span
+            key={part.label}
+            className={styles.splitBarSegment}
+            style={{ width: barWidth(part.pct), background: SPLIT_COLORS[index] }}
+          />
+        ))}
+      </div>
+      <div className={styles.splitLegend}>
+        {parts.map((part, index) => (
+          <div key={part.label} className={styles.splitLegendItem}>
+            <span className={styles.splitLegendDot} style={{ background: SPLIT_COLORS[index] }} />
+            <span className={styles.splitLegendLabel}>{part.label}</span>
+            <b className={styles.splitLegendPct}>{part.pct}%</b>
+            <span className={styles.splitLegendAbs}>{part.abs}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CostSegment() {
+  const [basis, setBasis] = useState<SplitBasisKey>("cost");
+  const data = SPLIT[basis];
+
+  return (
+    <>
+      <div className={styles.weekCard}>
+        <div className={styles.weekLabel}>openai weekly window</div>
+        <div className={styles.weekBody}>
+          {WEEKLY_WINDOW.reconciledPercent} controlled + {WEEKLY_WINDOW.coarsePercent} coarse +{" "}
+          <b className={styles.weekWarning}>{WEEKLY_WINDOW.unattributedPercent} unattributed</b> ={" "}
+          <b>{WEEKLY_WINDOW.observedChangePercent}</b> observed change
+        </div>
+        <div className={styles.weekMeta}>{WEEKLY_WINDOW.meta}</div>
+        <div className={styles.weekCaption}>{WEEKLY_WINDOW.caption}</div>
+      </div>
+
+      <div className={styles.splitCard}>
+        <div className={styles.splitHead}>
+          <span className={styles.splitLabel}>m1-a split</span>
+        </div>
+        <div className={styles.splitSegmented}>
+          {SPLIT_BASES.map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              className={`${styles.splitSegButton} ${basis === b.key ? styles.splitSegSelected : ""}`}
+              onClick={() => setBasis(b.key)}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.splitBasisNote}>share of {data.note}</div>
+        <CostSplitGroup name="by role" parts={data.role} />
+        <CostSplitGroup name="by kind of work" parts={data.work} />
+        <div className={styles.splitCaveat}>{data.caveat}</div>
+      </div>
+    </>
+  );
+}
+
 /**
  * Mobile "Activity" tab — the reference file's own `isAct` view: a
  * page title, a real 3-way segmented control (History/Agents/Cost,
@@ -211,13 +355,14 @@ function AgentCardMobile({ agent }: { agent: AgentEntry }) {
  * content reusing E4's own `AGENTS`/`AGENTS_STATS`/`AGENT_STYLE`
  * fixture and style data as fresh mobile-specific cards (see
  * `AgentCardMobile` above — not `<AgentsRoster />`, which is
- * desktop-only by its own established scope). The Cost segment is
- * real, tappable, and switches the segmented control's own selection
- * state correctly, but renders only a placeholder — reusing E1-E3's
- * performance data for it is separate, future work (roadmap item 35's
- * own remaining scope), matching this program's own established
- * pattern of splitting an oversized roadmap item into independently
- * reviewable slices (E1/E1B, E2/E2B).
+ * desktop-only by its own established scope). The Cost segment's real
+ * content, reusing E1B's/E3's own fixture data (see `CostSegment`
+ * above), begins with this slice — the weekly-window card and the
+ * "m1-a split" card. The "Per action" records list (reusing E2/E2B's
+ * data) is separate, future work (roadmap item 35's own remaining
+ * scope), matching this program's own established pattern of
+ * splitting an oversized roadmap item into independently reviewable
+ * slices (E1/E1B, E2/E2B, F3/F3B).
  */
 export function ActivityTab() {
   const [segment, setSegment] = useState<ActivitySegment>("hist");
@@ -275,7 +420,7 @@ export function ActivityTab() {
             </div>
           </>
         ) : (
-          `${SEGMENTS.find((seg) => seg.key === segment)?.label} segment`
+          <CostSegment />
         )}
       </div>
     </div>
