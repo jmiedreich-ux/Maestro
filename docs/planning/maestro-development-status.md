@@ -1541,13 +1541,73 @@ fresh crash-card markup, matching this program's established
 mobile-reuse convention) is a separate, smaller,
 independently-schedulable future `G2B`-style candidate.
 
-Next: with G2 now complete, only G3 (item 39, the empty state, not
-started) remains to complete M2's roadmap in full. G3 has real design
-ambiguities its own planning packet will need to resolve explicitly —
-does the desktop nav sidebar disappear in the empty state? The mockup
-itself is internally inconsistent on this point. G2B (the deferred
-mobile crashed-state wiring for `ChatTab.tsx`) remains a smaller,
-independently-schedulable item, separate from the G3 critical path.
-C2/D3/D7 are all rescheduled to M3 and off the current independent-work
-list entirely — not a blocker to track, a milestone assignment already
-made.
+`MB-SLICE-M2-G3-EMPTY-STATE-01` is merged (planning PR #185 at
+`74e0308`, review result recorded in doc-only PR #186, implementation
+PR #187 at `05a14c5`, comprising implementation commit `7036e9a` plus a
+small post-review accessibility-fix commit `5865750`) — **completes
+roadmap item 39 (G3 — `empty` state) for the desktop surface, the last
+item on the entire M2 roadmap.** Adds `"empty"` as the fourth and final
+`SystemState` value to `connectionState.ts`; wires a full-bleed
+empty-state panel into `DesktopShell.tsx` that replaces the nav sidebar
+and main content area entirely when `systemState === "empty"`. **Real,
+checked self-contradiction found and resolved in the actual design
+mockup itself, not guessed at:** the empty-state panel is sized to span
+the full body-grid width (`grid-column:1/-1`), including where the nav
+sidebar sits, but the mockup's own separate `showNav` visibility
+formula never checks `sys === 'empty'` at all — read literally, the
+mockup's own code would render both the full-span empty panel and the
+nav sidebar simultaneously, an incoherent layout. This was discussed
+directly with the Owner mid-session, who confirmed the resolution (hide
+the nav sidebar when empty) before it was built. Decision Fidelity
+review then rigorously and independently re-verified this exact claim
+directly against the real mockup file, including proving it
+structurally (not just plausibly), and returned a clean PASS. Also
+corrected: a fictional "Architect agent writes the packet plan"
+autonomous-capability claim (the same class of correction as
+`GateHeader`'s/`GateSheet`'s own already-established fixes), and an
+invented specific project name ("Foundry") this app has never
+established, replaced with the app's own already-established "Project
+name unavailable" framing style ("This project has no packets yet").
+Independent implementation review returned APPROVE WITH NON-BLOCKING
+NOTES: byte-exact match, a structural trace confirming the nav sidebar
+is genuinely unreachable in the empty-state branch (not just
+test-covered), two successful mutation tests (one proving the
+empty-state branch is load-bearing, one proving `empty` and `normal`
+genuinely share the same `deriveConnectionState` code path), zero
+regressions, zero CSS orphans, and one non-blocking accessibility
+finding — the empty-state panel used a bare `<div>` instead of a real
+`<main>` landmark (unlike the reference mockup's own markup, which uses
+`<main>`) — fixed immediately in a small follow-up commit (`5865750`)
+before merging: a real `<main>` landmark now wraps the empty-state
+content, mutually exclusive with `DesktopShell`'s own regular `<main
+data-testid="desktop-shell-main">`. **Explicitly deferred, not silently
+dropped:** the mobile equivalent (`MobileShell.tsx` gaining its own
+first-ever `systemState` prop, plus fresh empty-state markup for its
+own tab components) is a separate, smaller, independently-schedulable
+future `G3B`-style candidate, matching this session's own G2/G2B split
+precedent.
+
+**M2 status after G3 — roadmap complete for its independently-scheduled
+desktop-first scope.** Of 39 total roadmap items: Wave A (7/7), Wave B
+(4/4), Wave C (6/7, C2 rescheduled to M3), Wave D (3/7, D3/D7
+rescheduled to M3, D4/D5 rescheduled to M4), Wave E (7/7), Wave F
+(4/4), Wave G (3/3 — G1 `disconnected`, G2 `crashed`, G3 `empty`, all
+desktop) — **34 of 39 items are merged**, plus 5 items (C2, D3, D7 to
+M3; D4, D5 to M4) already deliberately rescheduled to a later milestone
+by prior, explicit, disclosed decision, not silently dropped or left
+open. Every one of the 39 M2 roadmap items now has a real, decided
+disposition — merged, or rescheduled to a named milestone. Two smaller,
+explicitly deferred items remain as separate, independently-schedulable
+follow-up work, not blockers to calling M2 itself complete: **G2B**
+(mobile crashed-state wiring, `ChatTab.tsx`) and **G3B** (mobile
+empty-state wiring, `MobileShell.tsx` plus its own tab components).
+Mobile parity with desktop does not yet exist for the `crashed`/`empty`
+states — this is disclosed, not claimed otherwise.
+
+Next: M2 is complete. Per M0-D15's phase sequence, the next phase is
+M3, which needs its own scoping and roadmap before any slice work
+begins there. G2B and G3B (the deferred mobile `crashed`/`empty` wiring)
+remain available as smaller, independently-schedulable items whenever
+picked up, separate from M3's own critical path. C2/D3/D7 (M3) and
+D4/D5 (M4) are already-made milestone assignments, not new decisions
+made here.

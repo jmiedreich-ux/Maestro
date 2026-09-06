@@ -776,14 +776,60 @@ crash-card markup, matching this program's established mobile-reuse
 convention) is a separate, smaller, independently-schedulable future
 `G2B`-style candidate.
 
-Next: with G2 now complete, only G3 (item 39, empty state, not started)
-remains to complete M2's roadmap in full — with real design ambiguities
-its own planning packet will need to resolve (does the desktop nav
-sidebar disappear in the empty state? the mockup itself is internally
-inconsistent on this point). G2B (deferred mobile crashed-state wiring
-for `ChatTab.tsx`) remains a smaller, independently-schedulable item,
-separate from the G3 critical path. C2/D3/D7 stay rescheduled to M3,
-off the current independent-work list.
+`MB-SLICE-M2-G3-EMPTY-STATE-01` is merged (planning PR #185 at
+`74e0308`, review result recorded in doc-only PR #186, implementation
+PR #187 at `05a14c5` — commit `7036e9a` plus a small post-review
+accessibility-fix commit `5865750`) — **completes roadmap item 39
+(G3 — `empty` state) for the desktop surface, the last item on the
+entire M2 roadmap.** Adds `"empty"` as the fourth and final
+`SystemState` value; wires a full-bleed empty-state panel into
+`DesktopShell.tsx` that replaces the nav sidebar and main content area
+entirely when empty. **Real self-contradiction found and resolved in
+the actual mockup:** the empty panel is sized full-width
+(`grid-column:1/-1`, spanning where the nav sidebar sits), but the
+mockup's own `showNav` formula never checks `sys === 'empty'` — read
+literally its own code would render both simultaneously, an incoherent
+layout. Discussed directly with the Owner mid-session, who confirmed
+the resolution (hide the nav when empty) before it was built. DF review
+independently re-verified this exact claim against the real mockup
+file, including proving it structurally, and returned a clean PASS.
+Also corrected: a fictional "Architect agent writes the packet plan"
+claim (same class as `GateHeader`/`GateSheet`'s own fixes), and an
+invented project name ("Foundry") replaced with the app's own
+established "Project name unavailable" framing ("This project has no
+packets yet"). Implementation review: APPROVE WITH NON-BLOCKING
+NOTES — byte-exact match, a structural trace confirming the nav sidebar
+is genuinely unreachable (not just test-covered), two successful
+mutation tests (empty-state branch load-bearing; `empty`/`normal` share
+the same `deriveConnectionState` path), zero regressions, zero CSS
+orphans, and one non-blocking accessibility finding — a bare `<div>`
+instead of a real `<main>` landmark — fixed immediately in follow-up
+commit `5865750` before merging. Explicitly deferred, not silently
+dropped: the mobile equivalent (`MobileShell.tsx`'s own first-ever
+`systemState` prop plus fresh empty-state markup) is a separate,
+smaller, independently-schedulable future `G3B`-style candidate,
+matching this session's own G2/G2B split precedent.
+
+**M2 is now fully complete for its independently-scheduled
+desktop-first scope.** Of 39 total roadmap items: Wave A (7/7), Wave B
+(4/4), Wave C (6/7, C2 to M3), Wave D (3/7, D3/D7 to M3, D4/D5 to M4),
+Wave E (7/7), Wave F (4/4), Wave G (3/3 — G1/G2/G3, all desktop) — 34
+of 39 items merged, plus 5 items already deliberately rescheduled to a
+named later milestone (not dropped, not left open). Every one of the
+39 M2 roadmap items now has a real, decided disposition. Only two
+smaller, explicitly deferred mobile items remain as separate,
+independently-schedulable follow-up work, not blockers to calling M2
+complete: **G2B** (mobile crashed-state wiring, `ChatTab.tsx`) and
+**G3B** (mobile empty-state wiring, `MobileShell.tsx` plus its own tab
+components). Mobile parity with desktop does not yet exist for
+`crashed`/`empty` — disclosed, not claimed otherwise.
+
+Next: M2 is complete; the next phase is M3 per M0-D15's phase sequence,
+which needs its own scoping and roadmap before any slice work begins.
+G2B and G3B remain available as smaller, independently-schedulable
+items whenever picked up, separate from M3's own critical path. C2/D3/D7
+(M3) and D4/D5 (M4) are already-made milestone assignments, not new
+decisions.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
