@@ -139,10 +139,20 @@ const SHELL_VARS = {
  * "plan a milestone" or "link an issue" command exists yet, matching
  * this program's own established "options rendered but inert until
  * wired" convention.
+ *
+ * **Corrected — non-blocking finding from independent implementation
+ * review.** The root element renders as a real `<main>` landmark, not
+ * a bare `<div>` — matching the reference file's own real markup
+ * (`Atlas Explorations.dc.html`'s `showEmpty` block is itself a
+ * `<main>` element) and restoring the main-content landmark screen
+ * readers lose when this branch replaces `DesktopShell`'s own regular
+ * `<main data-testid="desktop-shell-main">`. The two elements are
+ * mutually exclusive (only one ever renders, per the ternary above),
+ * so there is never more than one `<main>` landmark at a time.
  */
 function EmptyState() {
   return (
-    <div className={styles.emptyPanel}>
+    <main className={styles.emptyPanel}>
       <div className={styles.emptyContent}>
         <div className={styles.emptyDashes} aria-hidden="true">
           <span className={styles.emptyDash} style={{ opacity: 1 }} />
@@ -165,7 +175,7 @@ function EmptyState() {
         </div>
         <div className={styles.emptyMeta}>Registered 2 days ago · no agents attached</div>
       </div>
-    </div>
+    </main>
   );
 }
 
