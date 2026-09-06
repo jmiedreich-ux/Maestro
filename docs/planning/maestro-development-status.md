@@ -1472,10 +1472,47 @@ missing `aria-expanded` on the accordion toggle button) — explicitly
 noted as parity with the existing desktop `PerfRecordsList.tsx`'s own
 same omission, not a new regression.
 
-Next: F4B (the gate bottom sheet), G2 (the real, now-corrected
-remaining work: mount `CrashCard` from a real `systemState`-driven
-switch, extending G1's own `connectionState.ts` mechanism), and G3
-(empty state, not started) are the independent-work items remaining.
-C2/D3/D7 are all rescheduled to M3 and off the current independent-work
-list entirely — not a blocker to track, a milestone assignment already
-made.
+`MB-SLICE-M2-F4B-GATE-SHEET-01` is merged (planning PR #177 at
+`e6522a7`, implementation PR #179 at `2ae40f7`) — the gate row's own
+bottom sheet, `GateSheet.tsx`, the app's first bottom-sheet/modal-style
+overlay component, with no prior precedent anywhere in
+`apps/atlas/src`. Wires the previously-inert `PlanTab.tsx` gate row's
+`onClick` to open it. Reuses the already-real `GATE_CRITERIA` fixture
+and `GateCriteriaList.tsx`'s own already-reviewed 3-state
+color-derivation mapping verbatim, plus `GateHeader.tsx`'s own
+already-corrected real-mechanism note (no fictional "Architect agent
+opens the gate on its own" claim) restated verbatim — independently
+verified character-for-character identical. Originates a deliberately
+minimal, disclosed accessibility baseline for this first-of-kind
+component: real `role="dialog"`/`aria-modal="true"`/`aria-labelledby`,
+Escape-to-close, backdrop-click-to-close (not a click inside the
+sheet), focus-to-Close-button on open, and focus-return-to-the-gate-row
+on close — with full keyboard focus-trapping explicitly excluded from
+scope as a larger, separate concern with no existing precedent to
+reuse. **This completes roadmap item 36 in full** — Wave F's own
+completed-item count moves from 3/4 to 4/4; **Wave F is now fully
+complete**. Decision Fidelity review returned a clean PASS: every
+functional, accessibility, token, and fixture-reuse claim was
+independently reproduced, including the real mockup markup and a real
+4-way wording discrepancy between the mockup's own separate
+`GATE_CRITERIA` copy and the real, shipped fixture (confirming the real
+fixture, not the mockup's copy, is what's used); one non-blocking
+wording imprecision was found and fixed at zero cost (a "one digit
+apart" hex-comparison description corrected to "two of three
+byte-pairs differ") — no functional or test change. Independent
+implementation review returned APPROVE, including an
+independently-written script proving no global keydown-listener leak
+across multiple mount/unmount cycles, and independent verification that
+focus genuinely moves to the Close button on open and genuinely returns
+to the gate row on close (not just claimed).
+
+Next: with F3D and F4B both now complete, only G2 (the real,
+now-corrected remaining work: mount `CrashCard` from a real
+`systemState`-driven switch, extending G1's own `connectionState.ts`
+mechanism) and G3 (empty state, not started) are the independent-work
+items remaining — and they must be sequenced one after the other, not
+run in parallel: both extend the same `connectionState.ts`
+`SystemState` type and both touch `DesktopShell.tsx` (G3 also touches
+`MobileShell.tsx`). C2/D3/D7 are all rescheduled to M3 and off the
+current independent-work list entirely — not a blocker to track, a
+milestone assignment already made.

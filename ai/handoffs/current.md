@@ -710,11 +710,44 @@ and one non-blocking accessibility note (missing `aria-expanded` on the
 accordion toggle button — parity with `PerfRecordsList.tsx`'s own same
 omission, not a new regression).
 
-Next: F4B (gate bottom sheet), G2 (real remaining work — mount
-`CrashCard` via a `systemState` switch, extending G1's
-`connectionState.ts`), G3 (not started) are the independent-work items
-remaining. C2/D3/D7 stay rescheduled to M3, off the current
-independent-work list.
+`MB-SLICE-M2-F4B-GATE-SHEET-01` is merged (planning PR #177 at
+`e6522a7`, implementation PR #179 at `2ae40f7`) — the gate row's own
+bottom sheet, `GateSheet`, the app's first bottom-sheet/modal-style
+overlay component with no prior precedent in `apps/atlas/src`; wires
+the previously-inert `PlanTab.tsx` gate row's `onClick` to open it.
+Reuses the already-real `GATE_CRITERIA` fixture and
+`GateCriteriaList.tsx`'s own already-reviewed 3-state color-derivation
+mapping verbatim, plus `GateHeader.tsx`'s own already-corrected
+real-mechanism note (no fictional "Architect agent opens the gate on
+its own" claim), restated verbatim — independently verified
+character-for-character identical. Originates a deliberately minimal,
+disclosed accessibility baseline: real `role="dialog"`/
+`aria-modal="true"`/`aria-labelledby`, Escape-to-close,
+backdrop-click-to-close (not sheet-click), focus-to-Close-button on
+open, focus-return-to-gate-row on close — full keyboard focus-trapping
+explicitly excluded, a larger separate concern with no existing
+precedent to reuse. **Completes roadmap item 36 in full** — Wave F's
+own completed-item count moves from 3/4 to 4/4; **Wave F is now fully
+complete**. DF review: a clean PASS — every functional, accessibility,
+token, and fixture-reuse claim independently reproduced, including the
+real mockup markup and a real 4-way wording discrepancy between the
+mockup's own separate `GATE_CRITERIA` copy and the real fixture
+(confirming the real fixture wins); one non-blocking wording
+imprecision fixed at zero cost (a "one digit apart" hex-comparison
+description corrected to "two of three byte-pairs differ"), no
+functional or test change. Implementation review: APPROVE, including
+an independently-written script proving no global keydown-listener leak
+across multiple mount/unmount cycles, and independent verification that
+focus genuinely moves to the Close button on open and genuinely returns
+to the gate row on close.
+
+Next: with F3D and F4B both complete, only G2 (real remaining work —
+mount `CrashCard` via a `systemState` switch, extending G1's
+`connectionState.ts`) and G3 (not started) are the independent-work
+items remaining — sequenced one after the other, not parallel: both
+extend the same `connectionState.ts` `SystemState` type and both touch
+`DesktopShell.tsx` (G3 also touches `MobileShell.tsx`). C2/D3/D7 stay
+rescheduled to M3, off the current independent-work list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices
