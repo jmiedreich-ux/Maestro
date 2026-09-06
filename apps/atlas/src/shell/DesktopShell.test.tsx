@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { colors, fontFamily } from "../tokens";
 import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 import DesktopShell from "./DesktopShell";
+import styles from "./DesktopShell.module.css";
 
 afterEach(cleanup);
 
@@ -140,5 +141,52 @@ describe("DesktopShell", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Agents/ }));
     expect(screen.getByText("Agents view")).toBeInTheDocument();
     expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).not.toBeInTheDocument();
+  });
+
+  it("(E7C) selecting the M1-B gate row renders the real GateHeader and GateCriteriaList, not the placeholder", () => {
+    render(<DesktopShell />);
+    fireEvent.click(screen.getByRole("button", { name: /^M1-B gate/ }));
+    const current = screen.getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("M1-B gate");
+
+    // Real GateHeader content.
+    expect(screen.getByRole("heading", { name: "Overlay and support surfaces" })).toBeInTheDocument();
+    expect(screen.getByText("approver")).toBeInTheDocument();
+    // Real GateCriteriaList content.
+    expect(screen.getByText("entry criteria")).toBeInTheDocument();
+    expect(screen.getByText("A.0 through A.7 accepted")).toBeInTheDocument();
+
+    expect(screen.queryByText("M1-B gate view")).not.toBeInTheDocument();
+  });
+
+  it("(E7C) selecting a different static row after the gate row correctly unmounts GateHeader/GateCriteriaList", () => {
+    render(<DesktopShell />);
+    fireEvent.click(screen.getByRole("button", { name: /^M1-B gate/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Performance/ }));
+    expect(screen.getByText("Performance view")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Overlay and support surfaces" })).not.toBeInTheDocument();
+    expect(screen.queryByText("entry criteria")).not.toBeInTheDocument();
+  });
+
+  it("(E7C, corrected — Decision Fidelity review finding) the gate view's <main> uses the no-padding .contentGate class, and every other view keeps the padded .content class", () => {
+    // The reviewer proved this by mutation-testing: reverting the gate
+    // view's className from `styles.contentGate` back to `styles.content`
+    // (the exact regression Design Rationale #1 exists to avoid — doubling
+    // GateHeader's own 34px gutter) left all other tests passing, since
+    // none of them asserted on <main>'s own className. This test compares
+    // against the real imported CSS-module identifiers, not hand-typed
+    // strings, so it fails under that exact mutation.
+    render(<DesktopShell />);
+    const main = screen.getByTestId("desktop-shell-main");
+    expect(main.className).toBe(styles.content);
+    expect(main.className).not.toBe(styles.contentGate);
+
+    fireEvent.click(screen.getByRole("button", { name: /^M1-B gate/ }));
+    expect(main.className).toBe(styles.contentGate);
+    expect(main.className).not.toBe(styles.content);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Performance/ }));
+    expect(main.className).toBe(styles.content);
   });
 });
