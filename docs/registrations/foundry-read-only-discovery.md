@@ -74,6 +74,37 @@ Confirms Foundry's binding is currently honest: every declared gate is
 real, runnable, and green on its actual current state, before anything
 depends on it. No packet was claimed or dispatched.
 
+## C3 — real dispatch proof (2026-09-06)
+
+Dispatched the real materialized packet for CG-M4-19 ("Add Menu browser
+checks") to a real local worker — `qwen` CLI (Qwen Code, `qwen3.6:27b` via
+local Ollama, CPU-only inference) — in an isolated worktree of Foundry's
+real repository, on branch `codex/m4-19-menu-browser-checks`, base commit
+`5e01f5a0d02c78ced41a915042b49dd8ffd666c9`.
+
+**Real result:** the worker completed the packet, self-correcting 3 real
+failures during its own process (async `.all()` vs `.count()`, a hanging
+Tab listener, a strict-mode multi-element selector). Produced exactly one
+real commit (`740f548ebf23d60b5e1e951b0e718b420ac7bd4a`), one real new
+file (`tests/overlays/menu/menu-gallery.spec.ts`, 178 lines, 6 tests),
+touching nothing outside its owned path.
+
+**Independently re-verified** (not taken from the worker's own
+self-report, per this repository's own "review checks... not merely
+against the agent's self-reported gates" discipline):
+- `npm run check` — real pass.
+- `npm run build` — real pass (82 modules).
+- `npm run test:foundation` — real pass, 11/11.
+- `npm run test:browser` — real pass, **89/89** (6 new + 83 existing,
+  zero regressions).
+- `git diff 5e01f5a0..HEAD --stat` — exactly the one expected file.
+
+Pushed the real branch to Foundry's real repository and opened
+[Foundry PR #58](https://github.com/jmiedreich-ux/Foundry/pull/58) as a
+**draft, not requesting merge** — this is a live proof-of-concept run of
+Maestro's own pipeline, not part of Foundry's own planned execution
+order. No automatic merge, matching M0-D10/M0-D13 exactly.
+
 ## What Foundry already provides
 
 - A mature repository contract in `AGENTS.md`, including scoped packets, required commits, exact gates, independent review, handoff, and owner acceptance rules.
