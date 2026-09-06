@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Plan Tab, Packet List — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01`
-**Status:** `Decision Fidelity review returned REQUEST_CHANGES (a real wrong-token defect: TRACK_COLOR.run used colors.accent instead of colors.accentLight, undetected by the first draft's own non-exhaustive tests; a false NowTab citation claiming it corroborates A.2 "running" when NowTab deliberately shows it blocked) — 1 targeted correction applied and independently re-verified (including mutation-testing the fix), REQUEST_CHANGES resolved`
+**Status:** `Decision Fidelity review returned REQUEST_CHANGES (a real wrong-token defect: TRACK_COLOR.run used colors.accent instead of colors.accentLight, undetected by the first draft's own non-exhaustive tests; a false NowTab citation claiming it corroborates A.2 "running" when NowTab deliberately shows it blocked) — 1 targeted correction applied; independent targeted verification returned RESOLVED (mutation-testing independently reproduced, both defects confirmed fixed) — ready to merge`
 **Base:** `8aa33ce` (full: `8aa33ce5787e296d95dee0b4921ebd77e2b752dd`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -1011,6 +1011,25 @@ packet's one planning correction and its one targeted verification:
   custom-property and CSS-class orphans exhaustively in both
   directions — zero orphans.
 
+**Independent targeted verification result:** `RESOLVED`. A fresh,
+narrowly-scoped agent independently re-derived both fixes from
+source — re-reading the mockup's own real `dot()`/`track` derivations
+directly, confirming `colors.accentLight` really is `#8C6BFF` and
+really is what the mockup uses for both the run dot and run track
+segment, confirming the `AGENTS`/`agents.ts` replacement citation is
+itself accurate and that `NowTab.tsx`'s quoted comment is verbatim —
+then independently reproduced the mutation-testing itself (reverting
+`TRACK_COLOR.run` to `colors.accent` and mutating `DOT_STYLE.block`'s
+border color), confirming both mutations now correctly fail the
+rewritten test suite. It also re-ran the full toolchain against this
+branch rebased onto the latest `origin/master` (which had since
+gained M2-F3C's and M2-E7B's own merges) and found **24/24 test files,
+193/193 tests passing** — the +1 file/+12 test delta from the numbers
+above is exactly accounted for by those two unrelated, already-merged
+slices (`GateHeader.test.tsx`'s own 9 tests, `ActivityTab.test.tsx`'s
+own +3), not by anything in this packet's own files. Zero regressions
+in either count.
+
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
 slice.
@@ -1056,7 +1075,7 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01` |
-| `phase` | `AwaitingTargetedVerification` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
 | `planning_review_count` | `1` |
