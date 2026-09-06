@@ -717,24 +717,28 @@ def _handle_dispatch_correction(handler: "_ReadApiRequestHandler", envelope: dic
     handler._respond(200, canonical_response_json(result))
 
 
-# The real, non-fictional resolution of a crashed/failed packet. The
-# roadmap's own D6 wording names a three-way choice ("resume / re-dispatch
-# / hold-and-inspect"), but only one of those three has any real backend
-# counterpart at all: `finish_attempt_execution`'s `Failed`/`TimedOut`/
-# `Stale` outcomes all route the packet to the real `NeedsReplan` state
+# The real, non-fictional resolution of a crashed/failed packet. M2's own
+# D6 wording named a three-way choice ("resume / re-dispatch /
+# hold-and-inspect"), but only found one real backend counterpart at the
+# time: `finish_attempt_execution`'s `Failed`/`TimedOut`/`Stale` outcomes
+# route the packet to the real `NeedsReplan` state
 # (operational_state.py:1403-1409), and `record_and_close_needs_replan`
-# is the ONLY real transition out of it — a single, hard-coded, non-
-# parameterized move to `Cancelled` (operational_state.py:531-596; it
-# takes no target_state argument at all, unlike `transition_packet_eligibility`).
-# There is no real "resume from the last boundary" (no command re-opens
-# a dead attempt) and no real "re-dispatch to a different worker"
-# (`claim_packet_assignment`, defined at operational_state.py:598,
-# requires a `Dispatchable` source packet at its own check,
-# operational_state.py:644-645 — never `NeedsReplan` — checked directly).
-# Those two options depend on real M3 packet-compiler/executor machinery
-# that does not exist in M2 (same rescheduling the Owner already
-# confirmed for D4/D5): this command implements only the one real
-# outcome, honestly named `resolve-crash`, not a three-way choice.
+# was the only real transition out of it then — a single, hard-coded,
+# non-parameterized move to `Cancelled` (operational_state.py:531-596).
+#
+# M3 closes part of that gap (E6), now that a real packet compiler
+# exists: "re-dispatch to a different worker" has a real, honest meaning
+# — close the failed packet (record_and_close_needs_replan, unchanged)
+# and materialize a fresh packet for the same work item
+# (materialize_packet, unchanged) — see `_handle_redispatch_crash` below.
+# "Resume from the last boundary" still has **no** real counterpart and
+# is not implemented: this system's attempts are immutable once
+# Failed/TimedOut/Stale — there is no command anywhere that re-opens a
+# dead attempt or continues it mid-step; a "resumed" process would
+# actually just be a fresh attempt from the packet's own base_commit,
+# which is exactly what re-dispatch already, honestly, is. Faking a
+# distinct "resume" would misrepresent a capability this system does not
+# have. `resolve-crash` (hold) is unchanged.
 def _validate_resolve_crash_command(envelope: dict[str, Any]) -> str | None:
     packet_id = envelope.get("packet_id")
     if not isinstance(packet_id, str) or packet_id == "":
@@ -815,6 +819,161 @@ def _handle_resolve_crash(handler: "_ReadApiRequestHandler", envelope: dict[str,
     handler._respond(200, canonical_response_json(result))
 
 
+def _validate_redispatch_crash_command(envelope: dict[str, Any]) -> str | None:
+    packet_id = envelope.get("packet_id")
+    if not isinstance(packet_id, str) or packet_id == "":
+        return "packet_id is required and must be a non-empty string"
+    expected_version = envelope.get("expected_version")
+    if (
+        not isinstance(expected_version, int)
+        or isinstance(expected_version, bool)
+        or expected_version <= 0
+    ):
+        return "expected_version is required and must be a positive integer"
+    reason_payload = envelope.get("reason_payload")
+    if not isinstance(reason_payload, dict):
+        return "reason_payload is required and must be a JSON object"
+    return None
+
+
+_REDISPATCH_COPIED_PACKET_FIELDS = (
+    "run_id", "work_item_id", "authority_reference", "base_commit", "expected_branch",
+    "role_contract_reference", "sop_reference", "executor_class", "integration_route",
+    "reviewer_route", "owned_paths_json", "forbidden_paths_json", "checks_json",
+    "resource_claims_json", "context_policy_json",
+)
+
+
+def _handle_redispatch_crash(handler: "_ReadApiRequestHandler", envelope: dict[str, Any]) -> None:
+    error_detail = _validate_redispatch_crash_command(envelope)
+    if error_detail is not None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": error_detail})
+        )
+        return
+
+    try:
+        store = OperationalStateStore(
+            RuntimeConfig.from_runtime_dir(handler.server.runtime_dir_setting)
+        )
+    except (RuntimePathError, sqlite3.Error):
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+
+    packet_id = envelope["packet_id"]
+    try:
+        old_packet = store.snapshot("Packet", packet_id)
+    except sqlite3.Error:
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    if old_packet is None:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": "unknown packet_id"})
+        )
+        return
+
+    now_text = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    new_packet_id = f"{packet_id}-redispatch-{envelope['idempotency_key']}"
+
+    # A real idempotent replay: the new packet id is a deterministic
+    # function of packet_id + idempotency_key, so if it already exists,
+    # this exact command already completed — return its real, current
+    # result rather than re-running anything (which would otherwise see
+    # the old packet's now-Cancelled, no-longer-matching version and
+    # incorrectly report a stale conflict for what is really a repeat).
+    try:
+        already_redispatched = store.snapshot("Packet", new_packet_id)
+    except sqlite3.Error:
+        handler._respond(503, canonical_response_json({"error": "database_unavailable"}))
+        return
+    if already_redispatched is not None:
+        # Matches record_and_close_needs_replan's own real return shape
+        # (a state_payload: entity_id/entity_type/kind/state/version) —
+        # not the full snapshot row `old_packet` itself carries, so a
+        # replay's response is identical to the original call's.
+        closed_state_payload = {
+            "entity_id": packet_id,
+            "entity_type": "Packet",
+            "kind": "state",
+            "state": old_packet["state"],
+            "version": old_packet["version"],
+        }
+        handler._respond(
+            200,
+            canonical_response_json(
+                {"closed_packet": closed_state_payload, "redispatched_packet": already_redispatched}
+            ),
+        )
+        return
+
+    # Checked here, before materializing anything: record_and_close_needs_replan
+    # is only called *after* the new packet already exists (see the ordering
+    # note below), so a stale version must be caught before that, or a
+    # failed close would leave an orphaned new packet with no old one ever
+    # closed.
+    if old_packet["version"] != envelope["expected_version"]:
+        handler._respond(
+            409,
+            canonical_response_json(
+                {"error": "stale_state", "detail": "packet version is stale"}
+            ),
+        )
+        return
+
+    try:
+        # Materialize the replacement packet before closing the old one:
+        # if this fails, the old NeedsReplan packet is untouched and the
+        # command is safely retryable. The reverse order risks a real
+        # partial state — old packet closed, no replacement — on any
+        # failure in the second call, since these are two independent
+        # commands, not one shared transaction.
+        new_packet = {key: old_packet[key] for key in _REDISPATCH_COPIED_PACKET_FIELDS}
+        new_packet.update(
+            packet_id=new_packet_id,
+            packet_revision=f"{old_packet['packet_revision']}-redispatch",
+            current_head=None,
+            state="Planned",
+            correction_count=0,
+        )
+        materialized = store.materialize_packet(
+            new_packet, f"redispatch-materialize-{envelope['idempotency_key']}", envelope["actor"], now_text,
+        )
+        closed = store.record_and_close_needs_replan(
+            packet_id, envelope["expected_version"], envelope["reason_payload"],
+            envelope["idempotency_key"], envelope["actor"], now_text,
+        )
+    except StaleState as error:
+        handler._respond(409, canonical_response_json({"error": "stale_state", "detail": str(error)}))
+        return
+    except InvalidTransition as error:
+        handler._respond(
+            409, canonical_response_json({"error": "invalid_transition", "detail": str(error)})
+        )
+        return
+    except IdempotencyConflict as error:
+        handler._respond(
+            409, canonical_response_json({"error": "idempotency_conflict", "detail": str(error)})
+        )
+        return
+    except InvalidRecord as error:
+        handler._respond(
+            400, canonical_response_json({"error": "invalid_command", "detail": str(error)})
+        )
+        return
+    except ResourceBusy as error:
+        handler._respond(503, canonical_response_json({"error": "resource_busy", "detail": str(error)}))
+        return
+    except sqlite3.OperationalError as error:
+        handler._respond(
+            503, canonical_response_json({"error": "database_unavailable", "detail": str(error)})
+        )
+        return
+
+    handler._respond(
+        200, canonical_response_json({"closed_packet": closed, "redispatched_packet": materialized})
+    )
+
+
 # Guarded, POST-only command routes. `envelope["idempotency_key"]`/
 # `envelope["actor"]` are only checked by `_validate_command_envelope` for
 # their outer shape (present, right JSON type) — the real closed-shape/field
@@ -826,6 +985,7 @@ _COMMAND_ROUTES: dict[str, Callable[["_ReadApiRequestHandler", dict[str, Any]], 
     "/command/resolve-decision": _handle_resolve_decision,
     "/command/dispatch-correction": _handle_dispatch_correction,
     "/command/resolve-crash": _handle_resolve_crash,
+    "/command/redispatch-crash": _handle_redispatch_crash,
 }
 
 
