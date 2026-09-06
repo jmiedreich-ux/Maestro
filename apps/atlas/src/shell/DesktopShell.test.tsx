@@ -90,6 +90,44 @@ describe("DesktopShell", () => {
     expect(screen.queryByText("agent stopped unexpectedly")).toBeNull();
   });
 
+  it("(G3) systemState 'empty': renders the real empty-state panel with no nav sidebar and no <main> content view", () => {
+    render(<DesktopShell systemState="empty" />);
+    expect(screen.getByRole("heading", { name: "This project has no packets yet" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The project is registered but no milestone has been planned. No automated packet-plan generation exists in Maestro today — planning a milestone from an issue is a manual, owner-initiated action; nothing can be dispatched until a plan exists.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Registered 2 days ago · no agents attached")).toBeInTheDocument();
+
+    // No fictional autonomous-planning claim, and no invented project name.
+    expect(screen.queryByText(/Architect agent writes the packet plan/)).toBeNull();
+    expect(screen.queryByText(/Foundry/)).toBeNull();
+
+    // Real, disclosed correction: the nav sidebar and every other
+    // view's own content are not rendered at all in the empty state.
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByTestId("desktop-shell-main")).toBeNull();
+    expect(screen.queryByText("Performance view")).toBeNull();
+  });
+
+  it("(G3) systemState 'empty': both action buttons are real, inert <button> elements with no onClick side effect", () => {
+    render(<DesktopShell systemState="empty" />);
+    const planButton = screen.getByRole("button", { name: "Plan a milestone" });
+    const linkButton = screen.getByRole("button", { name: "Link an issue" });
+    fireEvent.click(planButton);
+    fireEvent.click(linkButton);
+    // No visible state change of any kind — still the same empty panel.
+    expect(screen.getByRole("heading", { name: "This project has no packets yet" })).toBeInTheDocument();
+  });
+
+  it("(G3) systemState 'empty': the top bar and (hidden, since 'empty' shows no strip) connection strip mechanism are unaffected", () => {
+    render(<DesktopShell systemState="empty" />);
+    expect(screen.getByText("Project name unavailable")).toBeInTheDocument();
+    expect(screen.getByText("idle")).toBeInTheDocument();
+    expect(screen.queryByText("Reconnecting")).toBeNull();
+  });
+
   it("renders the top bar's idle live indicator", () => {
     render(<DesktopShell />);
     expect(screen.getByText("idle")).toBeInTheDocument();

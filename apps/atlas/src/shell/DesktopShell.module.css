@@ -212,3 +212,96 @@
   background: var(--atlas-dot-need);
   box-shadow: 0 0 0 3px var(--atlas-dot-need-halo);
 }
+
+.emptyPanel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 34px;
+  background: var(--atlas-page-bg-desktop);
+}
+
+.emptyContent {
+  max-width: 46ch;
+  text-align: center;
+}
+
+.emptyDashes {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.emptyDash {
+  width: 34px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--atlas-empty-dash);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-family: var(--atlas-font-display);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+
+.emptyBody {
+  margin: 9px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--atlas-empty-body);
+  text-wrap: pretty;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.emptyPrimaryButton {
+  height: 36px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--atlas-empty-primary-bg);
+  color: var(--atlas-empty-primary-ink);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.emptyPrimaryButton:hover {
+  background: var(--atlas-empty-primary-bg-hover);
+}
+
+.emptySecondaryButton {
+  height: 36px;
+  padding: 0 15px;
+  border: 1px solid var(--atlas-empty-secondary-border);
+  border-radius: 9px;
+  background: var(--atlas-empty-secondary-bg);
+  color: var(--atlas-empty-secondary-ink);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.emptySecondaryButton:hover {
+  border-color: var(--atlas-empty-secondary-border-hover);
+}
+
+.emptyMeta {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: var(--atlas-empty-meta);
+}

@@ -69,4 +69,14 @@ describe("deriveConnectionState", () => {
     );
     expect(desktop.strip.body).not.toBe(mobile.strip.body);
   });
+
+  it("(G3) empty: derives identically to 'normal' — a real, checked fact, not an unhandled state", () => {
+    for (const surface of ["desktop", "mobile"] as const) {
+      const empty = deriveConnectionState("empty", surface);
+      const normal = deriveConnectionState("normal", surface);
+      expect(empty).toEqual(normal);
+      expect(empty.liveLabel).toBe("idle");
+      expect(empty.strip.show).toBe(false);
+    }
+  });
 });

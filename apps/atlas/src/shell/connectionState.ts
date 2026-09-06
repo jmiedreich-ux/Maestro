@@ -2,12 +2,25 @@ import { colors } from "../tokens";
 
 /**
  * `systemState` mirrors the reference files' own real prop (`normal |
- * crashed | disconnected | empty`). This slice (G2) adds `crashed` to
- * G1's own `normal`/`disconnected` derivation. `empty` (G3) remains a
- * separate, future slice; passing it here would still be a type
- * error, not a silently-wrong render.
+ * crashed | disconnected | empty`). This slice (G3) adds `empty`,
+ * completing the union G1/G2 built toward.
+ *
+ * `empty` deliberately has NO branch of its own in
+ * `deriveConnectionState` below — it is not a silent omission, it is a
+ * real, checked fact: `Atlas Explorations.dc.html`'s own `renderVals()`
+ * computes an identical `liveLabel`/`liveDot` pair for `empty` and
+ * `normal` once G1's own already-established correction is applied
+ * (both render `'idle'`, since this app has no real live connection to
+ * claim either way — G1's own correction already applies to `empty`
+ * too, not just `normal`), and `empty` never shows a connection strip
+ * (no equivalent of `conn.show` branches on it). `empty`'s only real,
+ * distinct effect is `DesktopShell.tsx`'s own top-level panel swap,
+ * not anything `deriveConnectionState` needs to compute differently —
+ * falling through to the existing default is the correct behavior, not
+ * an oversight. `connectionState.test.ts` asserts this equivalence
+ * explicitly, not implicitly.
  */
-export type SystemState = "normal" | "disconnected" | "crashed";
+export type SystemState = "normal" | "disconnected" | "crashed" | "empty";
 
 export type ConnectionSurface = "desktop" | "mobile";
 
