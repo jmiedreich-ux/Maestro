@@ -469,7 +469,26 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    matching `AgentsRoster.tsx`'s own established convention). 193 tests
    pass, zero regressions — item 36 still not complete, only the gate
    bottom sheet (F4B) remains; Wave F's completed-item count stays at
-   2/4. Each
+   2/4. `MB-SLICE-M2-E7C-GATE-WIRING-01` is merged: wires E7's
+   `GateCriteriaList` and E7B's `GateHeader` into `DesktopShell`'s
+   "gate" nav view, completing roadmap item 32 (E7) in full and
+   resolving the audit note above that E7 was "only half-built" — all
+   three pieces (criteria list, header/approver/releases panel, shell
+   wiring) are now merged. Frontend-only, no new component: modifies
+   exactly `DesktopShell.tsx`, `DesktopShell.module.css`,
+   `DesktopShell.test.tsx`; `GateHeader.tsx`/`GateCriteriaList.tsx`
+   stay read-only imports, zero-diff. DF review: 2 non-blocking notes
+   (mockup file not present in this repo, same disclosed session-wide
+   tooling limitation, not fixed; a real test-coverage gap proved via
+   mutation-testing — reverting `<main>`'s className from
+   `styles.contentGate` to `styles.content` left all 14 original tests
+   passing — fixed with `data-testid="desktop-shell-main"` plus a new
+   test pinning the exact `.content`/`.contentGate` switch, mutation
+   independently re-confirmed). 185 tests pass. Implementation review:
+   `APPROVE`, re-confirming the mutation test and a byte-exact match,
+   zero regressions, one non-blocking note (a stray "185/185" vs.
+   "184/184" test-count mismatch between two sections of the packet's
+   own prose — documentation-only, not a code defect). Each
    subsequent wave slice still requires its own pre-execution Decision
    Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.

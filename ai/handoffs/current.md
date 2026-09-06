@@ -665,8 +665,30 @@ and one non-blocking note (inert packet/gate-row `<button>`s, matching
 gate bottom sheet (F4B) remains; Wave F's own completed-item count
 stays at 2/4.
 
-Next: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
-F3D (records list), F4B (gate bottom sheet), G2 (real remaining
+`MB-SLICE-M2-E7C-GATE-WIRING-01` is merged (planning PR #171 at
+`bf38005`, implementation PR #173 at `1d08dcd`) — wires E7's
+`GateCriteriaList` and E7B's `GateHeader` into `DesktopShell`'s "gate"
+nav view, **completing roadmap item 32 (E7) in full** and resolving
+the audit note above that E7 was "only half-built": all three pieces
+(criteria list, header/approver/releases panel, shell wiring) are now
+merged. Frontend-only, no new component: modifies exactly
+`DesktopShell.tsx`, `DesktopShell.module.css`, `DesktopShell.test.tsx`;
+`GateHeader.tsx`/`GateCriteriaList.tsx` stay read-only imports,
+zero-diff. DF review: 2 non-blocking notes — mockup file not present in
+this repo (same disclosed session-wide tooling limitation, not fixed),
+and a real test-coverage gap proved via mutation-testing (reverting
+`<main>`'s className from `styles.contentGate` to `styles.content` left
+all 14 original tests passing) — fixed with `data-testid=
+"desktop-shell-main"` plus a new test pinning the exact
+`.content`/`.contentGate` switch, mutation independently re-confirmed
+caught only by the new test. 15/15 tests in `DesktopShell.test.tsx`
+(185/185 suite-wide at packet time). Implementation review: `APPROVE`,
+re-confirming the mutation test and a byte-exact match, zero
+regressions, with one non-blocking note (a stray "185/185" vs.
+"184/184" test-count mismatch between two sections of the packet's own
+prose — documentation-only, not a code defect).
+
+Next: F3D (records list), F4B (gate bottom sheet), G2 (real remaining
 work — mount `CrashCard` via a `systemState` switch, extending G1's
 `connectionState.ts`), G3 (not started) are the independent-work items
 remaining. C2/D3/D7 stay rescheduled to M3, off the current

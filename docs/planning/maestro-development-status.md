@@ -1418,10 +1418,38 @@ gate-row `<button>`s, matching `AgentsRoster.tsx`'s own established
 not complete** — the gate row's own bottom sheet (a future `F4B`-style
 candidate) remains; Wave F's own completed-item count stays at 2/4.
 
-Next: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
-F3D (item 35's own "Per action" records list), F4B (the gate bottom
-sheet), G2 (the real, now-corrected remaining work: mount `CrashCard`
-from a real `systemState`-driven switch, extending G1's own
+`MB-SLICE-M2-E7C-GATE-WIRING-01` is merged (planning PR #171 at
+`bf38005`, implementation PR #173 at `1d08dcd`) — wires E7's own
+`GateCriteriaList` and E7B's own `GateHeader` into `DesktopShell`'s
+"gate" nav view, **completing roadmap item 32 (E7 — Gate: criteria
+list + gate-open state) in full** and resolving this doc's own
+exhaustive-audit finding above that E7 was "only half-built": all
+three pieces (criteria list, header/approver/releases panel, and now
+the shell wiring) are merged. Frontend-only, no new component: modifies
+exactly `DesktopShell.tsx`, `DesktopShell.module.css`, and
+`DesktopShell.test.tsx`; `GateHeader.tsx`/`GateCriteriaList.tsx` stay
+read-only imports, zero-diff. Decision Fidelity review passed with 2
+non-blocking notes: the mockup file cited for a padding claim is not
+present in this repository (the same session-wide tooling limitation
+already disclosed for every prior M2 slice, disclosed not fixed), and
+a real test-coverage gap the reviewer proved via mutation-testing —
+reverting the gate view's `<main>` className from `styles.contentGate`
+back to `styles.content` left all 14 original tests passing, since
+none asserted on `<main>`'s own className — fixed by adding
+`data-testid="desktop-shell-main"` plus a new test pinning the exact
+`.content`/`.contentGate` switch across every nav selection, with the
+reviewer's own mutation independently re-run and confirmed caught only
+by the new test. Test count: 14 → 15 in `DesktopShell.test.tsx`, 184 →
+185 suite-wide. Independent implementation review returned `APPROVE`,
+independently re-confirming the mutation test, a byte-exact match to
+the packet's own code blocks, and zero regressions, with one
+non-blocking note: the packet's own prose has a stray "185/185" vs.
+"184/184" test-count mismatch between two of its own sections — a
+documentation-only inconsistency, not a code defect.
+
+Next: F3D (item 35's own "Per action" records list), F4B (the gate
+bottom sheet), G2 (the real, now-corrected remaining work: mount
+`CrashCard` from a real `systemState`-driven switch, extending G1's own
 `connectionState.ts` mechanism), and G3 (empty state, not started) are
 the independent-work items remaining. C2/D3/D7 are all rescheduled to
 M3 and off the current independent-work list entirely — not a blocker
