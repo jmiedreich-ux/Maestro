@@ -56,14 +56,30 @@ describe("ChatTab", () => {
     expect(screen.getByText(state.stateLine)).toBeInTheDocument();
   });
 
-  it("renders the real backend events, in order, as honest mechanical descriptions", async () => {
+  it("renders the real backend events as honest mechanical descriptions, newest first", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          events: [
+            realEvent({ event_id: 2, before_json: { state: "Leased" }, after_json: { state: "Running" } }),
+            realEvent({ event_id: 1, before_json: { state: "Ready" }, after_json: { state: "Leased" } }),
+          ],
+        }),
+      }),
+    );
     render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     await waitFor(() => {
       expect(screen.getAllByText(/./, { selector: "[class*='bubble']" }).length).toBeGreaterThan(0);
     });
     const bubbles = screen.getAllByText(/./, { selector: "[class*='bubble']" });
+    // The snapshot itself is newest-first (event_id 2 listed before 1);
+    // useRealPacketThread reverses it to oldest-first for its own
+    // shared entries shape, and ChatTab reverses it back — the most
+    // recent real event (event_id 2) is visible first, no scrolling.
     expect(bubbles.map((b) => b.textContent)).toEqual([
-      "Packet packet-test-chat: Ready → Leased (WORK_STARTED)",
+      "Packet packet-test-chat: Leased → Running (WORK_STARTED)",
       "Packet packet-test-chat: Ready → Leased (WORK_STARTED)",
     ]);
   });
