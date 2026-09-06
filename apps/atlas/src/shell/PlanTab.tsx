@@ -1,6 +1,7 @@
-import type { CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { GATE_CRITERIA } from "../gate/fixtures";
+import { GateSheet } from "../gate/GateSheet";
 import {
   PLAN_ACTIVE_PACKET_ID,
   PLAN_BREADCRUMB,
@@ -123,12 +124,13 @@ function PacketRow({ packet }: { packet: PlanPacket }) {
  * multi-packet "open this packet's thread" capability exists yet; only
  * A.2 has any real conversation data), plus a real "M1-B gate" row
  * with its own real derived "N of 5 met" count (reusing E7's own
- * `GATE_CRITERIA`). The gate row is also a real `<button>` with no
- * `onClick` — opening the gate's own bottom sheet is separate, future
- * work (roadmap item 36's own remaining scope, a future `F4B`-style
- * candidate), matching this program's own established "options
- * rendered but inert until wired" convention (`AgentsRoster`'s own
- * "Open thread" button).
+ * `GATE_CRITERIA`). The gate row's own `onClick` opens the real
+ * `GateSheet` bottom sheet (F4B, completing roadmap item 36) — the
+ * only row in this tab wired to a real capability; every `PacketRow`
+ * remains a real, inert `<button>` (no `onClick`), matching this
+ * program's own established "options rendered but inert until wired"
+ * convention (`AgentsRoster`'s own "Open thread" button), since no real
+ * multi-packet "open this packet's thread" capability exists yet.
  *
  * The stats line's own real counts (`DONE_COUNT`/`RUN_COUNT`/
  * `AHEAD_COUNT`) are derived directly from `PLAN_PACKETS`'s own `state`
@@ -137,8 +139,22 @@ function PacketRow({ packet }: { packet: PlanPacket }) {
  * is `PLAN_PACKETS.length` minus the other two, not its own filter, so
  * the three real counts can never silently fail to sum to the real
  * total.
+ *
+ * **F4B, this slice:** the gate row's own `onClick` is now wired to
+ * open the real `GateSheet` (the app's first bottom-sheet component) —
+ * the "options rendered but inert until wired" note above is resolved
+ * for this one row. `gateOpen` is local `useState` (this component has
+ * no other stateful concern to share it with); `gateRowRef` gives
+ * `GateSheet`'s own `onClose` callback something real to return focus
+ * to on close, matching a baseline dialog-accessibility convention
+ * with no prior precedent in this codebase to instead match (see
+ * `GateSheet.tsx`'s own doc comment for what is, and is not, in this
+ * slice's scope).
  */
 export function PlanTab() {
+  const [gateOpen, setGateOpen] = useState(false);
+  const gateRowRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div className={styles.tab} style={SHELL_VARS}>
       <div className={styles.breadcrumb}>{PLAN_BREADCRUMB}</div>
@@ -156,13 +172,26 @@ export function PlanTab() {
           <PacketRow key={p.id} packet={p} />
         ))}
       </div>
-      <button type="button" className={styles.gateRow}>
+      <button
+        type="button"
+        ref={gateRowRef}
+        className={styles.gateRow}
+        onClick={() => setGateOpen(true)}
+      >
         <span className={styles.gateDot} aria-hidden="true" />
         <span className={styles.gateLabel}>M1-B gate</span>
         <span className={styles.gateMeta}>
           {GATE_MET_COUNT} of {GATE_CRITERIA.length} met ›
         </span>
       </button>
+      {gateOpen && (
+        <GateSheet
+          onClose={() => {
+            setGateOpen(false);
+            gateRowRef.current?.focus();
+          }}
+        />
+      )}
     </div>
   );
 }

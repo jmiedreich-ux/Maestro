@@ -1,4 +1,4 @@
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { colors } from "../tokens";
 import { PlanTab } from "./PlanTab";
@@ -138,6 +138,25 @@ describe("PlanTab", () => {
     expect(screen.getByText(`${yesCount} of ${GATE_CRITERIA.length} met ›`)).toBeInTheDocument();
     const gateButton = screen.getByRole("button", { name: /M1-B gate/ });
     expect(gateButton).not.toBeDisabled();
+  });
+
+  it("(F4B) clicking the gate row opens the real GateSheet, unlike the still-inert packet rows", () => {
+    render(<PlanTab />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /M1-B gate/ }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Overlay and support surfaces" })).toBeInTheDocument();
+  });
+
+  it("(F4B) closing the sheet (via its own Close button) returns focus to the gate row", () => {
+    render(<PlanTab />);
+    const gateButton = screen.getByRole("button", { name: /M1-B gate/ });
+    fireEvent.click(gateButton);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(gateButton).toHaveFocus();
   });
 
   it("sets the real, checked B2 tokens and the disclosed literals", () => {
