@@ -1,11 +1,31 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { colors, fontFamily } from "../tokens";
 import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 import DesktopShell from "./DesktopShell";
 import styles from "./DesktopShell.module.css";
 
 afterEach(cleanup);
+
+// M3 real-data wiring: DesktopShell's "packet" view now always supplies a
+// real packetId (see DesktopShell.tsx's own REAL_ACTIVE_PACKET_ID), so
+// every test rendering it needs a real (mocked) fetch/EventSource —
+// matching the same pattern PacketThread.test.tsx's own real-wiring
+// tests already established.
+class FakeEventSource {
+  onmessage: unknown = null;
+  addEventListener() {}
+  close() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: [] }) }));
+  vi.stubGlobal("EventSource", FakeEventSource);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("DesktopShell", () => {
   it("sets every real-token CSS custom property from the actual tokens module, not a hand-copied literal", () => {
@@ -78,9 +98,11 @@ describe("DesktopShell", () => {
     render(<DesktopShell systemState="crashed" />);
     fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
     expect(screen.getByText("agent stopped unexpectedly")).toBeInTheDocument();
-    // The real thread content is still there too — the crash card is
-    // appended, not a replacement.
-    expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
+    // The real thread container is still there too — the crash card is
+    // appended, not a replacement. (M3 real-data wiring: the thread's
+    // content is now real, not the fixture, so we check the container
+    // itself rather than fixture text.)
+    expect(document.querySelector(`.${styles.content} > div`)).not.toBeNull();
   });
 
   it("(G2) systemState 'crashed' has no effect on any other view's own content", () => {
@@ -187,15 +209,22 @@ describe("DesktopShell", () => {
     expect(rows).toEqual(["Performance", "Agents", "History", "A.2 · Runtime Package", "M1-B gate"]);
   });
 
-  it("selecting the A.2 row shows the real packet thread, not a placeholder", () => {
+  it("selecting the A.2 row shows the real packet thread, not a placeholder", async () => {
     render(<DesktopShell />);
     fireEvent.click(screen.getByRole("button", { name: /A\.2/ }));
     const current = screen.getAllByRole("button", { current: true });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("A.2");
-    // PacketThread's own first fixture message, proving the real
-    // component rendered, not a "packet view" placeholder string.
-    expect(screen.getByText(PACKET_A2_ENTRIES[0].text)).toBeInTheDocument();
+    // M3 real-data wiring: the "packet" view now renders PacketThread
+    // with a real packetId (see DesktopShell.tsx's own
+    // REAL_ACTIVE_PACKET_ID), not the fixture — proving the real
+    // component mounted (not a "packet view" placeholder string) is
+    // now checked via its real, mocked-empty thread container, not the
+    // old fixture's first message text.
+    await waitFor(() => {
+      expect(document.querySelector(`.${styles.content} > div`)).not.toBeNull();
+    });
+    expect(screen.queryByText(PACKET_A2_ENTRIES[0].text)).not.toBeInTheDocument();
     expect(screen.queryByText("packet view")).not.toBeInTheDocument();
   });
 
