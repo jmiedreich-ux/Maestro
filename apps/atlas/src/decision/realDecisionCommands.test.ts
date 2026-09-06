@@ -22,7 +22,7 @@ describe("resolveDecisionSentinel", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8765/command/resolve-decision",
+      "http://localhost:8765/command/resolve-decision",
       expect.objectContaining({ method: "POST" })
     );
     const [, options] = fetchMock.mock.calls[0];

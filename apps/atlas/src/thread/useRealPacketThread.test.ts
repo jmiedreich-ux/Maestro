@@ -90,7 +90,7 @@ describe("useRealPacketThread", () => {
 
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     expect(FakeEventSource.instances[0].url).toBe(
-      "http://127.0.0.1:8765/stream/events?after=7"
+      "http://localhost:8765/stream/events?after=7"
     );
   });
 
