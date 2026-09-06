@@ -688,8 +688,30 @@ regressions, with one non-blocking note (a stray "185/185" vs.
 "184/184" test-count mismatch between two sections of the packet's own
 prose — documentation-only, not a code defect).
 
-Next: F3D (records list), F4B (gate bottom sheet), G2 (real remaining
-work — mount `CrashCard` via a `systemState` switch, extending G1's
+`MB-SLICE-M2-F3D-PER-ACTION-RECORDS-01` is merged (planning PR #175 at
+`ae1a090`, implementation PR #176 at `60f12a4`) — the Cost segment's
+third and final block, the "Per action" records list, reusing E2/E2B's
+own real `PERF_RECORDS` fixture data and its already-reviewed
+color-derivation mapping from `PerfRecordsList.tsx` verbatim, as fresh
+mobile-specific `RecordsList`/`RecordCard` components (deliberately not
+`<PerfRecordsList />` mounted as-is, matching this file's own
+established mobile-reuse convention). **Completes roadmap item 35 in
+full** — F3, F3B, F3C, F3D are all merged, so Wave F's own
+completed-item count moves from 2/4 to 3/4; only item 36/F4B remains.
+DF review: PASS WITH NON-BLOCKING NOTES — two citation-only defects (a
+wrong line-number citation in a shipped code comment, a miscounted line
+range in the packet's own Evidence section quote), both fixed at zero
+cost, no functional or test change. Implementation review: APPROVE
+WITH NON-BLOCKING NOTES — byte-exact match to the packet,
+mutation-tested confirmation of the color-reuse claim and of a
+disclosed test-scoping trap (a record row's own "Cost" label colliding
+with the outer segmented control's own "Cost" tab), zero regressions,
+and one non-blocking accessibility note (missing `aria-expanded` on the
+accordion toggle button — parity with `PerfRecordsList.tsx`'s own same
+omission, not a new regression).
+
+Next: F4B (gate bottom sheet), G2 (real remaining work — mount
+`CrashCard` via a `systemState` switch, extending G1's
 `connectionState.ts`), G3 (not started) are the independent-work items
 remaining. C2/D3/D7 stay rescheduled to M3, off the current
 independent-work list.
