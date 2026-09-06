@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Plan Tab, Packet List — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `Decision Fidelity review returned REQUEST_CHANGES (a real wrong-token defect: TRACK_COLOR.run used colors.accent instead of colors.accentLight, undetected by the first draft's own non-exhaustive tests; a false NowTab citation claiming it corroborates A.2 "running" when NowTab deliberately shows it blocked) — 1 targeted correction applied and independently re-verified (including mutation-testing the fix), REQUEST_CHANGES resolved`
 **Base:** `8aa33ce` (full: `8aa33ce5787e296d95dee0b4921ebd77e2b752dd`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -62,18 +62,36 @@ own real `PACKETS` array and `STATE`/`dot()` derivations verbatim into
 border), `colors.borderDashed[2]` (`#B9AFC4`, both the gate row's own
 dot border and the packet dots' own `wait`/`pend` states — the same
 token `--atlas-ag-wait-dot-border` already uses), `colors.success`
-(`#2E9B72`, `done` state), `colors.accent`/`colors.accentLight`
-(`#5B34E8`/`#8C6BFF`, `run` state's track/dot colors respectively —
-two different real tokens for two different real elements, not a
-mismatch). Four literals have no token match, checked against every
-color family in `colors.ts`: the active row's own background
-(`#EFEAFE`) and its own id/state/chevron text color (`#6C55B8`), the
-`block` state's own dot border (`#D08A83` — a real, distinct value
-from `colors.review`'s `#D08A63`, not a transcription typo of it), and
-the track's own "not done/running" segment color (`#E4DEEC`). The gate
-row's own "M1-B gate" label color (`#4C4457`) reuses the exact same
-disclosed literal F3C's own weekly-window body text already
-establishes — the same real value, not a newly invented one.
+(`#2E9B72`, `done` state), and `colors.accentLight` (`#8C6BFF`, `run`
+state's dot **and** track color — the mockup's own real `track`
+derivation, `Atlas Mobile.dc.html:735`, uses the identical `#8C6BFF`
+for both the dot and the track segment, not two different values).
+Four literals have no token match, checked against every color family
+in `colors.ts`: the active row's own background (`#EFEAFE`) and its
+own id/state/chevron text color (`#6C55B8`), the `block` state's own
+dot border (`#D08A83` — a real, distinct value from `colors.review`'s
+`#D08A63`, not a transcription typo of it), and the track's own "not
+done/running" segment color (`#E4DEEC`). The gate row's own "M1-B
+gate" label color (`#4C4457`) reuses the exact same disclosed literal
+F3C's own weekly-window body text already establishes — the same real
+value, not a newly invented one.
+
+**Corrected — real defect from Decision Fidelity review, requiring a
+correction (not merely a disclosure):** the first draft's own
+`TRACK_COLOR.run` used `colors.accent` (`#5B34E8`), not
+`colors.accentLight` (`#8C6BFF`) — a genuinely wrong value that would
+have rendered a darker purple than the mockup's own real track segment
+color, and the first draft's own rationale falsely asserted this was
+"two different real tokens for two different real elements, not a
+mismatch," when the mockup's own source uses the identical `#8C6BFF`
+for both. Fixed: `TRACK_COLOR.run` now reads `colors.accentLight`,
+matching the dot's own already-correct value. The review also caught
+that this bug slipped through the first draft's own test suite
+undetected (mutation-tested by the reviewer); the test file below is
+now rewritten to assert exact hex-to-rgb-converted color values for
+every state and every track segment, not just non-emptiness or
+substring patterns — independently re-verified by mutation-testing it
+myself before finalizing this packet (see Pre-verification).
 
 ## Design rationale
 
@@ -108,11 +126,21 @@ establishes — the same real value, not a newly invented one.
    a `.packetDot` class reference with no CSS rule and a dead
    `.packetState`/`.packetMeta` naming mismatch — both self-caught and
    fixed before this packet was finalized).
-6. **Test coverage exhaustively checks per-state dot/track colors**,
-   not just text content — a lesson this program's own F3C
-   implementation review just surfaced (missing color/width assertions
-   on `PerfBreakdownCard`-derived bars), applied here proactively
-   before any review found the gap.
+6. **Test coverage checks the exact per-state dot/track color values**,
+   not just shape or non-emptiness. **Corrected — real defect from
+   Decision Fidelity review:** the first draft's own version of this
+   test only checked non-emptiness/substring patterns (e.g. "border
+   contains '2px solid'"), which the review proved — by mutation-testing
+   the shipped code — did not actually catch the `TRACK_COLOR.run`
+   defect above, directly contradicting this item's own original claim
+   that the lesson from F3C's implementation review had already been
+   applied. Fixed: every state's exact color is now asserted via a
+   hex-to-rgb conversion helper (jsdom re-serializes raw inline hex on
+   readback, the same defect class F3C's own implementation review
+   already established), and independently re-mutation-tested before
+   finalizing this packet — both the `TRACK_COLOR.run` defect and a
+   second injected `block`-border-color mutation were confirmed to make
+   the test suite fail.
 
 ## Guards
 
@@ -140,11 +168,22 @@ establishes — the same real value, not a newly invented one.
 /**
  * Transcribed verbatim from `Atlas Mobile.dc.html`'s own real
  * `PACKETS` array and `STATE` map — pure reporting content, no
- * persona, no fictional agent. A.2's own real state here (`run`) is
- * consistent with this program's own already-established default
- * scenario elsewhere (`NowTab`/`AgentsRoster`: Terra genuinely running
- * A.2, not crashed) — the same real baseline, not a second,
- * independently invented one.
+ * persona, no fictional agent. A.2's own real `run` state here matches
+ * `AGENTS`'s own real Terra entry (`apps/atlas/src/agents/agents.ts`,
+ * `state: "running"`, `styleKey: "run"`) — the mockup's own real
+ * `PACKETS` array is sufficient justification on its own.
+ *
+ * **Corrected — real defect from Decision Fidelity review:** an
+ * earlier draft of this comment also cited `NowTab.tsx` as
+ * corroborating "Terra genuinely running," which is false — `NowTab.tsx`'s
+ * own doc comment deliberately renders Terra as blocked/waiting, not
+ * running, as an already-reviewed, on-record design decision (see that
+ * file's own comment: *"Terra is genuinely idle/blocked in this real
+ * trajectory, not running, so the 'wait' style key is the honest
+ * choice, not 'run'..."*). This Plan tab's own use of `run` for A.2 is
+ * still correct — it matches the mockup's own real `PACKETS` array and
+ * `AGENTS`'s own real Terra entry — only the false `NowTab` citation is
+ * removed.
  */
 export type PlanPacketState = "done" | "run" | "wait" | "block" | "pend";
 
@@ -217,12 +256,14 @@ const GATE_MET_COUNT = GATE_CRITERIA.filter((c) => c.met === "yes").length;
  * (`#E4DEEC`) have no token match, checked against every color family
  * in `colors.ts` — both disclosed literals. `run`'s own halo
  * (`rgba(140,107,255,.2)`, `colors.accentLight`'s RGB at .2 alpha) is
- * the same halo-literal convention `--atlas-dot-need-halo` already
- * establishes.
+ * a real, exact RGB-to-token match, following the same *pattern*
+ * (an alpha-halo derived from a real token's own RGB) `--atlas-dot-need-halo`
+ * already establishes — not the same value (that one is an amber
+ * warning halo, not this purple one).
  */
 const TRACK_COLOR: Record<PlanPacketState, string> = {
   done: colors.success,
-  run: colors.accent,
+  run: colors.accentLight,
   wait: "#E4DEEC",
   block: "#E4DEEC",
   pend: "#E4DEEC",
@@ -521,6 +562,22 @@ import { PLAN_BREADCRUMB, PLAN_PACKETS, PLAN_STATE_LABEL } from "../plan/fixture
 
 afterEach(cleanup);
 
+/**
+ * jsdom (like real browsers) silently re-serializes a raw inline hex
+ * color to `rgb(...)` when read back via `.style.*` — so an
+ * exact-string comparison against the original hex literal must
+ * convert through the same normalization first, matching the
+ * discipline `connectionState.ts` (G1) and F3C's own implementation
+ * review already established for exactly this defect class.
+ */
+function hexToRgb(hex: string): string {
+  const value = hex.replace("#", "");
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 describe("PlanTab", () => {
   it("renders the real breadcrumb and title", () => {
     render(<PlanTab />);
@@ -570,7 +627,7 @@ describe("PlanTab", () => {
     }
   });
 
-  it("renders each real packet's own per-state dot shape/color and the matching track-segment color", () => {
+  it("renders each real packet's own exact per-state dot color/shape (not just non-empty)", () => {
     render(<PlanTab />);
     for (const packet of PLAN_PACKETS) {
       const id = screen.getByText(packet.id);
@@ -578,30 +635,44 @@ describe("PlanTab", () => {
       const dot = row.querySelector('[class*="packetDot"]') as HTMLElement;
       if (packet.state === "done") {
         expect(dot.style.borderRadius).toBe("3px");
-        expect(dot.style.background).not.toBe("");
+        expect(dot.style.background).toBe(hexToRgb(colors.success));
       } else if (packet.state === "run") {
         expect(dot.style.borderRadius).toBe("50%");
-        expect(dot.style.boxShadow).toContain("140,107,255");
+        expect(dot.style.background).toBe(hexToRgb(colors.accentLight));
+        expect(dot.style.boxShadow).toBe("0 0 0 4px rgba(140,107,255,.2)");
       } else if (packet.state === "block") {
-        expect(dot.style.border).toContain("2px solid");
-      } else {
-        // wait, pend
         expect(dot.style.borderRadius).toBe("50%");
-        expect(dot.style.border).not.toBe("");
+        expect(dot.style.border).toBe(`2px solid ${hexToRgb("#D08A83")}`);
+      } else if (packet.state === "wait") {
+        expect(dot.style.borderRadius).toBe("50%");
+        expect(dot.style.border).toBe(`2px solid ${hexToRgb(colors.borderDashed[2])}`);
+      } else {
+        // pend
+        expect(dot.style.borderRadius).toBe("50%");
+        expect(dot.style.border).toBe(`1.5px dashed ${hexToRgb(colors.borderDashed[2])}`);
       }
     }
+  });
 
+  it("renders each real packet's own exact track-segment color, matching the mockup's own done/run/other derivation", () => {
+    render(<PlanTab />);
     const track = document.querySelector('[class*="track"]') as HTMLElement;
     const segments = track.querySelectorAll('[class*="trackSegment"]');
     expect(segments).toHaveLength(PLAN_PACKETS.length);
     segments.forEach((segment, index) => {
       const state = PLAN_PACKETS[index].state;
-      const expectNonEmpty = (segment as HTMLElement).style.background;
-      expect(expectNonEmpty).not.toBe("");
-      // done/run get their own distinct real token; every other state
-      // shares the same disclosed "not done/running" literal.
-      if (state !== "done" && state !== "run") {
-        expect(expectNonEmpty).toBe((track.querySelectorAll('[class*="trackSegment"]')[3] as HTMLElement).style.background);
+      const background = (segment as HTMLElement).style.background;
+      if (state === "done") {
+        expect(background).toBe(hexToRgb(colors.success));
+      } else if (state === "run") {
+        // The real mockup's own track derivation uses the identical
+        // #8C6BFF for both the run dot and the run track segment —
+        // this must be the SAME real token as the dot's own run color,
+        // not colors.accent (a different, darker real token this
+        // slice's own first draft mistakenly used here).
+        expect(background).toBe(hexToRgb(colors.accentLight));
+      } else {
+        expect(background).toBe(hexToRgb("#E4DEEC"));
       }
     });
   });
@@ -875,6 +946,71 @@ Fidelity review, fixed before this packet was finalized:
    classes, both still consuming the shared `.packetMetaActive`
    modifier class for the active-row color override.
 
+**Independent Decision Fidelity review result:** `REQUEST_CHANGES`.
+The review independently re-derived every claim from source —
+re-reading the real mockup's exact `track`/`dot()` derivations, every
+hex value in `colors.ts`, `NowTab.tsx`'s own real doc comment, and
+independently re-applying this packet's exact proposed files to
+re-run the full toolchain — and found two real, confirmed defects
+requiring a correction (not merely a disclosure), plus one related
+non-blocking gap:
+
+1. **Wrong token, contradicting the mockup it claimed to transcribe
+   verbatim.** `TRACK_COLOR.run` used `colors.accent` (`#5B34E8`)
+   instead of `colors.accentLight` (`#8C6BFF`) — the mockup's own real
+   `track` derivation (`Atlas Mobile.dc.html:735`) uses the identical
+   `#8C6BFF` for both the run dot and the run track segment, not two
+   different values as the first draft's own rationale falsely
+   claimed. The reviewer empirically confirmed this bug by mutating
+   the value and re-running the shipped test suite — all tests still
+   passed, proving the defect was real and undetected.
+2. **False citation shipped into a permanent code comment.**
+   `plan/fixtures.ts`'s own doc comment cited `NowTab.tsx` as
+   corroborating "Terra genuinely running" A.2 — but `NowTab.tsx`'s own
+   doc comment states the opposite, on record: Terra is deliberately
+   shown blocked/waiting, not running, as an already-reviewed design
+   decision. Using `run` for the Plan tab's own A.2 row is still
+   correct (it matches the mockup's own real `PACKETS` array and
+   `AGENTS`'s own real Terra entry) — only the false `NowTab` citation
+   was wrong.
+3. **Non-blocking: the test suite's own claimed exhaustiveness was
+   overstated**, and is what let defect #1 through — the reviewer
+   mutation-tested a second value (`block`'s dot-border color) and
+   confirmed the shipped tests would not have caught that either.
+
+**Correction applied and independently re-verified**, consuming this
+packet's one planning correction and its one targeted verification:
+
+- `TRACK_COLOR.run` fixed to `colors.accentLight`.
+- `plan/fixtures.ts`'s doc comment corrected to drop the false `NowTab`
+  citation, replaced with the real, accurate `AGENTS`/`agents.ts`
+  support, and an explicit note disclosing and correcting the error.
+- The halo-convention comment's own overclaim ("the same... convention
+  `--atlas-dot-need-halo` already establishes") was also tightened
+  while in the file — that token is a different, amber halo value; only
+  the *pattern* (an alpha-halo derived from a real token's own RGB)
+  matches, not the value.
+- `PlanTab.test.tsx`'s per-state dot/track color test was rewritten to
+  assert exact hex-to-rgb-converted values for every state (`done`,
+  `run` including its own halo string, `block`, `wait`, `pend`) and
+  every track segment, using the same hex-to-rgb helper F3C's own
+  implementation review already established for this exact jsdom
+  color-reserialization defect class.
+- **I independently re-mutation-tested the fix myself** before
+  finalizing this packet: reverting `TRACK_COLOR.run` to `colors.accent`
+  made the rewritten test suite fail as expected; mutating
+  `DOT_STYLE.block`'s border color to an arbitrary value also made it
+  fail as expected. Both mutations were then reverted to the correct
+  values.
+- Re-ran the full toolchain after the correction: `npm run typecheck` —
+  clean; `npm run lint` — clean; `npm test` — **23/23 test files,
+  181/181 tests passed** (11 in `PlanTab.test.tsx`, up from the
+  REQUEST_CHANGES draft's own 10 — one test split into two for dot vs.
+  track color coverage); `npm run build` — clean, `39 modules
+  transformed`, no warnings. Re-checked `--atlas-plan-*`
+  custom-property and CSS-class orphans exhaustively in both
+  directions — zero orphans.
+
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
 slice.
@@ -898,8 +1034,11 @@ slice.
    test; no browser-based visual verification was performed (tooling
    failure, already disclosed in this session for M2-E4/F1/F2/F3/F3B/
    F3C/E7B, same root cause).
-5. **Acceptance proof:** 23/23 test files, 180/180 tests passing (zero
-   regressions), clean typecheck, clean lint, clean production build.
+5. **Acceptance proof:** 23/23 test files, 181/181 tests passing (zero
+   regressions) after the correction, clean typecheck, clean lint,
+   clean production build — including exact per-state color assertions
+   independently mutation-tested to confirm they actually catch the
+   class of defect the Decision Fidelity review found.
 6. **Implementation boundary:** 4 new files, 2 modified files, all
    within `apps/atlas/src`; zero backend files; no new third-party
    dependency; `gate/fixtures.ts` read-only, never modified.
@@ -917,11 +1056,11 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `AwaitingTargetedVerification` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
