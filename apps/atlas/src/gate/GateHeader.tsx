@@ -86,6 +86,17 @@ const RELEASES = [
  * real" discipline, applied here to a mechanism claim, not merely a
  * name.
  *
+ * **Corrected — non-blocking finding from independent implementation
+ * review:** the reference file's own `approverNote` has a second
+ * clause this component's own rationale above did not separately
+ * disclose dropping — *"The owner is only asked if opening would
+ * require waiving a criterion."* Since no automated opening exists at
+ * all today (the correction above), a separate "the owner is asked
+ * for waivers" escalation path describes a step in that same not-yet-
+ * real autonomous flow, so it is dropped for the same real reason, not
+ * a second, independent edit — disclosed explicitly now, the same
+ * footing as the lede's own "below" disclosure above.
+ *
  * **Real, derived counts, not a second hardcoded literal.** The state
  * line ("Closed · N of 5 criteria met, M partly") and the button note
  * ("Blocked by K open criteria") are both computed directly from the
