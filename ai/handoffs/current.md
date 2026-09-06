@@ -644,12 +644,33 @@ inherited missing-`aria-describedby` gap, pre-existing, not new.
 179/179 tests pass, zero regressions. Not wired into `DesktopShell`
 yet — a future `E7C`-style candidate.
 
-Next: F4A is authored/DF-reviewed and mid-pipeline. Remaining after
-that: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
+`MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01` is merged (planning PR #169
+at `ca17779`, implementation PR #170 at `6918708`) — roadmap item 36
+(Plan tab: packet-list body), reusing E7's own `GATE_CRITERIA` for the
+"M1-B gate" row's own derived met-count. Frontend-only: adds
+`apps/atlas/src/plan/fixtures.ts` and `apps/atlas/src/shell/PlanTab.tsx`/
+`.module.css`/`.test.tsx`; modifies `MobileShell.tsx`/`.test.tsx`,
+removing the now-dead `TAB_LABEL` map. **First slice this session with
+a genuine DF `REQUEST_CHANGES`**: two real, confirmed defects (a wrong
+`TRACK_COLOR.run` token, `colors.accent` instead of `colors.accentLight`,
+proven undetected via mutation-testing the shipped tests; a false
+`NowTab.tsx` citation claiming it corroborates A.2's "running" state
+when that file's own comment says the opposite). Both fixed with a real
+code correction, independently re-verified (`RESOLVED`, mutation-testing
+reproduced and both defects confirmed fixed). Implementation review:
+`APPROVE`, with an additional live mutation-test re-confirming the fix
+and one non-blocking note (inert packet/gate-row `<button>`s, matching
+`AgentsRoster.tsx`'s own established convention). 24/24 test files,
+193/193 tests pass, zero regressions. Item 36 still not complete — the
+gate bottom sheet (F4B) remains; Wave F's own completed-item count
+stays at 2/4.
+
+Next: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
 F3D (records list), F4B (gate bottom sheet), G2 (real remaining
 work — mount `CrashCard` via a `systemState` switch, extending G1's
-`connectionState.ts`), G3 (not started). C2/D3/D7 stay rescheduled to
-M3, off the current independent-work list.
+`connectionState.ts`), G3 (not started) are the independent-work items
+remaining. C2/D3/D7 stay rescheduled to M3, off the current
+independent-work list.
 
 Each subsequent wave slice still requires its own pre-execution
 Decision Fidelity approval before implementation. All returned slices

@@ -1388,13 +1388,41 @@ introduced here). 23/23 test files, 179/179 tests pass, zero
 regressions. Not wired into `DesktopShell` — that remains a future
 `E7C`-style candidate.
 
-Next: F4A (Plan tab packet list) is authored, DF-reviewed, and in the
-implementation/review pipeline as of this recording. Remaining after
-that: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
+`MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01` is merged (planning PR #169
+at `ca17779`, implementation PR #170 at `6918708`) — roadmap item 36
+("F4 — Plan tab: packet list + gate bottom sheet, reuses E7 data"), the
+packet-list body only (breadcrumb, title, real derived stats line, real
+progress track, all 8 real packet rows, and the "M1-B gate" row itself,
+its own derived "N of 5 met" count reusing E7's own `GATE_CRITERIA`
+verbatim). Frontend-only: adds `apps/atlas/src/plan/fixtures.ts` and
+`apps/atlas/src/shell/PlanTab.tsx`/`.module.css`/`.test.tsx`; modifies
+`MobileShell.tsx`/`.test.tsx` to wire the new tab in, removing the now-
+dead `TAB_LABEL` map. **The first slice this session to receive a
+genuine Decision Fidelity `REQUEST_CHANGES`**: two real, confirmed
+defects — `TRACK_COLOR.run` used `colors.accent` instead of
+`colors.accentLight` for the "run" state (the mockup's own real track
+derivation uses the identical value for both the dot and the track
+segment; the reviewer proved the bug was real and undetected by
+mutation-testing the shipped test suite), and a false doc-comment
+citation of `NowTab.tsx` as corroborating A.2's "running" state when
+that file's own comment says the opposite (Terra is deliberately shown
+blocked, not running). Both fixed with a real code correction, not
+merely a disclosure, then independently re-verified by a targeted
+verification agent (`RESOLVED` — mutation-testing independently
+reproduced, both defects confirmed fixed). Independent implementation
+review approved (`APPROVE`) with an additional live mutation-test
+re-confirming the fix, and one non-blocking note (inert packet-row and
+gate-row `<button>`s, matching `AgentsRoster.tsx`'s own established
+"options rendered but inert until wired" convention, not a new gap).
+24/24 test files, 193/193 tests pass, zero regressions. **Item 36 still
+not complete** — the gate row's own bottom sheet (a future `F4B`-style
+candidate) remains; Wave F's own completed-item count stays at 2/4.
+
+Next: E7C (wire `GateCriteriaList`+`GateHeader` into `DesktopShell`),
 F3D (item 35's own "Per action" records list), F4B (the gate bottom
 sheet), G2 (the real, now-corrected remaining work: mount `CrashCard`
 from a real `systemState`-driven switch, extending G1's own
-`connectionState.ts` mechanism), and G3 (empty state, not started).
-C2/D3/D7 are all rescheduled to M3 and off the current independent-work
-list entirely — not a blocker to track, a milestone assignment already
-made.
+`connectionState.ts` mechanism), and G3 (empty state, not started) are
+the independent-work items remaining. C2/D3/D7 are all rescheduled to
+M3 and off the current independent-work list entirely — not a blocker
+to track, a milestone assignment already made.

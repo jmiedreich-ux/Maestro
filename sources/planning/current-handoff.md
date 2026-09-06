@@ -450,7 +450,26 @@ returned `REQUEST_CHANGES`. `MB-SLICE-M1-02B-REPLACEMENT-01` is terminally
    (the approverNote's own "waiving a criterion" clause) disclosed on
    the same footing; an inherited missing-`aria-describedby` gap,
    pre-existing, not new. 179 tests pass, zero regressions — not wired
-   into `DesktopShell` yet (a future `E7C`-style candidate). Each
+   into `DesktopShell` yet (a future `E7C`-style candidate).
+   `MB-SLICE-M2-F4A-PLAN-TAB-PACKET-LIST-01` is merged: roadmap item 36
+   (Plan tab: packet-list body only — breadcrumb, derived stats line,
+   progress track, all 8 real packet rows, and the "M1-B gate" row's
+   own derived met-count, reusing E7's `GATE_CRITERIA` verbatim); the
+   gate row's own bottom sheet remains a future `F4B`-style candidate.
+   **The first slice this session to receive a genuine Decision
+   Fidelity `REQUEST_CHANGES`**: two real, confirmed defects (a wrong
+   `TRACK_COLOR.run` token, `colors.accent` instead of
+   `colors.accentLight`, proven undetected via mutation-testing the
+   shipped tests; a false `NowTab.tsx` citation claiming it corroborates
+   A.2's "running" state when that file's own comment says the
+   opposite), both fixed with a real code correction and independently
+   re-verified (`RESOLVED`). Independent implementation review approved
+   (`APPROVE`) with an additional live mutation-test re-confirming the
+   fix and one non-blocking note (inert packet/gate-row `<button>`s,
+   matching `AgentsRoster.tsx`'s own established convention). 193 tests
+   pass, zero regressions — item 36 still not complete, only the gate
+   bottom sheet (F4B) remains; Wave F's completed-item count stays at
+   2/4. Each
    subsequent wave slice still requires its own pre-execution Decision
    Fidelity approval before implementation.
 4. Require the executable review-readiness gate before reviewer launch.
