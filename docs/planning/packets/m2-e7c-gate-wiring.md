@@ -1,7 +1,7 @@
 # M2 Wave E — Wire GateHeader and GateCriteriaList into DesktopShell — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-E7C-GATE-WIRING-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `MergeReady`
 **Base:** `b744d0e` (full: `b744d0e305f7f981a952cff25f24e5b4d6667965`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -88,6 +88,39 @@ its own.
    `display: none` hide).
 4. The literal placeholder string "M1-B gate view" no longer renders
    for the gate view — a dedicated test proves its absence.
+
+## Corrected — Decision Fidelity review findings (RESOLVED)
+
+An independent Decision Fidelity review returned **PASS WITH
+NON-BLOCKING NOTES**, and fixed both at zero cost before finalizing
+this packet as `MergeReady`:
+
+1. **Mockup file not present in this repository.** The reviewer could
+   not independently verify the `Atlas Explorations.dc.html:215`
+   `<main>`-padding citation (Design rationale / Evidence sections)
+   because that mockup file lives outside version control. This
+   matches an already-disclosed, session-wide tooling limitation (no
+   browser-based visual verification was available for this or any
+   prior M2 slice this session) — not fixed, since there is nothing in
+   this repository to fix; disclosed here explicitly rather than
+   silently accepted.
+2. **Real, fixed test-coverage gap (fixed):** the reviewer proved, via
+   mutation-testing, that reverting the gate view's `<main>` className
+   from `styles.contentGate` back to `styles.content` — the exact
+   layout regression Design rationale #1 exists to prevent (doubling
+   `GateHeader`'s own 34px gutter) — left all 14 original tests
+   passing, since none of them asserted on `<main>`'s own className.
+   **Fix:** added `data-testid="desktop-shell-main"` to the `<main>`
+   element, and a new test that imports the real `DesktopShell.module
+   .css` identifiers and asserts `<main>`'s className switches exactly
+   between `styles.content` and `styles.contentGate` across every nav
+   selection. I re-ran the reviewer's own mutation (reverting the
+   className to `styles.content` for the gate case) against the
+   corrected suite and confirmed the new test — and only the new
+   test — now fails, then reverted the mutation. Test count: 14 → 15
+   in `DesktopShell.test.tsx`; suite total 184 → 185.
+
+No other files, no other behavior, changed by this correction.
 
 ## `apps/atlas/src/shell/DesktopShell.tsx` (modified — full new content)
 
@@ -261,7 +294,10 @@ export function DesktopShell({ systemState = "normal" }: DesktopShellProps = {})
             onSelect={setSelected}
           />
         </nav>
-        <main className={selected === "gate" ? styles.contentGate : styles.content}>
+        <main
+          data-testid="desktop-shell-main"
+          className={selected === "gate" ? styles.contentGate : styles.content}
+        >
           {selected === "packet" ? (
             <PacketThread />
           ) : selected === "gate" ? (
@@ -535,6 +571,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { colors, fontFamily } from "../tokens";
 import { PACKET_A2_ENTRIES } from "../thread/fixtures";
 import DesktopShell from "./DesktopShell";
+import styles from "./DesktopShell.module.css";
 
 afterEach(cleanup);
 
@@ -699,22 +736,44 @@ describe("DesktopShell", () => {
     expect(screen.queryByRole("heading", { name: "Overlay and support surfaces" })).not.toBeInTheDocument();
     expect(screen.queryByText("entry criteria")).not.toBeInTheDocument();
   });
+
+  it("(E7C, corrected — Decision Fidelity review finding) the gate view's <main> uses the no-padding .contentGate class, and every other view keeps the padded .content class", () => {
+    // The reviewer proved this by mutation-testing: reverting the gate
+    // view's className from `styles.contentGate` back to `styles.content`
+    // (the exact regression Design Rationale #1 exists to avoid — doubling
+    // GateHeader's own 34px gutter) left all other tests passing, since
+    // none of them asserted on <main>'s own className. This test compares
+    // against the real imported CSS-module identifiers, not hand-typed
+    // strings, so it fails under that exact mutation.
+    render(<DesktopShell />);
+    const main = screen.getByTestId("desktop-shell-main");
+    expect(main.className).toBe(styles.content);
+    expect(main.className).not.toBe(styles.contentGate);
+
+    fireEvent.click(screen.getByRole("button", { name: /^M1-B gate/ }));
+    expect(main.className).toBe(styles.contentGate);
+    expect(main.className).not.toBe(styles.content);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Performance/ }));
+    expect(main.className).toBe(styles.content);
+  });
 });
 ```
 
 ## Pre-verification (actually run)
 
-This candidate's exact file contents above were applied to this
-scratch worktree (`/tmp/maestro-m2-e7c-wire`, branch
-`architecture/m2-e7c-gate-wiring`, base `b744d0e`) and run through the
-real frontend toolchain from `apps/atlas` (`npm install`, then each
-script below), before this packet was finalized. Zero corrections were
-needed — every check passed on the first attempt.
+This candidate's exact file contents above (already reflecting the
+Decision Fidelity correction) were applied to this scratch worktree
+(`/tmp/maestro-m2-e7c-wire`, branch `architecture/m2-e7c-gate-wiring`,
+base `b744d0e`) and run through the real frontend toolchain from
+`apps/atlas` (`npm install`, then each script below) a second time,
+after the correction, before this packet was finalized as
+`MergeReady`.
 
 - `npm run typecheck` (`tsc --noEmit`) — clean.
 - `npm run lint` (`eslint .`) — clean.
-- `npm test` (`vitest run`) — **23/23 test files, 184/184 tests
-  passed** (14 in `DesktopShell.test.tsx`, up from 12; zero
+- `npm test` (`vitest run`) — **23/23 test files, 185/185 tests
+  passed** (15 in `DesktopShell.test.tsx`, up from 12 at base; zero
   regressions in the other 22 files, including `GateHeader.test.tsx`
   and `GateCriteriaList.test.tsx`, neither of which this slice
   modifies).
@@ -769,11 +828,11 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-E7C-GATE-WIRING-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
-| `planning_correction_count` | `0` |
+| `planning_review_count` | `1` |
+| `planning_correction_count` | `1` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
 | `targeted_implementation_verification_count` | `0` |
