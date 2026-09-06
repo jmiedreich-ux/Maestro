@@ -1,7 +1,7 @@
 # M2 Wave G — `crashed` system state (desktop) — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-G2-CRASHED-STATE-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `MergeReady`
 **Base:** `a4e881c` (full: `a4e881c687fc0a3f15518365085c85f4c9d5535c`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -176,6 +176,31 @@ mismatch.
 5. No D7 (recovery-command) wiring is added — `CrashCard`'s own 3
    options remain real, inert `<button>` elements with no `onClick`,
    exactly as C6 already built them.
+
+## Decision Fidelity review result: PASS WITH NON-BLOCKING NOTES
+
+An independent review returned **PASS**, independently re-deriving
+every quantitative and textual claim in this packet against both
+mockup files, `colors.ts`, `motion.ts`, and a real toolchain run —
+including specifically re-checking this packet's own central,
+unusually strong scope-correction argument (that the roadmap's "top-
+level system banner only" phrasing describes two distinct, real,
+simultaneous UI elements, not one) — and found it accurate to the
+byte. Two non-blocking notes were raised, both **pre-existing and out
+of this slice's own scope, not fixed here**:
+
+1. Neither the connection strip nor `CrashCard` carries an
+   `aria-live`/`role="alert"` announcement — the same gap the already-
+   merged `disconnected` strip already has; fixing it here would
+   exceed this wiring-only slice's proportional scope.
+2. The mockup's own global `@keyframes rise` uses a `5px` translate,
+   while this codebase's already-established `motion.rise.translateYPx`
+   token is `4` — a pre-existing, untouched discrepancy predating this
+   slice (every other `.rise` consumer already uses the same token),
+   not introduced or worsened here.
+
+No correction was required; this packet's own code blocks below are
+unchanged from what the review verified.
 
 ## `apps/atlas/src/shell/connectionState.ts` (modified — full new content)
 
@@ -1288,10 +1313,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-G2-CRASHED-STATE-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
