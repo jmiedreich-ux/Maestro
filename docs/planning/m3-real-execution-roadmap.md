@@ -204,7 +204,13 @@ run before any registration, and a general flow means any future project
     §9.2's required handoff shape (branch/commit identifiers, changed-file
     list and scope check, executed commands and verbatim evidence,
     `PASS`/`N/A`/`UNTESTED` per check) so Wave D has a real handoff to grade
-    rather than an ad-hoc result shape.
+    rather than an ad-hoc result shape. **Proven for real (2026-09-06):**
+    Wave B's CG-M4-19 packet dispatched to the real local Qwen worker,
+    completed with one real commit and one real new file, independently
+    re-verified against all 5 declared gates (89/89 real browser tests),
+    branch pushed and a draft PR opened on Foundry's real repository (no
+    merge requested). Full evidence in
+    `docs/registrations/foundry-read-only-discovery.md`'s own "C3" section.
 
 ### Wave D — Mechanical grading (backend)
 15. **D1 — Declared-check runner.** Given a registered project's declared
