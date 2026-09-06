@@ -1,7 +1,6 @@
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatTab } from "./ChatTab";
-import { derivePacketHeaderState } from "../thread/headerState";
 import type { RealEvent } from "../thread/realEventSynthesis";
 
 const PACKET_ID = "packet-test-chat";
@@ -48,12 +47,13 @@ afterEach(() => {
 });
 
 describe("ChatTab", () => {
-  it("renders the real eyebrow/title identity pair, the same single state source PacketHeader (C7) already reads from", () => {
+  it("renders the real packet id as eyebrow, and a real, humanized current state as title/status once events load", async () => {
     render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
-    const state = derivePacketHeaderState([]);
-    expect(screen.getByText(state.eyebrow)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: state.title })).toBeInTheDocument();
-    expect(screen.getByText(state.stateLine)).toBeInTheDocument();
+    expect(screen.getByText("test-chat")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Leased" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("2 real events recorded")).toBeInTheDocument();
   });
 
   it("renders the real backend events as honest mechanical descriptions, newest first", async () => {
@@ -79,8 +79,8 @@ describe("ChatTab", () => {
     // shared entries shape, and ChatTab reverses it back — the most
     // recent real event (event_id 2) is visible first, no scrolling.
     expect(bubbles.map((b) => b.textContent)).toEqual([
-      "Packet packet-test-chat: Leased → Running (WORK_STARTED)",
-      "Packet packet-test-chat: Ready → Leased (WORK_STARTED)",
+      "Leased → Running — work started",
+      "Ready → Leased — work started",
     ]);
   });
 

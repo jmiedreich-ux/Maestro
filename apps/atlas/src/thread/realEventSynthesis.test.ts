@@ -20,10 +20,10 @@ function event(overrides: Partial<RealEvent> = {}): RealEvent {
 describe("synthesizeThreadEntry", () => {
   it("describes a real before/after state transition honestly, never inventing dialogue", () => {
     const entry = synthesizeThreadEntry(event());
-    expect(entry.text).toBe("Packet packet-foundry-cg-m4-19: Planned → Waiting (WORK_STARTED)");
+    expect(entry.text).toBe("Planned → Waiting — work started");
   });
 
-  it("falls back to the real event_type when before/after state is absent", () => {
+  it("falls back to a humanized real event_type when before/after state is absent", () => {
     const entry = synthesizeThreadEntry(
       event({
         event_type: "SecretReferenceObserved",
@@ -32,7 +32,14 @@ describe("synthesizeThreadEntry", () => {
         reason: { kind: "reason", reason_code: "SECRET_STORED", detail_reference: null },
       })
     );
-    expect(entry.text).toBe("Packet packet-foundry-cg-m4-19: SecretReferenceObserved (SECRET_STORED)");
+    expect(entry.text).toBe("Secret reference observed — secret stored");
+  });
+
+  it("sets afterState from the real after_json.state field, for the header to read", () => {
+    const withState = synthesizeThreadEntry(event());
+    expect(withState.afterState).toBe("Waiting");
+    const withoutState = synthesizeThreadEntry(event({ after_json: { status: "Active" } }));
+    expect(withoutState.afterState).toBeUndefined();
   });
 
   it("formats the real created_at timestamp as HH:MM", () => {

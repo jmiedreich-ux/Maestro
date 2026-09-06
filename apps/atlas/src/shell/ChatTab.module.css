@@ -18,7 +18,12 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 0;
+  /* WCAG 2.5.5: a real 44x44px minimum tap target, not just the glyph's
+     own line box. Negative margin keeps the visible label's position
+     unchanged. */
+  padding: 12px 8px;
+  margin: -12px -8px -12px 0;
+  min-height: 44px;
 }
 
 .eyebrow {

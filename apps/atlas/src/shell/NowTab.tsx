@@ -162,7 +162,15 @@ export function NowTab({ systemState = "normal" }: NowTabProps = {}) {
         <div className={styles.subline}>{state.subline}</div>
 
         <div className={styles.progressBlock}>
-          <div className={styles.track}>
+          <div
+            className={styles.track}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={state.progressPercent === "unavailable" ? undefined : state.progressPercent}
+            aria-valuetext={state.progressPercent === "unavailable" ? "unavailable" : undefined}
+            aria-label="Task progress"
+          >
             <span className={styles.fill} style={{ width: progressWidth }} />
           </div>
           <div className={styles.boundaryRow}>

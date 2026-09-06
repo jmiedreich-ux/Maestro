@@ -67,30 +67,52 @@ function formatTime(createdAt: string): string {
 }
 
 /**
- * One honest, plain-English description of a real state transition —
- * never invented dialogue. Cites the real event_type, the real
- * before/after state (when present), and the real reason_code.
+ * Turns a real machine identifier (a PascalCase event_type like
+ * "PacketMaterialized", or a SCREAMING_SNAKE reason_code like
+ * "WORK_STARTED") into plain, lowercase words — "packet materialized",
+ * "work started". Never invents new words: every character it outputs
+ * came from the real identifier, only re-cased and re-spaced.
+ */
+function humanizeWords(identifier: string): string {
+  return identifier
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .trim();
+}
+
+/** Same word-splitting as `humanizeWords`, capitalized for use as the start of a sentence. */
+function humanizeIdentifier(identifier: string): string {
+  const words = humanizeWords(identifier);
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * One honest, plain-language description of a real state transition —
+ * never invented dialogue. Cites the real before/after state (when
+ * present) and the real reason_code, in concise, humanized words
+ * rather than raw identifiers. Omits `entity_type`/`entity_id`: every
+ * event a real thread renders already belongs to the one packet its
+ * own header identifies, so repeating the id on every line is clutter,
+ * not information.
  */
 function describeEvent(event: RealEvent): string {
   const before = typeof event.before_json?.["state"] === "string" ? (event.before_json["state"] as string) : null;
   const after = typeof event.after_json?.["state"] === "string" ? (event.after_json["state"] as string) : null;
   const reasonCode = event.reason?.reason_code;
 
-  let body: string;
-  if (before && after) {
-    body = `${event.entity_type} ${event.entity_id}: ${before} → ${after}`;
-  } else {
-    body = `${event.entity_type} ${event.entity_id}: ${event.event_type}`;
-  }
-  return reasonCode ? `${body} (${reasonCode})` : body;
+  const body = before && after ? `${before} → ${after}` : humanizeIdentifier(event.event_type);
+  return reasonCode ? `${body} — ${humanizeWords(reasonCode)}` : body;
 }
 
 export function synthesizeThreadEntry(event: RealEvent): ThreadEntry {
+  const after = typeof event.after_json?.["state"] === "string" ? (event.after_json["state"] as string) : undefined;
   return {
     k: roleKeyForActorType(event.actor_type),
     who: event.actor_type,
     text: describeEvent(event),
     time: formatTime(event.created_at),
+    afterState: after,
   };
 }
 

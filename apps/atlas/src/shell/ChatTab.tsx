@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
-import { derivePacketHeaderState } from "../thread/headerState";
+import { deriveRealHeaderState } from "../thread/realHeaderState";
 import { textColorFor } from "../thread/PacketThread";
 import { ROLE_LABEL, type EntryRoleKey } from "../thread/fixtures";
 import { useRealPacketThread } from "../thread/useRealPacketThread";
@@ -98,9 +98,11 @@ function nameColorFor(role: EntryRoleKey): string {
  * hook `PacketThread.tsx` uses), reusing its role labels and
  * text-color rule (`textColorFor`, exported from `PacketThread.tsx`
  * for this reuse), restyled as chat bubbles per the reference file's
- * own mobile markup, and C7's real `derivePacketHeaderState` for the
- * header (the same single state source every other real header
- * surface already reads from). No message composer or send control is
+ * own mobile markup, and `deriveRealHeaderState` for the header — a
+ * real-data equivalent of C7's `derivePacketHeaderState`, which only
+ * ever implemented the fixture's own escalation story and has no real
+ * field to read a status from once this tab shows an arbitrary real
+ * packet's events. No message composer or send control is
  * rendered: the reference file's own composer
  * (`Atlas Mobile.dc.html:193-197`) has no real backend counterpart
  * anywhere in M1/M2 — no command exists for sending a chat message to
@@ -112,7 +114,7 @@ function nameColorFor(role: EntryRoleKey): string {
 export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: string }) {
   const real = useRealPacketThread(packetId);
   const entries = real.entries;
-  const state = derivePacketHeaderState(entries);
+  const state = deriveRealHeaderState(packetId, entries);
 
   return (
     <div className={styles.tab} style={SHELL_VARS}>
@@ -127,7 +129,7 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
           {state.stateLine}
         </div>
       </div>
-      <div className={styles.feed}>
+      <div className={styles.feed} aria-live="polite">
         {/* Newest first, so the most recent real event is visible
             immediately without scrolling — unlike C1's desktop
             PacketThread, which keeps the reference file's own

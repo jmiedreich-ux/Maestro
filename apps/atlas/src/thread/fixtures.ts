@@ -21,6 +21,10 @@ export interface ThreadEntry {
   cadence?: boolean;
   escalate?: boolean;
   closure?: string;
+  // Set only by real backend events that carry a real after-state
+  // (realEventSynthesis.ts) — lets a real header show the packet's
+  // actual current state without inventing one for fixture entries.
+  afterState?: string;
 }
 
 /**
