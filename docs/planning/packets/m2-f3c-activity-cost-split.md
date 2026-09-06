@@ -1,7 +1,7 @@
 # M2 Wave F — Mobile Activity Tab, Cost Segment (Weekly Window + Split) — Candidate 01
 
 **Slice ID:** `MB-SLICE-M2-F3C-ACTIVITY-COST-SPLIT-01`
-**Status:** `Awaiting Decision Fidelity review`
+**Status:** `Decision Fidelity review returned PASS WITH NON-BLOCKING NOTES (a wrong baseline test-count narrative, a miscited color precedent, a minor CSS-value wording imprecision, and a disclosed latent test-query risk for a future slice) — 3 fixed at zero cost, 1 disclosed for the future slice it concerns, no planning correction needed`
 **Base:** `8aa33ce` (full: `8aa33ce5787e296d95dee0b4921ebd77e2b752dd`, `origin/master`)
 
 ## Scope, deliberately minimal
@@ -35,20 +35,28 @@ deferred):
    "observed 15:02 · local Qwen kept separate" (`#A79BB4`).
 2. **"m1-a split" card** (`:287-309`): an eyebrow "m1-a split", a real
    3-way segmented control (`split.bases` — Cost/Tokens/Time, `flex:1`
-   each on mobile, unlike desktop's `flex:none`), a "share of {{
-   split.basisNote }}" line, then two groups ("by role", "by kind of
-   work"), each a stacked percentage bar (`g.parts`, per-part
-   `p.w`/`p.color`) plus a legend (dot + label + pct + right-aligned
-   abs, one per line — a column layout, unlike desktop's own
-   flex-wrap row), and a trailing caveat line.
+   each on mobile — desktop's own `.segButton` declares no `flex`
+   property at all, defaulting to `flex: 0 1 auto`, sizing to content
+   rather than stretching equally), a "share of {{ split.basisNote
+   }}" line, then two groups ("by role", "by kind of work"), each a
+   stacked percentage bar (`g.parts`, per-part `p.w`/`p.color`) plus a
+   legend (dot + label + pct + right-aligned abs, one per line — a
+   column layout, unlike desktop's own flex-wrap row), and a trailing
+   caveat line.
 
 **Real token matches, checked directly against `colors.ts`:**
 `colors.inkMuted` (`#8E8299`, both eyebrows), `colors.warningText`
-(`#8A5A08`, the unattributed figure), `colors.inkFaint` (`#A79BB4`,
-meta/group-name/legend-abs — matching E1B's `WeeklyWindowStrip.tsx`
-and E3's `PerfBreakdownCard.tsx` token choices exactly),
-`colors.inkSecondary` (`#6C6376`, the legend label — the same token
-this file's own `--atlas-entry-detail`/`--atlas-ag-line` already use),
+(`#8A5A08`, the unattributed figure), `colors.inkFaint` (`#A79BB4` —
+the weekly-window meta line, matching the real mobile mockup's own
+literal directly; and separately, the split card's own group-name/
+legend-abs colors, matching E3's own `PerfBreakdownCard.tsx` token
+choices exactly — **not** a `WeeklyWindowStrip.tsx` precedent for
+those two fields, which has no group/legend layout of its own at all;
+`WeeklyWindowStrip.tsx`'s own meta field uses `colors.inkMuted`, not
+`inkFaint` — corrected per Decision Fidelity review, see
+Pre-verification below), `colors.inkSecondary` (`#6C6376`, the legend
+label — the same token this file's own
+`--atlas-entry-detail`/`--atlas-ag-line` already use),
 `colors.segmentedTrack[2]` (`#F2EFF7`, both the segmented control's
 own track and the bar's own track — a different real index of the
 same array this file's own outer segmented control already uses `[0]`
@@ -234,9 +242,14 @@ const SEGMENTS: ReadonlyArray<{ key: ActivitySegment; label: string }> = [
  * new `--atlas-week-*`/`--atlas-split-*` vars: `colors.inkMuted`
  * (`#8E8299`, both eyebrows — "openai weekly window" line 282,
  * "m1-a split" line 288), `colors.warningText` (`#8A5A08`, the
- * unattributed figure, line 283), `colors.inkFaint` (`#A79BB4`, meta/
- * group-name/legend-abs colors, matching E1B's own `WeeklyWindowStrip.tsx`
- * and E3's own `PerfBreakdownCard.tsx` token choices exactly),
+ * unattributed figure, line 283), `colors.inkFaint` (`#A79BB4` — the
+ * weekly-window meta line, matching the real mobile mockup's own
+ * literal directly, and separately the split card's own group-name/
+ * legend-abs colors, matching E3's own `PerfBreakdownCard.tsx` token
+ * choices exactly; **not** a `WeeklyWindowStrip.tsx` precedent for
+ * those latter two fields, which has no group/legend layout at all —
+ * `WeeklyWindowStrip.tsx`'s own meta field uses `colors.inkMuted`, not
+ * `inkFaint` — corrected per Decision Fidelity review),
  * `colors.inkSecondary` (`#6C6376`, the legend label, line 303 — the
  * same token this file's own `--atlas-entry-detail` and `--atlas-ag-line`
  * already use), `colors.segmentedTrack[2]` (`#F2EFF7`, both the
@@ -1219,13 +1232,13 @@ This candidate's exact file contents above were applied to this
 scratch worktree (`/tmp/maestro-m2-f3c-cost`, branch
 `architecture/m2-f3c-activity-cost`, base `8aa33ce`) and run through
 the real frontend toolchain from `apps/atlas` (`npm install`, then
-each script below), before this packet was finalized. Zero corrections
-were needed — every check passed on the first attempt.
+each script below), before this packet was finalized. The first draft
+passed every check with zero failures on the first attempt.
 
 - `npm run typecheck` (`tsc --noEmit`) — clean.
 - `npm run lint` (`eslint .`) — clean.
 - `npm test` (`vitest run`) — **22/22 test files, 172/172 tests
-  passed** (15 in `ActivityTab.test.tsx` itself, up from F3B's own 11;
+  passed** (15 in `ActivityTab.test.tsx` itself, up from F3B's own 13;
   zero regressions in the other 21 files, including
   `PerfBreakdownCard.test.tsx` and `WeeklyWindowStrip.test.tsx`,
   neither of which this slice touches).
@@ -1235,6 +1248,50 @@ were needed — every check passed on the first attempt.
   custom property was cross-checked programmatically against
   `ActivityTab.module.css`'s own `var(...)` references — zero orphans
   either direction.
+
+**Independent Decision Fidelity review result:** `PASS WITH
+NON-BLOCKING NOTES`, zero blocking findings. The review independently
+re-derived every claim from source — re-reading every cited real file,
+enumerating all 63 hex values in `colors.ts` to confirm `#4C4457`
+genuinely has no match, re-reading the real mockup lines directly, and
+independently re-applying this packet's exact proposed files to
+re-run the full toolchain, reproducing 172/172 exactly — and found
+four issues, all fixed or disclosed at zero cost, no planning
+correction consumed:
+
+1. **Wrong baseline test count.** This section originally said
+   `ActivityTab.test.tsx` grew "up from F3B's own 11" tests; the real
+   F3B baseline is 13. The absolute totals (22/22, 172/172) were
+   independently reproduced and always correct — only the delta
+   narrative was wrong. Fixed above.
+2. **Miscited color precedent.** The Evidence section and this file's
+   own doc comment both claimed `colors.inkFaint` for the split card's
+   meta/group-name/legend-abs colors "matches E1B's own
+   `WeeklyWindowStrip.tsx` ... token choices exactly." False as
+   stated: `WeeklyWindowStrip.tsx`'s own meta field uses
+   `colors.inkMuted`, not `inkFaint`, and it has no group-name/
+   legend-abs fields at all (only `PerfBreakdownCard.tsx` does, and
+   those two genuinely match). The code's own color choice was always
+   correct — only the cited precedent was wrong. Fixed both locations
+   above.
+3. **Minor wording imprecision.** "flex:1 each on mobile, unlike
+   desktop's `flex:none`" overstated the desktop CSS — `PerfBreakdownCard.module.css`'s
+   own `.segButton` declares no `flex` property at all (defaults to
+   `flex: 0 1 auto`), never a literal `flex:none`. The described
+   behavioral contrast (mobile stretches equally, desktop sizes to
+   content) is directionally accurate; the literal citation wasn't.
+   Fixed above.
+4. **Disclosed, not fixed: a latent test-query risk.** Once the Cost
+   segment is selected, two buttons with the accessible name "Cost"
+   coexist in the DOM — the outer segmented control's own Cost tab and
+   the split card's own basis toggle's default-selected Cost button.
+   None of this slice's own 15 tests re-query `getByRole("button",
+   { name: "Cost" })` after the split card has rendered, so nothing
+   currently fails, but a future slice's test (e.g. the deferred "Per
+   action" records slice) must scope any such query (e.g. to the outer
+   `<nav>`/segmented-control container) rather than querying
+   unscoped — noted here for that slice's own author, not fixed in
+   this slice since no current test is affected.
 
 The scratch changes were reverted (`git checkout --`) after this
 verification; only this packet document is committed by this planning
@@ -1281,10 +1338,10 @@ slice.
 |---|---|
 | `schema` | `maestro.bootstrap-slice-status/v1` |
 | `slice_id` | `MB-SLICE-M2-F3C-ACTIVITY-COST-SPLIT-01` |
-| `phase` | `AwaitingReview` |
+| `phase` | `MergeReady` |
 | `current_actor` | `architect` |
 | `live_execution_evidence` | `null` |
-| `planning_review_count` | `0` |
+| `planning_review_count` | `1` |
 | `planning_correction_count` | `0` |
 | `implementation_review_count` | `0` |
 | `implementation_correction_count` | `0` |
