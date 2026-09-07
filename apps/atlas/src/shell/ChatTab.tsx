@@ -61,6 +61,11 @@ const SHELL_VARS = {
   "--atlas-mine-bg": "#EFEAFE",
   "--atlas-other-bg": colors.surface,
   "--atlas-ink-faint": colors.inkFaint,
+  // Same real values ActivityTab.tsx's own History-segment timeline
+  // uses, reused verbatim so Chat's timeline reads consistently with
+  // Activity's timeline, not a near-miss variant.
+  "--atlas-rail": "#E6E0EE",
+  "--atlas-dot-ring": colors.pageBgMobile,
   "--atlas-time-color": colors.borderDashed[2],
   "--atlas-ink-muted": colors.inkMuted,
   // Same real value C7's `PacketHeader.tsx` already uses for its own
@@ -90,6 +95,19 @@ function nameColorFor(role: EntryRoleKey): string {
   if (role === "ow") return colors.accentHover;
   if (role === "ar") return colors.accentDeepest;
   return isMine(role) ? colors.accentHover : colors.ink;
+}
+
+/**
+ * `realEventSynthesis.ts`'s own `describeEvent` joins a state
+ * transition (or humanized event type) and a humanized reason code
+ * with " — " when a reason is present. Splitting on that same
+ * separator lets the timeline row show them as a title/detail pair
+ * (matching ActivityTab's own History row) instead of one dense line.
+ */
+function splitEntryText(text: string): { title: string; detail: string | null } {
+  const separatorIndex = text.indexOf(" — ");
+  if (separatorIndex === -1) return { title: text, detail: null };
+  return { title: text.slice(0, separatorIndex), detail: text.slice(separatorIndex + 3) };
 }
 
 /**
@@ -135,21 +153,30 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
             PacketThread, which keeps the reference file's own
             oldest-first order for a continuous scroll-to-read feed. */}
         {[...entries].reverse().map((entry, index) => {
-          const mine = isMine(entry.k);
+          const { title, detail } = splitEntryText(entry.text);
+          const accent = nameColorFor(entry.k);
           return (
             <div key={`${index}-${entry.who}-${entry.time}`} className={styles.row}>
-              <div className={styles.nameRow}>
-                <span className={styles.name} style={{ color: nameColorFor(entry.k) }}>
-                  {entry.who}
-                </span>
-                <span className={styles.role}>{ROLE_LABEL[entry.k]}</span>
-                <time className={styles.time}>{entry.time}</time>
+              <div className={styles.railCol}>
+                <span className={styles.rail} aria-hidden="true" />
+                <span
+                  className={styles.entryDot}
+                  aria-hidden="true"
+                  style={{ borderColor: accent }}
+                />
               </div>
-              <div
-                className={`${styles.bubble} ${mine ? styles.mine : styles.other}`}
-                style={{ color: textColorFor(entry) }}
-              >
-                {entry.text}
+              <div className={styles.body}>
+                <div className={styles.entryLine}>
+                  <span className={styles.tag} style={{ color: accent }}>
+                    {entry.who}
+                  </span>
+                  {ROLE_LABEL[entry.k] && <span className={styles.role}>{ROLE_LABEL[entry.k]}</span>}
+                  <time className={styles.entryMeta}>{entry.time}</time>
+                </div>
+                <div className={styles.entryTitle} style={{ color: textColorFor(entry) }}>
+                  {title}
+                </div>
+                {detail && <div className={styles.entryDetail}>{detail}</div>}
               </div>
             </div>
           );

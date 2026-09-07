@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatTab } from "./ChatTab";
+import styles from "./ChatTab.module.css";
 import type { RealEvent } from "../thread/realEventSynthesis";
 
 const PACKET_ID = "packet-test-chat";
@@ -69,22 +70,22 @@ describe("ChatTab", () => {
         }),
       }),
     );
-    render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
+    const { container } = render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     await waitFor(() => {
-      expect(screen.getAllByText(/./, { selector: "[class*='bubble']" }).length).toBeGreaterThan(0);
+      expect(container.getElementsByClassName(styles.row).length).toBeGreaterThan(0);
     });
-    const bubbles = screen.getAllByText(/./, { selector: "[class*='bubble']" });
+    const rows = Array.from(container.getElementsByClassName(styles.row));
     // The snapshot itself is newest-first (event_id 2 listed before 1);
     // useRealPacketThread reverses it to oldest-first for its own
     // shared entries shape, and ChatTab reverses it back — the most
     // recent real event (event_id 2) is visible first, no scrolling.
-    expect(bubbles.map((b) => b.textContent)).toEqual([
-      "Assigned → In progress — work started",
-      "Ready to start → Assigned — work started",
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining("Assigned → In progresswork started"),
+      expect.stringContaining("Ready to start → Assignedwork started"),
     ]);
   });
 
-  it("renders every real event as its own bubble, including pre-work transitions (queued/waiting/ready/dispatchable) — no collapsing", async () => {
+  it("renders every real event as its own timeline row, including pre-work transitions (queued/waiting/ready/dispatchable) — no collapsing", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -99,17 +100,14 @@ describe("ChatTab", () => {
         }),
       }),
     );
-    render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
+    const { container } = render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     await waitFor(() => {
-      expect(screen.getAllByText(/./, { selector: "[class*='bubble']" }).length).toBe(4);
+      expect(container.getElementsByClassName(styles.entryTitle).length).toBe(4);
     });
-    const bubbles = screen.getAllByText(/./, { selector: "[class*='bubble']" });
-    expect(bubbles.map((b) => b.textContent)).toEqual([
-      "Ready to start → Assigned — work started",
-      "Waiting → Ready to start — work started",
-      "Waiting → Ready to start — work started",
-      "State transition — work started",
-    ]);
+    const titles = Array.from(container.getElementsByClassName(styles.entryTitle)).map((el) => el.textContent);
+    const details = Array.from(container.getElementsByClassName(styles.entryDetail)).map((el) => el.textContent);
+    expect(titles).toEqual(["Ready to start → Assigned", "Waiting → Ready to start", "Waiting → Ready to start", "State transition"]);
+    expect(details).toEqual(["work started", "work started", "work started", "work started"]);
   });
 
   it("shows every entry's own name/role/time row unconditionally, unlike C1's desktop grouping (the reference file's mobile view has no such grouping)", async () => {

@@ -69,18 +69,59 @@
   background: var(--atlas-feed-bg);
 }
 
+/**
+ * Same vertical-timeline shape ActivityTab's own History segment uses
+ * (rail + dot + tag/meta line + title/detail body) — reused here so
+ * Chat's real event stream reads consistently with Activity's real
+ * event stream, rather than as a two-person conversation these events
+ * never actually were.
+ */
 .row {
-  padding: 9px 18px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 18px;
 }
 
-.nameRow {
+.railCol {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--atlas-rail);
+}
+
+.entryDot {
+  position: relative;
+  margin-top: 16px;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  background: var(--atlas-feed-bg);
+  box-shadow: 0 0 0 4px var(--atlas-dot-ring);
+}
+
+.body {
+  min-width: 0;
+  padding: 12px 0 4px;
+}
+
+.entryLine {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 5px;
 }
 
-.name {
+.tag {
   font-size: 13px;
   font-weight: 700;
 }
@@ -90,24 +131,22 @@
   color: var(--atlas-ink-faint);
 }
 
-.time {
+.entryMeta {
   margin-left: auto;
   font: 500 11.5px var(--atlas-font-mono);
   color: var(--atlas-time-color);
 }
 
-.bubble {
-  max-width: 87%;
-  padding: 12px 14px;
-  border-radius: 18px;
+.entryTitle {
+  margin-top: 5px;
   font-size: 14.5px;
-  line-height: 1.55;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-.mine {
-  background: var(--atlas-mine-bg);
-}
-
-.other {
-  background: var(--atlas-other-bg);
+.entryDetail {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--atlas-ink-muted);
 }
