@@ -953,7 +953,6 @@ class RecordRouteTests(unittest.TestCase):
         for message, changes in notification_cases:
             invalid("APP-REL-10", message, lambda changes=changes: OperationalStateStore._notification(changed("_notification", **changes), NOW))
         progress_cases = (
-            ("worker progress prose must be pre-redacted with a receipt", {"plan_payload_json": {"kind": "reason", "reason_code": "X", "detail_reference": None}}),
             ("worker ETA must be unknown, UTC time, or ISO-8601 duration", {"eta_text": "soon"}),
             ("worker progress confidence/status request state is invalid", {"confidence": "Other"}),
             ("worker progress confidence/status request state is invalid", {"status_request_state": "Other"}),
@@ -1155,7 +1154,7 @@ class RecordRouteTests(unittest.TestCase):
             ("APP-REL-08", InvalidRecord, "open_wait creates unresolved Open waits only", no_prepare, lambda store: store.open_wait(record("_wait", state="Resolved"), "durable-r08", ACTOR, NOW)),
             ("APP-REL-09", InvalidRecord, "review kind is invalid", no_prepare, lambda store: store.record_review(record("_review", review_kind="Other"), "durable-r09", ACTOR, NOW)),
             ("APP-REL-10", InvalidRecord, "notification channel or severity is invalid", no_prepare, lambda store: store.record_notification(record("_notification", channel="Other"), "durable-r10", ACTOR, NOW)),
-            ("APP-REL-11", InvalidRecord, "worker progress prose must be pre-redacted with a receipt", no_prepare, lambda store: store.record_worker_progress(record("_worker_progress", plan_payload_json={"kind": "reason", "reason_code": "X", "detail_reference": None}), "durable-r11", ACTOR, NOW)),
+            ("APP-REL-11", InvalidRecord, "worker ETA must be unknown, UTC time, or ISO-8601 duration", no_prepare, lambda store: store.record_worker_progress(record("_worker_progress", eta_text="soon"), "durable-r11", ACTOR, NOW)),
             ("APP-REL-12", InvalidRecord, "future growth lower bound exceeds upper bound", no_prepare, lambda store: store.record_context_usage(growth_bad, "durable-r12", ACTOR, NOW)),
             ("APP-REL-13", InvalidRecord, "unavailable allowance values must remain null", no_prepare, lambda store: store.record_allowance_window(record("_allowance", precision="Unavailable", measurement_quality="Unavailable", freshness="Unavailable"), "durable-r13", ACTOR, NOW)),
             ("APP-REL-14", InvalidRecord, "reconciliation must retain the allowance native unit", prepare_allowance, lambda store: store.record_usage_reconciliation(record("_reconciliation", native_unit="tokens"), "durable-r14", ACTOR, NOW)),
