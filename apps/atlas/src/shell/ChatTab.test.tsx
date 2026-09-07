@@ -84,6 +84,32 @@ describe("ChatTab", () => {
     ]);
   });
 
+  it("collapses real pre-work states (queued/waiting/ready/dispatchable) into one trail line, not separate bubbles", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          events: [
+            realEvent({ event_id: 4, before_json: { state: "Ready" }, after_json: { state: "Leased" } }),
+            realEvent({ event_id: 3, before_json: { state: "Waiting" }, after_json: { state: "Dispatchable" } }),
+            realEvent({ event_id: 2, before_json: { state: "Waiting" }, after_json: { state: "Ready" } }),
+            realEvent({ event_id: 1, before_json: {}, after_json: { state: "Planned" } }),
+          ],
+        }),
+      }),
+    );
+    render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
+    await waitFor(() => {
+      expect(screen.getByText("Queued → Ready to start")).toBeInTheDocument();
+    });
+    // Only the one real milestone (Ready to start -> Assigned) gets its
+    // own bubble; the three pre-work transitions do not.
+    const bubbles = screen.getAllByText(/./, { selector: "[class*='bubble']" });
+    expect(bubbles).toHaveLength(1);
+    expect(bubbles[0].textContent).toBe("Ready to start → Assigned — work started");
+  });
+
   it("shows every entry's own name/role/time row unconditionally, unlike C1's desktop grouping (the reference file's mobile view has no such grouping)", async () => {
     render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     await waitFor(() => {
