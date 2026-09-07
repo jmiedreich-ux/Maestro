@@ -159,9 +159,9 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
                   <span className={styles.tag} style={{ color: accent }}>
                     {entry.who}
                   </span>
-                  {ROLE_LABEL[entry.k] && <span className={styles.role}>{ROLE_LABEL[entry.k]}</span>}
                   <time className={styles.entryMeta}>{entry.time}</time>
                 </div>
+                {ROLE_LABEL[entry.k] && <div className={styles.role}>{ROLE_LABEL[entry.k]}</div>}
                 <div className={styles.entryTitle} style={{ color: textColorFor(entry) }}>
                   {title}
                 </div>
