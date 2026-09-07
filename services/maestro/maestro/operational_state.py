@@ -2997,8 +2997,6 @@ class OperationalStateStore:
             row[field] = _text(row[field], field)
         for field in ("plan_payload_json", "current_step_payload_json", "blocker_payload_json"):
             row[field] = validate_payload(row[field])
-            if row[field]["kind"] != "redacted-text":
-                raise InvalidRecord("worker progress prose must be pre-redacted with a receipt")
         if not isinstance(row["eta_text"], str) or not (
             row["eta_text"] == "unknown" or _is_timestamp(row["eta_text"]) or _ISO_DURATION.fullmatch(row["eta_text"])
         ):
