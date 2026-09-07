@@ -16,11 +16,13 @@ class FakeEventSource {
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ events: [] }) }));
   vi.stubGlobal("EventSource", FakeEventSource);
+  window.localStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 describe("MobileShell", () => {
@@ -110,5 +112,28 @@ describe("MobileShell", () => {
   it("renders no image, icon font, or <svg> element", () => {
     const { container } = render(<MobileShell />);
     expect(container.querySelector("img, svg, i[class*=icon]")).toBeNull();
+  });
+
+  it("persists the selected tab across a real remount (mobile Safari discards and reloads a backgrounded tab)", () => {
+    const { unmount } = render(<MobileShell />);
+    const nav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    fireEvent.click(within(nav).getByRole("button", { name: "Activity" }));
+    unmount();
+
+    render(<MobileShell />);
+    // Scoped to the tab bar: ActivityTab's own segmented control also
+    // sets aria-current on its selected segment button.
+    const newNav = screen.getByRole("navigation", { name: "Atlas tabs" });
+    const current = within(newNav).getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Activity");
+  });
+
+  it("falls back to Now when localStorage holds no real recognized tab (first visit, or a private-browsing throw)", () => {
+    window.localStorage.setItem("atlas-mobile-selected-tab", "not-a-real-tab");
+    render(<MobileShell />);
+    const current = screen.getAllByRole("button", { current: true });
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Now");
   });
 });

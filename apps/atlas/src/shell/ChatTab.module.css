@@ -44,6 +44,19 @@
   color: var(--atlas-title);
 }
 
+/**
+ * The real reason for the packet's own most recent event — a
+ * prominent subtitle so the header doesn't read as a settled, past
+ * state ("Assigned") with no acknowledgment of what actually just
+ * happened ("work started").
+ */
+.latestDetail {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--atlas-ink-muted);
+}
+
 .stateLine {
   display: flex;
   align-items: center;
