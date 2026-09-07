@@ -4,6 +4,7 @@ import { deriveRealHeaderState } from "../thread/realHeaderState";
 import { textColorFor } from "../thread/PacketThread";
 import { ROLE_LABEL, type EntryRoleKey } from "../thread/fixtures";
 import { useRealPacketThread } from "../thread/useRealPacketThread";
+import { derivePreWorkTrail, isPreWorkEntry } from "../thread/lifecycleSteps";
 import styles from "./ChatTab.module.css";
 
 /**
@@ -115,6 +116,13 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
   const real = useRealPacketThread(packetId);
   const entries = real.entries;
   const state = deriveRealHeaderState(packetId, entries);
+  // Real pre-work states (queued/waiting/ready/dispatchable) are
+  // mechanically real but not narratively interesting individually —
+  // shown once as a compact trail, not as separate messages. Only
+  // real milestones (assigned, started, blocked, finished, ...) get
+  // their own bubble.
+  const preWorkTrail = derivePreWorkTrail(entries);
+  const milestoneEntries = entries.filter((entry) => !isPreWorkEntry(entry));
 
   return (
     <div className={styles.tab} style={SHELL_VARS}>
@@ -128,13 +136,16 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
           <span className={styles.dot} aria-hidden="true" />
           {state.stateLine}
         </div>
+        {preWorkTrail.length > 0 && (
+          <div className={styles.preWorkTrail}>{preWorkTrail.join(" → ")}</div>
+        )}
       </div>
       <div className={styles.feed} aria-live="polite">
         {/* Newest first, so the most recent real event is visible
             immediately without scrolling — unlike C1's desktop
             PacketThread, which keeps the reference file's own
             oldest-first order for a continuous scroll-to-read feed. */}
-        {[...entries].reverse().map((entry, index) => {
+        {[...milestoneEntries].reverse().map((entry, index) => {
           const mine = isMine(entry.k);
           return (
             <div key={`${index}-${entry.who}-${entry.time}`} className={styles.row}>
