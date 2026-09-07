@@ -54,6 +54,7 @@ describe("ChatTab", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Assigned" })).toBeInTheDocument();
     });
+    expect(screen.getAllByText("work started").length).toBeGreaterThan(0);
     expect(screen.getByText("2 real events recorded")).toBeInTheDocument();
   });
 
@@ -113,10 +114,10 @@ describe("ChatTab", () => {
   it("shows every entry's own name/role/time row unconditionally, unlike C1's desktop grouping (the reference file's mobile view has no such grouping)", async () => {
     render(<ChatTab onBack={() => {}} packetId={PACKET_ID} />);
     await waitFor(() => {
-      expect(screen.getAllByText("MaestroDeveloper").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Maestro Developer").length).toBeGreaterThan(0);
     });
-    expect(screen.getAllByText("IntegrationAgent")).toHaveLength(1);
-    expect(screen.getAllByText("MaestroDeveloper")).toHaveLength(1);
+    expect(screen.getAllByText("Integration Agent")).toHaveLength(1);
+    expect(screen.getAllByText("Maestro Developer")).toHaveLength(1);
   });
 
   it("calls onBack when the '‹ Now' button is pressed", () => {

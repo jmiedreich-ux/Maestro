@@ -1,5 +1,5 @@
 import type { ThreadEntry } from "./fixtures";
-import { labelForState } from "./realEventSynthesis";
+import { labelForState, splitEntryText } from "./realEventSynthesis";
 
 /**
  * A real-data header state — distinct from `headerState.ts`'s own
@@ -14,14 +14,24 @@ import { labelForState } from "./realEventSynthesis";
 export interface RealHeaderState {
   eyebrow: string;
   title: string;
+  /**
+   * The real reason for the packet's single most recent event (e.g.
+   * "work started") — a prominent subtitle, separate from `stateLine`,
+   * so the header doesn't read as a settled, past state ("Assigned")
+   * with no acknowledgment of what actually just happened.
+   */
+  latestDetail: string | null;
   stateLine: string;
 }
 
 export function deriveRealHeaderState(packetId: string, entries: ThreadEntry[]): RealHeaderState {
   const latestWithState = [...entries].reverse().find((entry) => entry.afterState !== undefined);
+  const latest = entries[entries.length - 1];
+  const latestDetail = latest ? splitEntryText(latest.text).detail : null;
   return {
     eyebrow: packetId.replace(/^packet-/, ""),
     title: latestWithState ? labelForState(latestWithState.afterState as string) : "Waiting for events",
+    latestDetail,
     stateLine:
       entries.length === 0
         ? "No real events recorded yet"

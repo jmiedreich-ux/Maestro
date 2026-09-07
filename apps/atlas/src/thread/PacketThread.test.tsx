@@ -98,14 +98,14 @@ describe("PacketThread", () => {
   it("shows the avatar and name row when the actor changes, groups consecutive same-actor entries", async () => {
     render(<PacketThread packetId={PACKET_ID} />);
     await waitFor(() => {
-      expect(screen.getAllByText(/MaestroDeveloper|IntegrationAgent/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Maestro Developer|Integration Agent/).length).toBeGreaterThan(0);
     });
     // Event 1 (IntegrationAgent) and event 2 (MaestroDeveloper, a
     // different actor) each show their own name row; event 3 repeats
     // event 2's actor with no intervening plan/cadence entry, so it is
     // grouped (name shown once, not twice).
-    expect(screen.getAllByText("IntegrationAgent")).toHaveLength(1);
-    expect(screen.getAllByText("MaestroDeveloper")).toHaveLength(1);
+    expect(screen.getAllByText("Integration Agent")).toHaveLength(1);
+    expect(screen.getAllByText("Maestro Developer")).toHaveLength(1);
   });
 
   it("renders the Coordinator avatar with the reference file's real background, not the neutralChip token's value", async () => {

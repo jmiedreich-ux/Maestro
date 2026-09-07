@@ -9,6 +9,29 @@ import styles from "./MobileShell.module.css";
 
 export type MobileShellTab = "now" | "chat" | "plan" | "activity";
 
+/**
+ * A real problem on a real phone: mobile Safari discards a backgrounded
+ * tab under memory pressure and reloads it fresh on return, resetting
+ * React state — the selected tab kept silently reverting to "Now".
+ * Persisting the real selection to localStorage (best-effort; a
+ * private-browsing throw just falls back to the in-memory default)
+ * survives that reload.
+ */
+const SELECTED_TAB_STORAGE_KEY = "atlas-mobile-selected-tab";
+
+function isMobileShellTab(value: unknown): value is MobileShellTab {
+  return value === "now" || value === "chat" || value === "plan" || value === "activity";
+}
+
+function readStoredTab(): MobileShellTab {
+  try {
+    const stored = window.localStorage.getItem(SELECTED_TAB_STORAGE_KEY);
+    return isMobileShellTab(stored) ? stored : "now";
+  } catch {
+    return "now";
+  }
+}
+
 const TABS: ReadonlyArray<{ tab: MobileShellTab; label: string }> = [
   { tab: "now", label: "Now" },
   { tab: "chat", label: "Chat" },
@@ -45,7 +68,17 @@ const SHELL_VARS = {
 } as CSSProperties;
 
 export function MobileShell() {
-  const [selected, setSelected] = useState<MobileShellTab>("now");
+  const [selected, setSelectedState] = useState<MobileShellTab>(readStoredTab);
+
+  function setSelected(tab: MobileShellTab) {
+    setSelectedState(tab);
+    try {
+      window.localStorage.setItem(SELECTED_TAB_STORAGE_KEY, tab);
+    } catch {
+      // Best-effort only — private browsing or a full storage quota
+      // throws; the tab still switches for this session either way.
+    }
+  }
 
   return (
     <div className={styles.shell} style={SHELL_VARS}>

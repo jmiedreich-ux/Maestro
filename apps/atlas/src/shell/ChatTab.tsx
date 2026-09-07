@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { colors, fontFamily } from "../tokens";
 import { deriveRealHeaderState } from "../thread/realHeaderState";
+import { splitEntryText } from "../thread/realEventSynthesis";
 import { textColorFor } from "../thread/PacketThread";
 import { ROLE_LABEL, type EntryRoleKey } from "../thread/fixtures";
 import { useRealPacketThread } from "../thread/useRealPacketThread";
@@ -98,19 +99,6 @@ function nameColorFor(role: EntryRoleKey): string {
 }
 
 /**
- * `realEventSynthesis.ts`'s own `describeEvent` joins a state
- * transition (or humanized event type) and a humanized reason code
- * with " — " when a reason is present. Splitting on that same
- * separator lets the timeline row show them as a title/detail pair
- * (matching ActivityTab's own History row) instead of one dense line.
- */
-function splitEntryText(text: string): { title: string; detail: string | null } {
-  const separatorIndex = text.indexOf(" — ");
-  if (separatorIndex === -1) return { title: text, detail: null };
-  return { title: text.slice(0, separatorIndex), detail: text.slice(separatorIndex + 3) };
-}
-
-/**
  * Mobile "Chat" tab — the reference file's own `isThread` view,
  * rendering the real packet thread (via `useRealPacketThread`, the same
  * hook `PacketThread.tsx` uses), reusing its role labels and
@@ -142,6 +130,7 @@ export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: st
         </button>
         <span className={styles.eyebrow}>{state.eyebrow}</span>
         <h1 className={styles.title}>{state.title}</h1>
+        {state.latestDetail && <div className={styles.latestDetail}>{state.latestDetail}</div>}
         <div className={styles.stateLine}>
           <span className={styles.dot} aria-hidden="true" />
           {state.stateLine}

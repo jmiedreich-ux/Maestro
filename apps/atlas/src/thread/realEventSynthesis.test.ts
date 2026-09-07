@@ -87,9 +87,19 @@ describe("synthesizeThreadEntry", () => {
     expect(withoutState.afterState).toBeUndefined();
   });
 
-  it("formats the real created_at timestamp as HH:MM", () => {
-    const entry = synthesizeThreadEntry(event({ created_at: "2026-09-06T14:52:30.000000Z" }));
-    expect(entry.time).toBe("14:52");
+  it("formats the real created_at timestamp as a real 12-hour clock time, not raw 24-hour", () => {
+    expect(synthesizeThreadEntry(event({ created_at: "2026-09-06T14:52:30.000000Z" })).time).toBe("2:52 PM");
+    expect(synthesizeThreadEntry(event({ created_at: "2026-09-06T00:05:00.000000Z" })).time).toBe("12:05 AM");
+    expect(synthesizeThreadEntry(event({ created_at: "2026-09-06T12:00:00.000000Z" })).time).toBe("12:00 PM");
+    expect(synthesizeThreadEntry(event({ created_at: "2026-09-06T09:00:00.000000Z" })).time).toBe("9:00 AM");
+  });
+
+  it("also formats a real space-separated created_at (the actual /snapshot/events response shape, not just the ISO 'T' form)", () => {
+    // A real bug: the read API's own snapshot response uses a space
+    // separator ("2026-09-06 22:19:27"), not "T" — formatTime's regex
+    // only matched "T", so every real snapshot event's time silently
+    // fell through to the raw, un-formatted string.
+    expect(synthesizeThreadEntry(event({ created_at: "2026-09-06 14:52:30" })).time).toBe("2:52 PM");
   });
 
   it("maps a real Owner actor_type to the ow role key", () => {
@@ -125,9 +135,10 @@ describe("synthesizeThreadEntry", () => {
     expect(entry.closure).toBeUndefined();
   });
 
-  it("uses the real actor_type verbatim as who, never a fictional name", () => {
+  it("uses the real actor_type as who, title-cased into real words, never a fictional name", () => {
     const entry = synthesizeThreadEntry(event({ actor_type: "MaestroDeveloper" }));
-    expect(entry.who).toBe("MaestroDeveloper");
+    expect(entry.who).toBe("Maestro Developer");
+    expect(synthesizeThreadEntry(event({ actor_type: "IntegrationAgent" })).who).toBe("Integration Agent");
   });
 });
 

@@ -102,10 +102,22 @@ function roleKeyForActorType(actorType: string): EntryRoleKey {
   return "co";
 }
 
-/** `created_at` is a canonical UTC timestamp (e.g. "2026-09-06T19:00:00.000000Z"); render just HH:MM, matching every other real time value already shown in this program. */
+/**
+ * `created_at` is a real UTC timestamp — but not one fixed separator:
+ * the read API's own `/snapshot/events` response uses a space
+ * ("2026-09-06 19:00:00"), while an SSE `/stream/events` frame or a
+ * hand-built test fixture may use "T" (ISO 8601, "2026-09-06T19:00:00").
+ * Assuming only "T" was a real bug — every real snapshot event's time
+ * silently fell through to the raw, un-formatted string. Render as a
+ * real 12-hour clock time with am/pm either way.
+ */
 function formatTime(createdAt: string): string {
-  const match = /T(\d{2}):(\d{2})/.exec(createdAt);
-  return match ? `${match[1]}:${match[2]}` : createdAt;
+  const match = /[T ](\d{2}):(\d{2})/.exec(createdAt);
+  if (!match) return createdAt;
+  const hour24 = Number(match[1]);
+  const period = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${match[2]} ${period}`;
 }
 
 /**
@@ -127,6 +139,19 @@ function humanizeWords(identifier: string): string {
 function humanizeIdentifier(identifier: string): string {
   const words = humanizeWords(identifier);
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * Same word-splitting as `humanizeWords`, but every word capitalized —
+ * for a real actor_type shown as a name ("MaestroDeveloper" ->
+ * "Maestro Developer"), not a sentence.
+ */
+function titleCaseIdentifier(identifier: string): string {
+  return humanizeWords(identifier)
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 /**
@@ -197,11 +222,25 @@ export function synthesizeThreadEntry(event: RealEvent): ThreadEntry {
   const after = readState(parseMaybeJson(event.after_json)) ?? undefined;
   return {
     k: roleKeyForActorType(event.actor_type),
-    who: event.actor_type,
+    who: titleCaseIdentifier(event.actor_type),
     text: describeEvent(event),
     time: formatTime(event.created_at),
     afterState: after,
   };
+}
+
+/**
+ * `describeEvent` joins a state transition (or humanized event type)
+ * and a humanized reason code with " — " when a reason is present.
+ * Splitting on that same separator lets a caller show them as a
+ * title/detail pair (ChatTab's timeline row) or pick just the detail
+ * (the header's own "what actually just happened" line) instead of
+ * always reading the one dense joined line.
+ */
+export function splitEntryText(text: string): { title: string; detail: string | null } {
+  const separatorIndex = text.indexOf(" — ");
+  if (separatorIndex === -1) return { title: text, detail: null };
+  return { title: text.slice(0, separatorIndex), detail: text.slice(separatorIndex + 3) };
 }
 
 export function synthesizeThreadEntries(events: RealEvent[]): ThreadEntry[] {
