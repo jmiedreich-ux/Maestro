@@ -24,13 +24,25 @@ export interface RealHeaderState {
   stateLine: string;
 }
 
-export function deriveRealHeaderState(packetId: string, entries: ThreadEntry[]): RealHeaderState {
+export function deriveRealHeaderState(
+  packetId: string,
+  entries: ThreadEntry[],
+  // The packet's own real, authoritative current state, read directly
+  // from /snapshot/packets (see useRealPacketThread.ts's own doc
+  // comment on `packetState` for why this can't be reliably inferred
+  // from `entries` alone: a state change from starting/finishing an
+  // attempt's execution is recorded under that Attempt's own
+  // entity_id, never the packet's). Falls back to inferring from
+  // entries only when this hasn't loaded yet.
+  authoritativeState: string | null = null,
+): RealHeaderState {
   const latestWithState = [...entries].reverse().find((entry) => entry.afterState !== undefined);
+  const currentState = authoritativeState ?? latestWithState?.afterState ?? null;
   const latest = entries[entries.length - 1];
   const latestDetail = latest ? splitEntryText(latest.text).detail : null;
   return {
     eyebrow: packetId.replace(/^packet-/, ""),
-    title: latestWithState ? labelForState(latestWithState.afterState as string) : "Waiting for events",
+    title: currentState ? labelForState(currentState) : "Waiting for events",
     latestDetail,
     stateLine:
       entries.length === 0

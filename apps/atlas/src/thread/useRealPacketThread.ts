@@ -19,6 +19,19 @@ import { readApiBaseUrl } from "../readApiBaseUrl";
 export interface UseRealPacketThreadResult {
   entries: ThreadEntry[];
   resyncRequired: boolean;
+  /**
+   * The packet's own real, authoritative current state (e.g.
+   * "Running"), read directly from `/snapshot/packets` — not inferred
+   * from the event feed above. A real gap found while wiring this: a
+   * state change caused by starting/finishing an attempt's execution
+   * is recorded under that Attempt's own entity_id, not the packet's,
+   * so it never appears in `entries` at all; inferring "current state"
+   * from the last packet-entity event alone silently missed it (a real
+   * packet showed a stale "Assigned" status after work had actually
+   * started). The packets table itself is the one real source of
+   * truth for current state, so read it directly instead.
+   */
+  packetState: string | null;
 }
 
 /**
@@ -29,12 +42,26 @@ export interface UseRealPacketThreadResult {
 export function useRealPacketThread(packetId: string | undefined): UseRealPacketThreadResult {
   const [entries, setEntries] = useState<ThreadEntry[]>([]);
   const [resyncRequired, setResyncRequired] = useState(false);
+  const [packetState, setPacketState] = useState<string | null>(null);
 
   useEffect(() => {
     if (!packetId) return;
 
     let cancelled = false;
     let eventSource: EventSource | null = null;
+
+    async function loadPacketState() {
+      try {
+        const response = await fetch(`${readApiBaseUrl()}/snapshot/packets?limit=500`);
+        if (!response.ok) return;
+        const data = (await response.json()) as { packets?: Array<{ packet_id: string; state: string }> };
+        const packet = (data.packets ?? []).find((p) => p.packet_id === packetId);
+        if (!cancelled && packet) setPacketState(packet.state);
+      } catch {
+        // Best-effort only — the header falls back to inferring from
+        // entries when this fails.
+      }
+    }
 
     async function loadSnapshotThenStream() {
       let lastEventId = 0;
@@ -61,12 +88,18 @@ export function useRealPacketThread(packetId: string | undefined): UseRealPacket
         if (!cancelled) setEntries([]);
       }
 
+      void loadPacketState();
       if (cancelled) return;
 
       eventSource = new EventSource(`${readApiBaseUrl()}/stream/events?after=${lastEventId}`);
       eventSource.onmessage = (message: MessageEvent<string>) => {
         if (cancelled) return;
         const event = JSON.parse(message.data) as RealEvent;
+        // Any live event might have changed this packet's real current
+        // state (including one recorded under a different entity, like
+        // an Attempt) — re-read the authoritative source rather than
+        // only reacting to events whose own entity_id matches.
+        void loadPacketState();
         if (event.entity_id !== packetId) return;
         setEntries((previous) => [...previous, synthesizeThreadEntry(event)]);
       };
@@ -83,5 +116,5 @@ export function useRealPacketThread(packetId: string | undefined): UseRealPacket
     };
   }, [packetId]);
 
-  return { entries, resyncRequired };
+  return { entries, resyncRequired, packetState };
 }
