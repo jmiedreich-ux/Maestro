@@ -154,4 +154,30 @@ describe("useRealPacketThread", () => {
     await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     expect(result.current.entries).toEqual([]);
   });
+
+  it("reads packetState from /snapshot/packets directly, not inferred from entries — a real state change recorded under an Attempt's own entity_id never appears in entries at all", async () => {
+    globalThis.fetch = vi.fn((url: string) => {
+      if (url.includes("/snapshot/packets")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            packets: [{ packet_id: "packet-foundry-cg-m4-19", state: "Running" }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          // The only packet-entity event on record still says "Leased" —
+          // the real Attempt-entity event that moved it to Running is
+          // never fetched by this query at all.
+          events: [realEvent({ event_id: 1, before_json: { state: "Dispatchable" }, after_json: { state: "Leased" } })],
+        }),
+      });
+    }) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useRealPacketThread("packet-foundry-cg-m4-19"));
+
+    await waitFor(() => expect(result.current.packetState).toBe("Running"));
+  });
 });

@@ -120,7 +120,7 @@ function nameColorFor(role: EntryRoleKey): string {
 export function ChatTab({ onBack, packetId }: { onBack: () => void; packetId: string }) {
   const real = useRealPacketThread(packetId);
   const entries = real.entries;
-  const state = deriveRealHeaderState(packetId, entries);
+  const state = deriveRealHeaderState(packetId, entries, real.packetState);
 
   return (
     <div className={styles.tab} style={SHELL_VARS}>
