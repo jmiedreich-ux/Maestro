@@ -61,12 +61,6 @@
   background: var(--atlas-state-dot);
 }
 
-.preWorkTrail {
-  margin-top: 6px;
-  font: 500 12px var(--atlas-font-mono);
-  color: var(--atlas-ink-muted);
-}
-
 .feed {
   flex: 1;
   min-height: 0;
