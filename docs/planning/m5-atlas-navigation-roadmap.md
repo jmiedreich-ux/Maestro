@@ -52,6 +52,23 @@ the stopgap with the real thing.
    parameter on `/snapshot/packets` for grouping/filtering by
    `milestone_ref` (for items 1, 2, 4).
 
+7. **Real project/packet onboarding surfaced in Atlas.** Slotted in
+   2026-09-08, Architect-tier ("slot pre-approved work into the
+   process" — see [M0-D17](decisions/m0-d17-real-m4-16-ruling-loop-classification-criteria.md)):
+   the Owner asked for plain steps to start Maestro and found there was
+   no real path at all — registering a project and creating a packet
+   existed only as Python call sequences, never a command. M4.17 (D0,
+   see `m4-packet-breakdown.md`) built the real CLI for this
+   (`maestro register-project`, `maestro materialize-packet`), but it is
+   a terminal-only path today. This item is Atlas's own front end for
+   it: a real "register a project" / "create a packet" flow reachable
+   from the app, not a JSON file and a CLI invocation. **Still real,
+   disclosed, unclosed after M4.17**: claiming a materialized packet
+   (`Dispatchable -> Leased`, real lease/lock/attempt allocation) has no
+   command anywhere yet — a real resource-allocation decision (M3's own
+   territory). Item 7 cannot offer a real, complete "start to finish in
+   Atlas" flow until that exists either.
+
 ## Open, not yet decided
 
 - Exact shape of the "current active packet" selection state: is it

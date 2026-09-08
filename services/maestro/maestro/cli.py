@@ -13,6 +13,7 @@ from .development_manager import run_cycle
 from .dispatch_orchestrator import now_iso
 from .operational_state import Actor, OperationalStateStore
 from .packet_wrapper import PacketWrapper
+from .project_onboarding import materialize_and_ready_packet, register_project
 from .read_api import ReadApiBindError, ReadApiConfig, ReadApiServer, canonical_response_json
 from .review_readiness import (
     canonical_json,
@@ -36,6 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
     serve_read_api = commands.add_parser("serve-read-api", help="run the loopback-only Atlas read API scaffold")
     serve_read_api.add_argument("--host", default="127.0.0.1", help="loopback host to bind")
     serve_read_api.add_argument("--port", type=int, default=8765, help="port to bind (0 for an OS-assigned ephemeral port)")
+    register = commands.add_parser(
+        "register-project", help="real step 1 of starting Maestro: register a real project from a real repository",
+    )
+    register.add_argument("--request", type=Path, required=True, help="closed local registration request JSON")
+    register.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
+    register.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this registration")
+    materialize = commands.add_parser(
+        "materialize-packet", help="real step 2 of starting Maestro: create one real packet and ready it for claim",
+    )
+    materialize.add_argument("--request", type=Path, required=True, help="closed local packet-materialization request JSON")
+    materialize.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
+    materialize.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this packet")
     dev_manager = commands.add_parser(
         "development-manager-loop",
         help="run the real M4 driver: recovery, review, acceptance, merge, notification -- one cycle, repeatedly",
@@ -76,6 +89,10 @@ def main() -> int:
     if args.command == "run-packet":
         print(PacketWrapper(RuntimeConfig.from_runtime_dir(args.runtime_dir)).run(args.packet).as_json())
         return 0
+    if args.command == "register-project":
+        return _register_project(args)
+    if args.command == "materialize-packet":
+        return _materialize_packet(args)
     if args.command == "review-readiness":
         try:
             request_bytes = args.request.read_bytes()
@@ -92,6 +109,27 @@ def main() -> int:
     if args.command == "development-manager-loop":
         return _development_manager_loop(args)
     raise ValueError(f"Unsupported Maestro command: {args.command}")
+
+
+def _register_project(args: argparse.Namespace) -> int:
+    config = RuntimeConfig.from_runtime_dir(args.runtime_dir)
+    foundation = SQLiteFoundation(config)
+    store = OperationalStateStore(config)
+    actor = Actor("MaestroDeveloper", args.actor_id, "register-project")
+    request = json.loads(args.request.read_text(encoding="utf-8"))
+    result = register_project(foundation, store, request, actor, now_iso())
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def _materialize_packet(args: argparse.Namespace) -> int:
+    config = RuntimeConfig.from_runtime_dir(args.runtime_dir)
+    store = OperationalStateStore(config)
+    actor = Actor("MaestroDeveloper", args.actor_id, "materialize-packet")
+    request = json.loads(args.request.read_text(encoding="utf-8"))
+    result = materialize_and_ready_packet(store, request, actor, now_iso())
+    print(json.dumps(result, sort_keys=True))
+    return 0
 
 
 def _development_manager_loop(args: argparse.Namespace) -> int:

@@ -254,6 +254,20 @@ thread/process per attempt, or a task queue) that deserves its own real
 decision. This loop drives a packet from already-`Leased`+dispatched
 (M3's own existing manual claim/dispatch) through to `Merged`.
 
+**M4.17b — real onboarding CLI (2026-09-08, same day, Owner asked for
+plain steps to start Maestro and found no real path).** Two more real
+gaps, closed alongside M4.17: registering a real project and creating a
+real packet existed only as Python call sequences (`m4_fixtures.py`'s
+own setup), never a command. `project_onboarding.py` +
+`maestro register-project` / `maestro materialize-packet` close both —
+proven end-to-end over a real subprocess call, a real repository reaches
+a real `Dispatchable` packet through nothing but these two commands.
+**Still real, disclosed, unclosed:** claiming a `Dispatchable` packet
+(`Dispatchable -> Leased`) still has no command — real resource-
+allocation scope (M3's territory), not addressed here. Also slotted
+into [M5 item 7](m5-atlas-navigation-roadmap.md) as the real front-end
+surface for this same real gap.
+
 ## What this breakdown deliberately does not include
 
 - No packet for the ruling loop's own real implementation (blocked on
