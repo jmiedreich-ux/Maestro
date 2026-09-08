@@ -293,6 +293,33 @@ stand-in that makes a real commit). Also slotted into
 [M5 item 7](m5-atlas-navigation-roadmap.md) as the real front-end
 surface for this same path.
 
+**M4.17e — the real M0-D02 discovery pass (Owner correction, same
+day).** The Owner asked why `register-project` made a human hand-write
+the binding when the SOP says registration begins with a read-only
+discovery pass and the Architect proposes the binding. Correct:
+M0-D02 step 1-3 requires reading the repository, producing an
+owner-readable inventory, and *proposing* a binding.
+`synthetic_discovery.py`'s inventory/binding/escalation engine and
+`real_discovery.py`'s GitHub feed both already existed; no command
+ever ran the pass over a real local checkout. `project_discovery.py` +
+`maestro discover-project` is that command.
+
+The judgment boundary is preserved exactly as `real_discovery.py`
+already declared it: only mechanically observable facts are read (the
+repository identifier, the real default branch, which declared
+authority paths actually exist at HEAD, and the real build/test
+commands declared in a `package.json`'s own `scripts`). Nothing is
+guessed from prose. Every unobservable leaf stays absent, so the
+existing engine reports it as `missing` and the result carries an
+explicit `architect_worklist` — the Architect's own named worklist per
+the SOP. An `--overlay` of the Architect's answers merges over the
+observed facts, and once nothing is missing or conflicting the same
+engine returns a real `proposed_binding`. Nothing is auto-approved:
+`register-project` remains the separate, explicit act that persists it.
+
+Proven against this repository itself: 6 leaves confirmed from real
+facts, 23 named for the Architect, zero invented.
+
 ## What this breakdown deliberately does not include
 
 - No packet for the ruling loop's own real implementation (blocked on

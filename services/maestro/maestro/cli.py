@@ -15,6 +15,7 @@ from .executor import LocalQwenExecutorAdapter
 from .dispatch_orchestrator import now_iso
 from .operational_state import Actor, OperationalStateStore
 from .packet_wrapper import PacketWrapper
+from .project_discovery import discover_project
 from .project_onboarding import materialize_and_ready_packet, register_project
 from .read_api import ReadApiBindError, ReadApiConfig, ReadApiServer, canonical_response_json
 from .review_readiness import (
@@ -39,6 +40,16 @@ def build_parser() -> argparse.ArgumentParser:
     serve_read_api = commands.add_parser("serve-read-api", help="run the loopback-only Atlas read API scaffold")
     serve_read_api.add_argument("--host", default="127.0.0.1", help="loopback host to bind")
     serve_read_api.add_argument("--port", type=int, default=8765, help="port to bind (0 for an OS-assigned ephemeral port)")
+    discover = commands.add_parser(
+        "discover-project",
+        help="real step 0 of starting Maestro: read-only discovery pass over a repository (M0-D02)",
+    )
+    discover.add_argument("--repository", type=Path, required=True, help="real local checkout to read")
+    discover.add_argument("--github-reference", required=True, help="owner/name form, e.g. janedoe/bookshelf")
+    discover.add_argument(
+        "--overlay", type=Path, default=None,
+        help="JSON of the Architect's own answers for leaves discovery cannot observe",
+    )
     register = commands.add_parser(
         "register-project", help="real step 1 of starting Maestro: register a real project from a real repository",
     )
@@ -112,6 +123,12 @@ def main() -> int:
         return 0
     if args.command == "run-packet":
         print(PacketWrapper(RuntimeConfig.from_runtime_dir(args.runtime_dir)).run(args.packet).as_json())
+        return 0
+    if args.command == "discover-project":
+        overlay = json.loads(args.overlay.read_text(encoding="utf-8")) if args.overlay else None
+        print(json.dumps(
+            discover_project(args.repository, args.github_reference, overlay), sort_keys=True, indent=2,
+        ))
         return 0
     if args.command == "register-project":
         return _register_project(args)
