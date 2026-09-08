@@ -124,7 +124,7 @@ actually dispatched):
   `record_and_route_review` with `review_kind="IndependentImplementation"`.
   Depends on V1 and V2 (V2's own prior review must already exist on the
   same head).
-- **M4.08 (V4) — Correction-review dispatch.** (Renumbered from V3.) Same as V3
+- **M4.08 (V4) — Correction-review dispatch. Built.** (Renumbered from V3.) Same as V3
   for the correction path (`record_and_route_correction_review`), reusing
   V1. Depends on V1 and V2; can build in parallel with V3.
 

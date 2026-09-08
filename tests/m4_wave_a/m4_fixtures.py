@@ -137,28 +137,73 @@ class ClaimedPacketFixture:
         self.packet_version = claim["packet"]["version"]
         self.lease_version = claim["lease"]["version"]
 
-    def start_execution(self, *, handle: str = "fake-handle-1", expected_result: str = "AwaitingIntegration"):
+    def start_execution(
+        self, *, attempt_id: str = "attempt-1", handle: str | None = None,
+        expected_result: str = "AwaitingIntegration",
+    ):
+        # execution_handle is globally unique (attempts.execution_handle)
+        # -- a real second attempt (a real correction) needs its own
+        # real, distinct handle, not the Initial attempt's.
+        if handle is None:
+            handle = f"fake-handle-{attempt_id}"
         started = self.store.start_attempt_execution(
-            "attempt-1", self.attempt_version, self.packet_version,
-            handle, expected_result, REASON, "start-1", ACTOR, NOW,
+            attempt_id, self.attempt_version, self.packet_version,
+            handle, expected_result, REASON, f"start-{attempt_id}", ACTOR, NOW,
         )
         self.attempt_version = started["attempt"]["version"]
         self.packet_version = started["packet"]["version"]
         self.execution_handle = handle
         return started
 
-    def finish_succeeded(self, result_commit: str):
+    def finish_succeeded(self, result_commit: str, *, attempt_id: str = "attempt-1"):
         """Real finish, Succeeded — requires `start_execution` first.
         ``result_commit`` should be a real commit the fixture's own
         repository actually has."""
         finished = self.store.finish_attempt_execution(
-            "attempt-1", self.attempt_version, self.packet_version, self.lease_version,
+            attempt_id, self.attempt_version, self.packet_version, self.lease_version,
             self.execution_handle, "Succeeded", result_commit, "evidence-ref",
-            REASON, "finish-1", ACTOR, NOW,
+            REASON, f"finish-{attempt_id}", ACTOR, NOW,
         )
         self.attempt_version = finished["attempt"]["version"]
         self.packet_version = finished["packet"]["version"]
         return finished
+
+    def dispatch_correction(
+        self, review_id: str, *, expected_packet_version: int | None = None,
+        attempt_id: str = "attempt-2", lease_id: str = "lease-2", lock_id: str = "lock-2",
+    ):
+        """Real correction dispatch — requires the packet already be
+        real `AwaitingArchitect` (a real `RequestChanges` review).
+        ``expected_packet_version`` defaults to the fixture's own last
+        tracked version, but a caller that routed a review directly
+        through `review_dispatch.py` (bypassing the fixture) must pass
+        the real version that call actually returned — the fixture has
+        no way to observe that on its own. Resets the fixture's own
+        tracked attempt/packet/lease version state to this new real
+        correction attempt's own.
+
+        Real gap this session already found once for CG-M4-19: lock
+        rows persist even after release (an existence check, not a
+        state check) — reusing the Initial attempt's own `lock_id` here
+        would fail with "correction lock_id already exists".
+        """
+        version = self.packet_version if expected_packet_version is None else expected_packet_version
+        self.lease_expires_at = iso_plus(3600)
+        lease = {
+            "executor_route": "local-qwen/developer-1", "expires_at": self.lease_expires_at,
+            "holder_id": "developer-1", "lease_id": lease_id,
+            "worktree_path": str(self.repository.path),
+        }
+        locks = [{"lock_id": lock_id, "lock_kind": "Path", "resource_key": "shared:tests/fake"}]
+        attempt = {"attempt_id": attempt_id, "model_identity": "qwen3.6:27b", "runtime_identity": "local-qwen-ollama"}
+        dispatched = self.store.record_and_dispatch_correction(
+            "packet-1", version, review_id, lease, locks, attempt,
+            REASON, f"dispatch-correction-{attempt_id}", ACTOR, NOW,
+        )
+        self.attempt_version = dispatched["attempt"]["version"]
+        self.packet_version = dispatched["packet"]["version"]
+        self.lease_version = dispatched["lease"]["version"]
+        return dispatched
 
     def close(self) -> None:
         self.runtime.close()
