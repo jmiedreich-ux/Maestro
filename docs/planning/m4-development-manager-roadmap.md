@@ -79,11 +79,14 @@ for automation that doesn't exist yet. M4 is that automation.
 - **The autonomous Architect ruling loop's own real boundary** — *that*
   it's real M4 scope is now confirmed (2026-09-08); *what* it's actually
   allowed to rule on unilaterally versus what still requires the real
-  Owner is not. Needs its own real scoping decision before packetizing —
+  Owner is not fully specified. The Owner set the governing ratio the
+  same day: **90% Maestro process, 10% Owner** — the loop should resolve
+  the large majority of real architectural rulings itself, escalating
+  only the real minority that genuinely needs a human. Still open: the
+  concrete criteria that sort a given ruling into the 90% or the 10% —
   the four examples above (M5 adoption, an acceptance-authority fix, a
-  rejected milestone-home ruling) were all human judgment calls this
-  session; which of those a real bounded agent could safely make alone is
-  an open, high-stakes question, not something to assume by extension.
+  rejected milestone-home ruling) are real instances to classify against
+  once that criteria exists, not yet classified themselves.
 - **Heartbeat cadence and staleness threshold** for real recovery — no
   real value chosen yet for how long a silent attempt is tolerated before
   recovery acts. `heartbeat_attempt_execution` already exists and is
