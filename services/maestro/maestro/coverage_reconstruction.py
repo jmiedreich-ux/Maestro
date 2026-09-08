@@ -50,20 +50,30 @@ def reconstruct_coverage(
     slice_id: str,
     reconstruction_commands: list[str],
     timeout_seconds: int = 180,
+    base: str | None = None,
 ) -> dict:
     """``packet`` is a real packet row (e.g. from
     ``store.snapshot("Packet", packet_id)``) — its own real
-    `base_commit`, `owned_paths_json`, and `checks_json` are reused
-    verbatim, never re-typed. ``head`` is the real commit to check
-    (usually the packet's own real `current_head` once a real attempt
-    has produced one).
+    `owned_paths_json` and `checks_json` are reused verbatim, never
+    re-typed. ``head`` is the real commit to check (the Succeeded
+    attempt's own real `result_commit`).
+
+    ``base`` defaults to the packet's own `base_commit` — correct for
+    a real Integration/`IndependentImplementation` review (M4.06/M4.07).
+    A real correction review (M4.08) must pass it explicitly instead:
+    `record_and_route_correction_review` requires the coverage's own
+    `base` to be the *Initial* attempt's real `result_commit`, not the
+    packet's own original `base_commit` — a real, checked distinction
+    (`operational_state.py`'s own correction-review routing), not the
+    same field reused twice.
     """
+    resolved_base = packet["base_commit"] if base is None else base
     request = {
         "schema": REQUEST_SCHEMA,
         "slice_id": slice_id,
         "review_kind": "IndependentImplementation",
         "repository": repository,
-        "base": packet["base_commit"],
+        "base": resolved_base,
         "head": head,
         "allowed_paths": sorted(packet["owned_paths_json"], key=lambda item: item.encode("utf-8")),
         "validation_commands": [_to_command(command) for command in packet["checks_json"]],

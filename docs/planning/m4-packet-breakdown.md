@@ -111,7 +111,7 @@ actually dispatched):
   `{"kind": "review-readiness-coverage", "result": ...}` — no code
   anywhere does this wrapping today. Touches: new small module, reuses
   `review_readiness.py`. No schema change.
-- **M4.06 (V2) — Integration/`ValidateOnly` review recording.** **New packet,
+- **M4.06 (V2) — Integration/`ValidateOnly` review recording. Built.** **New packet,
   added by the fidelity review** — `_REVIEW_ROUTES` hard-requires exactly
   one prior review with `review_kind="Integration"`,
   `result="ValidateOnly"`, `reviewer_role="IntegrationAgent"` on the same
@@ -119,7 +119,7 @@ actually dispatched):
   without this, the first real call to V3 would raise `InvalidRecord`.
   Calls the already-real `record_and_route_review` with V1's coverage
   output and `review_kind="Integration"`. Depends on V1.
-- **M4.07 (V3) — Independent-review dispatch.** (Renumbered from the pre-review
+- **M4.07 (V3) — Independent-review dispatch. Built.** (Renumbered from the pre-review
   draft's V2.) Wraps V1's output and calls the already-real
   `record_and_route_review` with `review_kind="IndependentImplementation"`.
   Depends on V1 and V2 (V2's own prior review must already exist on the

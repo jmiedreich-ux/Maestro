@@ -25,7 +25,6 @@ from maestro.project_authority import ProjectAuthorityLoader  # noqa: E402
 
 ACTOR = Actor("MaestroDeveloper", "developer-1", "correlation-1")
 NOW = "2026-09-08T05:00:00.000000Z"
-REAL_HEAD = "5e01f5a0d02c78ced41a915042b49dd8ffd666c9"
 REASON = {"kind": "reason", "reason_code": "TEST_SETUP", "detail_reference": None}
 
 
@@ -40,6 +39,7 @@ class ClaimedPacketFixture:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
         commit = self.repository.commit_all("real Foundry authority files")
+        self.base_commit = commit
 
         self.runtime = RuntimeDirectory()
         self.foundation = self.runtime.foundation()
@@ -66,7 +66,7 @@ class ClaimedPacketFixture:
             {
                 "graph_projection_id": "graph-1", "project_id": "foundry", "binding_id": "binding-1",
                 "graph_revision": "rev-1", "authority_reference": load_result.request_id,
-                "source_base_sha": REAL_HEAD,
+                "source_base_sha": commit,
                 "source_hash": hashlib.sha256(b"M4 test work item").hexdigest(),
                 "state": "Active", "observed_at": NOW,
             },
@@ -104,12 +104,12 @@ class ClaimedPacketFixture:
             {
                 "packet_id": "packet-1", "run_id": "run-1", "work_item_id": "work-1",
                 "packet_revision": "packet-r1", "authority_reference": load_result.request_id,
-                "base_commit": REAL_HEAD, "current_head": None,
+                "base_commit": commit, "current_head": None,
                 "expected_branch": "codex/m4-test", "role_contract_reference": "AGENTS.md",
                 "sop_reference": "AGENTS.md", "executor_class": "local-qwen",
                 "integration_route": "validate-only", "reviewer_route": "independent",
                 "owned_paths_json": ["tests/fake/"], "forbidden_paths_json": ["package.json"],
-                "checks_json": ["npm run check"], "resource_claims_json": ["shared:tests/fake"],
+                "checks_json": ["true"], "resource_claims_json": ["shared:tests/fake"],
                 "context_policy_json": context_policy, "state": "Planned", "correction_count": 0,
             },
             "cmd-packet", ACTOR, NOW,
@@ -144,7 +144,21 @@ class ClaimedPacketFixture:
         )
         self.attempt_version = started["attempt"]["version"]
         self.packet_version = started["packet"]["version"]
+        self.execution_handle = handle
         return started
+
+    def finish_succeeded(self, result_commit: str):
+        """Real finish, Succeeded — requires `start_execution` first.
+        ``result_commit`` should be a real commit the fixture's own
+        repository actually has."""
+        finished = self.store.finish_attempt_execution(
+            "attempt-1", self.attempt_version, self.packet_version, self.lease_version,
+            self.execution_handle, "Succeeded", result_commit, "evidence-ref",
+            REASON, "finish-1", ACTOR, NOW,
+        )
+        self.attempt_version = finished["attempt"]["version"]
+        self.packet_version = finished["packet"]["version"]
+        return finished
 
     def close(self) -> None:
         self.runtime.close()
