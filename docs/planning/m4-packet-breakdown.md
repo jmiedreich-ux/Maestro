@@ -217,6 +217,43 @@ actually dispatched):
   explicit note, building execution before this criteria is real would
   mean guessing at what it's allowed to decide.
 
+## M4.17 (D0) — The real driver loop (added after an overclaim, 2026-09-08)
+
+**This packet did not exist in the original breakdown.** After M4.01-
+M4.16 were built and marked "M4 done," the Owner asked what M4's own
+main driving goal was, then "can M4 do that now?" The honest answer was
+no: M4's own roadmap goal is a *persistent* loop replacing the human
+standing in for automation, and M4.01-M4.16 were real, individually
+tested functions that nothing called on its own — still a human (or
+nothing) standing in, just at a coarser grain. Claiming M4 "done" at
+that point was wrong, corrected here rather than left standing.
+
+**M4.17 (D0) — Built.** `development_manager.py`'s `run_cycle`: one real,
+repeatable pass over a run's packets — real recovery (M4.02-04), real
+mechanical review progression (M4.05-08, gated on
+`evaluate_review_readiness`'s own `ready` result — **found while
+building this**: `_validate_review_coverage` requires `ready=True` for
+*any* review, `Integration` included, so a mechanical loop can never
+produce a real `RequestChanges` from a coverage blocker; that stays a
+human/AI reviewer's own judgment call on otherwise-ready coverage, out
+of this loop's scope — not-ready coverage only notifies and stops),
+real acceptance per M4.16's own criterion (a) (M4.09, skipping corrected
+packets per the disclosed M1 limitation), real merge (M4.10-11), real
+notification delivery (M4.12-14). Exposed as a real, runnable CLI
+command: `maestro development-manager-loop --run-id ... --repository
+... --reconstruction-command ...` (one cycle, or `--interval-seconds`
+for continuous operation). Proven end-to-end over a real subprocess
+call: a real succeeded attempt reaches `Merged` through nothing but
+repeated cycles, no manual routing.
+
+**Still explicitly out of scope, disclosed, not silently assumed:**
+claiming new packets and launching new `DispatchOrchestrator` attempts.
+`DispatchOrchestrator.run()` blocks for an attempt's entire real
+duration; running several concurrently is a real concurrency design (a
+thread/process per attempt, or a task queue) that deserves its own real
+decision. This loop drives a packet from already-`Leased`+dispatched
+(M3's own existing manual claim/dispatch) through to `Merged`.
+
 ## What this breakdown deliberately does not include
 
 - No packet for the ruling loop's own real implementation (blocked on

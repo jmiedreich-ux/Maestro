@@ -91,6 +91,23 @@ def notify_awaiting_architect(
     )
 
 
+def notify_coverage_not_ready(
+    store: OperationalStateStore, *, run_id: str, packet_id: str, actor: Actor, now: str,
+) -> dict:
+    """Real trigger: the development-manager loop (M4's own driver)
+    found a real attempt's coverage not ready (an out-of-scope path, a
+    failing check) -- since no review of any kind can be recorded
+    against non-ready coverage (`_validate_review_coverage`'s own
+    unconditional requirement), the loop cannot route anything further
+    on its own; this is a real, honest stopping point for a human."""
+    event_id = _latest_event_id(store, "Packet", packet_id)
+    return _notify(
+        store, run_id=run_id, packet_id=packet_id, event_id=event_id,
+        severity="ActionNeeded", message_type="CoverageNotReady",
+        next_action_reference="human-review", actor=actor, now=now,
+    )
+
+
 def notify_merge_ready(
     store: OperationalStateStore, *, run_id: str, packet_id: str, actor: Actor, now: str,
 ) -> dict:
