@@ -17,9 +17,32 @@ None of these are materialized packets yet — this is the plan a real
 `materialize_packet` call would be built from, one packet at a time, as
 M2/M3's own packets were.
 
+**For quick reference in conversation, use `M4.01`–`M4.16`** (not the
+real eventual `MB-SLICE-M4-...` packet ID, which each packet gets when
+actually dispatched):
+
+| # | Packet | Concern |
+|---|---|---|
+| M4.01 | R1 — dispatch-orchestration loop, heartbeat wiring | Recovery |
+| M4.02 | R2 — staleness detection | Recovery |
+| M4.03 | R3 — auto-timeout | Recovery |
+| M4.04 | R4 — auto-redispatch | Recovery |
+| M4.05 | V1 — coverage reconstruction | Review |
+| M4.06 | V2 — Integration/ValidateOnly review recording | Review |
+| M4.07 | V3 — independent-review dispatch | Review |
+| M4.08 | V4 — correction-review dispatch | Review |
+| M4.09 | I0 — Owner-acceptance command wiring | Integration |
+| M4.10 | I1 — merge executor, happy path only | Integration |
+| M4.11 | I2 — observation wiring | Integration |
+| M4.12 | N1 — delivery loop, LocalDurable only | Notification |
+| M4.13 | N2 — retry/backoff wiring | Notification |
+| M4.14 | N3 — real trigger wiring | Notification |
+| M4.15 | N4 — Slack channel delivery (blocked) | Notification |
+| M4.16 | A0 — ruling-loop 90/10 classification criteria | Ruling loop |
+
 ## Real recovery — build first, no dependency on the other four
 
-- **R1 — Real dispatch-orchestration loop, with heartbeat wiring.**
+- **M4.01 (R1) — Real dispatch-orchestration loop, with heartbeat wiring.**
   **Corrected scope** (the fidelity review found no orchestration module
   exists anywhere that owns both an `ExecutorAdapter` and calls into
   `operational_state` — `LocalQwenExecutorAdapter` is a bare subprocess
@@ -29,7 +52,7 @@ M2/M3's own packets were.
   already-tested `heartbeat_attempt_execution` on a real interval while a
   worker runs. Touches: new orchestration module, `executor.py`. No
   schema change.
-- **R2 — Staleness detection.** A real read-only check: query `attempts`/
+- **M4.02 (R2) — Staleness detection.** A real read-only check: query `attempts`/
   `leases` for a `Running` attempt whose heartbeat is older than a real
   threshold, or whose lease has expired. Touches: new small module,
   read-only against existing tables. **Blocked on an open question:**
@@ -39,11 +62,11 @@ M2/M3's own packets were.
   a timeout detection can never both win — verified safe by construction
   in the existing `StaleState` rejection logic, but R2 must read the same
   version fields R1/R3 use, not a stale snapshot.
-- **R3 — Auto-timeout.** When R2 detects staleness, call the already-real
+- **M4.03 (R3) — Auto-timeout.** When R2 detects staleness, call the already-real
   `finish_attempt_execution(outcome="TimedOut")`. Small — this command
   already exists and is already tested; R3 is only "call it for real
   instead of a human doing it." Depends on R2.
-- **R4 — Auto-redispatch after a recovery-driven NeedsReplan.**
+- **M4.04 (R4) — Auto-redispatch after a recovery-driven NeedsReplan.**
   **Corrected scope** (the fidelity review found `record_and_close_
   needs_replan` only cancels the old packet — it does not create a
   replacement; `materialize_packet` requires a full new packet
@@ -60,7 +83,7 @@ M2/M3's own packets were.
 
 ## Real review — no dependency on recovery; blocks Integration
 
-- **V1 — Coverage reconstruction.** **Corrected reuse target** (the
+- **M4.05 (V1) — Coverage reconstruction.** **Corrected reuse target** (the
   fidelity review found `check_runner.py` does not produce the shape
   `_validate_review_coverage` actually requires; the real match is
   `review_readiness.py`'s already-built, already-CLI-wired
@@ -70,7 +93,7 @@ M2/M3's own packets were.
   `{"kind": "review-readiness-coverage", "result": ...}` — no code
   anywhere does this wrapping today. Touches: new small module, reuses
   `review_readiness.py`. No schema change.
-- **V2 — Integration/`ValidateOnly` review recording.** **New packet,
+- **M4.06 (V2) — Integration/`ValidateOnly` review recording.** **New packet,
   added by the fidelity review** — `_REVIEW_ROUTES` hard-requires exactly
   one prior review with `review_kind="Integration"`,
   `result="ValidateOnly"`, `reviewer_role="IntegrationAgent"` on the same
@@ -78,18 +101,18 @@ M2/M3's own packets were.
   without this, the first real call to V3 would raise `InvalidRecord`.
   Calls the already-real `record_and_route_review` with V1's coverage
   output and `review_kind="Integration"`. Depends on V1.
-- **V3 — Independent-review dispatch.** (Renumbered from the pre-review
+- **M4.07 (V3) — Independent-review dispatch.** (Renumbered from the pre-review
   draft's V2.) Wraps V1's output and calls the already-real
   `record_and_route_review` with `review_kind="IndependentImplementation"`.
   Depends on V1 and V2 (V2's own prior review must already exist on the
   same head).
-- **V4 — Correction-review dispatch.** (Renumbered from V3.) Same as V3
+- **M4.08 (V4) — Correction-review dispatch.** (Renumbered from V3.) Same as V3
   for the correction path (`record_and_route_correction_review`), reusing
   V1. Depends on V1 and V2; can build in parallel with V3.
 
 ## Real Integration — depends on real review (V3/V4) and real Owner acceptance (I0)
 
-- **I0 — Owner-acceptance command wiring.** **New packet, added by the
+- **M4.09 (I0) — Owner-acceptance command wiring.** **New packet, added by the
   fidelity review** — `record_and_observe_merge` only accepts a packet
   already in `AwaitingOwner` state, reached via `record_and_accept_
   packet` transitioning `MergeReady → AwaitingOwner`; a full repo grep
@@ -103,7 +126,7 @@ M2/M3's own packets were.
   Owner acceptance ever becomes something the ruling loop can grant
   itself under the 90% tier, or stays permanently human — I0 only makes
   the command reachable, it does not decide who calls it.
-- **I1 — Merge executor, happy path only.** **Corrected/descoped scope**
+- **M4.10 (I1) — Merge executor, happy path only.** **Corrected/descoped scope**
   (the fidelity review found the pre-review draft never addressed merge-
   authority/delegation requirements or conflict/gating handling — an
   automated merge executor is definitionally a `DelegatedIdentity` per
@@ -117,21 +140,21 @@ M2/M3's own packets were.
   state — I1 only handles the case where the merge succeeds cleanly;
   those cases are real, disclosed follow-up scope, not yet packetized.
   Touches: new module only; no existing command performs a merge today.
-- **I2 — Observation wiring.** Calls the already-real `record_and_
+- **M4.11 (I2) — Observation wiring.** Calls the already-real `record_and_
   observe_merge` immediately after I1 succeeds, instead of a human
   running it by hand (as done for CG-M4-19, this doc's own commits, and
   every merge this session). Depends on I1.
 
 ## Real notification — independent; most useful once recovery exists
 
-- **N1 — Delivery loop, `LocalDurable` channel only.** Reads `Pending`
+- **M4.12 (N1) — Delivery loop, `LocalDurable` channel only.** Reads `Pending`
   rows from `notifications` and delivers them (`LocalDurable` has no
   real external dependency — this is the smallest real slice that proves
   the loop). No schema change.
-- **N2 — Retry/backoff wiring.** Uses the already-real `next_attempt_at`/
+- **M4.13 (N2) — Retry/backoff wiring.** Uses the already-real `next_attempt_at`/
   `attempt_count` fields the schema already carries for this. Depends on
   N1.
-- **N3 — Real trigger wiring.** Decides which real events actually create
+- **M4.14 (N3) — Real trigger wiring.** Decides which real events actually create
   a notification (e.g., R3's recovery firing, a real `NeedsReplan`, a
   real `MergeReady`) and calls `record_notification` from those real
   call sites. **Corrected scope** (the fidelity review found the
@@ -144,13 +167,13 @@ M2/M3's own packets were.
   outcome pair), never generate one fresh per call, or a restarted
   trigger will silently double-notify. Depends on N1; benefits from
   R3/I2 existing first (nothing to notify about yet otherwise).
-- **N4 — `Slack` channel delivery.** **Blocked**: no real Slack app/
+- **M4.15 (N4) — `Slack` channel delivery.** **Blocked**: no real Slack app/
   webhook has been registered for Maestro's own use (see roadmap's
   "Open, not yet decided"). Not packetized until that credential exists.
 
 ## Autonomous Architect ruling loop — one prerequisite packet only
 
-- **A0 — Define the real 90/10 classification criteria.** A real
+- **M4.16 (A0) — Define the real 90/10 classification criteria.** A real
   decision doc (not code): the concrete test a ruling loop would use to
   sort "already Owner-approved, slot it in" from "genuinely new, escalate
   to the Owner" — classified against the real instances already on
