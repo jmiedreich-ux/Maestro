@@ -42,16 +42,25 @@ actually dispatched):
 
 ## Real recovery — build first, no dependency on the other four
 
-- **M4.01 (R1) — Real dispatch-orchestration loop, with heartbeat wiring.**
-  **Corrected scope** (the fidelity review found no orchestration module
-  exists anywhere that owns both an `ExecutorAdapter` and calls into
-  `operational_state` — `LocalQwenExecutorAdapter` is a bare subprocess
-  wrapper with no knowledge of `attempt_id`/`lease_id`/version state).
-  This packet builds that real loop: it owns the real attempt/lease
-  version state, drives the executor, and calls the already-real,
-  already-tested `heartbeat_attempt_execution` on a real interval while a
-  worker runs. Touches: new orchestration module, `executor.py`. No
-  schema change.
+- **M4.01 (R1) — Real dispatch-orchestration loop, with heartbeat wiring
+  and real completion.** **Corrected scope, twice** (the fidelity review
+  found no orchestration module exists anywhere that owns both an
+  `ExecutorAdapter` and calls into `operational_state`; a second self-
+  caught gap found while starting implementation: the original
+  description only covered heartbeating *while* a worker runs, with no
+  path from `Running` back out on normal completion — `Succeeded`/
+  `Failed` `finish_attempt_execution` calls were entirely missing, so
+  nothing would ever leave `Running` on the success path, and V1-V4
+  would have no real trigger point). This packet's real scope: own the
+  real attempt/lease version state; call `start_attempt_execution`
+  (submitting to the `ExecutorAdapter` first to get its real handle);
+  heartbeat on a real interval while `observe()` reports running; on
+  real completion, determine the real outcome from `retrieve_evidence`
+  (`Succeeded` when it produced a real commit and exited 0, `Failed`
+  otherwise — the exact real rule this session's own manual dispatches
+  used) and call the already-real, already-tested
+  `finish_attempt_execution`. Touches: new orchestration module,
+  `executor.py`. No schema change.
 - **M4.02 (R2) — Staleness detection.** A real read-only check: query `attempts`/
   `leases` for a `Running` attempt whose heartbeat is older than a real
   threshold, or whose lease has expired. Touches: new small module,
