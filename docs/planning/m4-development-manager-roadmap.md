@@ -5,9 +5,11 @@ session with the Owner; not yet decomposed into packets.
 **Scope:** Decomposes `maestro-master-plan.md`'s M4 line ("completes the
 persistent Development Manager loop: real Integration, review,
 notification, and recovery"), per
-[M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md). Whether the
-autonomous Architect ruling loop is real M4 scope is still open — see
-"Open, not yet decided" below; this roadmap does not assume it.
+[M0-D15](decisions/m0-d15-real-m1-m4-implementation-path.md), plus the
+autonomous Architect ruling loop — confirmed as real M4 scope by the
+Owner on 2026-09-08 (previously open; `m2-atlas-roadmap.md`'s own
+decision-card entry already attributed it to M4 by name, the surviving
+master-plan remap text `M0-D15` reconstructs from just didn't restate it).
 
 ## Why this exists
 
@@ -58,17 +60,30 @@ for automation that doesn't exist yet. M4 is that automation.
   execution` already accepts and correctly handles `TimedOut`; nothing
   calls it. This is the exact gap found live — Qwen went silent twice,
   and only a human noticed and acted.
+- **Autonomous Architect ruling loop** — an agent making the kind of
+  bounded, in-scope architecture ruling this session's own Project-
+  Architect decisions have been human judgment calls for (M0-D16 adopting
+  M5; the CG-M4-19 `acceptance_authority` fix; rejecting M4 as the wrong
+  home for M5's own scope). Checked: no such agent or ruling-loop code
+  exists anywhere in `services/maestro` — every real architectural
+  decision this session made was a human (me) reasoning directly, not a
+  bounded agent loop calling a real command. Real M1 primitives this
+  would plug into already exist and are tested (`record_binding`,
+  `record_graph_projection`, project-authority loading/validation); the
+  ruling logic itself — what an agent is and is not allowed to decide
+  unilaterally, and what still requires the real Owner — is fully
+  greenfield and is the highest-uncertainty item in this roadmap.
 
 ## Open, not yet decided
 
-- **The autonomous Architect ruling loop** — `m2-atlas-roadmap.md`'s own
-  decision-card entry attributes this to M4 by name, but the surviving
-  master-plan remap text `M0-D15` reconstructs from does not state it.
-  Needs a real Owner decision before it's packetized as M4 scope: is an
-  agent allowed to make the kind of ruling this session's own Project-
-  Architect decisions (M0-D16, the CG-M4-19 acceptance-authority fix) have
-  been human judgment calls, or does that stay a human role even once M4
-  ships the other four?
+- **The autonomous Architect ruling loop's own real boundary** — *that*
+  it's real M4 scope is now confirmed (2026-09-08); *what* it's actually
+  allowed to rule on unilaterally versus what still requires the real
+  Owner is not. Needs its own real scoping decision before packetizing —
+  the four examples above (M5 adoption, an acceptance-authority fix, a
+  rejected milestone-home ruling) were all human judgment calls this
+  session; which of those a real bounded agent could safely make alone is
+  an open, high-stakes question, not something to assume by extension.
 - **Heartbeat cadence and staleness threshold** for real recovery — no
   real value chosen yet for how long a silent attempt is tolerated before
   recovery acts. `heartbeat_attempt_execution` already exists and is
@@ -82,10 +97,14 @@ for automation that doesn't exist yet. M4 is that automation.
 
 ## Wave ordering and dependency
 
-Real recovery has no hard dependency on the other three and is the one
+Real recovery has no hard dependency on the other four and is the one
 this session found a live, concrete need for — reasonable to build first.
 Real review and real Integration are naturally sequential (nothing to
 merge until something reviews it for real). Real notification can be
-built independently of the other three but is most useful once recovery
-exists (a stalled/recovered attempt is exactly the kind of event worth
-notifying about).
+built independently of the rest but is most useful once recovery exists
+(a stalled/recovered attempt is exactly the kind of event worth
+notifying about). The autonomous Architect ruling loop depends on none of
+the other four technically, but its own real boundary (see "Open, not
+yet decided") has to be scoped before any of it is packetized — building
+it before that boundary is real would mean guessing at what it's allowed
+to decide.
