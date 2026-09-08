@@ -130,7 +130,7 @@ actually dispatched):
 
 ## Real Integration — depends on real review (V3/V4) and real Owner acceptance (I0)
 
-- **M4.09 (I0) — Owner-acceptance command wiring.** **New packet, added by the
+- **M4.09 (I0) — Owner-acceptance command wiring. Built.** **New packet, added by the
   fidelity review** — `record_and_observe_merge` only accepts a packet
   already in `AwaitingOwner` state, reached via `record_and_accept_
   packet` transitioning `MergeReady → AwaitingOwner`; a full repo grep
@@ -219,6 +219,19 @@ actually dispatched):
 - No packet decides who is authorized to call I0's own Owner-acceptance
   command (human vs. a future ruling-loop grant) — I0 only makes the
   real command reachable.
+
+## Real, pre-existing M1 limitations found while building M4
+
+- **A corrected packet can never be accepted through `record_and_
+  accept_packet` as it exists today.** Found building M4.09: that
+  command unconditionally requires the named `Approve` review's
+  `correction_number` be exactly `0`; a real correction (M4.08) always
+  produces an Approve review with `correction_number == 1`. This is
+  existing M1 behavior, not an M4 bug — M4 wires to existing commands,
+  it does not change M1's own logic — and is deliberately not worked
+  around (see `owner_acceptance.py`'s own doc comment). Real, disclosed,
+  unfixed: a corrected packet reaches a real `MergeReady` state it can
+  never leave through this command.
 
 ## Independent fidelity review — verified-correct claims
 
