@@ -10,14 +10,21 @@ repeatedly (a real scheduler, a cron, a `while True: sleep(...)`) and a
 run's packets progress through recovery, review, acceptance, and merge
 without a human invoking each step.
 
-**Explicitly out of scope, disclosed, not silently assumed:** this
-loop does not claim new packets or launch new `DispatchOrchestrator`
-attempts. `DispatchOrchestrator.run()` blocks for an attempt's entire
-real duration; running several concurrently is a real concurrency
-design (a thread/process per attempt, or a task queue) that deserves
-its own real decision, not a rushed addition here. This loop picks up
-from a packet already `Leased`+dispatched (M3's own existing manual
-claim/dispatch) through to `Merged`.
+**Delegation is this loop's own job** (Owner correction, 2026-09-08):
+an earlier version of this module deferred worker dispatch as
+"concurrency scope" and made it a separate operator command. That was
+wrong — delegating an assigned packet to its agent is precisely what a
+development manager *is*. `run_cycle` now picks up every real `Leased`
+packet whose attempt is still `Planned` and launches its real
+`DispatchOrchestrator` run on its own thread (`DispatchPool`), so one
+blocking worker never stalls the cycle or the other packets.
+
+**Still explicitly out of scope, disclosed:** *deciding* which packet
+goes to which worker. The Project Architect claims packets (`maestro
+claim-packet`) and thereby chooses what runs in parallel; the real
+auto-scheduler designed at M0 (`agent-workforce-control-plane.md`) is
+unbuilt in every milestone. This loop delegates what is already
+assigned, it does not assign.
 
 Every real review this loop records is **mechanical** and only ever
 `Approve`, gated on `evaluate_review_readiness`'s own real `ready`
@@ -43,9 +50,13 @@ already in place, not this loop.
 
 from __future__ import annotations
 
+import json
 import sqlite3
+import threading
 from dataclasses import dataclass, field
+from typing import Callable
 
+from .attempt_onboarding import run_attempt
 from .config import RuntimeConfig
 from .coverage_reconstruction import reconstruct_coverage
 from .merge_observation import observe_merge
@@ -65,6 +76,7 @@ from .staleness_detector import find_stale_attempts
 
 @dataclass
 class CycleReport:
+    delegated: list[str] = field(default_factory=list)
     timed_out: list[str] = field(default_factory=list)
     redispatched: list[str] = field(default_factory=list)
     reviewed: list[str] = field(default_factory=list)
@@ -75,6 +87,104 @@ class CycleReport:
 
 def _connection(config: RuntimeConfig) -> sqlite3.Connection:
     return sqlite3.connect(f"file:{config.database_path.as_posix()}?mode=ro", uri=True, timeout=5.0)
+
+
+class DispatchPool:
+    """Real, per-attempt worker threads. `DispatchOrchestrator.run()`
+    blocks for a worker's entire real duration, so the loop must never
+    call it inline — one slow packet would stall recovery, review, and
+    every other packet. Each real attempt gets its own thread; the pool
+    refuses to launch a second thread for an attempt it is already
+    running, so repeated cycles never double-dispatch."""
+
+    def __init__(self) -> None:
+        self._threads: dict[str, threading.Thread] = {}
+        self._lock = threading.Lock()
+        self.failures: dict[str, str] = {}
+
+    def active(self) -> set[str]:
+        with self._lock:
+            for attempt_id, thread in list(self._threads.items()):
+                if not thread.is_alive():
+                    del self._threads[attempt_id]
+            return set(self._threads)
+
+    def launch(self, attempt_id: str, target: Callable[[], None]) -> bool:
+        with self._lock:
+            existing = self._threads.get(attempt_id)
+            if existing is not None and existing.is_alive():
+                return False
+
+            def _run() -> None:
+                try:
+                    target()
+                except Exception as error:  # a real worker failure must not kill the loop
+                    self.failures[attempt_id] = f"{type(error).__name__}: {error}"
+
+            thread = threading.Thread(target=_run, name=f"dispatch-{attempt_id}", daemon=True)
+            self._threads[attempt_id] = thread
+            thread.start()
+            return True
+
+    def join_all(self, timeout: float | None = None) -> None:
+        for thread in list(self._threads.values()):
+            thread.join(timeout)
+
+
+def _undispatched_attempts(config: RuntimeConfig, run_id: str) -> list[dict]:
+    """Real, read-only: every attempt still `Planned` on a real `Leased`
+    packet in this run — that is, assigned by the Architect but not yet
+    delegated to its agent."""
+    connection = _connection(config)
+    try:
+        rows = connection.execute(
+            "SELECT a.attempt_id, a.packet_id FROM attempts a "
+            "JOIN packets p ON p.packet_id = a.packet_id "
+            "WHERE p.run_id=? AND p.state='Leased' AND a.state='Planned' "
+            "ORDER BY a.attempt_id",
+            (run_id,),
+        ).fetchall()
+    finally:
+        connection.close()
+    return [{"attempt_id": str(row[0]), "packet_id": str(row[1])} for row in rows]
+
+
+def _work_item(config: RuntimeConfig, work_item_id: str) -> dict | None:
+    connection = _connection(config)
+    try:
+        row = connection.execute(
+            "SELECT title, specialist_role, task_reference, input_contract_json, output_contract_json "
+            "FROM work_items WHERE work_item_id=?",
+            (work_item_id,),
+        ).fetchone()
+    finally:
+        connection.close()
+    if row is None:
+        return None
+    return {
+        "title": str(row[0]), "specialist_role": str(row[1]), "task_reference": str(row[2]),
+        "input_contract": json.loads(str(row[3])), "output_contract": json.loads(str(row[4])),
+    }
+
+
+def build_instructions(packet: dict, work_item: dict) -> str:
+    """Real delegation brief, derived only from facts the store already
+    holds — the work item's own title/contracts and the packet's own
+    owned paths, forbidden paths, and checks. Nothing invented."""
+    lines = [
+        f"Task: {work_item['title']}",
+        f"Role: {work_item['specialist_role']}",
+        f"Reference: {work_item['task_reference']}",
+        f"Contract in: {json.dumps(work_item['input_contract'], sort_keys=True)}",
+        f"Contract out: {json.dumps(work_item['output_contract'], sort_keys=True)}",
+        f"Role contract: {packet['role_contract_reference']}",
+        f"SOP: {packet['sop_reference']}",
+        f"You may only change these paths: {', '.join(packet['owned_paths_json'])}",
+        f"You must not change these paths: {', '.join(packet['forbidden_paths_json'])}",
+        f"These checks must pass: {', '.join(packet['checks_json'])}",
+        "Commit your work when the checks pass. Do not merge.",
+    ]
+    return "\n".join(lines)
 
 
 def _packet_ids_in_state(config: RuntimeConfig, run_id: str, state: str) -> list[str]:
@@ -230,12 +340,40 @@ def progress_review(
 def run_cycle(
     store: OperationalStateStore, config: RuntimeConfig, *, repository_path: str, run_id: str,
     default_branch: str, actor: Actor, now: str, reconstruction_commands: list[str],
+    executor_factory: Callable[[], object] | None = None, pool: DispatchPool | None = None,
 ) -> CycleReport:
-    """One real, complete pass over a run's real packets: recovery,
-    review progression, acceptance (per M4.16's own criteria), and
-    merge -- then real notification delivery. Safe to call repeatedly;
-    every step underneath is already idempotent/version-guarded."""
+    """One real, complete pass over a run's real packets: delegation,
+    recovery, review progression, acceptance (per M4.16's own criteria),
+    and merge -- then real notification delivery. Safe to call
+    repeatedly; every step underneath is already idempotent/version-
+    guarded.
+
+    Pass ``executor_factory`` and ``pool`` to enable real delegation:
+    every `Leased` packet whose attempt is still `Planned` is handed to
+    its own real worker on its own thread. Without them the cycle only
+    drives already-running work (used by tests that drive attempts
+    themselves)."""
     report = CycleReport()
+
+    if executor_factory is not None and pool is not None:
+        running = pool.active()
+        for candidate in _undispatched_attempts(config, run_id):
+            if candidate["attempt_id"] in running:
+                continue
+            packet = store.snapshot("Packet", candidate["packet_id"])
+            if packet is None:
+                continue
+            work_item = _work_item(config, packet["work_item_id"])
+            if work_item is None:
+                continue
+            instructions = build_instructions(packet, work_item)
+            request = {"attempt_id": candidate["attempt_id"], "instructions": instructions}
+            launched = pool.launch(
+                candidate["attempt_id"],
+                lambda request=request: run_attempt(store, request, actor, executor=executor_factory()),
+            )
+            if launched:
+                report.delegated.append(candidate["attempt_id"])
 
     stale = find_stale_attempts(config, now)
     for outcome in timeout_all_stale_attempts(store, stale, actor):

@@ -1,7 +1,7 @@
-"""The full real "start Maestro" path, all five steps, every one a real
+"""The full real "start Maestro" path -- three steps, every one a real
 subprocess CLI call: register-project -> materialize-packet ->
-claim-packet -> run-attempt -> development-manager-loop, ending in a
-real Merged packet. The worker binary is a real subprocess stand-in
+claim-packet, then the development-manager loop delegates the work to
+the agent itself and drives it to a real Merged packet. The worker binary is a real subprocess stand-in
 (a shell script that makes a real commit) so the path is proven
 without needing Ollama installed."""
 
@@ -66,7 +66,7 @@ class FullStartCliTests(unittest.TestCase):
         path.write_text(json.dumps(payload), encoding="utf-8")
         return str(path)
 
-    def test_all_five_steps_over_the_cli_reach_a_real_merged_packet(self):
+    def test_the_loop_delegates_and_drives_a_claimed_packet_to_merged(self):
         register = self._cli("register-project", "--request", self._write("register.json", {
             "repository_path": str(self.repository.path), "commit": self.commit,
             "github_reference": "jmiedreich-ux/Foundry", "project_id": "foundry",
@@ -122,23 +122,22 @@ class FullStartCliTests(unittest.TestCase):
         self.assertEqual(claim.returncode, 0, claim.stderr)
         self.assertEqual(json.loads(claim.stdout)["packet"]["state"], "Leased")
 
-        run = self._cli("run-attempt", "--qwen-binary", str(self.worker), "--request", self._write("run.json", {
-            "attempt_id": "attempt-1", "instructions": "write the test",
-            "heartbeat_interval_seconds": 0.05, "poll_interval_seconds": 0.05,
-        }))
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(json.loads(run.stdout)["outcome"], "Succeeded")
-
         store = OperationalStateStore(self.config)
-        for _ in range(5):
+        delegated = []
+        for _ in range(6):
             loop = self._cli(
                 "development-manager-loop", "--run-id", "run-1", "--repository", str(self.repository.path),
                 "--default-branch", "main", "--reconstruction-command", "echo reconstruct",
+                "--qwen-binary", str(self.worker), "--wait-for-workers",
             )
             self.assertEqual(loop.returncode, 0, loop.stderr)
+            delegated.extend(json.loads(loop.stdout)["delegated"])
             if store.snapshot("Packet", "packet-1")["state"] == "Merged":
                 break
 
+        # The loop delegated the work to the agent itself -- no operator
+        # `run-attempt` step anywhere in this test.
+        self.assertEqual(delegated, ["attempt-1"])
         self.assertEqual(store.snapshot("Packet", "packet-1")["state"], "Merged")
 
 

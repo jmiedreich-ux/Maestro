@@ -246,13 +246,29 @@ for continuous operation). Proven end-to-end over a real subprocess
 call: a real succeeded attempt reaches `Merged` through nothing but
 repeated cycles, no manual routing.
 
-**Still explicitly out of scope, disclosed, not silently assumed:**
-claiming new packets and launching new `DispatchOrchestrator` attempts.
-`DispatchOrchestrator.run()` blocks for an attempt's entire real
-duration; running several concurrently is a real concurrency design (a
-thread/process per attempt, or a task queue) that deserves its own real
-decision. This loop drives a packet from already-`Leased`+dispatched
-(M3's own existing manual claim/dispatch) through to `Merged`.
+**M4.17d — delegation folded into the loop (Owner correction, same
+day).** The bullet above originally deferred worker dispatch as
+"concurrency scope" and shipped it as a separate operator command
+(`maestro run-attempt`). The Owner corrected this: *"there is no step
+4, step 4 is the development manager picking up the milestone and work
+packets, then delegating out to the assigned agent."* Correct —
+delegating an assigned packet to its agent is precisely what a
+development manager is. `run_cycle` now picks up every real `Leased`
+packet whose attempt is still `Planned` and launches its real
+`DispatchOrchestrator` run on its own thread (`DispatchPool`), with
+the delegation brief derived only from real stored facts (the work
+item's own title/role/contracts, the packet's own owned paths,
+forbidden paths, and checks — nothing invented). One blocking worker
+can never stall the cycle or the other packets, and the pool refuses
+to double-dispatch an attempt it is already running. `run-attempt`
+survives as an optional manual escape hatch, not a required step.
+
+**Still explicitly out of scope, disclosed:** *deciding* which packet
+goes to which worker. The Project Architect claims packets (`maestro
+claim-packet`) and thereby chooses what runs in parallel; the real
+auto-scheduler designed at M0 (`agent-workforce-control-plane.md`) is
+unbuilt in every milestone. The loop delegates what is already
+assigned, it does not assign.
 
 **M4.17b — real onboarding CLI (2026-09-08, same day, Owner asked for
 plain steps to start Maestro and found no real path).** Two more real

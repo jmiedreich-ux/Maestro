@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .attempt_onboarding import claim_packet, run_attempt
 from .config import RuntimeConfig
-from .development_manager import run_cycle
+from .development_manager import DispatchPool, run_cycle
 from .executor import LocalQwenExecutorAdapter
 from .dispatch_orchestrator import now_iso
 from .operational_state import Actor, OperationalStateStore
@@ -77,6 +77,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dev_manager.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
     dev_manager.add_argument("--actor-id", default="development-manager-loop", help="real actor_id recorded on every command this cycle issues")
+    dev_manager.add_argument("--qwen-binary", default="qwen", help="real worker binary this loop delegates to (default: qwen)")
+    dev_manager.add_argument(
+        "--no-delegate", action="store_true",
+        help="drive only already-running work; do not delegate Leased packets to workers",
+    )
+    dev_manager.add_argument(
+        "--wait-for-workers", action="store_true",
+        help="in one-shot mode, block until delegated workers finish before exiting",
+    )
     dev_manager.add_argument(
         "--interval-seconds", type=float, default=None,
         help="if set, run continuously, sleeping this many real seconds between cycles; omit to run exactly one cycle and exit",
@@ -186,19 +195,23 @@ def _development_manager_loop(args: argparse.Namespace) -> int:
     store = OperationalStateStore(config)
     actor = Actor("MaestroDeveloper", args.actor_id, "development-manager-loop")
     repository_path = str(args.repository)
+    pool = None if args.no_delegate else DispatchPool()
+    factory = None if args.no_delegate else (lambda: LocalQwenExecutorAdapter(qwen_binary=args.qwen_binary))
 
     def cycle() -> None:
         report = run_cycle(
             store, config, repository_path=repository_path, run_id=args.run_id,
             default_branch=args.default_branch, actor=actor, now=now_iso(),
             reconstruction_commands=args.reconstruction_commands,
+            executor_factory=factory, pool=pool,
         )
         print(
             json.dumps(
                 {
-                    "timed_out": report.timed_out, "redispatched": report.redispatched,
-                    "reviewed": report.reviewed, "accepted": report.accepted,
-                    "merged": report.merged, "notifications_delivered": report.notifications_delivered,
+                    "delegated": report.delegated, "timed_out": report.timed_out,
+                    "redispatched": report.redispatched, "reviewed": report.reviewed,
+                    "accepted": report.accepted, "merged": report.merged,
+                    "notifications_delivered": report.notifications_delivered,
                 },
                 sort_keys=True,
             )
@@ -206,6 +219,8 @@ def _development_manager_loop(args: argparse.Namespace) -> int:
 
     if args.interval_seconds is None:
         cycle()
+        if args.wait_for_workers and pool is not None:
+            pool.join_all()
         return 0
 
     stop = {"requested": False}
