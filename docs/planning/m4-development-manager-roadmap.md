@@ -119,12 +119,13 @@ dropped.
 
 ## Open, not yet decided
 
-- **Heartbeat cadence and staleness threshold** for real recovery — no
-  real value chosen yet for how long a silent attempt is tolerated before
-  recovery acts. `heartbeat_attempt_execution` already exists and is
-  real/tested; nothing calls it from a real executor today (the local
-  Qwen dispatches this session never called it), so recovery has no real
-  heartbeat signal to key off yet even once built.
+- ~~Heartbeat cadence and staleness threshold for real recovery~~
+  **Resolved, M4.01/M4.02 (2026-09-08):** `DispatchOrchestrator` now
+  really calls `heartbeat_attempt_execution` on a real interval, and
+  staleness is defined as a `Running` attempt whose real, `Active` lease
+  has already expired — reusing the lease-extension signal the
+  heartbeat itself already governs, not a second, independently-guessed
+  number. See `m4-packet-breakdown.md`'s own M4.01/M4.02 entries.
 - **Real Slack (or other) delivery credentials/setup** — `record_
   notification`'s schema already supports a `Slack` channel; no real
   Slack app/webhook has been registered for Maestro's own use, unlike

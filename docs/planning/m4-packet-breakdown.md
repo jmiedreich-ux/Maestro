@@ -61,16 +61,25 @@ actually dispatched):
   used) and call the already-real, already-tested
   `finish_attempt_execution`. Touches: new orchestration module,
   `executor.py`. No schema change.
-- **M4.02 (R2) — Staleness detection.** A real read-only check: query `attempts`/
-  `leases` for a `Running` attempt whose heartbeat is older than a real
-  threshold, or whose lease has expired. Touches: new small module,
-  read-only against existing tables. **Blocked on an open question:**
-  the real threshold value (see roadmap's "Open, not yet decided"). Must
-  share R1/R3's own optimistic-version discipline (`expected_attempt_
-  version`/`expected_lease_version`) so a late-finishing real attempt and
-  a timeout detection can never both win — verified safe by construction
-  in the existing `StaleState` rejection logic, but R2 must read the same
-  version fields R1/R3 use, not a stale snapshot.
+- **M4.02 (R2) — Staleness detection. Built.** **Threshold question
+  resolved, not a newly-guessed number:** stale = a `Running` attempt
+  whose real, `Active` lease has already expired
+  (`leases.expires_at < now`). R1's own `DispatchOrchestrator` already
+  re-extends the lease by a real `lease_extension_seconds` on every
+  successful heartbeat, so an expired lease is definitionally one that
+  went the whole real extension window without a successful heartbeat —
+  reusing a signal `start_attempt_execution`/`heartbeat_attempt_
+  execution` already enforce, not a second, independent guess. Real,
+  read-only: a fresh process opens its own read-only connection to the
+  real database file (matching `read_api.py`'s own established
+  pattern), joins `attempts`/`packets`/`leases`. Touches: new module
+  `staleness_detector.py`, read-only against existing tables. Shares
+  R1/R3's own optimistic-version discipline by construction — it reads
+  the real current `expected_attempt_version`/`expected_lease_version`
+  off the row it finds, not a cached snapshot, so a late-finishing real
+  attempt and a real timeout detection can never both win (verified:
+  `test_a_second_stale_finish_call_is_rejected_not_silently_
+  overwritten`).
 - **M4.03 (R3) — Auto-timeout.** When R2 detects staleness, call the already-real
   `finish_attempt_execution(outcome="TimedOut")`. Small — this command
   already exists and is already tested; R3 is only "call it for real
