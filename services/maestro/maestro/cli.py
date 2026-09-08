@@ -8,8 +8,10 @@ import signal
 import sys
 from pathlib import Path
 
+from .attempt_onboarding import claim_packet, run_attempt
 from .config import RuntimeConfig
 from .development_manager import run_cycle
+from .executor import LocalQwenExecutorAdapter
 from .dispatch_orchestrator import now_iso
 from .operational_state import Actor, OperationalStateStore
 from .packet_wrapper import PacketWrapper
@@ -49,6 +51,19 @@ def build_parser() -> argparse.ArgumentParser:
     materialize.add_argument("--request", type=Path, required=True, help="closed local packet-materialization request JSON")
     materialize.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
     materialize.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this packet")
+    claim = commands.add_parser(
+        "claim-packet", help="real step 3 of starting Maestro: assign one Dispatchable packet to a named worker",
+    )
+    claim.add_argument("--request", type=Path, required=True, help="closed local claim request JSON")
+    claim.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
+    claim.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this claim")
+    attempt = commands.add_parser(
+        "run-attempt", help="real step 4 of starting Maestro: run one claimed attempt to completion (blocks)",
+    )
+    attempt.add_argument("--request", type=Path, required=True, help="closed local run-attempt request JSON")
+    attempt.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
+    attempt.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this attempt")
+    attempt.add_argument("--qwen-binary", default="qwen", help="real worker binary to run (default: qwen)")
     dev_manager = commands.add_parser(
         "development-manager-loop",
         help="run the real M4 driver: recovery, review, acceptance, merge, notification -- one cycle, repeatedly",
@@ -93,6 +108,10 @@ def main() -> int:
         return _register_project(args)
     if args.command == "materialize-packet":
         return _materialize_packet(args)
+    if args.command == "claim-packet":
+        return _claim_packet(args)
+    if args.command == "run-attempt":
+        return _run_attempt(args)
     if args.command == "review-readiness":
         try:
             request_bytes = args.request.read_bytes()
@@ -130,6 +149,36 @@ def _materialize_packet(args: argparse.Namespace) -> int:
     result = materialize_and_ready_packet(store, request, actor, now_iso())
     print(json.dumps(result, sort_keys=True))
     return 0
+
+
+def _claim_packet(args: argparse.Namespace) -> int:
+    config = RuntimeConfig.from_runtime_dir(args.runtime_dir)
+    store = OperationalStateStore(config)
+    actor = Actor("MaestroDeveloper", args.actor_id, "claim-packet")
+    request = json.loads(args.request.read_text(encoding="utf-8"))
+    result = claim_packet(store, request, actor, now_iso())
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def _run_attempt(args: argparse.Namespace) -> int:
+    config = RuntimeConfig.from_runtime_dir(args.runtime_dir)
+    store = OperationalStateStore(config)
+    actor = Actor("MaestroDeveloper", args.actor_id, "run-attempt")
+    request = json.loads(args.request.read_text(encoding="utf-8"))
+    result = run_attempt(
+        store, request, actor, executor=LocalQwenExecutorAdapter(qwen_binary=args.qwen_binary),
+    )
+    print(
+        json.dumps(
+            {
+                "outcome": result.outcome, "result_commit": result.result_commit,
+                "execution_handle": result.execution_handle,
+            },
+            sort_keys=True,
+        )
+    )
+    return 0 if result.outcome == "Succeeded" else 1
 
 
 def _development_manager_loop(args: argparse.Namespace) -> int:

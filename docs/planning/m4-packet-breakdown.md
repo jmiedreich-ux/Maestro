@@ -262,11 +262,20 @@ own setup), never a command. `project_onboarding.py` +
 `maestro register-project` / `maestro materialize-packet` close both —
 proven end-to-end over a real subprocess call, a real repository reaches
 a real `Dispatchable` packet through nothing but these two commands.
-**Still real, disclosed, unclosed:** claiming a `Dispatchable` packet
-(`Dispatchable -> Leased`) still has no command — real resource-
-allocation scope (M3's territory), not addressed here. Also slotted
-into [M5 item 7](m5-atlas-navigation-roadmap.md) as the real front-end
-surface for this same real gap.
+**M4.17c — steps 3 and 4 (same day).** `attempt_onboarding.py` +
+`maestro claim-packet` / `maestro run-attempt` close the last two
+gaps: claiming a `Dispatchable` packet and running its real attempt
+via M4.01's `DispatchOrchestrator`. **Honest scope:** `claim-packet`
+does not *decide* which packet or worker — the operator names them;
+the real scheduler designed at M0 (`agent-workforce-control-plane.md`)
+is still unbuilt in every milestone. Real gap found via a real
+failure: a claim requires a `Running` run and `register-project`
+leaves it `Planned`, so the first claim now starts the run. **Proven:
+all five steps over real subprocess CLI calls reach a real `Merged`
+packet** (`test_full_start_cli.py`, worker = a real subprocess
+stand-in that makes a real commit). Also slotted into
+[M5 item 7](m5-atlas-navigation-roadmap.md) as the real front-end
+surface for this same path.
 
 ## What this breakdown deliberately does not include
 
