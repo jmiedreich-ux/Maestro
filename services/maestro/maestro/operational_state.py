@@ -2316,6 +2316,144 @@ class OperationalStateStore:
         row = self._notification(notification, now)
         return self._append_one("notifications", "notification_id", row, "Notification", "NotificationRecorded", idempotency_key, actor, now)
 
+    def record_notification_outcome(
+        self, notification_id, expected_version, outcome, idempotency_key, actor, now,
+    ):
+        """M4.12/M4.13 (I2's own notification-side counterpart): record a
+        real delivery attempt's outcome against a `notifications` row.
+
+        `notifications.state`/`attempt_count`/`next_attempt_at`/
+        `last_error_payload_json`/`version` already exist in the schema
+        for exactly this — durable delivery-attempt tracking, per
+        M0-D04's own "database stores delivery attempts/outcome" decision
+        — but no command ever wrote to them after the initial insert.
+        This is that command.
+
+        ``outcome`` is a closed dict:
+          - ``{"result": "Delivered"}`` -> state=Delivered, attempt_count+1,
+            next_attempt_at/last_error cleared.
+          - ``{"result": "Failed", "retryable": True,
+            "next_attempt_at": <timestamp>, "error_reason": <reason payload>}``
+            -> state stays Pending (a real retry is still owed),
+            attempt_count+1, next_attempt_at/last_error recorded.
+          - ``{"result": "Failed", "retryable": False,
+            "error_reason": <reason payload>}`` -> state=Failed (terminal),
+            attempt_count+1, next_attempt_at cleared, last_error recorded.
+
+        Only permitted from a real `Pending` row — a `Delivered`/`Failed`/
+        `Acknowledged` row is already terminal-or-owned by a human
+        acknowledgement, not this command's to touch again.
+        """
+        notification_id = _text(notification_id, "notification_id")
+        expected_version = _positive_int(expected_version, "expected_version")
+        if not isinstance(outcome, Mapping):
+            raise InvalidRecord("notification outcome has an invalid closed shape")
+        result = outcome.get("result")
+        if result == "Delivered":
+            outcome_row = _closed_mapping(outcome, {"result"}, "notification outcome")
+            next_state = "Delivered"
+            next_attempt_at = None
+            error_reason = None
+        elif result == "Failed":
+            retryable = outcome.get("retryable")
+            if retryable is True:
+                outcome_row = _closed_mapping(
+                    outcome, {"result", "retryable", "next_attempt_at", "error_reason"},
+                    "notification outcome",
+                )
+                next_state = "Pending"
+                next_attempt_at = _timestamp(outcome_row["next_attempt_at"], "next_attempt_at")
+            elif retryable is False:
+                outcome_row = _closed_mapping(
+                    outcome, {"result", "retryable", "error_reason"}, "notification outcome",
+                )
+                next_state = "Failed"
+                next_attempt_at = None
+            else:
+                raise InvalidRecord("notification outcome retryable must be a real boolean")
+            error_reason = validate_payload(outcome_row["error_reason"])
+            if error_reason["kind"] != "reason":
+                raise InvalidRecord("notification outcome error_reason must be a reason payload")
+        else:
+            raise InvalidRecord("notification outcome result is invalid")
+        reason = error_reason if error_reason is not None else {
+            "kind": "reason", "reason_code": "NOTIFICATION_DELIVERED", "detail_reference": None,
+        }
+
+        key = _text(idempotency_key, "idempotency_key")
+        actor_value = _actor(actor)
+        timestamp = _timestamp(now, "now")
+        facts = {
+            "notification_id": notification_id,
+            "expected_version": expected_version,
+            "outcome": outcome_row,
+        }
+        fingerprint = _fingerprint("record_notification_outcome", facts, actor_value)
+
+        try:
+            with self._foundation._connection() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay(connection, key, fingerprint)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                current = connection.execute(
+                    "SELECT state,version,attempt_count FROM notifications WHERE notification_id=?",
+                    (notification_id,),
+                ).fetchone()
+                if current is None:
+                    raise InvalidRecord("unknown notification")
+                source_state, current_version, attempt_count = (
+                    str(current[0]), int(current[1]), int(current[2]),
+                )
+                if current_version != expected_version:
+                    raise StaleState("notification version is stale")
+                if source_state != "Pending":
+                    raise InvalidTransition(
+                        "notification outcome is only permitted from Pending"
+                    )
+
+                before = _state_payload(
+                    "Notification", notification_id, source_state, current_version
+                )
+                after = _state_payload(
+                    "Notification", notification_id, next_state, expected_version + 1
+                )
+                result_row = {
+                    "notification": after, "attempt_count": attempt_count + 1,
+                    "next_attempt_at": next_attempt_at,
+                    "last_error_payload_json": error_reason,
+                }
+                canonical_json({"notification": before}, root_type=dict)
+                canonical_json(result_row, root_type=dict)
+
+                updated = connection.execute(
+                    "UPDATE notifications SET state=?,attempt_count=?,next_attempt_at=?,"
+                    "last_error_payload_json=?,updated_at=?,version=? "
+                    "WHERE notification_id=? AND version=?",
+                    (
+                        next_state, attempt_count + 1, next_attempt_at,
+                        None if error_reason is None else canonical_json(error_reason),
+                        timestamp, expected_version + 1,
+                        notification_id, expected_version,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise StaleState("notification version is stale")
+                self._insert_notification_outcome_event(
+                    connection, key, fingerprint, actor_value, timestamp,
+                    notification_id, {"notification": before}, result_row, reason,
+                )
+                connection.commit()
+                return result_row
+        except sqlite3.IntegrityError as error:
+            raise InvalidRecord(
+                "notification outcome violates a durable constraint"
+            ) from error
+        except sqlite3.OperationalError as error:
+            self._raise_sqlite(error)
+
     def record_worker_progress(self, observation, idempotency_key, actor, now):
         row = self._worker_progress(observation)
         _timestamp(now, "now")
@@ -2576,6 +2714,25 @@ class OperationalStateStore:
                 canonical_json(after), canonical_json(reason), actor["correlation_id"],
                 actor["causation_event_id"], actor["actor_type"], actor["actor_id"],
                 fingerprint, now,
+            ),
+        )
+
+    @staticmethod
+    def _insert_notification_outcome_event(
+        connection, key, fingerprint, actor, now, notification_id, before, after, reason,
+    ):
+        connection.execute(
+            """
+            INSERT INTO events(
+                idempotency_key,entity_type,entity_id,event_type,before_json,after_json,reason,
+                correlation_id,causation_event_id,actor_type,actor_id,command_fingerprint,observed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                key, "Notification", notification_id, "NotificationStateChanged",
+                canonical_json(before), canonical_json(after), canonical_json(reason),
+                actor["correlation_id"], actor["causation_event_id"], actor["actor_type"],
+                actor["actor_id"], fingerprint, now,
             ),
         )
 

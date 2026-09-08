@@ -168,14 +168,22 @@ actually dispatched):
 
 ## Real notification — independent; most useful once recovery exists
 
-- **M4.12 (N1) — Delivery loop, `LocalDurable` channel only.** Reads `Pending`
-  rows from `notifications` and delivers them (`LocalDurable` has no
-  real external dependency — this is the smallest real slice that proves
-  the loop). No schema change.
-- **M4.13 (N2) — Retry/backoff wiring.** Uses the already-real `next_attempt_at`/
-  `attempt_count` fields the schema already carries for this. Depends on
-  N1.
-- **M4.14 (N3) — Real trigger wiring.** Decides which real events actually create
+- **M4.12 (N1) — Delivery loop, `LocalDurable` channel only. Built.** **Real gap found
+  and fixed alongside this, not originally scoped**: `notifications` had
+  versioned `state`/`attempt_count`/`next_attempt_at` columns since M1,
+  and the schema's own closed event-type list already reserved
+  `NotificationStateChanged`, but no store command ever wrote to them
+  after the initial `record_notification` insert — real durability
+  plumbing, added as `operational_state.record_notification_outcome`
+  under the Architect's own durability authority, not new product
+  scope. Reads `Pending` rows from `notifications` and delivers them
+  (`LocalDurable` has no real external dependency — this is the
+  smallest real slice that proves the loop).
+- **M4.13 (N2) — Retry/backoff wiring. Built.** Real exponential backoff (30s base,
+  doubling, capped at 3600s), terminal `Failed` after 5 real attempts.
+  Uses the already-real `next_attempt_at`/`attempt_count` fields the
+  schema already carries for this. Depends on N1.
+- **M4.14 (N3) — Real trigger wiring. Built.** Decides which real events actually create
   a notification (e.g., R3's recovery firing, a real `NeedsReplan`, a
   real `MergeReady`) and calls `record_notification` from those real
   call sites. **Corrected scope** (the fidelity review found the
