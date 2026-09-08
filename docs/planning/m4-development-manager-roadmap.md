@@ -74,19 +74,42 @@ for automation that doesn't exist yet. M4 is that automation.
   unilaterally, and what still requires the real Owner — is fully
   greenfield and is the highest-uncertainty item in this roadmap.
 
+## The ruling loop's real authority model (Owner-confirmed, 2026-09-08)
+
+Not a flat 90% Maestro / 10% Owner split resolved by escalating straight
+to the Owner — a real three tiers, matching the roles this codebase
+already names (`AGENTS.md`, `docs/agents/`):
+
+1. **Worker / Reviewer / other roles** — routine execution within an
+   already-materialized packet's own real scope. The large majority of
+   real activity; never touches a ruling.
+2. **Project Architect** — the role closest to the Owner, and the one
+   this session has been standing in for throughout. Two real
+   responsibilities make up the "90%": (a) absorb an escalation when
+   another role gets stuck or has a question the packet itself doesn't
+   answer, and (b) when genuinely new, previously out-of-scope work
+   surfaces, decide where it fits in the existing process — without
+   stopping work to re-ask the Owner, as long as the work itself was
+   already Owner-approved. **Worked example, this session:** the six M5
+   screens/features were approved by the Owner in the Now-screen redesign
+   conversation; scoping them into a real milestone doc (`M0-D16`,
+   `m5-atlas-navigation-roadmap.md`) was Architect-tier work, not
+   something that needed a second, separate Owner sign-off — the Owner
+   had already approved the *content*, only its *place in the process*
+   was undecided.
+3. **Owner** — the real residual "10%": whatever even Architect-tier
+   judgment can't resolve from already-approved direction, plus anything
+   recursive the Architect cannot self-grant (setting the ruling loop's
+   own authority boundary, which is what this section itself records).
+
+Still open: the concrete criteria a real ruling loop would use to tell
+"new work that's already covered by prior Owner approval, slot it in"
+apart from "genuinely new, needs to go to the Owner" — `acceptance_
+authority` fixes and the CG-M4-19 milestone-home rejection are real
+Architect-tier instances to classify against once that criteria exists.
+
 ## Open, not yet decided
 
-- **The autonomous Architect ruling loop's own real boundary** — *that*
-  it's real M4 scope is now confirmed (2026-09-08); *what* it's actually
-  allowed to rule on unilaterally versus what still requires the real
-  Owner is not fully specified. The Owner set the governing ratio the
-  same day: **90% Maestro process, 10% Owner** — the loop should resolve
-  the large majority of real architectural rulings itself, escalating
-  only the real minority that genuinely needs a human. Still open: the
-  concrete criteria that sort a given ruling into the 90% or the 10% —
-  the four examples above (M5 adoption, an acceptance-authority fix, a
-  rejected milestone-home ruling) are real instances to classify against
-  once that criteria exists, not yet classified themselves.
 - **Heartbeat cadence and staleness threshold** for real recovery — no
   real value chosen yet for how long a silent attempt is tolerated before
   recovery acts. `heartbeat_attempt_execution` already exists and is
@@ -107,7 +130,8 @@ merge until something reviews it for real). Real notification can be
 built independently of the rest but is most useful once recovery exists
 (a stalled/recovered attempt is exactly the kind of event worth
 notifying about). The autonomous Architect ruling loop depends on none of
-the other four technically, but its own real boundary (see "Open, not
-yet decided") has to be scoped before any of it is packetized — building
-it before that boundary is real would mean guessing at what it's allowed
-to decide.
+the other four technically, but the concrete "already-approved, slot it
+in" vs. "genuinely new, needs the Owner" criteria (see "The ruling loop's
+real authority model") has to exist before any of it is packetized —
+building it before that criteria is real would mean guessing at what it's
+allowed to decide.
