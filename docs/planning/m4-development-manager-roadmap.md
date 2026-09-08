@@ -102,11 +102,20 @@ already names (`AGENTS.md`, `docs/agents/`):
    recursive the Architect cannot self-grant (setting the ruling loop's
    own authority boundary, which is what this section itself records).
 
-Still open: the concrete criteria a real ruling loop would use to tell
-"new work that's already covered by prior Owner approval, slot it in"
-apart from "genuinely new, needs to go to the Owner" — `acceptance_
+Still open: the general concrete criteria a real ruling loop would use to
+tell "new work that's already covered by prior Owner approval, slot it
+in" apart from "genuinely new, needs to go to the Owner" — `acceptance_
 authority` fixes and the CG-M4-19 milestone-home rejection are real
 Architect-tier instances to classify against once that criteria exists.
+
+**One concrete instance already resolved (Owner, 2026-09-08):** whether
+the ruling loop can grant real Owner acceptance itself (the
+`record_and_accept_packet` step `m4-packet-breakdown.md`'s M4.09
+exposes) — yes, real 90%-tier scope, once (a) the packet's own real
+definition of done is met, or (b) any real limitations are judged
+acceptable because the delivered product/feature meets basic needs and
+those limitations are tracked on a real backlog rather than silently
+dropped.
 
 ## Open, not yet decided
 

@@ -120,12 +120,15 @@ actually dispatched):
   even a CLI command. I1/I2 cannot run against a real packet without this
   existing first. Scope: expose the already-real, already-tested command
   through a real, callable interface (a CLI command, matching `cli.py`'s
-  existing pattern), so a human — or, per the ruling-loop's own real
-  authority model once A0 lands, a bounded Architect-tier ruling — can
-  actually invoke it. **Open question, does not block I0 itself:** whether
-  Owner acceptance ever becomes something the ruling loop can grant
-  itself under the 90% tier, or stays permanently human — I0 only makes
-  the command reachable, it does not decide who calls it.
+  existing pattern), so either a human or the ruling loop can actually
+  invoke it. **Resolved (Owner, 2026-09-08):** Owner acceptance is real
+  90%-tier scope, not permanently human — the ruling loop may grant it
+  itself once (a) the packet's own real definition of done is met, or
+  (b) any real limitations are judged acceptable because the delivered
+  product/feature meets basic needs and those limitations are tracked on
+  a real backlog rather than silently dropped. I0 itself only makes the
+  command reachable; the criteria above is real content for A0
+  (M4.16) to formalize, not something I0 needs to implement.
 - **M4.10 (I1) — Merge executor, happy path only.** **Corrected/descoped scope**
   (the fidelity review found the pre-review draft never addressed merge-
   authority/delegation requirements or conflict/gating handling — an
