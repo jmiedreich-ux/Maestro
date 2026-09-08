@@ -202,15 +202,20 @@ actually dispatched):
 
 ## Autonomous Architect ruling loop — one prerequisite packet only
 
-- **M4.16 (A0) — Define the real 90/10 classification criteria.** A real
-  decision doc (not code): the concrete test a ruling loop would use to
-  sort "already Owner-approved, slot it in" from "genuinely new, escalate
-  to the Owner" — classified against the real instances already on
-  record (M5's own adoption, the CG-M4-19 `acceptance_authority` fix, the
-  M4-vs-M5 milestone-home rejection). **No implementation packet for the
-  ruling loop itself is proposed here** — per the roadmap's own explicit
-  note, building execution before this criteria is real would mean
-  guessing at what it's allowed to decide.
+- **M4.16 (A0) — Define the real 90/10 classification criteria. Built.** A real
+  decision doc, not code:
+  [M0-D17](decisions/m0-d17-real-m4-16-ruling-loop-classification-criteria.md).
+  The three-tier model (Worker/Reviewer, Project Architect, Owner) as a
+  concrete four-question test, classified against the real instances
+  already on record (M5's own adoption, the CG-M4-19
+  `acceptance_authority` fix, this session's own `record_notification_
+  outcome` addition). Also formalizes the Owner's 2026-09-08 "minimum
+  one real review" invariant as a hard floor, and restates the already-
+  ruled Owner-acceptance self-grant criteria (M4.09) as the concrete
+  precedent for what tier 2 may self-grant. **No implementation packet
+  for the ruling loop itself is proposed here** — per the roadmap's own
+  explicit note, building execution before this criteria is real would
+  mean guessing at what it's allowed to decide.
 
 ## What this breakdown deliberately does not include
 
