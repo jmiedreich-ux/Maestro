@@ -101,7 +101,7 @@ actually dispatched):
 
 ## Real review — no dependency on recovery; blocks Integration
 
-- **M4.05 (V1) — Coverage reconstruction.** **Corrected reuse target** (the
+- **M4.05 (V1) — Coverage reconstruction. Built.** **Corrected reuse target** (the
   fidelity review found `check_runner.py` does not produce the shape
   `_validate_review_coverage` actually requires; the real match is
   `review_readiness.py`'s already-built, already-CLI-wired
