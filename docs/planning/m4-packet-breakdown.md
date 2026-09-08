@@ -147,7 +147,7 @@ actually dispatched):
   a real backlog rather than silently dropped. I0 itself only makes the
   command reachable; the criteria above is real content for A0
   (M4.16) to formalize, not something I0 needs to implement.
-- **M4.10 (I1) — Merge executor, happy path only.** **Corrected/descoped scope**
+- **M4.10 (I1) — Merge executor, happy path only. Built.** **Corrected/descoped scope**
   (the fidelity review found the pre-review draft never addressed merge-
   authority/delegation requirements or conflict/gating handling — an
   automated merge executor is definitionally a `DelegatedIdentity` per
@@ -161,7 +161,7 @@ actually dispatched):
   state — I1 only handles the case where the merge succeeds cleanly;
   those cases are real, disclosed follow-up scope, not yet packetized.
   Touches: new module only; no existing command performs a merge today.
-- **M4.11 (I2) — Observation wiring.** Calls the already-real `record_and_
+- **M4.11 (I2) — Observation wiring. Built.** Calls the already-real `record_and_
   observe_merge` immediately after I1 succeeds, instead of a human
   running it by hand (as done for CG-M4-19, this doc's own commits, and
   every merge this session). Depends on I1.
