@@ -43,7 +43,7 @@ actually dispatched):
 ## Real recovery — build first, no dependency on the other four
 
 - **M4.01 (R1) — Real dispatch-orchestration loop, with heartbeat wiring
-  and real completion.** **Corrected scope, twice** (the fidelity review
+  and real completion. Built.** **Corrected scope, twice** (the fidelity review
   found no orchestration module exists anywhere that owns both an
   `ExecutorAdapter` and calls into `operational_state`; a second self-
   caught gap found while starting implementation: the original
@@ -80,11 +80,11 @@ actually dispatched):
   attempt and a real timeout detection can never both win (verified:
   `test_a_second_stale_finish_call_is_rejected_not_silently_
   overwritten`).
-- **M4.03 (R3) — Auto-timeout.** When R2 detects staleness, call the already-real
+- **M4.03 (R3) — Auto-timeout. Built.** When R2 detects staleness, call the already-real
   `finish_attempt_execution(outcome="TimedOut")`. Small — this command
   already exists and is already tested; R3 is only "call it for real
   instead of a human doing it." Depends on R2.
-- **M4.04 (R4) — Auto-redispatch after a recovery-driven NeedsReplan.**
+- **M4.04 (R4) — Auto-redispatch after a recovery-driven NeedsReplan. Built.**
   **Corrected scope** (the fidelity review found `record_and_close_
   needs_replan` only cancels the old packet — it does not create a
   replacement; `materialize_packet` requires a full new packet
