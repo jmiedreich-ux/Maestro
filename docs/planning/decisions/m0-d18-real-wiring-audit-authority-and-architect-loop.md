@@ -1,6 +1,8 @@
 # M0-D18 — Wiring Audit Findings, Architect Loop, and Execution Authority
 
-**Status:** **DRAFTED FOR OWNER REVIEW, 2026-09-08. Not yet Owner-approved.**
+**Status:** **Owner-reviewed 2026-09-08; the four blocking questions are
+ruled (§3, §5.1, §6.1, §6.2). Remaining [PROPOSAL] items are not yet
+authority.**
 **Type:** Superseding authority and design amendment, once approved.
 
 **Provenance rule for this record.** This document is the authority the next
@@ -146,10 +148,16 @@ citing the constitution it was working within.
 > limitations are deemed ok because the product or feature meets basic needs
 > and the limitations can be tracked on the back log"
 
-**[OPEN]** §7.4 below sets a stricter completion bar ("verify a real caller
-exists in a real path") than this acceptance criterion, which permits accepting
-known limitations tracked on a backlog. These are in tension. Which governs,
-and in which circumstances, needs an Owner ruling.
+**[OWNER] Resolved 2026-09-08.** Asked how this squares with §7.4's stricter
+completion bar:
+
+> "Clearly the product has to function"
+
+**The ruling:** functioning is the floor. A capability is not complete because
+its schema exists and its tests pass — a real caller must exist in a real path.
+Known limitations may still be accepted on top of a functioning product, when
+they are judged acceptable and tracked on a real backlog. What may never be
+accepted is a non-functioning capability reported as delivered.
 
 **[OWNER] Bias when a rule threatens delivery:**
 
@@ -243,9 +251,20 @@ Broken out:
 Two standards: **smallest possible packets**, and **no latent or unknown
 scope**.
 
-### 5.1 [OPEN] Who assigns work
+### 5.1 [OWNER] Who assigns work — RESOLVED 2026-09-08
 
-Unresolved, and load-bearing for everything downstream.
+> "we agreed at the end the development manager would be in charge of
+> continuous scheduling"
+
+**The ruling:** the Architect decides **suitability** at plan time — rank,
+dependencies, specialist role, execution class. The Development Manager is in
+charge of **continuous scheduling**: a small, reusable process that
+re-evaluates every cycle and decides which eligible packet runs next, on which
+worker, given current locks, leases, worker health and WIP. This makes the five
+decorative fields of §2 live inputs.
+
+The Owner's two earlier statements below are superseded by this ruling and kept
+for provenance.
 
 - **[OWNER]** *"I can see step 3 being the project architect doing the packet
   assignments and deciding which packet run in parallel. However, there is no
@@ -257,15 +276,10 @@ Unresolved, and load-bearing for everything downstream.
   do a small scheduling process before delegating, maybe something that is
   reusable and continually evaluates assignments?"*
 
-**[PROPOSAL]** Split it: the Architect decides **suitability** at plan time
-(rank, dependencies, specialist role, execution class); the Development Manager
-runs a small, reusable process that **continually re-evaluates** and decides
-**timing** — which eligible packet runs next, on which worker, given current
-locks, leases, worker health and WIP. Rationale: assignments go stale as locks
-free and packets return, and the Manager already holds every input a scheduler
-needs. Its role contract already says *"Select the highest-ranked eligible
-item, not simply the oldest queue entry."* Either resolution makes the five
-decorative fields of §2 live.
+Rationale for the split: assignments go stale as locks free and packets return,
+and the Manager already holds every input a scheduler needs. Its role contract
+already says *"Select the highest-ranked eligible item, not simply the oldest
+queue entry."*
 
 **[OPEN]** Whether that scheduling process is purely deterministic or may use
 cloud reasoning. The Owner probed this directly — *"So when does it start a so
@@ -317,12 +331,16 @@ for the coding agent raising the problem itself.
 > to complex, always lean towards giving the product the best chance to get
 > built."
 
-**[PROPOSAL]** derived from that instruction: a packet produced by an Architect
-split is new scope and starts with a **fresh** review/correction budget. This
-requires amending the Bootstrap Convergence Policy, which currently requires
-counts never reset across packet replacement. The Owner stated the principle;
-this specific amendment is the assistant's inference from it and needs
-confirmation.
+**[OWNER] Confirmed 2026-09-08**, when asked whether the specific amendment
+followed from the principle:
+
+> "my answer still stands, don't be inflexible"
+
+**The ruling:** a packet produced by an Architect split is new scope and starts
+with a **fresh** review/correction budget. This **amends the Bootstrap
+Convergence Policy**, which currently requires counts never reset across packet
+replacement. Do not apply the old rule inflexibly to work the Architect has
+deliberately re-scoped.
 
 **[OWNER] standing instruction, beyond this case:** do not make these questions
 more complex than they need to be.
@@ -338,10 +356,15 @@ more complex than they need to be.
 Recorded as stated: a **leaning**, not yet a fixed default, plus an explicit
 willingness to let the Architect make the call during its review.
 
-**[PROPOSAL]** Formalise as: starting over is the default; the Architect may
-rule otherwise during its review. **[OPEN]** whether granting the Architect
-that call is Owner-tier under M0-D17's "redefining what a role is allowed to
-accept" — the assistant classified it that way; the Owner did not.
+**[OWNER] Resolved 2026-09-08:**
+
+> "as we said, the project architect has the last word on this, as long as it
+> doesn't cause more replanning issues"
+
+**The ruling:** starting the packet over is the default, and the **Project
+Architect has the last word** on whether anything carries forward — bounded by
+one condition: the decision must not cause further replanning. Preserving work
+that then has to be unpicked is the failure this bound exists to prevent.
 
 ---
 
@@ -390,8 +413,8 @@ this way.
 
 **[PROPOSAL]** They stay closed — their packets were delivered — but closure
 asserts delivered packets only, not a working product. Before reporting any
-future capability complete, verify a real caller exists in a real path. See the
-**[OPEN]** tension with §3's acceptance criterion.
+future capability complete, verify a real caller exists in a real path, per the
+Owner's ruling in §3: *"Clearly the product has to function."*
 
 ---
 
@@ -519,7 +542,13 @@ ReturnSlice path (§6), registration triggering an Architect repository review
 (§4), Atlas as a first-class surface for all of it (§8, alongside M5 which
 stands), the evidence rules (§7), and the discipline in §9.
 
-**Before planning begins, the Owner must resolve every [OPEN] item**, in
-particular §5.1 (who assigns work), §3 (the acceptance-criterion tension), and
-§6.1–6.2 (the two ReturnSlice rulings, currently proposals). Planning on top of
-an unresolved §5.1 would repeat this record's own root cause.
+**The four blocking questions were resolved by the Owner on 2026-09-08:**
+§5.1 (the Development Manager owns continuous scheduling), §3 (the product has
+to function), §6.1 (fresh correction budgets — do not be inflexible), and §6.2
+(the Architect has the last word on carry-forward, provided it causes no
+further replanning).
+
+Remaining **[OPEN]** items are narrower and do not block planning: whether the
+Development Manager's scheduling may use cloud reasoning (§5.1), whether a
+stopped worker resumes automatically and under whose authority (§2), and the
+runtime-directory location (§11).
