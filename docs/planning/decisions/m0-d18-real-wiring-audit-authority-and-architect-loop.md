@@ -3,8 +3,8 @@
 **Status:** **Owner-approved 2026-09-08.** All rulings in this record are
 authority. The two configuration boundaries in §11a were approved with it. Any
 item still marked [PROPOSAL] is a recommendation the milestones may settle, not
-a constraint. One **[OPEN]** item remains on the decision list: §5.3,
-per-step reasoning budget enforcement.
+a constraint. Two **[OPEN]** items remain on the decision list:
+§5.3 (per-step reasoning budget enforcement) and the scope question in §5.4.
 **Type:** Superseding authority and design amendment.
 
 **Provenance rule for this record.** This document is the authority the next
@@ -352,6 +352,37 @@ configurability: the caps belong in the config file, and exhausting a budget is
 plausibly the same signal as a repeated restart. The related observation on
 §5.1 — that scheduling is a high-turn, low-judgment-per-turn task and so wants
 a *fast* reasoning model rather than a careful one — is recorded there.
+
+### 5.4 [OWNER] The script commits the worker's work before review
+
+> "One thing thst routinely happens is the qwen routinely forgets to commit, we
+> should not hold that against the model, when it finishes the script should
+> check first and do the commit before it gets into the review, that will save
+> time"
+
+**The ruling:** committing is deterministic work with a right answer, so it
+belongs in the script, not in the model's instructions. When a worker finishes,
+the harness checks for uncommitted work and commits it before the packet enters
+review. A model forgetting to commit is not a failure of the work.
+
+**Why this matters more than the time saved.** Today a worker that produced
+good code but no commit is recorded as a **failed attempt**:
+`retrieve_evidence` compares HEAD against the base commit, finds no new commit,
+returns `commit_sha=None`, and `finish_attempt_execution` records `Failed`. The
+work is intact in the working tree and is thrown away, consuming one of the
+packet's two attempts. Separately, an uncommitted tree would fail review
+readiness anyway on its dirty-worktree blocker. Committing first fixes both.
+
+This is the same principle as §5.3's counterpart observation — *"everything
+with a right answer moved into a script"* — which Maestro already applies to
+validation through `review_readiness.py`, and which now extends to the commit
+itself.
+
+**[OPEN]** Whether the auto-commit takes the whole worktree or only changes
+within the packet's own `owned_paths_json`. Scoping it to owned paths means
+stray debris outside scope is never silently committed, and the packet already
+declares both its owned and forbidden paths; a change landing outside owned
+paths is a real finding for review rather than something to commit quietly.
 
 ---
 
