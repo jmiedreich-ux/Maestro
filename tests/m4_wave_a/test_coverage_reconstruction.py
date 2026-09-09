@@ -7,9 +7,12 @@ import sys
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "m1_01"))
 
 from support import TemporaryProjectRepository  # noqa: E402
+
+from m4_fixtures import ClaimedPacketFixture  # noqa: E402
 
 from maestro.coverage_reconstruction import reconstruct_coverage  # noqa: E402
 
@@ -112,3 +115,36 @@ class CoverageReconstructionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DuplicateCommandTests(unittest.TestCase):
+    """Found running a real project end to end: a reconstruction command
+    identical to one of the packet's own checks made the whole request
+    malformed (check_id uniqueness spans both lists), stranding the
+    packet in AwaitingIntegration behind an opaque blocker."""
+
+    def setUp(self):
+        self.fixture = ClaimedPacketFixture()
+
+    def tearDown(self):
+        self.fixture.close()
+
+    def test_a_reconstruction_command_matching_a_packet_check_is_disambiguated_not_fatal(self):
+        target = self.fixture.repository.path / "tests" / "fake" / "new.spec.ts"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("// a real change\n")
+        head = self.fixture.repository.commit_all("real owned-path change")
+
+        packet = self.fixture.store.snapshot("Packet", "packet-1")
+        self.assertEqual(packet["checks_json"], ["true"])
+
+        coverage = reconstruct_coverage(
+            packet, repository=str(self.fixture.repository.path), head=head,
+            slice_id="MB-DUPLICATE-TEST", reconstruction_commands=["true"],
+        )
+        self.assertTrue(coverage["result"]["ready"], coverage["result"]["blockers"])
+        self.assertEqual(
+            [c["check_id"] for c in coverage["result"]["request"]["reconstruction_commands"]],
+            ["true-reconstruction"],
+        )
+        self.assertEqual(coverage["result"]["request"]["reconstruction_commands"][0]["argv"], ["true"])

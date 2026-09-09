@@ -68,6 +68,30 @@ def reconstruct_coverage(
     same field reused twice.
     """
     resolved_base = packet["base_commit"] if base is None else base
+    validation = [_to_command(command) for command in packet["checks_json"]]
+    # `review_readiness.py` enforces check_id uniqueness across validation
+    # and reconstruction commands *together*, while also requiring
+    # reconstruction_commands be non-empty. A reconstruction command
+    # identical to one of the packet's own checks therefore makes the
+    # whole request malformed, and the packet sits in AwaitingIntegration
+    # forever behind an opaque MALFORMED_REQUEST blocker -- found running
+    # a real project end to end (`--reconstruction-command "npm test"`
+    # against a packet whose checks_json was already `["npm test"]`).
+    # The command itself is legitimate, so it is kept and its check_id
+    # disambiguated; the argv it actually runs is untouched.
+    seen = {command["check_id"] for command in validation}
+    reconstruction = []
+    for command in reconstruction_commands:
+        built = _to_command(command)
+        if built["check_id"] in seen:
+            candidate = f"{built['check_id']}-reconstruction"
+            suffix = 2
+            while candidate in seen:
+                candidate = f"{built['check_id']}-reconstruction-{suffix}"
+                suffix += 1
+            built = {**built, "check_id": candidate}
+        seen.add(built["check_id"])
+        reconstruction.append(built)
     request = {
         "schema": REQUEST_SCHEMA,
         "slice_id": slice_id,
@@ -76,8 +100,8 @@ def reconstruct_coverage(
         "base": resolved_base,
         "head": head,
         "allowed_paths": sorted(packet["owned_paths_json"], key=lambda item: item.encode("utf-8")),
-        "validation_commands": [_to_command(command) for command in packet["checks_json"]],
-        "reconstruction_commands": [_to_command(command) for command in reconstruction_commands],
+        "validation_commands": validation,
+        "reconstruction_commands": reconstruction,
         "timeout_seconds": timeout_seconds,
     }
     request_bytes = canonical_json(request)
