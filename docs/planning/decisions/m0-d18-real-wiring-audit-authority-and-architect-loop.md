@@ -556,6 +556,34 @@ deliverable.
 
 ---
 
+## 11a. [OWNER] Everything is configurable in a file
+
+> "Everything should be configurable in a file to adjust"
+
+Every operational threshold, bound, interval and limit is set in a
+configuration file and adjustable without a code change. Values currently
+hardcoded as module constants must move there. Known examples, not exhaustive:
+
+- **Architect loop** — the configurable number of fidelity review rounds (§5),
+  and the bound that stops it looping forever.
+- **Development Manager** — restart threshold before switching models, context
+  allocation per agent, WIP limits, scheduling parameters (§5.1, §5.2).
+- **Execution** — heartbeat interval, lease extension, poll interval, attempt
+  timeouts.
+- **Notification** — `MAX_RETRYABLE_ATTEMPTS`, `BASE_RETRY_DELAY_SECONDS`,
+  `MAX_RETRY_DELAY_SECONDS`, escalation schedule.
+- **Capture and limits** — log capture caps, review-readiness command timeouts,
+  stream poll interval and batch size.
+
+**[PROPOSAL]** Two boundaries worth keeping in mind when this is designed:
+project-specific policy already belongs in the project's own
+`maestro.project.yaml` binding, so this file is for Maestro's own operational
+tuning rather than a second place to state project policy; and durable schema
+constraints (text and JSON size limits, file modes) are correctness boundaries
+rather than tuning knobs.
+
+---
+
 ## 12. What this record authorizes
 
 Once approved, this record is the authority for planning the next round of
