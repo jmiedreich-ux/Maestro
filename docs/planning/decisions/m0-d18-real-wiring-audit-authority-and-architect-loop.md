@@ -422,6 +422,43 @@ or a review round, the first question is whether the harness can simply do it,
 not how to word the prompt better. Do not hold a deterministic omission against
 the model, and never let one reach a reviewer.
 
+#### 5.4.2 The wrapper also verifies, and blocks
+
+The same published account describes the other half of the wrapper, and it is
+the half Maestro is missing. Their split: an external model gathers, the
+careful model writes, and then **a mandatory hardcoded script runs immediately
+after the model's turn and before publishing**. It checks formatting, headings,
+source links, broken URLs, duplicate content and leftover placeholder text —
+and **if a single check fails, nothing publishes.**
+
+The hard-block shape Maestro already has: `evaluate_review_readiness` returning
+`ready=False` prevents *any* review being recorded, so a failing packet cannot
+proceed. What Maestro lacks is the second category of check.
+
+**The distinction that matters.** Review readiness today runs the *project's*
+declared checks — its build, its tests — plus path and cleanliness rules. Those
+catch broken code. They do not catch **model-shaped failures**: a stub left
+behind, `TODO: implement this`, a placeholder heading, a duplicated section, a
+dead link, debug output, a generated artifact committed by accident. A
+project's own test suite has no opinion on any of these, and they are precisely
+what a model reliably leaves behind.
+
+**[OWNER] This existed and was lost.** The Alpha packet wrapper graded exactly
+this class — `lifecycle.py` rejects on *"dependency/configuration/placeholder
+violation"* — and the concept did not survive into the real execution path.
+
+**Consequence for the reviewer's contract.** `docs/agents/independent-review-agent.md`
+currently places *"secrets, generated artifacts, debug code, placeholders,
+unsafe defaults"* inside the Independent Reviewer's scope. Every one of those
+has a right answer. By §5.4.1 they belong in the wrapper, and moving them there
+frees the reviewer's bounded rounds for the judgment only a reviewer can
+supply. The reviewer should be told what the wrapper already verified, not
+asked to re-check it.
+
+**[PROPOSAL]** The model-shaped check set is itself configurable per §11a, and
+a project may add its own — a project that legitimately ships `TODO` markers
+says so in its binding rather than having the check disabled globally.
+
 ---
 
 ## 6. Mis-scoped packets — the ReturnSlice path
