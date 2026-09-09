@@ -3,7 +3,8 @@
 **Status:** **Owner-approved 2026-09-08.** All rulings in this record are
 authority. The two configuration boundaries in §11a were approved with it. Any
 item still marked [PROPOSAL] is a recommendation the milestones may settle, not
-a constraint.
+a constraint. One **[OPEN]** item remains on the decision list: §5.3,
+per-step reasoning budget enforcement.
 **Type:** Superseding authority and design amendment.
 
 **Provenance rule for this record.** This document is the authority the next
@@ -282,6 +283,11 @@ and the Manager already holds every input a scheduler needs. Its role contract
 already says *"Select the highest-ranked eligible item, not simply the oldest
 queue entry."*
 
+**[PROPOSAL]** Scheduling runs every cycle: many turns, little judgment per
+turn. "Cloud reasoning" should therefore name a *fast* model here, not a
+careful one — the distinction that the account cited in §5.3 turned on. Which
+model serves scheduling belongs in the §11a configuration file, not in code.
+
 **[OWNER] Resolved 2026-09-08:**
 
 > "The manager should use cloud reasoning for scheduling"
@@ -311,6 +317,41 @@ Three responsibilities, all the Development Manager's:
 **[PROPOSAL]** The restart threshold that triggers a model switch, and whether
 a switch consumes any part of the packet's correction budget, are not yet set.
 Per §6.1 the bias is to let the work proceed.
+
+### 5.3 [OPEN] Per-step reasoning budget enforcement
+
+**Added to the decision list 2026-09-08 at the Owner's direction**, prompted by
+a published account of an agent pipeline that failed exactly this way: a
+careful model was given a seventeen-step loop, spent its full reasoning budget
+on early steps, and hit the run timeout having published nothing. The author's
+own diagnosis was that the reasoning budget was not capped *per step*, the
+whole history was re-sent every turn, and the only timeout was the one that
+eventually killed the run rather than one that showed where it got stuck.
+
+Maestro is exposed to the same shape. `context_policy_json` declares real
+thresholds — `minimum_context_tokens`, `output_reserve_tokens`, and the
+warning, checkpoint and stop remaining-token boundaries — and
+`validate_context_policy` enforces that they are ordered correctly. **Nothing
+enforces them at run time.** There is no context preflight before dispatch, no
+per-step cap, and no checkpoint at the pressure boundary; `attempt_context_
+usage` is written by no production path (§2). A packet can therefore burn its
+whole budget on one step, and the first signal is an expired lease.
+
+Maestro is better off than the article's author in one respect: per-attempt
+leases and heartbeats already localise a stall to an attempt rather than a
+whole run. What is missing is the step-level view inside an attempt.
+
+**To be decided:** whether the reasoning budget is capped per step; whether
+dispatch is refused at preflight when the context does not fit; what happens at
+the checkpoint boundary — a forced worker checkpoint, a model switch under
+§5.2, or a return to the Architect; and whether history is re-sent whole or
+summarised between steps.
+
+**[PROPOSAL]** This interacts with §5.2's model escalation and §11a's
+configurability: the caps belong in the config file, and exhausting a budget is
+plausibly the same signal as a repeated restart. The related observation on
+§5.1 — that scheduling is a high-turn, low-judgment-per-turn task and so wants
+a *fast* reasoning model rather than a careful one — is recorded there.
 
 ---
 
