@@ -1,8 +1,7 @@
 # M0-D18 — Wiring Audit Findings, Architect Loop, and Execution Authority
 
-**Status:** **Owner-reviewed 2026-09-08; the four blocking questions are
-ruled (§3, §5.1, §6.1, §6.2). Remaining [PROPOSAL] items are not yet
-authority.**
+**Status:** **Owner-reviewed and ruled 2026-09-08. No open question blocks
+planning. Remaining [PROPOSAL] items are not yet authority.**
 **Type:** Superseding authority and design amendment, once approved.
 
 **Provenance rule for this record.** This document is the authority the next
@@ -115,8 +114,8 @@ most cases nothing does.
   real incident: *"How would this be reported and I assume maestro would resume
   it?"* and *"Did you ask it why it stopped?"*. `record_worker_progress` and
   its `blocker_payload_json` exist with zero callers, and the orchestrator only
-  polls OS process liveness. **[OPEN]** whether resumption is automatic, and
-  under whose authority.
+  polls OS process liveness. Resolved in §5.2 — the Development Manager owns
+  restart.
 
 ---
 
@@ -281,10 +280,35 @@ and the Manager already holds every input a scheduler needs. Its role contract
 already says *"Select the highest-ranked eligible item, not simply the oldest
 queue entry."*
 
-**[OPEN]** Whether that scheduling process is purely deterministic or may use
-cloud reasoning. The Owner probed this directly — *"So when does it start a so
-called dev manager cloud role?"* — and it was not settled. The role contract
-says the Manager *"may use cloud reasoning"* without saying when.
+**[OWNER] Resolved 2026-09-08:**
+
+> "The manager should use cloud reasoning for scheduling"
+
+Scheduling is a reasoning task, not a sort. This settles the role contract's
+open *"may use cloud reasoning"* permission: scheduling is the named case.
+
+### 5.2 [OWNER] The Development Manager owns worker context and restart
+
+> "the dev manager restarts and is also in charge of how much context the agent
+> gets and it will keep restarting or use another model if it happens to much"
+
+Three responsibilities, all the Development Manager's:
+
+1. **Restart.** A stopped, killed or silent worker is restarted by the Manager.
+   Restart is automatic and needs no Owner or Architect involvement.
+2. **Context allocation.** The Manager decides how much context each agent
+   gets. This makes M0-D14's context stack — `attempt_context_usage`, context
+   preflight, the policy thresholds — a live input with a named owner, rather
+   than the schema-only tables §2 found.
+3. **Model escalation.** Repeated restarts are a signal, not just a retry
+   count. Past a threshold the Manager switches the packet to **another
+   model**. This makes model routing (control-plane §11,
+   `execution_classes_json`) a runtime decision the Manager makes, not only a
+   plan-time label the Architect sets.
+
+**[PROPOSAL]** The restart threshold that triggers a model switch, and whether
+a switch consumes any part of the packet's correction budget, are not yet set.
+Per §6.1 the bias is to let the work proceed.
 
 ---
 
@@ -507,9 +531,10 @@ deliverable.
 - **[OWNER] Packaging layout (future).** Versioned code under
   `/usr/local/lib/maestro/<version>/`, with `/usr/local/bin/maestro` as the
   symlink on `PATH`; upgrade and rollback repoint the symlink. Not yet built.
-- **[OPEN] Runtime directory.** The Owner called the "must live inside
-  `<maestro-repo>/var/`" constraint *"unpractical"*. `~/.maestro/` was proposed
-  and discussed but never agreed — the Owner's last word on it was a question.
+- **Runtime directory — out of scope.** **[OWNER]** *"Runtime is not in scope of
+  this conversation"*. The Owner did call the "must live inside
+  `<maestro-repo>/var/`" constraint *"unpractical"*; no location is decided and
+  none is proposed here.
 - **Model routing is part of the design.** Mapping packet risk, role and task
   type to eligible execution classes, local or cloud, is §11 of the
   control-plane design and remains unbuilt. **[OWNER]** *"It's part of the
@@ -548,7 +573,10 @@ to function), §6.1 (fresh correction budgets — do not be inflexible), and §6
 (the Architect has the last word on carry-forward, provided it causes no
 further replanning).
 
-Remaining **[OPEN]** items are narrower and do not block planning: whether the
-Development Manager's scheduling may use cloud reasoning (§5.1), whether a
-stopped worker resumes automatically and under whose authority (§2), and the
-runtime-directory location (§11).
+Subsequently ruled the same day: the Development Manager's scheduling **uses
+cloud reasoning** (§5.1), and the Manager owns **worker restart, context
+allocation and model escalation** (§5.2). The runtime-directory question is
+**out of scope** by Owner instruction (§11).
+
+No **[OPEN]** item blocks planning. The remaining **[PROPOSAL]** items are
+implementation details for the milestones themselves to settle.
