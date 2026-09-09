@@ -405,9 +405,22 @@ answer moves into a script, and the model is left only the judgment. Maestro
 already applies it to validation through `review_readiness.py`; §5.4 extends it
 to the commit; the principle extends it to whatever comes next.
 
-**How to apply:** when a model's routine behaviour repeatedly costs an attempt,
-the first question is whether the harness can simply do it, not how to word the
-prompt better. Do not hold a deterministic omission against the model.
+**[OWNER] The cost being avoided is review capacity, not clock time:**
+
+> "it saved time and doesn't force time wasted on subsequent reviews"
+
+This is the reason the principle earns its place. Review rounds are Maestro's
+scarcest resource — bounded by the configurable N of §5, and by a single
+correction per packet — and a deterministic omission that reaches a reviewer
+consumes one of them to report something no human or agent needed to judge. The
+wall-clock saving is incidental; the real saving is not spending a bounded
+review round, and possibly the packet's one correction, on "you forgot to
+commit."
+
+**How to apply:** when a model's routine behaviour repeatedly costs an attempt
+or a review round, the first question is whether the harness can simply do it,
+not how to word the prompt better. Do not hold a deterministic omission against
+the model, and never let one reach a reviewer.
 
 ---
 
