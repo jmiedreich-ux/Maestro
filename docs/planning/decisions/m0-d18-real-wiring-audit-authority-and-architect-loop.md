@@ -3,8 +3,8 @@
 **Status:** **Owner-approved 2026-09-08.** All rulings in this record are
 authority. The two configuration boundaries in §11a were approved with it. Any
 item still marked [PROPOSAL] is a recommendation the milestones may settle, not
-a constraint. Two **[OPEN]** items remain on the decision list:
-§5.3 (per-step reasoning budget enforcement) and the scope question in §5.4.
+a constraint. One **[OPEN]** item remains on the decision list: §5.3, per-step reasoning
+budget enforcement.
 **Type:** Superseding authority and design amendment.
 
 **Provenance rule for this record.** This document is the authority the next
@@ -378,11 +378,36 @@ with a right answer moved into a script"* — which Maestro already applies to
 validation through `review_readiness.py`, and which now extends to the commit
 itself.
 
-**[OPEN]** Whether the auto-commit takes the whole worktree or only changes
-within the packet's own `owned_paths_json`. Scoping it to owned paths means
-stray debris outside scope is never silently committed, and the packet already
-declares both its owned and forbidden paths; a change landing outside owned
-paths is a real finding for review rather than something to commit quietly.
+**[OWNER] Scope resolved 2026-09-08 — commit the whole worktree.** Committing
+only owned paths would leave the rest uncommitted, and review readiness would
+then fail with its dirty-worktree blocker: *"worktree is dirty"*, which says
+nothing useful. Committing everything lets the existing path check produce the
+precise finding instead — *"changed path is outside allowed_paths: <file>"* —
+and the same applies to anything landing in `forbidden_paths_json`. Genuine
+build debris is a `.gitignore` concern, not Maestro's. Commit all; let the
+existing checks judge.
+
+### 5.4.1 [OWNER] The wrapper principle
+
+> "those little tricks is what I was trying to explain when I said a script
+> wrapper is around the packet agent delegation"
+
+The commit fix is one instance of a general rule, and it is the rule that
+matters rather than the instance: **a deterministic script wraps the packet's
+agent delegation and absorbs the model's routine misses before they become
+recorded failures.** Anything with a right answer that a model reliably forgets
+belongs in that wrapper — committing finished work, creating the branch if the
+worker did not, capping captured output, clearing debris — and never in the
+model's instructions, where it is one more thing to forget.
+
+This is the same separation §5.3 noted from outside: everything with a right
+answer moves into a script, and the model is left only the judgment. Maestro
+already applies it to validation through `review_readiness.py`; §5.4 extends it
+to the commit; the principle extends it to whatever comes next.
+
+**How to apply:** when a model's routine behaviour repeatedly costs an attempt,
+the first question is whether the harness can simply do it, not how to word the
+prompt better. Do not hold a deterministic omission against the model.
 
 ---
 
