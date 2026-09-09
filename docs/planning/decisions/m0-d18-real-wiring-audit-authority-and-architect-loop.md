@@ -1,8 +1,10 @@
 # M0-D18 — Wiring Audit Findings, Architect Loop, and Execution Authority
 
-**Status:** **Owner-reviewed and ruled 2026-09-08. No open question blocks
-planning. Remaining [PROPOSAL] items are not yet authority.**
-**Type:** Superseding authority and design amendment, once approved.
+**Status:** **Owner-approved 2026-09-08.** All rulings in this record are
+authority. The two configuration boundaries in §11a were approved with it. Any
+item still marked [PROPOSAL] is a recommendation the milestones may settle, not
+a constraint.
+**Type:** Superseding authority and design amendment.
 
 **Provenance rule for this record.** This document is the authority the next
 round of milestone planning is built from, so every statement is marked with
@@ -19,7 +21,7 @@ questions as Owner rulings. A conversation fidelity review caught it. The
 separation below exists because that failure is the same failure the record
 itself documents.
 
-**Amends, once approved:** the
+**Amends:** the
 [Maestro Development Manager role contract](../../agents/maestro-development-manager.md)
 (§5) and the [Bootstrap Convergence Policy](../bootstrap-convergence-policy.md)
 (§6.1). [M0-D04](m0-d04-notifications-and-escalation.md) and
@@ -575,8 +577,8 @@ hardcoded as module constants must move there. Known examples, not exhaustive:
 - **Capture and limits** — log capture caps, review-readiness command timeouts,
   stream poll interval and batch size.
 
-**[PROPOSAL]** Two boundaries worth keeping in mind when this is designed:
-project-specific policy already belongs in the project's own
+**[OWNER] Approved 2026-09-08.** Two boundaries: project-specific policy
+already belongs in the project's own
 `maestro.project.yaml` binding, so this file is for Maestro's own operational
 tuning rather than a second place to state project policy; and durable schema
 constraints (text and JSON size limits, file modes) are correctness boundaries
