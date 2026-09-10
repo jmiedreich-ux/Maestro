@@ -1,5 +1,13 @@
 # M0-D15 — Real M1–M4 Implementation Path (reconstructed)
 
+> **Corrected 2026-09-10.** This file's reconstruction note below claims the
+> original "no longer exists on origin and no trace of the file survives in any
+> local clone, reflog, or other branch." That is false — it was on the local
+> branch `architecture/m1-m4-packets` the whole time. The original is now
+> restored at
+> `m0-d15-original-real-m1-m4-implementation-and-non-live-proving-path.md` and
+> is the authority. This file is kept because other records cite its filename.
+
 - **Status:** Accepted by the Owner on 2026-09-01 (original, per
   `maestro-master-plan.md` line 17's own citation date — corrected here from
   an earlier draft's 2026-08-31, caught during the M3 Decision Fidelity
