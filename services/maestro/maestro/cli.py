@@ -69,7 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     claim.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
     claim.add_argument("--actor-id", default="maestro-operator", help="real actor_id recorded on this claim")
     attempt = commands.add_parser(
-        "run-attempt", help="real step 4 of starting Maestro: run one claimed attempt to completion (blocks)",
+        "run-attempt", help="manual escape hatch: run one claimed attempt directly (blocks) -- development-manager-loop normally does this for you",
     )
     attempt.add_argument("--request", type=Path, required=True, help="closed local run-attempt request JSON")
     attempt.add_argument("--runtime-dir", type=Path, default=None, help="local directory for the SQLite database")
