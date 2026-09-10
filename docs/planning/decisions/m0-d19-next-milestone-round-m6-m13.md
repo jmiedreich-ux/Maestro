@@ -441,11 +441,44 @@ scale instead of packet scale: preserve what is genuinely finished, redo what
 the change has invalidated, and do not create further replanning by preserving
 work that then has to be unpicked.
 
-**[OPEN]** Whether an in-flight packet whose work item changed under it is
-returned to the Architect (the §6 path) or allowed to finish against the
-superseded revision. **[PROPOSAL]** M0-D18 §6.2 gives the Architect the last
-word on exactly this class of question, so the default should be to route it
-there rather than to encode a rule.
+### 6.1 [OWNER] Registration is refused while work is in progress
+
+**[OWNER] Ruled 2026-09-09**, when asked whether an in-flight packet whose work
+item changed under re-registration is returned to the Architect or allowed to
+finish against the superseded revision:
+
+> "Simple, registration cannot take place when there is active work in progress"
+
+**The ruling.** The question does not arise. Re-registration is **refused**
+while the project has active work. Drain first, then re-register. There is no
+in-flight packet straddling two binding revisions, because the state that would
+produce one cannot be entered.
+
+**[PROPOSAL] Why this is the better answer and not merely the simpler one.**
+Routing the question to the Architect, as this record previously proposed, would
+have made every re-registration a replanning event whose cost is unknown until
+the Architect has judged it. Refusing registration makes the cost knowable
+before the operator commits: the answer is either "yes" or "finish or cancel
+these packets first", and the second is a list the operator can act on. It also
+removes the entire class of reconciliation bug where a packet's work item
+changes underneath a running worker. M0-D18 §6.2's bound — the decision must not
+cause further replanning — is satisfied by construction rather than by judgment.
+
+**[PROPOSAL] What counts as active**, implementing the ruling against the real
+state vocabulary in `storage.py:826`. Registration is refused when the project
+has any run in `Running`, `Blocked`, `AwaitingArchitect` or `AwaitingOwner`. It
+is permitted when every run is `Complete` or `Cancelled` — and when every run is
+`Planned`, which is the state `register-project` itself leaves a run in, so a
+project that registered and never started can always be re-registered.
+
+**[PROPOSAL]** The refusal reports **which** runs and packets are holding it, not
+merely that it was refused. An operator told "refused" has to go looking; an
+operator told "M4.03 is Running, M4.05 is AwaitingOwner" can act. This is the
+same principle as M0-D18 §5.4's ruling on committing the worktree: let the
+existing checks produce the precise finding rather than a useless generic one.
+
+**[PROPOSAL] The Atlas surface** (§5.0) is the blocked-registration state and
+the list of work holding it, so the drain is visible without a terminal.
 
 ---
 
@@ -512,13 +545,27 @@ review submission. The commits Maestro authors then carry an identity that is
 neither the Owner's nor a developer's, which is a precondition for the SOP in
 §9 being followed rather than described.
 
-**[PROPOSAL]** This intersects the runtime-directory question, which M0-D18 §11
-places **out of scope** by Owner instruction. Noted and not proposed here — but
-`config.py`'s `validate_runtime_dir` currently *enforces* that the runtime
-directory lives inside the repository's `var/`, the constraint the Owner called
-*"unpractical"*. A service account owning the runtime will have to meet that
-constraint or the constraint will have to move. Flagged for a ruling before
-M13, not decided here.
+**[OWNER] The `var/` constraint stays, ruled 2026-09-09**, when asked whether it
+would have to move to accommodate a service account:
+
+> "having the the var folder is fine for db, and installation"
+
+**The ruling.** `var/` is the right home for the database and the installation.
+`config.py`'s `validate_runtime_dir` is not a problem to be solved, and M13 does
+not need to move it. The service account is given ownership of `var/` rather
+than the runtime being relocated to suit the account.
+
+This resolves, for the database and installation specifically, the tension left
+by M0-D18 §11 — which places the runtime directory out of scope while recording
+that the Owner had called the *"must live inside `<maestro-repo>/var/`"*
+constraint *"unpractical"*. **[PROPOSAL]** Read together, the two statements are
+consistent: `var/` is right for durable state Maestro owns, and the earlier
+objection was to the constraint being applied to *everything* a runtime touches.
+Nothing in M13 requires reopening it, and this record does not.
+
+**[PROPOSAL]** M0-D18 §11's packaging layout is unaffected: versioned code under
+`/usr/local/lib/maestro/<version>/` with `/usr/local/bin/maestro` as the symlink
+remains the future install shape, with `var/` holding the database beneath it.
 
 ---
 
@@ -575,12 +622,9 @@ as delivered — which is the whole of what the audit found.
 - **[OPEN] §5 as a whole.** The M6–M13 set, its ordering, and the pre-milestone
   corrections in §4 are `[PROPOSAL]` awaiting an Owner ruling. The Owner
   approved writing this record; the plan itself has not been ruled on.
-- **[OPEN] §6.** Whether an in-flight packet whose work item changed under
-  re-registration is returned to the Architect or finishes against the
-  superseded revision.
-- **[OPEN] §7.3.** Whether the `var/` runtime constraint moves to accommodate a
-  service account. M0-D18 §11 places the runtime directory out of scope; this is
-  flagged as needing a ruling before M13, not reopened here.
+- **Closed 2026-09-09 by Owner ruling:** §6.1 (registration is refused while work
+  is in progress) and §7.3 (`var/` stays, for the database and the
+  installation). Neither is open.
 - **Carried from M0-D18, still outstanding:** the plain, non-technical start-up
   runbook the Owner asked for repeatedly — *"I don't want to see the code I want
   to see a list if steps to start maestro"* — and the missing start-up commands
@@ -600,5 +644,6 @@ Once ruled on, this record authorizes the decomposition of M6–M13 into packets
 by the Architect loop itself once M8 exists, and by hand before that. It does
 not authorize implementation of any milestone, and it does not amend M0-D18.
 
-M0-D18 §5.3's `[OPEN]` item is closed by §2 of this record. **No `[OPEN]` item
-below §5 blocks the start of M6.**
+M0-D18 §5.3's `[OPEN]` item is closed by §2 of this record, and the two open
+items this record itself raised were closed by Owner ruling on 2026-09-09
+(§6.1, §7.3). **The milestone set in §5 is the only thing awaiting a ruling.**
