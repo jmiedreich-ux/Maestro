@@ -103,14 +103,14 @@ checkpoint boundary. History is **summarised after a threshold**.
 "measurement only" as cheap, and the ruling was made against that framing. It is
 not cheap.
 
-**[FINDING] There are no steps to measure.** `executor.py:106` submits one
-prompt — `qwen -p <instructions> --yolo` — and `executor.py:121` observes it with
+**[FINDING] There are no steps to measure.** `executor.py:113` submits one
+prompt — `qwen -p <instructions> --yolo` — and `executor.py:125` observes it with
 `process.poll()`. Maestro never sees a turn boundary, a token count or a message
 history. It cannot summarise a history it does not hold, and it cannot count a
 step it never observes.
 
 **[FINDING]** `record_context_usage` (`operational_state.py:2462`) and
-`update_context_usage` (`:2498`) have zero non-test callers, and
+`update_context_usage` (`:2499`) have zero non-test callers, and
 `record_context_usage` requires a `configured_context_limit` and
 `starting_input_tokens` — numbers that need a tokenizer or a provider usage
 report. Neither exists.
@@ -136,16 +136,27 @@ below was re-verified before this plan was written.
   `required_authority="Owner"`. `:425` calls `observe_merge`, a real merge. The
   only post-M0-D18 code commit (`ad614b7`) does not touch this path.
 - **[FINDING] The Integration review is fabricated too.**
-  `development_manager.py:313` routes `result="ValidateOnly"` with
+  `development_manager.py:310`/`:315` route `result="ValidateOnly"` with
   `reviewer_instance="development-manager-loop-integration"`. Revision 1's
   instruction to "stop at `MergeReady`" was wrong: stopping there leaves a
   durable record asserting an Integration review by an agent that does not
   exist. See §7.1.
 - **[FINDING] No production path produces `RequestChanges`.**
-  `review_dispatch.py:69` defaults `result: str = "Approve"`.
-  `development_manager.py:271-281` says so in its own docstring. `correction_count`
-  is therefore always 0, and there is **no bounded review-round count anywhere
-  in the code** — no constant, no counter, no config key.
+  `review_dispatch.py:70` defaults `result: str = "Approve"`, and no production
+  caller passes anything else. `development_manager.py:269-280` says the loop
+  "can never mechanically produce a real `RequestChanges` **from a coverage
+  blocker**" — narrower than revision 3 implied, but the grep is decisive:
+  `RequestChanges` appears in no production code path. `correction_count` is
+  therefore always 0 in practice.
+- **[FINDING] The bound that is missing is the Architect's, not the packet's.**
+  Revision 3 said there is "no bounded review-round count anywhere in the code",
+  which is false: `storage.py:964` — `correction_number INTEGER NOT NULL
+  CHECK(correction_number IN (0,1))` — is exactly that, and `storage.py:854`
+  bounds `correction_count` the same way. What does not exist is **M0-D18 §5's
+  configurable N**, the number of Architect fidelity review rounds. The two are
+  different bounds and M15 must not conflate them: the correction budget is a
+  durable schema constraint and stays out of the config file per M0-D18 §11a;
+  N is genuinely absent and is the file's first real value.
 - **[FINDING] One correction per packet, enforced in the schema.**
   `storage.py:854` — `correction_count INTEGER NOT NULL DEFAULT 0 CHECK(correction_count IN (0,1))`.
   Per M0-D18 §11a, schema constraints are not tuning knobs, so this cannot be
@@ -153,37 +164,49 @@ below was re-verified before this plan was written.
 - **[FINDING] One `Initial` attempt per packet.** `storage.py:899-901` —
   `UNIQUE(packet_id,attempt_number)` plus a CHECK confining attempt 2 to a
   `TargetedCorrection` with a non-null `correction_for_review_id`. See §5.1.
-- **[FINDING] A corrected packet can never be accepted.**
-  `operational_state.py:2141` rejects the acceptance unless the approving review
-  carries `review_correction_number == 0`; a correction-pass `Approve` carries 1.
-  `development_manager.py:395` already dodges it with
-  `if packet["correction_count"] != 0: continue`.
+- **[FINDING] A packet corrected *through the correction helper* can never be
+  accepted.** `operational_state.py:2141` rejects the acceptance unless the
+  approving review carries `review_correction_number == 0`, and
+  `review_dispatch.route_correction_review` hardcodes `correction_number=1`.
+  `development_manager.py:408` already dodges it with
+  `if packet is None or packet["correction_count"] != 0: continue`.
+  **Narrower than revision 3's "never":** `operational_state.py:1723-1726`
+  explicitly permits a packet with `correction_count == 1` down the ordinary
+  approval route, whose review carries `correction_number == 0` and which
+  acceptance accepts. The defect is in the correction helper, not the store.
 - **[FINDING] No operational configuration file exists.** `config.py` defines
   paths only. The repository holds one `.toml` and no `.yaml`.
 - **[FINDING] No role contract is ever read.** `role_contract_reference` is
   interpolated as a filename at `development_manager.py:180`. No code path opens
   anything under `docs/agents/`.
 - **[FINDING] The work graph has no format, no parser and no generator.**
-  `work_graph_path` appears only in `project_manifest.py` (27, 58, 125, 181) as a
-  validated string. `docs/schemas/maestro-project-v1.schema.json:28` types it as
+  `work_graph_path` appears in `project_manifest.py` (27, 58, 125, 181, 184), the
+  project schema and two test modules — everywhere as a validated string. `docs/schemas/maestro-project-v1.schema.json:28` types it as
   a repository path. No specification file exists anywhere.
-- **[FINDING] Neither real project has a manifest.** `project_authority.py:134`
-  raises without `maestro.project.yaml`; `project_manifest.py:184` requires
+- **[FINDING] Neither real project has a manifest.** `project_authority.py:126`/`:134`
+  reads `maestro.project.yaml` and raises without it; `project_manifest.py:184` requires
   `work_graph_path` to occur in `plan_paths`. Neither
   `/home/jeremy/Development/Foundry` nor this repository contains one.
 - **[FINDING] Registration still takes hand-typed work items.**
   `project_onboarding.py:66` reads `request["work_items"]`; `:68` computes
   `source_hash` from `graph_projection_id` plus sorted work-item ids — operator
   input, never project bytes. This is the design M0-D18 §4 rejects.
-- **[FINDING] `ExecutorAdapter` is the only agent entry point and it is
-  git-typed.** `executor.py:65`. In: `base_commit`, `worktree_path`,
-  `allowed_paths`, `forbidden_paths`. Out: `branch_name`, `commit_sha`,
-  `changed_files`. A role whose output is not a commit cannot be expressed.
+- **[FINDING] `ExecutorAdapter` is the only agent entry point, and its *inputs*
+  are git-typed.** `executor.py:65`. `ExecutorPreflight` requires `base_commit`
+  and an existing clean `worktree_path` at that commit, plus `allowed_paths`,
+  `forbidden_paths` and `model_identity`. A role with no packet — the Architect
+  at registration — cannot supply them. **Correcting revision 3:** the *outputs*
+  are less constrained than it claimed — `ExecutorHandoff` also carries
+  `raw_output: str` and `completed: bool`, and `commit_sha` is `str | None` — so
+  a non-commit result can be returned. The blocker is the mandatory git input,
+  not the output shape.
 - **[FINDING] There is no cloud model client, and no dependency that could be
   one.** No reference to any cloud model API anywhere in `services/`.
   `services/maestro/pyproject.toml:6` declares three runtime dependencies:
   `PyYAML`, `PyJWT`, `cryptography`. No HTTP client.
-- **[FINDING] `secrets.py` has no importer at all.** Not one.
+- **[FINDING] `secrets.py` has no production importer.** Its only importers are
+  three test modules under `tests/m3_wave_0/` and `tests/m3_wave_a/`. (Revision 3
+  said "no importer at all. Not one." — false as written.)
 - **[FINDING] The GitHub integration is dead in a precise sense**, and M0-D18
   §2's "dead code" is true but not in the obvious way. `real_discovery.py`
   imports `github_client`'s `fetch_file_content` and `fetch_repository_metadata`
@@ -193,13 +216,13 @@ below was re-verified before this plan was written.
   (`discover-project` → `project_discovery.discover_project` →
   `evaluate_snapshot`) evaluates a snapshot it is handed and fetches nothing.
 - **[FINDING] There is no `git clone` anywhere in the codebase.**
-  `git_repository.py` exposes four read-only operations against a path it is
+  `git_repository.py` exposes three public read-only operations against a path it is
   handed. The Architect's own repository has no transport.
 - **[FINDING] `resource_locks` has no `project_id`**, and `storage.py:1106`
   creates `one_active_resource_key` as a **globally** unique index on
   `resource_key`. Two projects contending on the same key cross-block.
 - **[FINDING] The migration contract forbids the fix as written.**
-  `storage.py:422` — versions 4 and 5 "deliberately use only `CREATE`,
+  `storage.py:424-431` — versions 4 and 5 "deliberately use only `CREATE`,
   `ALTER ... ADD COLUMN` and index/trigger creation. In particular, accepted
   tables are never rebuilt." A `NOT NULL project_id` needs a rebuild, and
   replacing the index needs a `DROP INDEX`. See §7.3.
@@ -215,34 +238,87 @@ below was re-verified before this plan was written.
   code** — one comment at `operational_state.py:2345`. Slack does not exist.
 - **[FINDING] Backup and recovery is zero code.** No snapshot writer, no
   manifest, no retention, no restore test.
-- **[FINDING] Atlas has no reachable write path.** The read API exposes five
-  routes (`read_api.py:455`) — packets, attempts, reviews, events, stream —
+- **[FINDING] Atlas has no reachable write path.** The read API exposes six
+  routes (`read_api.py:455`), five of them snapshots — packets, attempts, reviews, events, stream —
   and **no `work_items` or `graph_projections` endpoint**. Four POST command
   routes exist (`read_api.py:1007`) but every UI button is gated on an optional
-  `real?:` prop that no non-test file ever passes, so all four render disabled.
+  `real?:` prop that no non-test file ever passes. **Two of the four are worse
+  than disabled:** `OwnerDecisionCard.tsx:135` uses `disabled={!real || …}` and
+  renders disabled, but `CrashCard.tsx:127-128` uses
+  `disabled={real && index !== 0 ? … : undefined}`, so without `real` the
+  buttons render **enabled and silently inert**.
   `App.tsx:29` passes no `systemState`, so crash, disconnect and empty states are
   unreachable. The active packet is a hardcoded constant in
   `shell/realActivePacket.ts`.
-- **[FINDING] The read API has no authentication.** `read_api.py:30` binds
-  loopback only; `_validate_command_envelope` (`:465`) checks the `actor`
-  field's JSON shape and nothing else. Anything reaching loopback can POST
-  `actor: Owner`.
+- **[FINDING] The read API has no authentication, and is not loopback-bound.**
+  `_validate_command_envelope` (`:465`) checks that `idempotency_key` is
+  non-empty and `actor` is a dict — nothing else. Anything that can reach it can
+  POST `actor: Owner`. And it is **not** confined to loopback as revision 3
+  said: `read_api.py:32-37` reads `MAESTRO_READ_API_ALLOWED_HOST` from the
+  environment and `:51` unions it into the allowed set, an Owner-approved
+  exception of 2026-09-06. The unauthenticated Owner-authority surface can be
+  bound to an arbitrary host by an environment variable.
 - **[FINDING] Executor handles live in memory.** `executor.py:104` — a plain
   dict on the adapter instance. If the Development Manager process dies, every
   running attempt becomes unobservable and uncancellable.
 
 ---
 
-## 4. What has never happened
+## 4. What has and has not happened — corrected
 
 **[OWNER]** M0-D18 §2 records the Owner's own correction:
 
 > "Yes but the so called loop didn't develop this"
 
-**Maestro has never built anything.** No model has completed a Maestro packet.
-This is the single most important fact about the plan and revision 1 omitted it
-from every milestone, every definition of done and every open item. §7 makes it
-the round's first milestone.
+Its scope is precise, and M0-D18 states it precisely: *"Every line of **M4** was
+written by the assistant, not produced by Maestro's own loop."* That is about
+**Maestro's own development**.
+
+**[FINDING] Revision 2 over-generalised it to "no model has completed a Maestro
+packet," and that is false.** A record-consistency review found the
+counter-evidence and it verifies in the world, not only in prose:
+
+- `docs/registrations/foundry-read-only-discovery.md:77-103` records a real
+  dispatch proof against Foundry on 2026-09-06.
+- `/home/jeremy/Development/Foundry` contains commit
+  `740f548ebf23d60b5e1e951b0e718b420ac7bd4a` — *"CG-M4-19: add Menu browser
+  checks"* — on `origin/codex/m4-19-menu-browser-checks`. Real, pushed.
+- `var/foundry-persistent/runtime/maestro.sqlite3` holds two `Succeeded`
+  attempts by `qwen3.6:27b`, and three reviews:
+  `('review-cg-m4-19-integration-1','maestro-integration-1','NeedsReplan')`,
+  then `ValidateOnly`, then
+  `('review-cg-m4-19-independent-2','owner-real-review-1','Approve')`.
+
+So a local model completed a real packet against a real project, **including the
+correction-and-replan path**, and a real reviewer — not the fabricated
+`development-manager-loop-*` literal — approved it.
+
+**[FINDING] The sample is small and mixed.** `var/maestro.sqlite3` also holds
+`('attempt-cg-m4-20-1','Failed',None,'qwen3.6:27b')` and
+`('attempt-cg-m4-20-2','Running',None,'qwen3.6:27b')`. One packet completed; the
+next failed and its retry was never resolved.
+
+**What has actually never happened**, stated at the width the evidence supports:
+
+1. **Maestro's own loop has never driven a packet end to end.** The Foundry proof
+   was driven by hand through the CLI — its reviewer instances are
+   `maestro-integration-1` and `owner-real-review-1`, operator identities, not
+   `run_cycle`. This is the Owner's finding, unchanged.
+2. **Maestro has never built any part of Maestro.** Also unchanged.
+3. **No one has measured the distribution.** One success, one failure, one
+   unresolved. Nothing supports a review-round bound, a restart threshold or a
+   correction budget.
+
+§8's M6 is rewritten accordingly: it is not "can an executor complete a packet",
+which is answered, but "what do the existing samples say, and what does the loop
+do when it drives them."
+
+**[PROPOSAL] A second reading the Owner should rule on.** If
+`docs/registrations/foundry-read-only-discovery.md` overstates what happened,
+then it is a false capability record on master — exactly the class M0-D18 §7.4
+and §7.2 exist to correct — and it must be corrected rather than relied on. It
+cannot both stand as proof and be ignored as the plan's premise. Revision 2 did
+the latter by never opening it.
 
 ---
 
@@ -265,23 +341,47 @@ packet's **only** attempt, and recovery is a whole new packet via
 **[PROPOSAL]** The ruling in §5.4 is strengthened, not weakened, by this. Only
 the stated cost needs correcting.
 
-### 5.2 §5.4.2's "This existed and was lost" is not true
+### 5.2 WITHDRAWN — M0-D18 §5.4.2 is correct and this record was wrong
 
-M0-D18 §5.4.2 states, under an **[OWNER]** marker that carries no Owner quote,
-that the Alpha packet wrapper graded placeholder violations and that the concept
-was lost.
+**Revision 3 of this record claimed M0-D18 §5.4.2's "This existed and was lost"
+was false. An independent verification review found the claim was a misreading,
+and it verifies. The charge is withdrawn.**
 
-**[FINDING]** It never existed. `packet_wrapper.py:137-145` returns
-`(f"unapproved {scenario.removesuffix('-violation')}",)` from a scenario
-**string in the packet JSON**. `lifecycle.py:18` marks the whole thing a
-"Controlled fixture result; it is not a real agent or subprocess result." There
-is no detector and there never was.
+M0-D18 §5.4.2 says: *"The Alpha packet wrapper graded exactly this class —
+`lifecycle.py` rejects on 'dependency/configuration/placeholder violation' — and
+the concept did not survive into the real execution path."*
 
-**[PROPOSAL] Consequence.** The model-shaped check set is **net-new invention,
-not restoration** — which means it carries exactly the "latent or unknown scope"
-the Owner's own packetization standard bans, and its check list is an
-undecided design question rather than a recovery job. It is scheduled
-accordingly at M17 (§8), with the check list named as an explicit unknown.
+**[FINDING] Both halves are true.** `lifecycle.py:52-57`:
+
+```python
+if result.violations:
+    return LifecycleDecision(
+        REJECTED,
+        "CoordinatorEscalation",
+        f"dependency/configuration/placeholder violation: {result.violations[0]}",
+    )
+```
+
+A verbatim match for M0-D18's quoted string, in the Alpha wrapper, grading that
+class — and absent from the real path. This record had cited `lifecycle.py:18`,
+a docstring on the *input* dataclass, and never opened lines 52–57, which are the
+code under discussion.
+
+**[FINDING] The true, narrower finding.** The **grading rule** existed and still
+exists. Only the **detector** feeding `result.violations` was fixture-fed:
+`packet_wrapper.py:139-146` returns `(f"unapproved {scenario…}",)` from a
+scenario string in the packet JSON.
+
+**[PROPOSAL] What survives for M17.** The check set still has to be built —
+there has never been a detector — but it is **restoration of a rule with a
+missing implementation**, not net-new invention, and M0-D18's framing was right.
+The check list remains an explicit unknown at M17.
+
+**[PROPOSAL] Why this is recorded rather than deleted.** This record asked the
+Owner to rule that an Owner-approved document was factually wrong about the
+code, on the strength of a line the record had not read. That is the same
+failure — asserting without verifying — that M0-D18 §11's standing instruction
+exists to stop, committed by the record written to apply it.
 
 ---
 
@@ -350,17 +450,35 @@ should say so plainly.
 index unique per `(project_id, resource_key)` for `Path` and `SharedBoundary`;
 `FiniteResource` stays global for the GPU and the model host.
 
-**Why now rather than at the multi-project milestone.** §3 finds this is **not**
-an additive migration — a `NOT NULL` column needs a table rebuild and the index
-swap needs a `DROP INDEX`, both outside the invariant `storage.py:422` declares.
-Today `var/maestro.sqlite3` is 585 KB of disposable M4 state, so a rebuild costs
-nothing. Once real run history accumulates behind the `_no_update`/`_no_delete`
-triggers, it costs a great deal. Two real projects already exist, so the
-cross-blocking constraint is live.
+**Why now rather than at the multi-project milestone — corrected.** Revision 3
+argued this was not an additive migration and asked the Owner to rule on relaxing
+the never-rebuild invariant `storage.py:424-431` declares. **A verification
+review showed that argument was wrong**, and the test reproduces on this machine
+(SQLite 3.45.1, `PRAGMA foreign_keys=ON` as `storage.py:593` sets):
 
-**[OPEN]** Whether to relax the never-rebuild invariant for a version 6, or make
-`project_id` nullable and enforce scoping in Python and lose the database-level
-guarantee. The invariant buys rollback-without-copying; the Owner should rule.
+```
+ALTER TABLE … ADD COLUMN project_id TEXT NOT NULL DEFAULT 'legacy'              -> OK
+ALTER TABLE … ADD COLUMN project_id TEXT NOT NULL DEFAULT 'legacy' REFERENCES … -> FAILED
+    "Cannot add a REFERENCES column with non-NULL default value"
+```
+
+So a `NOT NULL` column with a default is legal and needs **no rebuild**. A
+rebuild is forced only if `project_id` is declared a **foreign key** to
+`projects`, which is the actual decision. The `DROP INDEX` half is genuinely
+outside the docstring's enumerated set, though it copies and rewrites nothing,
+which is the rationale that set exists to protect.
+
+Revision 3 also argued the cost rises "behind the `_no_update`/`_no_delete`
+triggers". **[FINDING]** `resource_locks` carries neither — `storage.py:1176-1183`
+applies them to eight other tables — and `operational_state.py:1599` already
+issues `UPDATE resource_locks`. The doing-it-now argument survives on the
+smaller ground that both live databases hold real Foundry history (§4) and a
+default-backfilled `legacy` project id is honest only while that history is
+disposable.
+
+**[OPEN]** Whether `project_id` is a foreign key to `projects`. FK gives
+referential integrity and forces a rebuild; no FK is a pure `ADD COLUMN`. Two
+real databases exist, so the backfill value matters either way.
 
 **[PROPOSAL]** M0-D07 requires a snapshot immediately before every schema
 migration. No snapshot machinery exists. A minimal snapshot-and-verify step
@@ -387,25 +505,45 @@ than assumed into M5.
 
 ---
 
-### M6 — Proving run: can an executor complete a packet at all?
+### M6 — Establish the baseline: read the samples that exist, then take more
 
 **The round's first milestone, because everything after it is unestimatable
-until it returns a number.** §4: Maestro has never built anything.
+until it returns numbers.** §4 corrects the premise: an executor *can* complete a
+packet — once, by hand, with a correction. What is missing is a distribution and
+a loop-driven run.
 
-Give a real executor a real packet against a real repository and record what
-happens: whether it completes to review standard, at what granularity, and
-within the one correction the schema permits (§3). Report the result honestly,
-including "it cannot."
+Three parts, smallest first:
 
-**Why first.** M15's configurable review-round count, M16's restart-before-model-
-switch threshold, M18's split path and the whole definition of done are
-parameters of a distribution with zero observed samples.
+1. **Reconcile the existing evidence.** Read
+   `docs/registrations/foundry-read-only-discovery.md`, both runtime databases,
+   and the CG-M4-19 and CG-M4-20 rows. State what actually happened, what was
+   hand-driven, and whether the registration record overstates it (§4). Correct
+   it if it does.
+2. **Resolve CG-M4-20.** One `Failed` attempt and one `Running` attempt sit
+   unresolved in `var/maestro.sqlite3`. Find out why it failed. That is one of
+   the two samples in existence.
+3. **Take more samples, loop-driven.** Run real packets through `run_cycle`
+   rather than by hand, and record completion rate, granularity, corrections
+   consumed, and failure modes.
+
+**Why first.** M15's configurable review-round count, M16's
+restart-before-model-switch threshold, M18's split path and §13's definition of
+done are all parameters of a distribution with **two** observed samples, one of
+each outcome.
+
+**[FINDING] It cannot be fully loop-driven until §7.1 lands**, because
+`run_cycle` today fabricates the reviews it would be measured on. Part 3 follows
+the §7 corrections.
 
 **Atlas:** none. This is a measurement, reported in the Done Record.
 
-**[OPEN]** What "review standard" means for the proving run, given that no real
-reviewer exists until M17. **[PROPOSAL]** the project's own declared checks plus
-a human read.
+**[OPEN]** What "review standard" means before a real reviewer exists (M17).
+**[PROPOSAL]** the project's own declared checks plus a human read — which is
+what `owner-real-review-1` already was in the Foundry proof.
+
+**[OPEN]** M0-D10 (Accepted) designates Foundry the proving project and mandates
+register → dry run → *then* execute. M6 as written inverts that, and M12 holds
+registration. See §15.
 
 ---
 
@@ -635,7 +773,7 @@ net-new design, not restoration. The reviewer-contract amendment lands with the
 reviewer.
 
 **[OPEN]** How actor independence is checkable once actors are real. Today
-`operational_state.py:1911` is satisfied by a string literal.
+`operational_state.py:1916` is satisfied by a string literal.
 
 ---
 
@@ -858,14 +996,90 @@ M0-D18 §3: *"Clearly the product has to function."*
 
 ---
 
+## 15. [PROPOSAL] The coverage gap this record has not closed
+
+A record-consistency review found that this record was verified thoroughly
+against **the code** and against **M0-D18**, and was never checked against the
+other seventeen decision records. It names three — M0-D18, M0-D07, M0-D04 — in
+over 800 lines. The defect is not in what it verified; it is in what it never
+opened. Scheduling this round without closing the gap would repeat M0-D18 §1's
+own origin: acting on a partial reading of the record.
+
+**Accepted records with live obligations this round does not carry:**
+
+- **M0-D13** (Accepted 2026-08-31) requires synthetic control-loop qualification
+  **before any live Foundry execution** — which M6 is. It appears nowhere in
+  this record. **[OPEN]** and structurally deadlocked: D13's qualification is
+  fixture-only by design, which M0-D18 §7.1's fake-data ban makes unsatisfiable.
+  It needs explicit retirement, not silence. `architecture-agent.md:41-54`
+  restates it as controlling text the Architect must read, so M12's Architect
+  will load it.
+- **M0-D10** (Accepted) designates Foundry the proving project and mandates
+  register → dry run → execute. M6 inverts that order and M12 holds
+  registration. The acceptance record already in the database cites
+  `'M0-D10#step-5'`, so the sequence was partly executed (§4).
+- **M0-D12** (Accepted) makes an eight-element bounded quality contract required
+  per packet, and `independent-review-agent.md:51-58` makes its absence **block
+  the review**. There is no column for it (`grep -rn "quality_contract"
+  services/` → nothing). As scheduled, M15 would produce packets M17's reviewer
+  must refuse.
+- **M0-D05** (Accepted) is the record that actually states *"escalate
+  immediately. Do not loop further corrections."* M0-D18 §6.1 amends the
+  Bootstrap Convergence Policy; **M0-D05 is untouched and uncited by both**.
+- **M0-D17** (Accepted) sets *"a minimum of one real review before acceptance or
+  merge… a **hard floor, not a tunable**."* M15 ships the configuration file
+  M0-D18 §11a mandates and nothing records the exemption.
+- **M0-D02** (Accepted) specifies `maestro project create`, a binding PR into the
+  project repository, and a dry run gating registration. None exists; M12 covers
+  none of the three.
+- **M0-D14** (Accepted) requires dispatch **rejection** on insufficient packet
+  context. That is a different obligation from §5.3's per-step budget, and §2's
+  "out of scope" ruling reads as retiring it. It does not. Either D14 needs
+  amending or the gate is unscheduled.
+- **M0-D03** (Accepted) requires that a stale or revoked credential *"blocks
+  affected work visibly"*, and that backups never contain unencrypted secrets —
+  a constraint on M8 that M8 does not carry.
+- **M0-D08 / M0-D09** (both Accepted, both zero code) are the two most plausibly
+  out-of-round, which is exactly why §9 should have said so and did not.
+
+**Two documents that contradict this record and sit on master:**
+
+- `docs/registrations/architect-registration-readiness-one-sheet.md:9,24,49-50`
+  states that *the architect hands Maestro* an approved work graph — the exact
+  inversion of M0-D18 §4 — and names two commands that do not exist.
+- `bootstrap-convergence-policy.md:22-26` still states the rule M0-D18 §6.1
+  amended, and `:7` gives it precedence over conflicting instructions. Five role
+  contracts restate it, including `architecture-agent.md:167` — the contract of
+  the role M0-D18 empowers to split packets.
+
+**[PROPOSAL] Before M11 loads role contracts**, the contracts must be amended:
+`docs/agents/` was last touched 2026-09-03, five days before M0-D18, and no file
+there knows either record exists. `maestro-development-manager.md:16` still
+offers cloud reasoning as optional; `:68` still forbids resetting correction
+counts. The first time code opens these files it makes stale text executable,
+which is worse than the string literals it replaces. This record schedules one
+contract amendment across fifteen milestones.
+
+**[PROPOSAL] The free corrections that should happen first**, because they are
+the read-path that produced M0-D18 and they are untouched:
+`README.md:7`, `maestro-master-plan.md:5`, `maestro-development-status.md`
+(recorded at a commit 233 behind HEAD, and asserting M1's lifecycle is closed
+with "every state having a real way in and a real way out"), `ai/handoffs/current.md`
+(which tells the reader to read the status doc *before taking any Maestro
+action*), and `m4-packet-breakdown.md`, which records the fabricated reviews as
+delivered features. §7.2 names two of these five.
+
+---
+
 ## 14. Open items
 
 **Requiring an Owner ruling:**
 
 - **§8 as a whole** — the milestone set and its order.
-- **§5.1, §5.2** — two factual errors in Owner-approved M0-D18.
-- **§7.3** — relax the never-rebuild migration invariant, or scope locks in
-  Python and lose the database guarantee.
+- **§5.1** — one factual error in Owner-approved M0-D18. (§5.2 alleged a second
+  and was itself wrong; withdrawn.)
+- **§7.3** — whether `resource_locks.project_id` is declared as a foreign key.
+  That, not the never-rebuild invariant, is the real question (§7.3).
 - **§10 (M10)** — read-API authentication, before a service account shares
   loopback with an unauthenticated Owner-authority POST.
 - **§9 (M9)** — whether the work graph lives in the project repository or
