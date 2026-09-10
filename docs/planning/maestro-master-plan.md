@@ -2,14 +2,29 @@
 
 ## Current delivery checkpoint
 
-The authoritative current status and process-delay record is
-[Maestro Development Status and Process-Delay Record](maestro-development-status.md);
-read it, not the summary below, for the exact current state. As of
-2026-09-05: Alpha-01 through Alpha-03, M1-01, M1-02A, run lifecycle, packet
-eligibility, assignment claim, execution start/heartbeat/finish, and
-review-control routing are all integrated on `master`. M1-02B is terminally
-returned; its failed-attempt evidence is not live-project, merge, or
-end-to-end-test authority.
+**Corrected 2026-09-09.** The governing records are
+[M0-D18](decisions/m0-d18-real-wiring-audit-authority-and-architect-loop.md)
+(authority) and
+[M0-D19](decisions/m0-d19-next-milestone-round.md) (the current plan). Read
+those first; they supersede this file on conflict.
+
+[Maestro Development Status and Process-Delay Record](maestro-development-status.md)
+is **no longer the current status record** — it was recorded 2026-09-05 at
+commit `4a4d36e`, now 236 commits behind `master`, and its central claim that
+M1's lifecycle is closed with "every state having a real way in and a real way
+out" describes the durable state layer, not a working product. It is kept as a
+historical process-delay record.
+
+The state as of 2026-09-09: the durable state layer is built and tested; most
+of the agent roles that would drive it are not (six of nine exist only as
+string literals); nothing parses the work graph; and Maestro's own loop has
+never driven a packet end to end. The loop records its own independent review
+and Owner acceptance
+(`services/maestro/maestro/development_manager.py:329-334`), so M4's durable
+review records are a known defect rather than evidence. M2 and M4 stay closed
+per M0-D18 §7.4 — **closure asserts delivered packets only, not a working
+product.** M1-02B is terminally returned; its failed-attempt evidence is not
+live-project, merge, or end-to-end-test authority.
 
 **Roadmap numbering note (read this before proposing new M1-M4 work):**
 Section 9 below still describes the original M0 / Alpha qualification / V1 /
@@ -27,14 +42,22 @@ mechanical grading; M4 completes the persistent Development Manager loop
 (real Integration, review, notification, and recovery). Every slice actually
 merged since M1-01 has used this M1–M4 numbering, not the Alpha/V1/V2/V3
 one — Section 9 has simply not been rewritten to match yet. Separately,
-[M0-D16](decisions/m0-d16-closed-completion-and-learning-loop.md) and
-[M0-D17](decisions/m0-d17-discretionary-final-correction.md) proposed a
+two records then numbered M0-D16 ("closed completion and learning loop") and
+M0-D17 ("discretionary final correction") proposed a
 heavier definition-of-done-manifest/two-tier-correction process for this M1–M4
 work; that specific process design was itself superseded two days later by the
 [Bootstrap Convergence Policy](bootstrap-convergence-policy.md)
 (Owner-approved 2026-09-03), which is the simpler one-review/one-correction
-model every merged M1 slice has actually used. A large, detailed M1-02B
-packet was drafted under the M0-D16/D17 model and split into sub-packets
+model every merged M1 slice has actually used — **amended by M0-D18 §6.1: split
+packets get fresh correction budgets, and the policy file itself still states
+the unamended rule.** **Those two records were never pushed to `origin`. They
+survive only on the local-only branch `architecture/m1-m4-packets` in
+`/home/jeremy/Development/Maestro`, and the numbers M0-D16 and M0-D17 were
+later reused: on `master` they are
+[M5 Atlas navigation and visibility](decisions/m0-d16-real-m5-atlas-navigation-and-visibility.md)
+and [the M4.16 ruling-loop classification criteria](decisions/m0-d17-real-m4-16-ruling-loop-classification-criteria.md).
+Read the filename, not the number.** A large, detailed M1-02B
+packet was drafted under that model and split into sub-packets
 (`docs/planning/packets/m1-02b*.md` on the `architecture/m1-m4-packets`
 branch); none of it was ever reviewed or implemented, and it is terminally
 non-authoritative. Read the Bootstrap Convergence Policy and the current

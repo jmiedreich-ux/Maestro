@@ -1,15 +1,29 @@
 # Maestro — Current Project Handoff
 
-**Date:** 2026-09-05
-**State:** M1 internal operational core is closed — every packet state has a real way in and out except the deliberately deferred `Merged→Complete` step and real project registration
+**Date:** 2026-09-09 (correction; the record below dates from 2026-09-05)
+**State:** the durable state layer is built and tested; most of the agents that
+would drive it are not. Maestro's own loop has never driven a packet end to end,
+and it records its own independent review and Owner acceptance
+(`services/maestro/maestro/development_manager.py:329-334`) — a known defect.
 
-Read [Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
-before taking any Maestro action. It is the current status ledger and records
-the process failures, interim controls, exact branch heads, and safe resume
-sequence. Then read
-[the current source handoff](../../sources/planning/current-handoff.md), the
-Master Plan, the relevant decisions, the active packet, and the actual Git
-worktree state.
+**Read, in this order, before taking any Maestro action:**
+
+1. [M0-D18](../../docs/planning/decisions/m0-d18-real-wiring-audit-authority-and-architect-loop.md)
+   — Owner-approved 2026-09-08, the governing authority. Every statement is
+   marked `[OWNER]`, `[PROPOSAL]` or `[OPEN]`; check the marker before building
+   on a section (§10 is explicitly **not agreed**).
+2. [M0-D19](../../docs/planning/decisions/m0-d19-next-milestone-round.md)
+   revision 2 — the plan built from it. Revision 1 was found defective and
+   replaced; do not act on any memory of it.
+3. Then the relevant decision records, the active packet, and the actual Git
+   worktree state.
+
+[Maestro Development Status and Process-Delay Record](../../docs/planning/maestro-development-status.md)
+is **superseded** — historical only, recorded 236 commits behind `master`. The
+same applies to the state summary in the rest of this file: it is preserved as
+the record of where M1 stood on 2026-09-05, not as current fact. M2 and M4 are
+closed per M0-D18 §7.4, and **closure asserts delivered packets only, not a
+working product.**
 
 ## Integrated state
 

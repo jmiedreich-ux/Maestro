@@ -1,5 +1,33 @@
 # M4 Packet Breakdown — Revised After Independent Fidelity Review
 
+> **CORRECTED 2026-09-09. Read this before any "Built." claim
+> below.**
+>
+> M4 is closed per M0-D18 §7.4, and **closure asserts delivered packets only,
+> not a working product.**
+>
+> "Built." here means code was written and pushed. M4.01–M4.17e went **directly
+> to `master` with no branch, no PR, no independent review and no Done Record**
+> (M0-D18 §9). The Owner had granted merge authority for that work; the lesson
+> M0-D18 draws is that a grant of autonomy does not suspend the SOP.
+>
+> The durable review and acceptance records these packets produced **assert
+> reviews that never happened.** The development-manager loop writes its own
+> `Approve` (`services/maestro/maestro/development_manager.py:329-334`) under
+> the actor literal `development-manager-loop-independent`, and the Integration
+> review is fabricated the same way (M0-D19 §7.1). Do not cite those records as
+> evidence that a packet was reviewed.
+>
+> The 2026-09-08 wiring audit also found much of what M4 assumes is missing:
+> six of nine roles are string literals, nothing parses the work graph, and
+> Maestro's loop has never driven a packet end to end. Before reporting any
+> capability here complete, verify a **real caller in a real path** — M0-D18
+> §3: *"Clearly the product has to function."*
+>
+> Current authority:
+> [M0-D18](decisions/m0-d18-real-wiring-audit-authority-and-architect-loop.md);
+> current plan: [M0-D19](decisions/m0-d19-next-milestone-round.md).
+
 **Status:** Architect-authored, revised 2026-09-08 after a real
 independent fidelity review found two structural gaps that would have
 hard-failed on first real use, one factual error, and several

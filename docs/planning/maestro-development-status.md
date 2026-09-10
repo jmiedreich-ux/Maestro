@@ -1,5 +1,40 @@
 # Maestro Development Status and Process-Delay Record
 
+> **SUPERSEDED 2026-09-09. This is a historical record, not
+> the current status. Do not act on it.**
+>
+> It was recorded at commit `4a4d36e`, now **236 commits behind `master`**
+> (`2189a63`). Current authority:
+> [M0-D18](decisions/m0-d18-real-wiring-audit-authority-and-architect-loop.md);
+> current plan: [M0-D19](decisions/m0-d19-next-milestone-round.md).
+>
+> **What below is now known to be false or misleading:**
+>
+> - "M1's internal operational core is now closed… every state having a real
+>   way in and a real way out" describes the **durable state layer**. The
+>   actors that would drive those transitions in production are mostly absent:
+>   six of the nine designed roles (Architect, Integration Agent, Independent
+>   Reviewer, QA, Coordinator, Decision Fidelity Reviewer) exist only as string
+>   literals, and the only agent the code actually spawns is the qwen worker
+>   (`services/maestro/maestro/executor.py`); every other subprocess call in
+>   the service runs git or a configured check command.
+> - Any reading of "complete" as "the product works." Per M0-D18 §7.4, closure
+>   asserts **delivered packets only**. Maestro's own loop has never driven a
+>   packet from dispatch to acceptance; the one packet a model has completed
+>   (`CG-M4-19` against Foundry, 2026-09-06) was hand-driven through the CLI.
+> - The review and acceptance records this document treats as evidence. The
+>   development-manager loop writes its own `Approve`
+>   (`services/maestro/maestro/development_manager.py:329-334`) under the actor
+>   literal `development-manager-loop-independent`, then grants itself
+>   `required_authority="Owner"` and merges. Its own role contract forbids
+>   this. It is a defect.
+> - Nothing reads the work graph; `planned_rank`, `dependencies_json`,
+>   `change_domains_json`, `execution_classes_json` and `priority` have no
+>   readers, so dependencies block nothing.
+>
+> The process-delay history, interim controls, and branch-head record below
+> remain accurate for the period they cover, and are why this file is kept.
+
 **Recorded:** 2026-09-05
 **Recorded on:** `master`
 **Current master at this update:**
