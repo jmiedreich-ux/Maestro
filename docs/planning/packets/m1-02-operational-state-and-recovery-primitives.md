@@ -810,18 +810,30 @@ A heartbeat changes only its `Active` lease after version/monotonic-time checks 
 
 ### Startup reconciliation
 
-`reconcile_startup` performs no Git, executor, notification, or network action. It reads one database snapshot and, in deterministic lease-ID order:
+`reconcile_startup` performs no Git, executor, notification, or network action.
+It reads one database snapshot and, in deterministic lease-ID order, computes:
 
 1. leaves a consistent unexpired `Active` lease untouched and returns `ObserveActiveAttempt` with exact IDs;
-2. for expired `Active`, atomically marks lease/locks `Expired`, changes `Leased`/`Running` packet to `Blocked`, opens one `Recovery` wait with next action `RereadAuthorityAndExecutor`, and appends `LeaseExpired`;
-3. for `Leased`/`Running` without a matching active lease, blocks the packet, opens that recovery wait, and appends `StartupReconciliationRecorded`; and
+2. for expired `Active`, atomically marks lease/locks `Expired`, changes `Leased`/`Running` packet to `Blocked`, opens one `Recovery` wait with next action `RereadAuthorityAndExecutor`, and records the `LeaseExpired` outcome;
+3. for `Leased`/`Running` without a matching active lease, blocks the packet, opens that recovery wait, and records the `OrphanBlocked` outcome; and
 4. for active lease conflicting with packet/run/base/worktree, preserves evidence, blocks the packet, opens `RecoveryConflict`, and returns `ReturnToCoordinator`; it creates no replacement.
 
-`recovery_run_id` plus entity ID derives event idempotency. Repeating reconciliation creates no duplicate event/wait. It never changes to `Ready`/`Dispatchable`, starts an attempt, invokes a worker, creates branch/PR, sends notification, or retries.
+The command appends exactly one `StartupReconciliationRecorded` composite event
+containing the ordered `ObserveActiveAttempt|LeaseExpired|OrphanBlocked|
+RecoveryConflict` outcomes and every resulting lease/lock/packet/wait after-fact;
+none of those outcome names is a second event. `recovery_run_id` derives event
+idempotency. Repeating reconciliation creates no duplicate event/wait. It never
+changes to `Ready`/`Dispatchable`, starts an attempt, invokes a worker, creates
+branch/PR, sends notification, or retries.
 
 ### Stale observations
 
-`record_attempt_observation` may transition only when the supplied lease is the attempt's current active lease and expected state/version match. A late result for expired/released/replaced lease appends one `StaleObservationIgnored` keyed by observation identity and cannot change attempt, packet, evidence, review, or acceptance.
+`record_attempt_observation` may transition only when the supplied lease is the
+attempt's current active lease and expected state/version match. Every call
+appends exactly one `AttemptObservationRecorded` composite event with outcome
+`Applied|StaleObservationIgnored`. A late result for an expired, released, or
+replaced lease uses `StaleObservationIgnored`, is keyed by observation identity,
+and cannot change attempt, packet, evidence, review, or acceptance.
 
 ## Serial implementation slices
 
@@ -883,9 +895,11 @@ usable release and cannot unlock M1-03, M3-01, or M4-01.
   reference its stable IDs and reviewed planning head without copying its
   inventories, counts, or digests.
 - **Gate:** two independent ephemeral standard-library validators reproduce
-  all canonical manifests/digests, check every relation/reference/coverage
-  edge and event cardinality, and pass isolated in-memory mutations before
-  Decision Fidelity and Project Architect release. B0 is never leased.
+  all canonical manifests/digests, including each exact per-slice object with
+  singular `slice` plus the seven array keys named by the contract; check every
+  relation/reference/coverage edge and event cardinality; and pass isolated
+  in-memory mutations before Decision Fidelity and Project Architect release.
+  B0 is never leased.
 
 Historical return glossary for the immutable failed packet:
 
@@ -927,6 +941,16 @@ API record, including a return event that contains its evidence, packet, and
 wait after-facts. Each slice receives its own M0-D05 normal correction and only
 an eligible M0-D17 final correction; there is no shared allowance, third
 correction, or general follow-up review restart.
+
+The canonical relation records close the two initial-gate slots, both targeted
+gate slots and their nested finding/proof unions. Generic packet transition may
+resume only `StandardCorrection` number 1; only B-A17 may atomically resume
+`DiscretionaryFinalCorrection` number 2, and the final attempt follows its own
+finite transition row. The canonical return discriminator controls every
+classification/phase-to-authority/action route, with Project-Architect-first
+handling of `ReservedChoice`. Learning entries must equal their source
+correction range, coverage, authority and eligibility facts; the explicit
+terminal-return boolean and matching return evidence replace inference.
 
 ### M1-02C — Cumulative integration, documentation, and proof
 
@@ -1043,7 +1067,7 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 9. same key/different facts raises `IdempotencyConflict` with no mutation;
 10. every allowed graph/run/packet/attempt/wait/notification transition satisfies its guards with one version increment and exact event, including Packet/Run entry to `AwaitingOwner` only after the same-subject/current-head Project Architect `ReservedChoice` and deterministic Run candidate-head snapshot;
 11. every prohibited, stale, terminal, missing/mismatched-context-policy, wrong-lease, premature-time, direct-to-`Merged`, or Packet/Run `AwaitingOwner` transition with a missing/wrong-subject/wrong-head/non-Project-Architect `ReservedChoice` fails without mutation;
-12. one normal targeted correction requires the complete initial gate finding union; one final correction requires every M0-D17 fact and Project Architect authorization; a third is rejected;
+12. one normal targeted correction requires exactly one terminal initial Integration/Independent pair and their complete finding/proof union; generic resume accepts only that StandardCorrection number 1; one final correction requires one fresh matching targeted pair, their nested coverage union, every M0-D17 fact and Project Architect authorization, resumes only through B-A17, follows the finite final-attempt matrix, and rejects a third;
 13. injected `after_entity_write` and `after_event_write` failures for representative ordinary record methods roll back row/event and remain absent after close/reopen;
 14. the same injected seams for graph, packet, and notification non-claim transitions restore original state/version/event history after reopen;
 15. claim creates one lease, all locks, one state change/event;
@@ -1051,9 +1075,9 @@ Using real temporary SQLite files inside the physical test `var/` boundary, M1-0
 17. simultaneous same-packet claims yield one lease, and shared-resource claims yield one holder/no partial loser;
 18. heartbeat/version are monotonic and release frees locks once without inferring next packet state;
 19. reopen with consistent unexpired lease returns only `ObserveActiveAttempt` and no duplicate lease/attempt/event;
-20. reopen after expiry atomically expires lease/locks, blocks packet, opens one recovery wait, and is idempotent on another restart;
+20. one startup reconciliation over mixed active/expired/orphan/conflict cases atomically records every ordered outcome in exactly one `StartupReconciliationRecorded` event; expiry expires lease/locks, blocks packet and opens one recovery wait, and another restart is idempotent;
 21. orphan/conflict blocks and returns exact recovery action without replacement work;
-22. stale completion after expiry records one ignored event and cannot alter outcome records;
+22. current and stale completion observations each record exactly one `AttemptObservationRecorded` event; stale uses outcome `StaleObservationIgnored` and cannot alter outcome records;
 23. `OperationalStateStore`, every constructor/factory and every public record/transition/claim/read/recovery entry point named above, and `RecoveryService` reject source-tree/outside/symlinked/forged/swapped runtime configurations before creating database/journal/WAL/SHM/log/socket or outside artifacts; parameterized valid calls all stay under physical `var/`;
 24. the representative Developer policy proves `32768 + 8192 = 40960` with thresholds `16384/12288/8192`; the distinct valid `24576 + 4096 = 28672` policy with thresholds `12288/8192/4096` also passes; altered digest, copied constants, insufficient sum/starting-input fit, or unordered thresholds fail before `Running`;
 25. every token category validates value/quality/confidence/source/time and runtime-reported values take precedence over tokenizer/estimate for the same period;
