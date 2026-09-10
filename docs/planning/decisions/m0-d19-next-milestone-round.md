@@ -7,6 +7,23 @@ The milestone set in §8 has **not** been ruled on and is `[PROPOSAL]` throughou
 **Type:** Milestone plan. Extends, and does not amend,
 [M0-D18](m0-d18-real-wiring-audit-authority-and-architect-loop.md).
 
+**[PROPOSAL] What the Owner has actually seen.** The last milestone set the
+Owner read is revision 1's M6–M13. **Revision 2's set (§8) has never been put in
+front of the Owner** — it was written after the Owner ended the session, and M6,
+the proving run that reorders the whole round, was offered in the session's
+final assistant turn and left unanswered. Read §8 as unreviewed by the Owner in
+the strongest sense: not merely unruled, but unseen.
+
+**[PROPOSAL] How this record landed, recorded because §13 makes it a rule.** The
+Owner directed the merge — *"upload it to master merge and do several
+independent fidelity review"* — and it was taken directly to `master` with no
+pull request, no Done Record, and the fidelity reviews run **after** the merge
+rather than before it. That is the sequence the Owner asked for, and it is also
+a departure from the discipline §13 states as binding on this round. M0-D18 §9's
+lesson is that a grant of autonomy does not suspend the SOP, so the departure is
+recorded here rather than left for someone to notice. **[OPEN]** whether a Done
+Record and a retrospective pull request should be raised for M0-D19 itself.
+
 **Authority.** M0-D18 is the governing authority. Its audit finding (§2) and its
 rulings are inputs to this record, not restated by it. Where this record and
 M0-D18 differ, M0-D18 wins — except on the two points of §5, where M0-D18 is
@@ -16,8 +33,9 @@ factually wrong about the code and an Owner ruling is requested.
 
 - **[OWNER]** — the Owner said this. Quoted verbatim.
 - **[OWNER — session]** — the Owner said this in the 2026-09-09 planning session
-  that produced this record, sourced to that session's transcript rather than to
-  M0-D18.
+  that produced this record, rather than in M0-D18. **Checkable:** every such
+  quote appears verbatim in
+  [the committed session evidence](evidence/m0-d19-owner-session-2026-09-09.md).
 - **[PROPOSAL]** — assistant inference or recommendation. **Not authority.**
 - **[FINDING]** — verified against the code at `ad614b7`, with file and line.
 - **[OPEN]** — genuinely unresolved.
@@ -58,7 +76,7 @@ It does not authorize implementation.
 
 M0-D18 §5.3 was its last `[OPEN]` item.
 
-**[OWNER] Resolved 2026-09-09.** On whether the budget is capped per step:
+**[OWNER — session] Resolved 2026-09-09.** On whether the budget is capped per step:
 
 > "Let's just collect for research and understanding so we know what the numbers
 > actually represent"
@@ -166,6 +184,14 @@ below was re-verified before this plan was written.
   `services/maestro/pyproject.toml:6` declares three runtime dependencies:
   `PyYAML`, `PyJWT`, `cryptography`. No HTTP client.
 - **[FINDING] `secrets.py` has no importer at all.** Not one.
+- **[FINDING] The GitHub integration is dead in a precise sense**, and M0-D18
+  §2's "dead code" is true but not in the obvious way. `real_discovery.py`
+  imports `github_client`'s `fetch_file_content` and `fetch_repository_metadata`
+  and wraps them as `fetch_real_repository_metadata` and
+  `fetch_real_process_file` — and **those two wrappers have no callers
+  anywhere**. The path that *does* reach `real_discovery` from the CLI
+  (`discover-project` → `project_discovery.discover_project` →
+  `evaluate_snapshot`) evaluates a snapshot it is handed and fetches nothing.
 - **[FINDING] There is no `git clone` anywhere in the codebase.**
   `git_repository.py` exposes four read-only operations against a path it is
   handed. The Architect's own repository has no transport.
@@ -391,8 +417,10 @@ columns read by nobody, components mounted nowhere. Run as a gate.
 Depends on nothing. It is the mechanical grader every later "is it real?" claim
 is scored by.
 
-**[PROPOSAL] Deferred and named as deferred:** M0-D18 §7.3's scope is *"both
-Maestro itself and the products Maestro builds for others."* An orphan check
+**[PROPOSAL] Deferred and named as deferred:** M0-D18 §7.3's `[OWNER]` quote is
+*"We need a check somewhere that the products maestro the product and you are
+building actually get built"*, which D18's own following prose reads as covering
+both Maestro and the products Maestro builds. An orphan check
 over Maestro is a Python AST walk; over an arbitrary joined project in an
 unnamed language it is a language-agnostic static analyser. That is its own
 milestone and is not absorbed here.
@@ -413,7 +441,7 @@ backup-health failure records.
 
 **Why this early:** it is an accepted obligation the round was silently
 ignoring, §7.3 already needs its migration-snapshot half, and the Development
-Manager is about to be given ownership of `var/` (§11).
+Manager is about to be given ownership of `var/` (§11.1).
 
 **Atlas:** D07 requires backup health shown live.
 
@@ -511,7 +539,10 @@ not its input. That inversion belongs here.
 Scope: graph read endpoints; `real=` wiring through the component tree so the
 four already-built operator commands become reachable; `systemState` derived
 from the read API so crash, disconnect and empty states can appear; an
-active-work listing to replace the hardcoded constant.
+active-work listing to replace the hardcoded constant; **the hardcoded cost
+strip**; and **the desktop Performance tab**. The last two are here because
+M5 does not cover them (§8 preamble) — stated in this milestone rather than
+only in the preamble, so a reader of M13 sees all of M13.
 
 **[FINDING] File-level collision to manage:** `MobileShell.tsx:10` declares four
 hardcoded tabs and the app has no router, while M5 is concurrently renaming and
@@ -654,10 +685,19 @@ Named rather than dropped, which is what revision 1 did.
   eventually not exist. M0-D18 §11's packaging layout is unbuilt.
 - **The plain-language start-up runbook** the Owner asked for repeatedly — *"I
   don't want to see the code I want to see a list if steps to start maestro"* —
-  and the start-up commands already authorized into M5. **[PROPOSAL]** the
+  and the start-up commands already authorized into M5 — **[OWNER]** *"Yes
+  build those and I would like that process added to m5 as well"*. **[PROPOSAL]** the
   runbook follows M12, the first point at which the start path is stable.
 - **The audit report** should be committed rather than left an external link
   (M0-D18 §2).
+- **[OWNER] The Architect as answerer.** M0-D18 §3: *"Should any other role get
+  stuck or have questions, the architect assumes responsibilities for the
+  answer."* M18 covers the out-of-scope-discovery half of that sentence; the
+  stuck-or-has-questions escalation channel is **deferred past this round and
+  named here rather than dropped**. Revision 1 dropped it silently and revision
+  2 repeated the drop until a fidelity review caught it. **[PROPOSAL]** it wants
+  the same transport as the Architect's own repository (§8, M15), so it should
+  follow whatever answers that.
 
 ---
 
@@ -667,11 +707,14 @@ Named rather than dropped, which is what revision 1 did.
 
 > "re-registration that supersedes without reopening completed work"
 
-**[OWNER] Ruled 2026-09-09**, when asked whether an in-flight packet whose work
+**[OWNER — session] Ruled 2026-09-09**, when asked whether an in-flight packet whose work
 item changed is returned to the Architect or finishes against the superseded
 revision:
 
-> "Simple, registration cannot take place when there is active work in progress"
+> "Simple, registration cannot take place when there is active work in progress
+> and having the the var folder is fine for db, and installation"
+
+The second clause is a separate ruling, recorded at §11.1.
 
 **The ruling.** The question does not arise. Re-registration is **refused** while
 the project has active work. Drain first, then re-register.
@@ -724,6 +767,32 @@ value.
 **The service account** — delivered at M10, not last, because M12 needs an
 identity to commit into the joined project's repository.
 
+### 11.1 [OWNER — session] `var/` is the right home, and the service account owns it
+
+The Owner's message of 2026-09-09 answered two open items in one sentence. Its
+first clause is the re-registration ruling at §10. Its second:
+
+> "Simple, registration cannot take place when there is active work in progress
+> **and having the the var folder is fine for db, and installation**"
+
+**The ruling.** `var/` is the right home for the database and the installation.
+The service account is given ownership of `var/` rather than the runtime being
+relocated to suit it.
+
+**Recorded honestly:** revision 1 overreached this, extending "a var folder is
+fine" into a blessing of `config.py`'s `validate_runtime_dir` — which enforces
+something narrower and different, that the runtime live inside the *Maestro
+repository*, the constraint M0-D18 §11 records the Owner calling
+*"unpractical"*. Revision 2 then deleted the whole section rather than trimming
+it, and lost the ruling with the overreach. This subsection restores what the
+Owner actually said and claims nothing further.
+
+**[OPEN]** The repo-relative half of `validate_runtime_dir` is untouched by this
+ruling and remains unruled. M0-D18 §11 places the runtime directory out of
+scope; M0-D18 §11's packaging layout puts `var/` beneath
+`/usr/local/lib/maestro/<version>/`, which `validate_runtime_dir` as written
+would reject. Whoever builds M10 will hit that and needs an answer.
+
 ---
 
 ## 12. [PROPOSAL] Coverage of M0-D18 §2
@@ -766,7 +835,9 @@ unmapped while claiming the plan was built on the audit.
 M0-D18 §3: *"Clearly the product has to function."*
 
 - No milestone is complete on schema plus tests. A **real caller in a real path**
-  must exist; M7's gate is the mechanical check.
+  must exist; M7's gate is the mechanical check for every milestone after it.
+  M7 itself is exempt by construction — it builds the gate — so M7's own
+  evidence is the gate's output over the milestones already delivered.
 - No milestone is complete while its operator-visible states are terminal-only.
 - Evidence is a rerunnable command plus output, reported `PASS` / `N/A` /
   `UNTESTED`. Where something cannot be tested against real data it is reported
@@ -775,7 +846,8 @@ M0-D18 §3: *"Clearly the product has to function."*
   request, independent review never by the author, Done Record as a merge
   precondition. That includes §7's corrections.
 - **[PROPOSAL] New, and absent from revision 1:** M0-D18 §7.2 records the Owner's
-  verdict that the test/product balance was wrong and the effort *"was all
+  verdict on the test/product balance — *"Way to much effort is aligned at
+  writing tests verse spent on writing the product"* and *"But it was all
   useless"* — 11,299 product lines against 18,602 test lines. A milestone that
   ends with more new test code than new product code is a signal to stop and
   report, not a milestone that passes.
@@ -804,4 +876,11 @@ a milestone-level review record is; the Architect repository's transport; the
 M18 budget-versus-`CHECK(0,1)` conflict; M19's diff key; M6's "review standard";
 M7's not-yet-called verdict.
 
-M0-D18 §5.3 is closed by §2. **The round cannot start before §8 is ruled on.**
+M0-D18 §5.3 is closed by §2. **[PROPOSAL]** M0-D18's own status header still
+reads *"One **[OPEN]** item remains on the decision list: §5.3"* and now
+misstates the record for anyone who reads M0-D18 alone — which its own status
+line invites, since it calls itself the governing authority. This record does
+not amend M0-D18, so the header is flagged rather than edited; it should be
+corrected when the Owner rules on §5.1 and §5.2.
+
+**The round cannot start before §8 is ruled on.**
