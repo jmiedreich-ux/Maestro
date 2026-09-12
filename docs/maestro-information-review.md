@@ -1,16 +1,9 @@
 # Maestro Information Review
 
-## Document status
-
-This document combines the confirmed information that remained across Maestro's architecture, operations, registration, planning, and schema documents.
-
-It is an information review only. It is not an architectural plan, roadmap, priority list, completion claim, or authorization to begin work. It contains no open questions and chooses no future direction.
-
-## System purpose and current boundary
+## System purpose
 
 Maestro is a project-neutral system for controlled AI-assisted engineering work. The repository contains a local Python service, SQLite-backed operational state, repository discovery and registration components, agent-role definitions, and the Reporting and Command Interface.
 
-These components provide useful foundations, but their presence does not prove that Maestro works end to end. Stored records, isolated components, historical activity, and fixture-backed screens are not proof of complete product operation. Current behavior must be verified against the code.
 
 ## Sources of truth
 
@@ -67,18 +60,16 @@ Registration is blocked when required facts are missing, conflicting, unsafe, or
 
 The Owner must approve a proposed registration before it becomes active. Registration confirms that Maestro can understand and coordinate the project safely. It does not approve implementation work.
 
-## Existing project-manifest contract
+## Project-manifest contract
 
-The repository previously carried a machine-readable project-manifest schema. Its confirmed contract is preserved below for review. This section describes the existing contract; it does not approve it as the future architecture.
-
-The manifest uses schema version 1, rejects unknown properties, and requires every top-level section below.
+The project manifest uses schema version 1, rejects unknown properties, and requires every top-level section below.
 
 | Section | Required information |
 |---|---|
 | Identity | Project identifier, plain name, repository, default branch, adapter version, and process version |
 | Authority | Architecture paths, planning paths, work-graph path, handoff path, working-rule path, and task-issue convention |
 | Delivery | Branch policy, pull-request policy, merge policy, acceptance authority, deployment policy, and rollback policy |
-| Verification | Build commands, test commands, integration commands, user-interface verification commands, evidence rules, and handling for unverified work |
+| Verification | Build commands, integration commands, user-interface verification commands, evidence rules, and handling for unverified work |
 | Routing | Specialist overlays, worker routes, Integration route, independent-review route, and quality-assurance policy |
 | Operations | Environment references, secret references, resource locks, and notification policy |
 | Exceptions | Whether exceptions are absent or declared, plus the declared items |
@@ -102,7 +93,7 @@ The Reporting and Command Interface reads supported snapshots and events through
 
 Any Reporting and Command Interface action must map to a named, guarded, version-checked, idempotent service command. Displaying a control does not give the Reporting and Command Interface new authority. Operator actions and their results are audited.
 
-The Reporting and Command Interface must distinguish real operational data from fixture-backed presentation. It must not scrape provider interfaces, expose secrets, or display raw prompts and traces.
+The Reporting and Command Interface must distinguish live operational data from demonstration data. It must not scrape provider interfaces, expose secrets, or display raw prompts and traces.
 
 ## Access and secrets
 
@@ -128,7 +119,7 @@ The accepted local backup target is a dedicated 32 GB USB device.
 
 Create database snapshots nightly and before schema migration, recovery, or maintenance that could affect data. Use SQLite's safe backup mechanism rather than copying a live database file.
 
-Record a SHA-256 manifest and make backup failures visible. Retain 21 daily snapshots and 8 weekly snapshots. Test a restore monthly.
+Record a SHA-256 manifest and make backup failures visible. Retain 21 daily snapshots and 8 weekly snapshots. Perform a restore exercise monthly.
 
 Restore to a new path, validate it, and reconcile it before use. Never overwrite the live database during restore. Do not place credentials, source repositories, or worktrees on the backup device.
 
@@ -150,6 +141,3 @@ Hosted-provider allowance information remains separate from local-machine capaci
 
 Preserve a durable checkpoint before context pressure makes safe continuation unreliable.
 
-## Review boundary
-
-This document may be used as source material for a future architectural review. Converting it into an architectural plan requires a separate, explicit decision. Nothing here establishes the next task or implementation sequence.

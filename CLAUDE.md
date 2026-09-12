@@ -14,10 +14,4 @@ Never use a coded milestone, decision, work packet, or review identifier without
 
 Check current code and authoritative files before stating what exists. Be especially careful with absolute claims such as “never,” “only,” “none,” “zero,” and “cannot.”
 
-State whether an outcome is proven, partial, blocked, or unknown. Do not treat a stored record, fixture, or historical statement as proof of current product behavior.
-
-## Documentation grooming
-
-The [Maestro information review](docs/maestro-information-review.md) combines confirmed information from the former non-agent documents. It does not set future direction or authorize work.
-
-Do not restore removed roadmaps, proposals, open questions, sequencing, status narratives, or coded planning references unless the Owner explicitly asks.
+State whether an outcome is proven, partial, blocked, or unknown.

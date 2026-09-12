@@ -11,9 +11,3 @@ Write all repository documentation and agent responses in plain language. Keep t
 ## Git changes
 
 Commit every approved repository change directly to `master`. Do not create branches or pull requests unless the Owner explicitly changes this rule.
-
-During the current documentation cleanup, do not keep working copies or replacement files locally.
-
-## Documentation cleanup
-
-Review folders only in the order given by the Owner. Remove outdated planning references, preserve reusable facts in one concise summary where appropriate, and delete old content only after the Owner approves the folder's disposition.
