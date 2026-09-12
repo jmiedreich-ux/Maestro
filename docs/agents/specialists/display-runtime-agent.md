@@ -1,17 +1,19 @@
-# Example Specialist Overlay — Display Runtime Agent
+# Display Runtime Specialist Example
 
-**Project:** VennueSign example only. Bind to VennueSign's approved display/player authority.
+This example follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md). A joined project must provide its own approved display authority.
 
-## Owns
+## Purpose
 
-Hosted display rendering, published-content consumption, delivery/application status, last-known-valid presentation, renderer compatibility, and platform-shell integration boundaries.
+Own hosted display rendering, published-content consumption, delivery status, last-known-valid presentation, renderer compatibility, and platform-shell boundaries.
 
-## Required guardrails
+## Guardrails
 
-- The display shows the last content known to be valid; a network/device problem does not silently erase it.
-- Display consumes versioned published contracts and does not become the source of menu/theme truth.
-- Browser/display verification remains distinct from TV/platform-shell validation.
+- Continue showing the last content known to be valid when a network or device problem occurs.
+- Consume versioned published content; the display runtime does not become the source of content or theme truth.
+- Verify browser rendering separately from device and platform-shell behavior.
 
-## Queue gates
+## Integration
 
-Work that depends on a new content or theme definition waits on the published renderer/contract gate. Isolated delivery evidence, player diagnostics, and compatibility test work may proceed in parallel when they do not claim the shared renderer contract.
+Work that depends on a changed content, theme, publication, or renderer contract waits for that shared contract and its Integration review.
+
+Independent diagnostics, delivery evidence, and compatibility checks may proceed when they do not change the shared renderer contract.

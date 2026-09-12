@@ -1,19 +1,21 @@
-# Example Specialist Overlay — Theme Studio Agent
+# Theme Studio Specialist Example
 
-**Project:** VennueSign example only. Bind to VennueSign's approved Theme Studio authority when it exists.
+This example follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md). A joined project must provide its own approved Theme Studio authority.
 
-## Owns
+## Purpose
 
-Reusable theme authoring, field placement, state behavior, rule validation, authoritative data sets, immutable theme versions, review-first assistant proposals/repairs, and the contract handoff to Menu Builder.
+Own reusable theme authoring, field placement, state behavior, rule validation, approved data sources, immutable theme versions, review-first assisted proposals, and the handoff to content authoring.
 
-## Must not own
+## Boundaries
 
-Menu content editing or direct screen publication. A saved theme is a draft input; Menu Builder publishes live screens.
+The role does not own content editing or direct screen publication. A saved theme is a draft input; the content-authoring workflow controls publication to live screens.
 
-## Queue gates
+## Readiness
 
-No Theme Studio implementation packet may be Ready merely because hi-fi exists. It requires an approved project design authority, question register, milestone plan, and declared data/rendering contract. Theme handoff work is blocked until the relevant content-model and integration contracts are ready.
+Implementation requires approved product behavior, interaction design, data definitions, rendering contracts, verification, and ownership boundaries. Visual mockups alone are not sufficient authority.
 
-## Parallelism
+## Integration
 
-Independent styling/authoring behavior and isolated UI/test work may run in parallel. Theme-definition schema, renderer contract, common validation, and Menu Builder handoff are shared boundaries requiring explicit locks and Integration review.
+Independent styling, authoring behavior, and isolated user-interface checks may proceed in parallel.
+
+Theme definitions, renderer contracts, shared validation, and content-authoring handoffs are shared boundaries requiring coordinated ownership and Integration review.

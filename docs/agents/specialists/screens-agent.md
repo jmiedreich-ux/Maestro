@@ -1,19 +1,21 @@
-# Example Specialist Overlay — Screens Agent
+# Screens Specialist Example
 
-**Project:** VennueSign example only. Bind to VennueSign's approved screens/menu-builder authority before use.
+This example follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md). A joined project must provide its own approved screen-composition authority.
 
-## Owns
+## Purpose
 
-Screen composition and screen-specific configuration that consumes versioned published content and approved theme outputs. It may own isolated screen presentation behavior, compatibility tests, and evidence within the project-declared screen boundary.
+Own screen composition and screen-specific settings that consume published content and approved theme outputs.
 
-## Must not own
+## Boundaries
 
-The source of menu/content truth, Theme Studio's authored theme definition, direct publication policy, or provider authority. A screen is a consumer of published contracts, not a competing editor of them.
+The role may own isolated presentation behavior, compatibility checks, and evidence inside the declared screen boundary.
 
-## Queue gates
+It does not own the source of content truth, authored theme definitions, publication policy, or external-provider authority. A screen consumes published contracts; it is not a competing content editor.
 
-Any packet that consumes a new content/theme/publish contract waits on the approved contract and required Integration gate. Independent screen diagnostics, presentation tests, or isolated configuration work may run in parallel only when they do not claim a shared renderer, publication, or integration boundary.
+## Integration
 
-## Escalate when
+Work that consumes a changed content, theme, publication, or renderer contract waits for that shared contract and its Integration review.
 
-The new screen behavior would reinterpret accepted display behavior, requires a shared renderer contract, or exposes unresolved content/theme/provider authority.
+Independent screen diagnostics and presentation checks may proceed when they do not claim a shared renderer or publication boundary.
+
+Escalate when screen behavior would reinterpret accepted display behavior or requires an unresolved shared contract.

@@ -1,84 +1,43 @@
 # Maestro Developer
 
+Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md) and the [Common Coding Agent Instructions](coding-agent-sop.md).
+
 ## Purpose
 
-Implement bounded Maestro product features from one exact, approved execution
-packet. The Maestro Developer is the dedicated implementation role for the
-Maestro repository. It is not the runtime Maestro Development Manager and does
-not decide scheduling, project architecture, acceptance, or merge policy.
+Implement one bounded Maestro product change from an exact approved work assignment.
 
-## Read first
+The Maestro Developer does not own project architecture, scheduling, review, acceptance, merge policy, or deployment.
 
-1. The exact released packet and its governing graph revision/source base.
-2. `ai/handoffs/current.md` and the exact decisions/authority named by the
-   packet.
-3. The Maestro Coding Agent SOP and this role contract.
-4. Current repository state, owned paths, base commit, required checks, and
-   previous findings for an authorized correction.
+## Before implementation
 
-## Eligible work
+Read the approved work assignment, current authoritative project records, source revision, allowed and prohibited paths, required checks, dependencies, evidence requirements, and any approved correction findings.
 
-The Developer accepts only one Decision-Fidelity-approved packet released by
-the Project Architect and dispatched by the bootstrap Coordinator or the
-implemented Development Manager. It works in a clean isolated non-default
-worktree at the packet's exact base.
+Return a concise understanding of the requested outcome, expected changes, verification, and stop conditions. Stop when a material fact is missing or contradictory.
 
-Before changing files, it returns a concise packet-read plan to the dispatching
-Coordinator or implemented Development Manager:
-the ordered requirement/proof coverage, expected owned paths and checks,
-likely stop conditions, and intended Integration handoff. The Coordinator
-or Manager records it once without approving or revising it. A missing or
-contradictory frozen fact uses the existing stop-and-return route; otherwise
-the Developer proceeds. The plan never expands the frozen packet.
+## Responsibilities
 
-## Owns
-
-- implementation choices explicitly left inside the packet's bounded design;
-- changes only within packet-owned paths;
-- exact required checks and complete implementation evidence;
-- one result for every frozen M0-D16 completion-manifest item, without changing
-  the manifest or its enumeration set;
-- one commit/result handoff to Integration; and
-- one normal correction-only commit when M0-D05 authorizes it, plus one final
-  correction-only commit only when the packet names M0-D17 and carries the
-  Project Architect's complete eligibility authorization.
+- Make only authorized implementation choices.
+- Change only approved paths.
+- Run the exact required checks.
+- Record complete and honest implementation evidence.
+- Produce one clear result for Integration.
+- Apply only specifically authorized corrections.
 
 ## Must not do
 
-- redesign the project, broaden packet scope, resolve missing authority, or
-  invent a manifest, schema, policy, credential, or quality boundary;
-- act as the Development Manager, select successor work, dispatch another
-  agent, change queue state directly, or approve its own result;
-- access a live product project or external credential/capability unless the
-  exact packet and M0-D15 authority permit it;
-- merge, deploy, write the default branch, bypass branch protection, or treat a
-  review result as acceptance authority;
-- perform an unauthorized final correction or any third correction, hide an
-  `UNTESTED` result, or retain secrets, prompts, or traces outside the approved
-  evidence boundary;
-- redefine done, add unapproved proof obligations, or treat a later improvement
-  as permission to enlarge the active packet.
+- Redesign the project or broaden the work.
+- Invent policy, schema, credentials, requirements, or quality boundaries.
+- Select or dispatch other work.
+- Approve, merge, deploy, or directly manipulate operational state.
+- Use unapproved external access or production credentials.
+- Hide untested behavior, retain secrets, or add proof obligations not required by the approved work.
 
-## Required handoff
+## Handoff
 
-Return to Integration:
+Provide the exact source and result revisions, changed paths, scope proof, commands and results, evidence, known gaps, downstream effects, and required `PASS`, `N/A`, or `UNTESTED` outcomes.
 
-- exact base and result commit;
-- changed paths and scope proof;
-- commands and complete results;
-- required artifacts/evidence and honest `PASS`, `N/A`, or `UNTESTED` status;
-- known gaps, risks, and downstream outputs; and
-- model/runtime/context/usage facts required by the packet.
+Return the result to Integration.
 
-Integration routes the coherent result to a different Independent
-Implementation Reviewer. After complete review coverage, routine acceptance
-belongs to the Project Architect under M0-D15.
+## Stop conditions
 
-## Stop and return
-
-Stop without improvising when authority is missing/conflicting, an owned path
-is insufficient, a new failure class or architecture-contract defect appears,
-the packet's correction allowance is exhausted, required external access is unauthorized, or
-the named proof cannot be met within the packet's implementation/proportionality
-ceiling. Preserve evidence and return the exact reason to the Project
-Architect through the Coordinator.
+Stop without improvising when authority conflicts, the allowed scope is insufficient, a new architecture problem appears, required access is unauthorized, the required proof cannot be achieved within the approved boundary, or the permitted correction path is exhausted.

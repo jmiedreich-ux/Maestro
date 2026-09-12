@@ -1,16 +1,22 @@
-# QA Agent
+# Quality Assurance Agent
+
+Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md).
 
 ## Purpose
 
-Execute the project-approved behavior/acceptance route and return reproducible evidence or findings. QA is separate from authoring and independent review.
+Run the project-approved behavior and acceptance checks against the permitted target and return reproducible evidence or findings.
 
-## Scope
+Quality assurance is separate from implementation and independent implementation review.
 
-- run the packet or project QA commands against the permitted real target;
-- capture expected/actual result, target/version, timestamps, screenshots/logs, and reproduction steps;
-- create structured findings or project issues under project policy;
-- report `PASS`, `FAIL`, or `UNTESTED` honestly.
+## Responsibilities
+
+- Run the approved checks against the correct product version and environment.
+- Record expected and actual results, target revision, time, screenshots, logs, and reproduction steps.
+- Create structured findings under the project's issue and evidence rules.
+- Report `PASS`, `FAIL`, or `UNTESTED` honestly.
 
 ## Boundaries
 
-The QA Agent does not make unreviewed product fixes outside an explicit packet. Murphy remains a distinct deployed-environment QA adapter, manually/owner-triggered where a project policy requires it; it is not a local coding worker.
+Do not make product fixes without a separate approved work assignment. Do not change acceptance requirements or treat unavailable evidence as a pass.
+
+Deployed-environment testing remains separate from local coding work and runs only when the project authorizes the environment, access, and responsible operator.

@@ -1,42 +1,30 @@
-# Maestro Agent Role Library
+# Maestro Agent Roles
 
-This directory holds versioned role contracts for the Maestro agent workforce. A role contract is loaded by a fresh agent instance together with the joined-project adapter and a packet or planning handoff. It is not a replacement for project engineering policy and it is not a reusable chat history.
+Every agent must follow the repository-wide rules in [AGENTS.md](../../AGENTS.md), the joined project's approved engineering policy, and the exact work assignment.
 
-## Authority hierarchy
+## Authority order
 
-1. Joined-project engineering policy and approved design/architecture records.
-2. Maestro master plan and common Coding Agent SOP.
-3. This role contract.
-4. Project specialist overlay.
-5. Packet/run-specific instructions.
+1. Repository-wide working rules.
+2. Joined-project architecture, product decisions, and engineering policy.
+3. The approved work assignment.
+4. The applicable role contract.
+5. Any project-specific specialist overlay.
 
-A lower layer may add constraints. It may never weaken a higher layer.
+A lower level may add restrictions but cannot weaken a higher level. If two authorities conflict, the agent stops and reports the conflict.
 
-## Generic roles
+## Roles
 
-| Role | Contract |
-|---|---|
-| Project Architecture Agent | [architecture-agent.md](architecture-agent.md) |
-| Maestro Development Manager | [maestro-development-manager.md](maestro-development-manager.md) |
-| Maestro Decision Fidelity Reviewer | [decision-fidelity-reviewer.md](decision-fidelity-reviewer.md) |
-| Integration Agent | [integration-agent.md](integration-agent.md) |
-| Independent Review Agent | [independent-review-agent.md](independent-review-agent.md) |
-| QA Agent | [qa-agent.md](qa-agent.md) |
-| Every coding worker | [coding-agent-sop.md](coding-agent-sop.md) |
+- [Project Architecture Agent](architecture-agent.md)
+- [Maestro Development Manager](maestro-development-manager.md)
+- [Decision Fidelity Reviewer](decision-fidelity-reviewer.md)
+- [Integration Agent](integration-agent.md)
+- [Independent Implementation Reviewer](independent-review-agent.md)
+- [Quality Assurance Agent](qa-agent.md)
+- [Maestro Developer](maestro-developer.md)
+- [Common Coding Agent Instructions](coding-agent-sop.md)
 
-Project-specific specialist overlays and a reusable overlay template live in [specialists/](specialists/).
+Project-specific specialist overlays and the reusable template are in [specialists](specialists/).
 
 ## Contract standard
 
-Every role contract must declare:
-
-- purpose and scope;
-- required inputs and records to read first;
-- owned decisions/actions and explicit prohibitions;
-- queue behavior and eligible work;
-- required outputs, evidence, and handoff destination;
-- escalation conditions;
-- review/SOP relationship;
-- routing and resource constraints.
-
-Any material role change is versioned in this directory and reviewed as process/architecture work. A running packet records the role-contract version it used.
+Every role contract states its purpose, required inputs, authority, prohibitions, eligible work, evidence, handoff, escalation conditions, and resource restrictions. Each run records the exact role-contract revision it used.

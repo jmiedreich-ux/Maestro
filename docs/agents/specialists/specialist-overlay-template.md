@@ -1,37 +1,35 @@
 # Specialist Agent Overlay Template
 
+Every overlay inherits the repository-wide rules in [AGENTS.md](../../../AGENTS.md).
+
 **Project:** `<project>`  
 **Role:** `<specialist role>`  
 **Status:** `<proposed | approved | retired>`
 
-## Purpose and architectural boundary
+## Purpose and boundary
 
-State the outcome this role owns, its change domains, and the architectural boundary it serves. A role is not a blanket permission to change every related file.
+State the outcome this role owns, its change areas, and the architectural boundary it serves. A role is not blanket permission to change every related file.
 
 ## Read first
 
-List the project adapter, approved architecture/design authority, current handoff, decision records, source map, and current graph/packet records required for this role.
+List the joined project's engineering policy, approved architecture and design authority, current work status, exact source paths, and other records required for this role.
 
-## Owned invariants and behavior to preserve
+## Behavior to preserve
 
-List the customer behavior, contracts, data authority, compatibility rules, and safety properties that this role must preserve. State material non-goals separately.
+List the user behavior, contracts, data authority, compatibility rules, and safety properties the role must preserve. State non-goals separately.
 
-## Packet boundary
+## Change boundary
 
-Specify allowed change domains and prohibited boundaries here. The materialized packet, not this template, supplies exact allowed/forbidden file paths, base commit, commands, and worktree limits.
+Describe allowed change areas and prohibited boundaries. The approved work assignment supplies exact paths, source revision, commands, and workspace restrictions.
 
-## Queue and dependency rules
+## Dependencies and parallel work
 
-Define entry gates, expected upstream/downstream contracts, role rank/serial assumptions, possible independent slices, shared-boundary locks, and when the role must route a result to Integration or NeedsReplan.
+Define entry conditions, upstream and downstream contracts, independent work, shared resources, and when a result must go to Integration or return for replanning.
 
-## Routing, resources, and verification
+## Execution and verification
 
-State allowed executor classes/models, WIP/resource limits, required validation evidence, and environment restrictions.
+State allowed execution methods, work limits, required evidence, environment restrictions, handoff, and escalation conditions.
 
-## Escalate when
+## Relationship to common rules
 
-List missing/stale authority, conflicting ownership, behavior/contract ambiguity, high-risk boundary changes, or any reason work is not safe to dispatch.
-
-## SOP relationship
-
-This overlay adds constraints to the joined-project engineering policy and Maestro Coding Agent SOP. It may never weaken either.
+This overlay may add restrictions but cannot weaken repository rules, joined-project policy, or the common coding instructions.

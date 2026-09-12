@@ -1,22 +1,19 @@
-# Project Specialist Agent Overlays
+# Specialist Agent Overlays
 
-Specialist overlays live with the joined project whenever they contain project architecture, source paths, or product rules. Maestro keeps these reference examples and the contract shape so that each project can bind its own roles without making Maestro project-specific.
+Every specialist follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md), the joined project's engineering policy, the common coding instructions, and its exact approved work.
 
-Each overlay must declare:
+Project-specific overlays belong with the joined project when they contain live product rules or source paths. Maestro keeps the reusable template and examples only to show the expected role boundaries.
 
-- authority and read-first paths;
-- owned concepts, invariants, and allowed/forbidden paths;
-- queue entry conditions and expected integration dependencies;
-- valid parallelism and required locks;
-- routing constraints and evidence;
-- escalation conditions;
-- explicit relationship to the common Coding Agent SOP.
+Each overlay defines:
 
-Start new project-specific roles from [specialist-overlay-template.md](specialist-overlay-template.md). The examples below use VennueSign terminology solely to show the expected level of specificity. Their live authority remains in VennueSign's project records.
+- Purpose and architectural boundary.
+- Required authority and source paths.
+- Owned concepts and behavior that must be preserved.
+- Allowed and prohibited change areas.
+- Entry conditions, dependencies, safe parallel work, and shared resources.
+- Verification, evidence, handoff, and escalation.
+- Relationship to the common coding instructions.
 
-| Example overlay | Purpose |
-|---|---|
-| [content-platform-agent.md](content-platform-agent.md) | Content model, records, providers, publication contracts |
-| [theme-studio-agent.md](theme-studio-agent.md) | Reusable theme authoring and versioned handoff |
-| [screens-agent.md](screens-agent.md) | Screen composition consuming published content/theme contracts |
-| [display-runtime-agent.md](display-runtime-agent.md) | Player/rendering/delivery behavior |
+Use the [Specialist Agent Overlay Template](specialist-overlay-template.md) for new roles.
+
+The current examples cover [Content Platform](content-platform-agent.md), [Theme Studio](theme-studio-agent.md), [Screens](screens-agent.md), and [Display Runtime](display-runtime-agent.md). They are examples, not authority for a joined project.
