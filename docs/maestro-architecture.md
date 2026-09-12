@@ -80,7 +80,7 @@ A future Maestro Planning Guide will define the conventions and formats project 
 
 Planning begins with project registration, initiated from either the command line or the command center within the Reporting and Command Interface. Both entry points would use the same registration process.
 
-Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture, rewrite the plan, or start development.
+Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture or start development. Re-registration permits milestone additions and amendments as described below, not a general rewrite of the project's plan.
 
 ### Proposed registration process
 
@@ -96,7 +96,7 @@ Registration would identify the project, confirm repository access, locate plann
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
 | Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain and registration is confirmed, Python saves the registration and reviewed source version. Non-blocking findings do not prevent registration. |
 
-The Maestro architect may amend its own findings report. It does not resolve contradictions in the project's plan, invent missing answers, or rewrite that plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
+The Maestro architect may amend its own findings report and, during re-registration, add or amend milestones. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
 
 ### Registration review loop
 
@@ -130,6 +130,16 @@ A configuration file will set the maximum planning review rounds. The agreed ini
 One round means an architect report followed by an independent fidelity review. Sending an amended report for review counts as the next round. Registration can pass after the first round.
 
 At the limit, unresolved blockers or disagreements pause the registration and go to the Owner. The limit does not force approval or trigger another automatic retry. Configuration-file location and format are not specified here.
+
+### Re-registration and registration versions
+
+Registration may be rerun at any point in a project's lifecycle, but only when no work is in progress on that project.
+
+Each rerun creates the next registration version: registration version 2, then registration version 3, and so on. Previous registration versions are preserved rather than overwritten.
+
+During re-registration, the Maestro architect can add milestones or amend existing milestones. These changes are included in the new registration version and go through the same independent fidelity-review loop.
+
+The same configurable planning review limit applies, initially two rounds. Non-blocking findings do not prevent registration; unresolved blockers or disagreements at the limit go to the Owner.
 
 ### Agent delegation wrapper
 
