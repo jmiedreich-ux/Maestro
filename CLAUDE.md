@@ -18,6 +18,6 @@ State whether an outcome is proven, partial, blocked, or unknown. Do not treat a
 
 ## Documentation grooming
 
-The [retained Maestro information](docs/planning/retained-information.md) preserves confirmed boundaries from former planning material. It does not set future direction or authorize work.
+The [Maestro information review](docs/maestro-information-review.md) combines confirmed information from the former non-agent documents. It does not set future direction or authorize work.
 
 Do not restore removed roadmaps, proposals, open questions, sequencing, status narratives, or coded planning references unless the Owner explicitly asks.

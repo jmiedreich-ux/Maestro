@@ -6,10 +6,7 @@ The repository contains working foundations, but stored records and isolated com
 
 ## Documentation
 
-- [System foundations](docs/architecture/system-foundations.md)
-- [Local operating safety](docs/operations/local-operating-safety.md)
-- [Project registration principles](docs/registrations/project-registration-principles.md)
+- [Maestro information review](docs/maestro-information-review.md)
 - [Agent role library](docs/agents/)
-- [Retained Maestro information](docs/planning/retained-information.md)
 
-The retained-information file preserves confirmed boundaries from the former planning material. It is not a roadmap, priority list, implementation authorization, or statement of current completion.
+The information review combines the confirmed non-agent documentation. It is not an architectural plan, roadmap, implementation authorization, or statement of current completion.
