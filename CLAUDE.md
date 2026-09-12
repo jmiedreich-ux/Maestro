@@ -1,5 +1,7 @@
 # Maestro — working rules
 
+Read and follow `AGENTS.md` before every repository task. Its repository-wide rules apply to every agent and override older workflow instructions when they conflict.
+
 ## Response style — a hard rule, not a preference
 
 **Default: under 150 words. Plain prose. No headers, no bullet lists, no bold
