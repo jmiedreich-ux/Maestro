@@ -93,7 +93,7 @@ Registration needs enough clear, consistent information to organize the work wit
 | Architecture | Major components and their responsibilities, interactions, and decided technical choices and constraints. Distinguish settled decisions from details left open. Enough structure is needed to organize work without inventing architectural decisions, not a fully detailed design. |
 | Current state | Whether the project is new or already under development; what exists and is considered complete; what is unfinished, partially working, or known to be broken. Distinguish reported status from verified facts and flag conflicting status information. Registration does not require a full code audit. |
 | Planned work | Desired features or outcomes, relative priorities, and known dependencies or required ordering. Planning uses the shared milestone model below. |
-| Acceptance and completion | Explicit acceptance criteria and definitions of done for project milestones, with linked development-level criteria and completion requirements. |
+| Acceptance and completion | Explicit project-level acceptance criteria and definitions of done. Development-level criteria and completion requirements are created in the next process after registration. |
 | Document locations and format | Identify authoritative planning documents and format their contents according to the Maestro Planning Guide so Maestro can find and interpret them consistently. |
 
 ### Shared planning and milestones
@@ -103,9 +103,11 @@ Planning is shared between the project architect and the Maestro architect, simi
 | Perspective | Milestone meaning and responsibility |
 |---|---|
 | Project architect | Defines meaningful project outcomes and delivery boundaries. A project milestone can represent a usable capability, release, or architectural foundation. |
-| Maestro architect | Organizes the work into manageable development milestones that contribute to those project outcomes. |
+| Maestro architect | In the next process after registration, organizes the work into manageable development milestones that contribute to those project outcomes. |
 
-Project milestones and development milestones are explicitly linked; they do not need a one-to-one relationship. One project milestone can contain several development milestones. Maestro must not quietly redefine a project outcome or release boundary when organizing development.
+Registration retains the supplied project milestones without breaking them into development milestones or work packets. That breakdown belongs to the next process after registration.
+
+When the breakdown is performed, project milestones and development milestones are explicitly linked; they do not need a one-to-one relationship. One project milestone can contain several development milestones. Maestro must not quietly redefine a project outcome or release boundary when organizing development.
 
 ### Planning identifiers, names, and versions
 
@@ -140,7 +142,7 @@ Maintain one naming-convention list that the Owner can extend with new item type
 
 ### Acceptance criteria and definition of done
 
-The project architect defines what makes each project milestone successful. The Maestro architect develops detailed criteria for development milestones, traceable to project criteria without adding requirements.
+The project architect defines what makes each project milestone successful. In the next process after registration, the Maestro architect develops detailed criteria for development milestones, traceable to project criteria without adding requirements.
 
 Each acceptance criterion states:
 
@@ -151,7 +153,7 @@ Each acceptance criterion states:
 
 Acceptance criteria state what must be true. The definition of done states everything required to declare the milestone complete, including required reviews and evidence. Passing acceptance criteria is not enough if other completion requirements remain unmet. Development milestones must support, not weaken, the project milestone's definition of done.
 
-If the breakdown exposes ambiguity, Maestro returns it for clarification rather than silently choosing an interpretation. Only ambiguity affecting the work or its acceptance blocks registration; optional improvements do not.
+During registration, only ambiguity affecting the work or its acceptance blocks registration; optional improvements do not. If the later milestone breakdown exposes ambiguity, Maestro returns it for clarification rather than silently choosing an interpretation.
 
 ### Working rules belong to Execution
 
@@ -171,9 +173,24 @@ Project-specific overrides of execution rules are a future possibility only. The
 | Check meaning and consistency | The Maestro architect reviews the material, checks whether milestone scope can deliver its stated purpose, and produces findings about unclear instructions, suspected contradictions, and missing essentials that structural checks cannot detect. |
 | Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
-| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain and registration is confirmed, Python saves the registration and reviewed source version. Non-blocking findings do not prevent registration. |
+| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain, the Owner confirms the versioned registration package through the command line or command center, making it active. Non-blocking findings do not prevent registration. |
 
-The Maestro architect may amend its own findings report and develop linked development milestones and criteria within the shared planning model below. During re-registration, it can add or amend milestones. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
+The Maestro architect may amend its own findings report. During re-registration, it can add or amend project milestones within the reviewed registration package, but development-milestone and work-packet breakdown remains in the next process. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format remains subject to design.
+
+### Registration outputs and final confirmation
+
+Successful registration produces one versioned package:
+
+| Output | Contents |
+|---|---|
+| Registration summary | Project identity, source documents and their reviewed versions, findings, and registration outcome. |
+| Project milestone outline | Supplied project milestones with purposes, scope, priorities, and dependencies, without development-milestone or work-packet breakdown. |
+| Project-level completion requirements | Acceptance criteria, definitions of done, usage walkthroughs, and required completion evidence. |
+| Review record | Architect findings, independent fidelity reviews, amendments, and retained non-blocking findings. |
+
+The package identifies the exact versions of its contents rather than relying on whichever files happen to be latest.
+
+The Owner gives final confirmation through either the command line or command center. Confirmation accepts the registration package and activates that registration version; it does not start development.
 
 ### Registration review loop
 
@@ -189,7 +206,7 @@ The loop ends with readiness for registration confirmation, specific blockers re
 
 ### Milestone purpose and scope review
 
-Registration review checks whether each milestone's scope is sufficient to deliver its stated purpose, not merely whether its tasks are clear. Completing a task list does not prove the promised capability works.
+Registration review checks whether each supplied project milestone's scope is sufficient to deliver its stated purpose, not merely whether its description is clear. This review does not break milestones into development milestones or work packets. Completing a task list does not prove the promised capability works.
 
 | When | Required check |
 |---|---|
@@ -229,13 +246,25 @@ At the limit, unresolved blockers or disagreements pause the registration and go
 
 ### Re-registration and registration versions
 
-Registration may be rerun at any point in a project's lifecycle, but only when no work is in progress on that project.
+Registration may be rerun at any point in a project's lifecycle, but only when no work is in progress on that project. All active project work must finish or be explicitly stopped first. Maestro prevents new project work from starting until re-registration ends.
 
 Each rerun creates the next registration version: registration version 2, then registration version 3, and so on. Previous registration versions are preserved rather than overwritten.
 
-During re-registration, the Maestro architect can add milestones or amend existing milestones. These changes are included in the new registration version and go through the same independent fidelity-review loop.
+During re-registration, the Maestro architect can add project milestones or amend existing project milestones; it does not perform the subsequent development breakdown. These changes are included in the new registration version and go through the same independent fidelity-review loop.
 
 The same configurable planning review limit applies, initially two rounds. Non-blocking findings do not prevent registration; unresolved blockers or disagreements at the limit go to the Owner.
+
+### Failed or interrupted registration
+
+Preserve completed reports and review results. After an agent crash, failed push, or service restart, resume from the last verified step.
+
+Technical failures do not consume planning review rounds. Technical retries have a separate configurable limit. Reaching that limit pauses registration and alerts the Owner. The technical retry limit has no agreed numeric value yet.
+
+### Registration version activation
+
+A new registration version remains a candidate until the Owner confirms it. Confirmation makes it active while preserving the previous version.
+
+If re-registration fails or is cancelled, the previous registration version remains active. Project work does not automatically restart.
 
 ### Agent delegation wrapper
 
