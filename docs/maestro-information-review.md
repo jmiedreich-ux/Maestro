@@ -1,5 +1,7 @@
 # Maestro Information Review
 
+This file preserves consolidated reference information. The new design is in [Maestro Architecture](maestro-architecture.md); this reference material does not automatically define that architecture.
+
 ## System purpose
 
 Maestro is a project-neutral system for controlled AI-assisted engineering work. The repository contains a local Python service, SQLite-backed operational state, repository discovery and registration components, agent-role definitions, and the Reporting and Command Interface.
@@ -14,30 +16,6 @@ Maestro's local operational database owns live coordination state. This includes
 The Maestro service is the only database writer. The Reporting and Command Interface and other clients use supported service interfaces. The same fact must not have two writable sources of truth.
 
 Agent responsibilities and review boundaries are defined separately in the [agent role library](agents/).
-
-## Runtime
-
-Maestro's runtime is a backend program written in Python, running continuously as a Linux service on the AI box.
-
-It runs under `systemd`, which starts it when the machine boots and restarts it if it crashes. The program launches agent processes and communicates with them through their command-line tools or APIs.
-
-### Evolving runtime concepts
-
-These are working concepts, not fixed architectural requirements or implementation instructions. Their names, boundaries, and responsibilities may change as Maestro is designed.
-
-| Proposed part | Working responsibility |
-|---|---|
-| Command handling | Receive requests to start, pause, resume, or stop work from the Reporting and Command Interface. |
-| Work coordination | Determine which approved action can run next and start it when the required resources are available. |
-| Agent connections | Launch agents through their command-line tools or APIs, supply instructions, and receive results. |
-| State storage | Record what is running, finished, or waiting to support recovery after a service restart. |
-| Health supervision | Watch agent activity, deadlines, and failures, then apply agreed recovery or stopping rules. |
-
-These parts could initially be modules within one Python service rather than separately deployed services.
-
-The proposed boundary is mechanics versus judgment: the runtime enforces an agreed review requirement and receives and validates the assigned reviewer's result. A successful command does not itself count as approval.
-
-Planning, Execution, and Monitoring could use these shared mechanisms. This sketch does not define their responsibilities or grant them decision-making authority; those will be defined separately.
 
 ## Local service and operational data
 
@@ -61,38 +39,9 @@ Execution may be restricted to approved paths and named checks. Invalid configur
 
 Report outcomes as proven, partial, blocked, or unknown. A stored result proves only what was recorded; it does not by itself prove approval, completion, or successful product operation.
 
-## Planning: evolving registration concepts
-
-This is a working proposal, subject to change as Maestro is designed. It is not a fixed specification or an instruction to implement the process.
-
-### Maestro Planning Guide
-
-A future Maestro Planning Guide will define the conventions and formats project architects use for their planning outputs so Maestro can understand and use them. The guide and its required inputs remain to be designed.
-
-### Registration entry points and purpose
-
-Planning begins with project registration, initiated from either the command line or the command center within the Reporting and Command Interface. Both entry points would use the same registration process.
-
-Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture, rewrite the plan, or start development.
-
-### Proposed registration process
-
-| Step | Proposed mechanism |
-|---|---|
-| Receive the request | The user supplies the repository location through either entry point. |
-| Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access, and reports missing permissions. |
-| Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
-| Locate planning inputs | The guide could require a small registration file listing project details and the locations of planning documents and project-specific working rules. |
-| Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
-| Check meaning and consistency | An architect agent reviews the material for unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
-| Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
-| Resolve issues and confirm | The project architect supplies corrections, and Maestro repeats the checks. Once issues are resolved and registration is confirmed, Python saves the registration and reviewed source version. |
-
-The architect agent reports issues; it does not resolve contradictions, invent missing answers, or rewrite the plan. The registration file, division of work, and confirmation mechanism remain subject to design.
-
 ## Project discovery and registration
 
-The following retained registration details are reference material, not fixed requirements for the evolving registration process above.
+The following retained registration details are reference material, not fixed requirements for the [evolving registration process](maestro-architecture.md#planning-evolving-registration-concepts).
 
 Registration connects Maestro to a project without transferring ownership of the project's architecture, plans, code, or delivery rules.
 
