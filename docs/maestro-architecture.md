@@ -168,7 +168,7 @@ Project-specific overrides of execution rules are a future possibility only. The
 | Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
 | Locate planning inputs | The guide could require a small registration file listing project details and the locations of authoritative planning documents. Working rules belong to Execution, not registration. |
 | Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
-| Check meaning and consistency | The Maestro architect reviews the material and produces findings about unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
+| Check meaning and consistency | The Maestro architect reviews the material, checks whether milestone scope can deliver its stated purpose, and produces findings about unclear instructions, suspected contradictions, and missing essentials that structural checks cannot detect. |
 | Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
 | Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain and registration is confirmed, Python saves the registration and reviewed source version. Non-blocking findings do not prevent registration. |
@@ -180,12 +180,31 @@ The Maestro architect may amend its own findings report and develop linked devel
 Registration has its own bounded loop:
 
 1. Python checks the inputs.
-2. The Maestro architect examines the source material and produces findings.
+2. The Maestro architect examines the source material, checks milestone purpose and scope through a usage walkthrough, and produces findings.
 3. An independent fidelity reviewer checks those findings against the source material and assesses whether blockers are justified.
 4. The Maestro architect amends its report if needed.
 5. Any further review checks affected findings only.
 
 The loop ends with readiness for registration confirmation, specific blockers returned to the project architect, or unresolved disagreement brought to the Owner. It must not become an endless search for reasons to fail registration.
+
+### Milestone purpose and scope review
+
+Registration review checks whether each milestone's scope is sufficient to deliver its stated purpose, not merely whether its tasks are clear. Completing a task list does not prove the promised capability works.
+
+| When | Required check |
+|---|---|
+| During registration review, before work starts | Walk through how someone will actually use the capability. Identify the prerequisites and connections needed for that journey. Confirm that each already exists or is included in the planned work and its dependencies. |
+| Before declaring the milestone complete | Demonstrate the same journey using the actual connected system. Completed components or test-data demonstrations alone do not prove an operational capability. |
+
+The Maestro architect records the usage walkthrough, prerequisites, and required completion evidence in the milestone's acceptance criteria and definition of done. The independent fidelity reviewer checks that these support the stated purpose and that any missing essentials are justified findings. This is part of the existing registration review loop, with the same configurable two-round limit, not an additional review loop.
+
+For a control-loop milestone, the walkthrough would cover how the service is started, how it authenticates, how a project becomes available to it, how work is initiated, and how the result is observed. These are examples of essential operations to examine, not a requirement that every milestone deliver a whole product.
+
+A component milestone is valid, but it must be named and judged as a component. It must not be reported as a working end-to-end capability.
+
+An exclusion cannot remove something essential to the milestone's purpose while leaving its completion claim unchanged. Include the missing work or explicitly narrow the milestone with the Owner; do not silently weaken its purpose or definition of done.
+
+Registration checks the planned path to a usable outcome. It does not require the capability to be built already. Optional improvements remain non-blocking; a missing essential must be tied to the stated purpose, not a reviewer's preference.
 
 ### Good enough to proceed
 
