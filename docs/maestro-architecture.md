@@ -70,11 +70,11 @@ Planning, Execution, and Monitoring could use these shared mechanisms. This sket
 
 ## Planning: evolving registration concepts
 
-This is a working proposal, subject to change as Maestro is designed. It is not a fixed specification or an instruction to implement the process.
+This section records agreed registration concepts and explicitly labeled proposals. The design can evolve through further agreement; it is not an instruction to implement the process.
 
 ### Maestro Planning Guide
 
-A future Maestro Planning Guide will define the conventions and formats project architects use for their planning outputs so Maestro can understand and use them. The guide and its required inputs remain to be designed.
+A future Maestro Planning Guide will define the conventions and formats project architects use for their planning outputs so Maestro can understand and use them. The agreed input categories are below. The guide's detailed formats remain to be designed.
 
 ### Registration entry points and purpose
 
@@ -82,21 +82,67 @@ Planning begins with project registration, initiated from either the command lin
 
 Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture or start development. Re-registration permits milestone additions and amendments as described below, not a general rewrite of the project's plan.
 
+### Agreed registration inputs
+
+Registration needs enough clear, consistent information to organize the work without inventing requirements. It does not require every implementation detail to be decided.
+
+| Input | Required information and boundary |
+|---|---|
+| Project identity | Plain project name, repository location, and responsible project architect: a person, an agent, or both. Maestro checks that the repository is readable and belongs to the intended project. |
+| Purpose and scope | What the project should accomplish, what is included in the work being registered, and what is explicitly excluded. |
+| Architecture | Major components and their responsibilities, interactions, and decided technical choices and constraints. Distinguish settled decisions from details left open. Enough structure is needed to organize work without inventing architectural decisions, not a fully detailed design. |
+| Current state | Whether the project is new or already under development; what exists and is considered complete; what is unfinished, partially working, or known to be broken. Distinguish reported status from verified facts and flag conflicting status information. Registration does not require a full code audit. |
+| Planned work | Desired features or outcomes, relative priorities, and known dependencies or required ordering. Planning uses the shared milestone model below. |
+| Acceptance and completion | Explicit acceptance criteria and definitions of done for project milestones, with linked development-level criteria and completion requirements. |
+| Document locations and format | Identify authoritative planning documents and format their contents according to the Maestro Planning Guide so Maestro can find and interpret them consistently. |
+
+### Shared planning and milestones
+
+Planning is shared between the project architect and the Maestro architect, similar to the collaborative process used to design Maestro itself.
+
+| Perspective | Milestone meaning and responsibility |
+|---|---|
+| Project architect | Defines meaningful project outcomes and delivery boundaries. A project milestone can represent a usable capability, release, or architectural foundation. |
+| Maestro architect | Organizes the work into manageable development milestones that contribute to those project outcomes. |
+
+Project milestones and development milestones are explicitly linked; they do not need a one-to-one relationship. One project milestone can contain several development milestones. Maestro must not quietly redefine a project outcome or release boundary when organizing development.
+
+### Acceptance criteria and definition of done
+
+The project architect defines what makes each project milestone successful. The Maestro architect develops detailed criteria for development milestones, traceable to project criteria without adding requirements.
+
+Each acceptance criterion states:
+
+- Expected result: what must happen and under which conditions.
+- Verification: how it will be checked and what evidence is required.
+- Pass boundary: the exact result or threshold that counts as success.
+- Exceptions: explicitly accepted limitations.
+
+Acceptance criteria state what must be true. The definition of done states everything required to declare the milestone complete, including required reviews and evidence. Passing acceptance criteria is not enough if other completion requirements remain unmet. Development milestones must support, not weaken, the project milestone's definition of done.
+
+If the breakdown exposes ambiguity, Maestro returns it for clarification rather than silently choosing an interpretation. Only ambiguity affecting the work or its acceptance blocks registration; optional improvements do not.
+
+### Working rules belong to Execution
+
+Change boundaries, decision authority, repository rules, and coding conventions belong in the Execution phase, not the required registration inputs.
+
+Project-specific overrides of execution rules are a future possibility only. They are not being designed or required for registration now.
+
 ### Proposed registration process
 
 | Step | Proposed mechanism |
 |---|---|
 | Receive the request | The user supplies the repository location through either entry point. |
-| Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access, and reports missing permissions. |
+| Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access and that the repository belongs to the intended project, and reports missing permissions. |
 | Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
-| Locate planning inputs | The guide could require a small registration file listing project details and the locations of planning documents and project-specific working rules. |
+| Locate planning inputs | The guide could require a small registration file listing project details and the locations of authoritative planning documents. Working rules belong to Execution, not registration. |
 | Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
 | Check meaning and consistency | The Maestro architect reviews the material and produces findings about unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
 | Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
 | Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain and registration is confirmed, Python saves the registration and reviewed source version. Non-blocking findings do not prevent registration. |
 
-The Maestro architect may amend its own findings report and, during re-registration, add or amend milestones. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
+The Maestro architect may amend its own findings report and develop linked development milestones and criteria within the shared planning model below. During re-registration, it can add or amend milestones. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
 
 ### Registration review loop
 
