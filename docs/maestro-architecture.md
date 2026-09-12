@@ -11,7 +11,10 @@ The [Maestro Information Review](maestro-information-review.md) remains separate
 - Maestro covers three major functional areas during project development: Planning, Execution, and Monitoring.
 - The runtime is a Python backend running as a Linux service on the AI box, managed by `systemd`, communicating with agents through command-line tools or APIs.
 - A future Maestro Planning Guide will define conventions and formats for project architects' planning outputs.
-- Planning begins with project registration, initiated through the command line or the command center.
+- A dedicated Maestro CLI is a foundational project milestone delivered before registration development.
+- The initial version uses the Maestro CLI for the complete operator workflow. The command center is future scope.
+- Maestro supports working on multiple projects concurrently from the foundation.
+- Planning begins with project registration, initiated through the Maestro CLI.
 
 The runtime's internal parts and the registration process below are evolving concepts. Planning's responsibilities and authority must be defined explicitly with the Owner, not inferred from earlier designs.
 
@@ -56,7 +59,7 @@ These are working concepts, not fixed architectural requirements or implementati
 
 | Proposed part | Working responsibility |
 |---|---|
-| Command handling | Receive requests to start, pause, resume, or stop work from the Reporting and Command Interface. |
+| Command handling | Receive requests to start, pause, resume, or stop work from the Maestro CLI; a future command center can use the same service interfaces. |
 | Work coordination | Determine which approved action can run next and start it when the required resources are available. |
 | Agent connections | Launch agents through their command-line tools or APIs, supply instructions, and receive results. |
 | State storage | Record what is running, finished, or waiting to support recovery after a service restart. |
@@ -68,6 +71,50 @@ The proposed boundary is mechanics versus judgment: the runtime enforces an agre
 
 Planning, Execution, and Monitoring could use these shared mechanisms. This sketch does not define their responsibilities or grant them decision-making authority; those will be defined separately.
 
+## Maestro CLI foundation
+
+The Maestro CLI is an installed operator application launched with `maestro`. Its foundation comes before registration development: service connection, project navigation, submitting actions, receiving responses, and reconnecting after exit. Registration then adds its specific workflow.
+
+The initial version is CLI-only. The command center within the Reporting and Command Interface is deferred. Status, questions, written responses, candidate review, explicit confirmation, and cancellation must all remain usable through the CLI.
+
+### Conversation-first interaction
+
+Use one continuous terminal workspace, similar to Codex but with more interactive controls:
+
+- A persistent input area supports typed commands.
+- The main area shows agent messages, progress, findings, and results.
+- Interactive choices appear in the flow for project selection, expanding findings, answering questions, comparing versions, and confirming packages.
+- A persistent status area identifies the selected project, current process, and whether Maestro is working or waiting for the Owner.
+
+Typed commands and equivalent controls invoke the same operation. Free-text answers are clearly distinguished from commands and tied to a specific question and project. A clarification does not become an accidental command or registration confirmation.
+
+The CLI supports starting registration with a repository and scope, opening an existing process, inspecting findings and the exact candidate, submitting responses, explicitly confirming, and cancelling. Exact command names and input syntax remain to be designed; this document does not invent them.
+
+Exiting closes the CLI connection, not the running process. Cancellation is a separate action. Reopening `maestro` retrieves the current service state and reconnects to updates.
+
+### Multiple projects
+
+The CLI can focus on one project while others continue running. Each project keeps separate conversations, process state, pending decisions, and registration versions.
+
+Switching projects does not stop their work. Every project-specific command, response, and event clearly identifies its target project. The CLI surfaces when another project needs attention without mixing its decisions into the selected project's conversation.
+
+The single active registration restriction applies per project, not across Maestro. Re-registration's no-work-in-progress restriction also applies to that project; it does not stop unrelated projects.
+
+### Communication with the service
+
+The Python service provides a local API. The CLI connects to `localhost` on the AI box.
+
+| Direction | Mechanism | Purpose |
+|---|---|---|
+| CLI to service | HTTP requests | Start registration, submit an Owner response, confirm a candidate, cancel a process, or retrieve current status. |
+| Service to CLI | Server-Sent Events over a persistent connection | Stream agent messages, progress, findings, and requests for input. |
+
+Each project-specific request and event carries the project's identity. The CLI can send commands while receiving streamed updates.
+
+The service owns the running work. Closing the terminal does not stop service activity; reconnecting retrieves authoritative current state and resumes updates. A separate agent process is not needed merely to maintain this connection.
+
+API endpoint names, connection configuration, and event schemas remain implementation details to define.
+
 ## Planning: evolving registration concepts
 
 This section records agreed registration concepts and explicitly labeled proposals. The design can evolve through further agreement; it is not an instruction to implement the process.
@@ -78,7 +125,7 @@ A future Maestro Planning Guide will define the conventions and formats project 
 
 ### Registration entry points and purpose
 
-Planning begins with project registration, initiated from either the command line or the command center within the Reporting and Command Interface. Both entry points would use the same registration process.
+Planning begins with project registration through the Maestro CLI. A future command center will use the same service process. References to future command-center support do not make it a requirement for the initial version.
 
 Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture or start development. Re-registration permits milestone additions and amendments as described below, not a general rewrite of the project's plan.
 
@@ -165,7 +212,7 @@ Project-specific overrides of execution rules are a future possibility only. The
 
 | Step | Proposed mechanism |
 |---|---|
-| Receive the request | The Owner supplies the repository location and selects the whole plan or a defined portion through either entry point. If registration is already active, show its status instead of starting another. |
+| Receive the request | The Owner supplies the repository location and selects the whole plan or a defined portion through the Maestro CLI. If registration is already active, show its status instead of starting another. |
 | Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access and that the repository belongs to the intended project, and reports missing permissions. |
 | Read a specific version | Python reads the repository at a recorded Git commit shared by both reviewers. Relevant source changes are flagged for an explicit Owner choice before confirmation. |
 | Locate planning inputs | The guide could require a small registration file listing project details and the locations of authoritative planning documents. Working rules belong to Execution, not registration. |
@@ -173,7 +220,7 @@ Project-specific overrides of execution rules are a future possibility only. The
 | Check meaning and consistency | The Maestro architect reviews milestone purpose and scope, outside dependencies, and claimed existing capabilities through targeted source checks. It reports unclear instructions, contradictions, missing essentials, and the level of supporting evidence. |
 | Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
-| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain, the Owner confirms the versioned registration package through the command line or command center, making it active. Non-blocking findings do not prevent registration. |
+| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain, the Owner confirms the versioned registration package through the Maestro CLI, making it active. Non-blocking findings do not prevent registration. |
 
 The Maestro architect may amend its own findings report. During re-registration, it can add or amend project milestones within the reviewed registration package, but development-milestone and work-packet breakdown remains in the next process. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format remains subject to design.
 
@@ -190,7 +237,7 @@ Successful registration produces one versioned package:
 
 The package identifies the exact versions of its contents rather than relying on whichever files happen to be latest.
 
-The Owner gives final confirmation through either the command line or command center. Confirmation accepts the registration package and activates that registration version; it does not start development.
+The Owner gives final confirmation through the Maestro CLI. Confirmation accepts the registration package and activates that registration version; it does not start development.
 
 ### Machine-first package storage
 
@@ -204,7 +251,7 @@ Optimize the package for agents and Python:
 - Keep plain-language descriptions inside the structured records.
 - Python validates required fields and references.
 
-Each fact has one authoritative location. The command center renders the same package; human-readable reports are generated from it, not maintained as competing sources of truth. The next planning process uses the exact confirmed package version.
+Each fact has one authoritative location. The CLI presents the same package; human-readable reports are generated from it, not maintained as competing sources of truth. The future command center will also render these records. The next planning process uses the exact confirmed package version.
 
 ### Source changes during review
 
@@ -221,11 +268,11 @@ This applies to changes in planning inputs, not unrelated commits or the registr
 
 ### Duplicate registration requests
 
-Only one registration process may be active per project. A second request from either interface shows the existing process's current status rather than starting a competing process or creating another version.
+Only one registration process may be active per project. A second request through the CLI, or a future command-center request, shows the existing process's current status rather than starting a competing process or creating another version.
 
 ### Registration visibility and Owner responses
 
-Both the command line and command center show:
+The Maestro CLI shows:
 
 - The current step and working agent.
 - The review round and configured limit.
@@ -233,7 +280,7 @@ Both the command line and command center show:
 - Whether registration is progressing, paused, or waiting for the Owner.
 - Decisions needed from the Owner and the relevant findings.
 
-A decision request provides a specific question, relevant findings, and the affected registration version. The Owner submits a choice or written clarification through either interface.
+A decision request provides a specific question, relevant findings, and the affected registration version. The Owner submits a choice or written clarification through the Maestro CLI.
 
 Maestro records the response against that request in the registration package. The runtime routes it to the paused step; the architect amends its report if needed, and affected findings are rechecked within the existing review limit.
 
@@ -251,7 +298,7 @@ The Owner confirms the exact candidate version shown. That confirmed package mus
 
 ### Partial-project registration
 
-Through either interface, the Owner chooses the whole supplied project plan or specific project milestones.
+Through the Maestro CLI, the Owner chooses the whole supplied project plan or specific project milestones.
 
 The candidate package records included milestones and outcomes, explicit exclusions, and dependencies outside that boundary. If only part of a milestone is included, describe that portion explicitly; an identifier alone is insufficient.
 
