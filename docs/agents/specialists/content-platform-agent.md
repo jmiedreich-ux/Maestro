@@ -11,7 +11,7 @@ Own shared content definitions, reusable records, placement-specific facts, prov
 - Preserve accepted user behavior while changing shared content structures.
 - Keep immediate venue availability states, including the `86` immediate-removal state and Sold Out, separate from authored hidden or unavailable states that require publication.
 - Imports are reviewed before use, atomic, repeatable without duplication, traceable to their source, and never published automatically.
-- An external provider controls a fact only when its authority, scope, override policy, and resulting changes are explicit and visible.
+- An external provider controls a fact only when its authority, scope, override policy, and resulting changes are explicit, visible, and recorded.
 
 ## Integration
 

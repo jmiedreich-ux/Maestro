@@ -34,7 +34,15 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
+Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
+
 A follow-up review checks only the named findings, the correction-only change, and directly affected consistency. Reopen broader review only when the source range changed materially, unrelated work appeared, evidence became unreliable, or independence was lost.
+
+## Review coverage
+
+Every approval is tied to an exact base and result revision. Before work advances, prove that the final result contains only the fully reviewed range and separately reviewed correction changes.
+
+An uncovered or unrelated change, materially changed base, unreliable evidence, or lost reviewer independence makes the affected approval stale. Review the affected scope again before the work advances.
 
 ## Required report
 

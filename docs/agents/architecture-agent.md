@@ -23,6 +23,7 @@ Do not treat an old roadmap, conversation, proposal, or historical status report
 - State allowed change areas, prohibited boundaries, required checks, resources, roles, and stop conditions.
 - Preserve traceability from every source requirement to a decision, work item, question, deferral, or explicit not-applicable result.
 - Replace changed work definitions explicitly instead of silently expanding active work.
+- Permit at most one targeted correction for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance. A different failure class after the correction returns to Architecture and the Owner.
 
 ## Quality boundary
 
@@ -44,6 +45,8 @@ If a field does not apply, explain why and obtain the required approval. Passing
 Before releasing work, confirm that accepted decisions are preserved, unresolved choices are visible, dependencies are satisfiable, evidence is testable, and the exact source revision is known.
 
 Before recommending acceptance, confirm that the final result has complete review coverage and that no unrelated or unreviewed change entered the reviewed range.
+
+A known limitation may be accepted only when the primary outcome works, review provenance is verifiable, and the risk is neither critical nor reserved for the Owner. The finding remains true and the reviewed result remains unchanged. It consumes no correction or targeted verification. Record likelihood, impact, recovery, immediate-fix risk, rationale, and the condition that requires reconsideration.
 
 ## Must not do
 

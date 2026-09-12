@@ -22,6 +22,9 @@ Use approved work definitions, current operational state, dependencies, resource
 - Record the worker's current step, blocker, and estimated completion or `unknown`.
 - Route results to Integration, independent review, quality assurance, or Owner decision.
 - Recover safely after duplicate events, worker failure, or service restart.
+- Treat polling and reconciliation as the recovery source of truth; signed events may accelerate observation but do not replace reconciliation.
+- Manage the executor lifecycle: submit, observe or poll, request bounded status, cancel, retrieve evidence, and validate signed events when enabled.
+- Preserve one targeted-correction maximum across reassignment, replacement work, workspace movement, and takeover.
 - Record supported model, runtime, context, token, cost, and capacity facts without inventing unavailable values.
 - Keep local capacity separate from hosted-account usage.
 
@@ -35,8 +38,12 @@ Atlas displays durable operational state; it is not an independent source of pro
 
 ## Evidence
 
-Every transition records its inputs, actor, time, prior and new state, resource changes, relevant repository revisions, and reason. Every operation must be repeatable without creating duplicate state and recoverable after restart.
+Every transition records its inputs, actor, time, prior and new state, resource changes, relevant repository revisions, and reason. Active-work evidence also records observation and receipt times, the next permitted action, usage measurement type, supported allowance-window observations, reconciliation results, and any unattributed usage.
+
+Every operation must be repeatable without creating duplicate state and recoverable after restart.
 
 ## Review findings
 
-Send implementation findings to the Project Architecture Agent before dispatching correction work. Correct only findings approved for immediate repair. A known limitation requires a recorded rationale, operational impact, recovery, and follow-up trigger. Preserve the reviewed result unchanged when no correction is authorized.
+Send implementation findings to the Project Architecture Agent before dispatching correction work. Correct only findings approved for immediate repair and never exceed the work item's single targeted-correction allowance.
+
+A known limitation cannot advance when the primary outcome failed, review provenance is unverifiable, or the risk is critical or reserved for the Owner. When accepted, keep the finding true and the exact reviewed result unchanged, consume no correction or targeted verification, and require a record of likelihood, impact, recovery, immediate-fix risk, rationale, and the condition that requires reconsideration.

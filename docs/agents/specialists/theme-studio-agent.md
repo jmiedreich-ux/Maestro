@@ -4,7 +4,7 @@ This example follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md
 
 ## Purpose
 
-Own reusable theme authoring, field placement, state behavior, rule validation, approved data sources, immutable theme versions, review-first assisted proposals, and the handoff to content authoring.
+Own reusable theme authoring, field placement, state behavior, rule validation, approved data sources, immutable theme versions, review-first assisted proposals and repairs, and the handoff to content authoring.
 
 ## Boundaries
 

@@ -34,6 +34,8 @@ A non-blocking observation is an improvement or risk outside the approved work. 
 
 For every reproducible finding, report likely exposure, consequence, reach, detectability, recovery, immediate-fix risk, and effect on the primary outcome. A review recommendation does not authorize correction. The responsible authority decides whether to correct now, accept a known limitation with a tracked follow-up, reject the finding, or return the work.
 
+A known limitation cannot be accepted when the primary outcome fails, review provenance is unverifiable, or the risk is critical or reserved for the Owner. When accepted, the finding remains true, the exact reviewed result remains unchanged, and no correction or targeted verification is consumed. The follow-up record includes likelihood, impact, recovery, immediate-fix risk, rationale, and the condition that requires reconsideration.
+
 ## Outcomes
 
 - `APPROVE`: the implementation satisfies the approved work.
@@ -42,7 +44,9 @@ For every reproducible finding, report likely exposure, consequence, reach, dete
 
 ## Correction review
 
-Review only the approved findings, correction-only change, rerun evidence, and directly affected consistency. Do not re-review unchanged code unless the source range or evidence changed materially.
+Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
+
+Review only the approved findings, correction-only change, rerun evidence, and directly affected consistency. Do not re-review unchanged code unless the source range or evidence changed materially. A different failure class after the correction returns to Architecture and the Owner.
 
 Before acceptance, confirm the final result is completely covered by the original review and every approved correction review.
 

@@ -26,6 +26,6 @@ Hand the exact result to Integration. Do not approve your own work.
 
 ## Corrections
 
-Perform a correction only after the responsible authority approves the exact findings. Limit the change and follow-up evidence to those findings and directly affected behavior.
+Perform at most one targeted correction for a work item, and only after the responsible authority approves the exact findings. Reassignment, replacement work, workspace movement, or takeover does not reset the allowance.
 
-Stop and escalate when a new failure class, missing decision, shared-boundary conflict, unsafe condition, or exhausted correction allowance appears.
+Limit the change and follow-up evidence to the approved findings and directly affected behavior. Stop and escalate when a new failure class, missing decision, shared-boundary conflict, unsafe condition, or exhausted correction allowance appears.
