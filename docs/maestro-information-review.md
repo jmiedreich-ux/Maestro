@@ -8,7 +8,7 @@ It is an information review only. It is not an architectural plan, roadmap, prio
 
 ## System purpose and current boundary
 
-Maestro is a project-neutral system for controlled AI-assisted engineering work. The repository contains a local Python service, SQLite-backed operational state, repository discovery and registration components, agent-role definitions, and the Atlas operator interface.
+Maestro is a project-neutral system for controlled AI-assisted engineering work. The repository contains a local Python service, SQLite-backed operational state, repository discovery and registration components, agent-role definitions, and the Reporting and Command Interface.
 
 These components provide useful foundations, but their presence does not prove that Maestro works end to end. Stored records, isolated components, historical activity, and fixture-backed screens are not proof of complete product operation. Current behavior must be verified against the code.
 
@@ -18,7 +18,7 @@ A joined project repository owns that project's architecture, code, rules, revie
 
 Maestro's local operational database owns live coordination state. This includes work claims, leases, attempts, waits, events, evidence, retries, notifications, and resource reservations.
 
-The Maestro service is the only database writer. Atlas and other clients use supported service interfaces. The same fact must not have two writable sources of truth.
+The Maestro service is the only database writer. The Reporting and Command Interface and other clients use supported service interfaces. The same fact must not have two writable sources of truth.
 
 Agent responsibilities and review boundaries are defined separately in the [agent role library](agents/).
 
@@ -94,15 +94,15 @@ Existing validation rules:
 - Acceptance authority is either the Project Architect or the Owner.
 - When exceptions are absent, the exception list is empty. When exceptions are declared, at least one item is required.
 
-## Atlas boundary
+## Reporting and Command Interface boundary
 
-Atlas is the operator interface for Maestro's durable state. It is not the operational database and is not a second editor for project code, plans, or policy.
+The Reporting and Command Interface is the operator interface for Maestro's durable state. It is not the operational database and is not a second editor for project code, plans, or policy.
 
-Atlas reads supported snapshots and events through the local service and refreshes authoritative state after reconnecting. It must not read SQLite directly.
+The Reporting and Command Interface reads supported snapshots and events through the local service and refreshes authoritative state after reconnecting. It must not read SQLite directly.
 
-Any Atlas action must map to a named, guarded, version-checked, idempotent service command. Displaying a control does not give Atlas new authority. Operator actions and their results are audited.
+Any Reporting and Command Interface action must map to a named, guarded, version-checked, idempotent service command. Displaying a control does not give the Reporting and Command Interface new authority. Operator actions and their results are audited.
 
-Atlas must distinguish real operational data from fixture-backed presentation. It must not scrape provider interfaces, expose secrets, or display raw prompts and traces.
+The Reporting and Command Interface must distinguish real operational data from fixture-backed presentation. It must not scrape provider interfaces, expose secrets, or display raw prompts and traces.
 
 ## Access and secrets
 
@@ -134,7 +134,7 @@ Restore to a new path, validate it, and reconcile it before use. Never overwrite
 
 ## Notifications
 
-Record a notification durably before attempting external delivery. Atlas shows the same durable notification state.
+Record a notification durably before attempting external delivery. The Reporting and Command Interface shows the same durable notification state.
 
 Slack is the first external delivery channel. Separate action-needed messages from informational messages and group or rate-limit repeats.
 

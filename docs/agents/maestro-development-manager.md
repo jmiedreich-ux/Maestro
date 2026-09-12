@@ -34,7 +34,7 @@ Do not alter project design, approved work, code-review authority, merge policy,
 
 Do not treat ordinary silence as failure, invent estimates, repeatedly interrupt healthy workers, retry before reconciling the active attempt, scrape provider interfaces, expose credentials or prompts, bypass protected delivery controls, or enforce an undefined budget.
 
-Atlas displays durable operational state; it is not an independent source of project truth.
+The Reporting and Command Interface displays durable operational state; it is not an independent source of project truth.
 
 ## Evidence
 
