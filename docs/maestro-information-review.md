@@ -21,6 +21,24 @@ Maestro's runtime is a backend program written in Python, running continuously a
 
 It runs under `systemd`, which starts it when the machine boots and restarts it if it crashes. The program launches agent processes and communicates with them through their command-line tools or APIs.
 
+### Evolving runtime concepts
+
+These are working concepts, not fixed architectural requirements or implementation instructions. Their names, boundaries, and responsibilities may change as Maestro is designed.
+
+| Proposed part | Working responsibility |
+|---|---|
+| Command handling | Receive requests to start, pause, resume, or stop work from the Reporting and Command Interface. |
+| Work coordination | Determine which approved action can run next and start it when the required resources are available. |
+| Agent connections | Launch agents through their command-line tools or APIs, supply instructions, and receive results. |
+| State storage | Record what is running, finished, or waiting to support recovery after a service restart. |
+| Health supervision | Watch agent activity, deadlines, and failures, then apply agreed recovery or stopping rules. |
+
+These parts could initially be modules within one Python service rather than separately deployed services.
+
+The proposed boundary is mechanics versus judgment: the runtime enforces an agreed review requirement and receives and validates the assigned reviewer's result. A successful command does not itself count as approval.
+
+Planning, Execution, and Monitoring could use these shared mechanisms. This sketch does not define their responsibilities or grant them decision-making authority; those will be defined separately.
+
 ## Local service and operational data
 
 Maestro uses a local Python service and SQLite. The runtime-data directory is configurable and defaults to the repository's `var/` directory.
