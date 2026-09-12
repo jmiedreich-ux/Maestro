@@ -15,6 +15,12 @@ The Maestro service is the only database writer. The Reporting and Command Inter
 
 Agent responsibilities and review boundaries are defined separately in the [agent role library](agents/).
 
+## Runtime
+
+Maestro's runtime is a backend program written in Python, running continuously as a Linux service on the AI box.
+
+It runs under `systemd`, which starts it when the machine boots and restarts it if it crashes. The program launches agent processes and communicates with them through their command-line tools or APIs.
+
 ## Local service and operational data
 
 Maestro uses a local Python service and SQLite. The runtime-data directory is configurable and defaults to the repository's `var/` directory.
