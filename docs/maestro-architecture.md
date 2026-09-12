@@ -165,12 +165,12 @@ Project-specific overrides of execution rules are a future possibility only. The
 
 | Step | Proposed mechanism |
 |---|---|
-| Receive the request | The user supplies the repository location through either entry point. |
+| Receive the request | The Owner supplies the repository location and selects the whole plan or a defined portion through either entry point. If registration is already active, show its status instead of starting another. |
 | Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access and that the repository belongs to the intended project, and reports missing permissions. |
-| Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
+| Read a specific version | Python reads the repository at a recorded Git commit shared by both reviewers. Relevant source changes are flagged for an explicit Owner choice before confirmation. |
 | Locate planning inputs | The guide could require a small registration file listing project details and the locations of authoritative planning documents. Working rules belong to Execution, not registration. |
 | Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
-| Check meaning and consistency | The Maestro architect reviews the material, checks whether milestone scope can deliver its stated purpose, and produces findings about unclear instructions, suspected contradictions, and missing essentials that structural checks cannot detect. |
+| Check meaning and consistency | The Maestro architect reviews milestone purpose and scope, outside dependencies, and claimed existing capabilities through targeted source checks. It reports unclear instructions, contradictions, missing essentials, and the level of supporting evidence. |
 | Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
 | Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain, the Owner confirms the versioned registration package through the command line or command center, making it active. Non-blocking findings do not prevent registration. |
@@ -186,11 +186,98 @@ Successful registration produces one versioned package:
 | Registration summary | Project identity, source documents and their reviewed versions, findings, and registration outcome. |
 | Project milestone outline | Supplied project milestones with purposes, scope, priorities, and dependencies, without development-milestone or work-packet breakdown. |
 | Project-level completion requirements | Acceptance criteria, definitions of done, usage walkthroughs, and required completion evidence. |
-| Review record | Architect findings, independent fidelity reviews, amendments, and retained non-blocking findings. |
+| Review record | Architect findings, independent fidelity reviews, amendments, retained non-blocking findings, and linked Owner decisions, clarifications, and accepted limitations. |
 
 The package identifies the exact versions of its contents rather than relying on whichever files happen to be latest.
 
 The Owner gives final confirmation through either the command line or command center. Confirmation accepts the registration package and activates that registration version; it does not start development.
+
+### Machine-first package storage
+
+Store the registration package in the project's own GitHub repository, with a separate folder for each registration version. The Maestro Planning Guide defines the folder location and consistent filenames.
+
+Optimize the package for agents and Python:
+
+- Structured JSON is authoritative, with a defined schema.
+- A small index identifies records, registration and source versions, and relationships through explicit references and relative links.
+- Use small, focused files so agents load only what they need.
+- Keep plain-language descriptions inside the structured records.
+- Python validates required fields and references.
+
+Each fact has one authoritative location. The command center renders the same package; human-readable reports are generated from it, not maintained as competing sources of truth. The next planning process uses the exact confirmed package version.
+
+### Source changes during review
+
+Each review uses an exact Git commit. The Maestro architect and independent fidelity reviewer use the same source version.
+
+If relevant planning inputs change, Maestro flags that the reviewed version is no longer current and shows the changes before confirmation. It does not silently mix source versions.
+
+| Owner choice | Treatment |
+|---|---|
+| Finish with the reviewed source version | Registration explicitly covers the original requirements. Newer changes are not included. |
+| Include the updated source version | Update the candidate package and recheck affected findings within the existing review limit. Do not silently reset the two-round limit. |
+
+This applies to changes in planning inputs, not unrelated commits or the registration reports themselves.
+
+### Duplicate registration requests
+
+Only one registration process may be active per project. A second request from either interface shows the existing process's current status rather than starting a competing process or creating another version.
+
+### Registration visibility and Owner responses
+
+Both the command line and command center show:
+
+- The current step and working agent.
+- The review round and configured limit.
+- Blockers, non-blocking findings, and technical failures.
+- Whether registration is progressing, paused, or waiting for the Owner.
+- Decisions needed from the Owner and the relevant findings.
+
+A decision request provides a specific question, relevant findings, and the affected registration version. The Owner submits a choice or written clarification through either interface.
+
+Maestro records the response against that request in the registration package. The runtime routes it to the paused step; the architect amends its report if needed, and affected findings are rechecked within the existing review limit.
+
+If a response is ambiguous, Maestro asks for clarification rather than treating it as approval. Answering a question is not final registration confirmation; confirmation remains a separate explicit action.
+
+### Changes presented for confirmation
+
+Before re-registration confirmation, compare the candidate package with the active registration version. Show:
+
+- What was added, changed, or removed.
+- Affected project milestones, scope boundaries, and completion requirements.
+- Why each change was made, with links to findings or Owner decisions.
+
+The Owner confirms the exact candidate version shown. That confirmed package must not silently change afterward.
+
+### Partial-project registration
+
+Through either interface, the Owner chooses the whole supplied project plan or specific project milestones.
+
+The candidate package records included milestones and outcomes, explicit exclusions, and dependencies outside that boundary. If only part of a milestone is included, describe that portion explicitly; an identifier alone is insufficient.
+
+The Maestro architect checks whether outside dependencies already exist or need additional work. Present boundaries and dependencies before confirmation. Successful registration covers only the selected portion, not the whole project.
+
+For example, registering menu creation and publishing could exclude billing. If publishing requires authentication, authentication must already exist, be included, or be identified as missing essential work. Maestro raises the dependency for a decision rather than silently expanding scope.
+
+### Targeted source checks for dependencies
+
+Registration includes targeted source-code inspection of dependencies claimed to exist, not a full code audit.
+
+For an authentication dependency, inspect whether it is connected to the relevant application or API, protects the required routes, depends on missing configuration or credentials or unfinished components, and has evidence of working.
+
+The report distinguishes:
+
+| Evidence level | Meaning |
+|---|---|
+| Reported to exist | Claimed in supplied information, without verification. |
+| Supported by source inspection | The implementation appears present and connected based on source evidence. |
+| Verified in operation | Operational evidence supports that it works. |
+
+Source inspection alone does not prove running-system behavior. Anything not verified remains explicit.
+
+### Retained Owner decisions
+
+Include Owner clarifications, accepted limitations, and scope decisions in the registration package, linked to their decision requests where applicable and to affected milestones and criteria. Later agents use these recorded decisions rather than reconstructing them from chat.
 
 ### Registration review loop
 
