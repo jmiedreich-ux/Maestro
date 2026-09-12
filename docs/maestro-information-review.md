@@ -61,7 +61,38 @@ Execution may be restricted to approved paths and named checks. Invalid configur
 
 Report outcomes as proven, partial, blocked, or unknown. A stored result proves only what was recorded; it does not by itself prove approval, completion, or successful product operation.
 
+## Planning: evolving registration concepts
+
+This is a working proposal, subject to change as Maestro is designed. It is not a fixed specification or an instruction to implement the process.
+
+### Maestro Planning Guide
+
+A future Maestro Planning Guide will define the conventions and formats project architects use for their planning outputs so Maestro can understand and use them. The guide and its required inputs remain to be designed.
+
+### Registration entry points and purpose
+
+Planning begins with project registration, initiated from either the command line or the command center within the Reporting and Command Interface. Both entry points would use the same registration process.
+
+Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture, rewrite the plan, or start development.
+
+### Proposed registration process
+
+| Step | Proposed mechanism |
+|---|---|
+| Receive the request | The user supplies the repository location through either entry point. |
+| Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access, and reports missing permissions. |
+| Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
+| Locate planning inputs | The guide could require a small registration file listing project details and the locations of planning documents and project-specific working rules. |
+| Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
+| Check meaning and consistency | An architect agent reviews the material for unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
+| Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
+| Resolve issues and confirm | The project architect supplies corrections, and Maestro repeats the checks. Once issues are resolved and registration is confirmed, Python saves the registration and reviewed source version. |
+
+The architect agent reports issues; it does not resolve contradictions, invent missing answers, or rewrite the plan. The registration file, division of work, and confirmation mechanism remain subject to design.
+
 ## Project discovery and registration
+
+The following retained registration details are reference material, not fixed requirements for the evolving registration process above.
 
 Registration connects Maestro to a project without transferring ownership of the project's architecture, plans, code, or delivery rules.
 
@@ -85,6 +116,8 @@ Registration is blocked when required facts are missing, conflicting, unsafe, or
 The Owner must approve a proposed registration before it becomes active. Registration confirms that Maestro can understand and coordinate the project safely. It does not approve implementation work.
 
 ## Project-manifest contract
+
+This retained manifest contract is reference material. It does not define the future Maestro Planning Guide or registration-file format.
 
 The project manifest uses schema version 1, rejects unknown properties, and requires every top-level section below.
 
