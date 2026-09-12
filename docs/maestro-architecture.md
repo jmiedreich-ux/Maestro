@@ -107,6 +107,37 @@ Planning is shared between the project architect and the Maestro architect, simi
 
 Project milestones and development milestones are explicitly linked; they do not need a one-to-one relationship. One project milestone can contain several development milestones. Maestro must not quietly redefine a project outcome or release boundary when organizing development.
 
+### Planning identifiers, names, and versions
+
+Registration establishes a consistent naming scheme for planning items. This concerns planning identifiers and subjects, not source-code conventions, which remain part of Execution.
+
+Use a short item-type prefix, a sequential number, and a plain subject. Always display the subject alongside the identifier; never refer to a coded item by its identifier alone.
+
+| Item type | Example |
+|---|---|
+| Project milestone | PM1 — First usable release · version 2 |
+| Development milestone | DM1 — Project registration · version 3 |
+| Planning document | PD1 — API contract · version 2 |
+| Work packet | WP1 — Implement registration input checks · version 1 |
+| Review | RV1 — Registration findings fidelity review · round 1 |
+| Replan | RP1 — Revise registration delivery sequence |
+
+These are naming examples, not actual project records.
+
+Numbers are assigned sequentially within each item type for each project. Agents must not invent numbers. No random numbering, reused identifiers, or unexplained numbering jumps are permitted. Retired identifiers are never reused.
+
+Keep identity separate from version:
+
+- An item keeps its identifier when its title or content changes.
+- Versions increase sequentially only when that item changes; preserve earlier versions.
+- Each work packet has its own identifier and an explicit link to its development milestone.
+- Reviews record the exact item versions reviewed. Review rounds are separate from document versions.
+- Replans record why the plan changed and which items were added or revised. Unchanged items keep their identifiers and versions.
+
+Store relationships explicitly rather than encoding the full hierarchy into names. Moving a work packet between milestones does not require a new identifier.
+
+Maintain one naming-convention list that the Owner can extend with new item types and prefixes as the project develops. The initial list does not need to cover everything.
+
 ### Acceptance criteria and definition of done
 
 The project architect defines what makes each project milestone successful. The Maestro architect develops detailed criteria for development milestones, traceable to project criteria without adding requirements.
