@@ -91,9 +91,58 @@ Registration would identify the project, confirm repository access, locate plann
 | Read a specific version | Python reads the repository at a recorded Git commit so the review covers a known source version. |
 | Locate planning inputs | The guide could require a small registration file listing project details and the locations of planning documents and project-specific working rules. |
 | Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
-| Check meaning and consistency | An architect agent reviews the material for unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
+| Check meaning and consistency | The Maestro architect reviews the material and produces findings about unclear instructions, suspected contradictions, and missing information that structural checks cannot detect. |
+| Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
 | Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
-| Resolve issues and confirm | The project architect supplies corrections, and Maestro repeats the checks. Once issues are resolved and registration is confirmed, Python saves the registration and reviewed source version. |
+| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain and registration is confirmed, Python saves the registration and reviewed source version. Non-blocking findings do not prevent registration. |
 
-The architect agent reports issues; it does not resolve contradictions, invent missing answers, or rewrite the plan. The registration file, division of work, and confirmation mechanism remain subject to design.
+The Maestro architect may amend its own findings report. It does not resolve contradictions in the project's plan, invent missing answers, or rewrite that plan. The project architect supplies source corrections. The registration-file format and confirmation mechanism remain subject to design.
 
+### Registration review loop
+
+Registration has its own bounded loop:
+
+1. Python checks the inputs.
+2. The Maestro architect examines the source material and produces findings.
+3. An independent fidelity reviewer checks those findings against the source material and assesses whether blockers are justified.
+4. The Maestro architect amends its report if needed.
+5. Any further review checks affected findings only.
+
+The loop ends with readiness for registration confirmation, specific blockers returned to the project architect, or unresolved disagreement brought to the Owner. It must not become an endless search for reasons to fail registration.
+
+### Good enough to proceed
+
+| Finding | Treatment |
+|---|---|
+| Blocker | Missing or contradictory information that prevents Maestro from understanding the work or following its rules safely. Explain what Maestro cannot do because of it, with source evidence or an identified missing required input. |
+| Non-blocking finding | Wording preferences, improvements, or minor gaps that do not prevent registration. Report them without requiring correction. |
+| Review disagreement | Allow the Maestro architect to amend its report. If disagreement remains at the review limit, bring it to the Owner. |
+
+Independent fidelity review checks accuracy and justified blockers; it must not introduce new requirements. “This could be better” is not grounds for failure.
+
+### Configurable planning review limit
+
+A configuration file will set the maximum planning review rounds. The agreed initial limit is **2 rounds**, configurable:
+
+1. Initial Maestro architect report and independent fidelity review.
+2. Amended report and independent recheck of affected findings, only if needed.
+
+One round means an architect report followed by an independent fidelity review. Sending an amended report for review counts as the next round. Registration can pass after the first round.
+
+At the limit, unresolved blockers or disagreements pause the registration and go to the Owner. The limit does not force approval or trigger another automatic retry. Configuration-file location and format are not specified here.
+
+### Agent delegation wrapper
+
+The runtime delegates to an agent through a wrapper script that launches the agent and performs deterministic checks around its work.
+
+For tasks requiring GitHub commits, the wrapper verifies:
+
+- The expected repository and branch were used.
+- Required changes were committed and pushed.
+- The commit exists on GitHub.
+- Only permitted files changed.
+- The agent's reported commit matches the actual commit.
+
+These checks apply when commits are required; a read-only review does not require a commit merely to satisfy the wrapper.
+
+The wrapper verifies observable facts. The independent reviewer checks meaning and fidelity. An agent's statement that it committed successfully is not verification, and passing wrapper checks is not independent approval.
