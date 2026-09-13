@@ -11,3 +11,9 @@ Write all repository documentation and agent responses in plain language. Keep t
 ## Git changes
 
 Commit every approved repository change directly to `master`. Do not create branches or pull requests unless the Owner explicitly changes this rule.
+
+## Architecture documentation
+
+Architecture documentation explains system structure, responsibilities, data, interfaces, runtime behavior, and failure handling. Use plain, impersonal prose. Give each rule one authoritative explanation and avoid repetition.
+
+Keep Maestro delivery plans, milestone drafts, work assignments, handoffs, and review reports in separate documents. Planning and milestone records may be described as system functions or data, not as Maestro delivery work. Mark unresolved mechanisms without inventing decisions.
