@@ -16,8 +16,12 @@ Commit every approved repository change directly to `master`. Do not create bran
 
 Architecture documentation explains system structure, responsibilities, data, interfaces, runtime behavior, and failure handling. Use plain, impersonal prose. Give each rule one authoritative explanation and avoid repetition.
 
-Keep Maestro delivery plans, milestone drafts, work assignments, handoffs, and review reports in separate documents. Planning and milestone records may be described as system functions or data, not as Maestro delivery work. Mark unresolved mechanisms without inventing decisions.
+Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs separate from architecture. Planning and milestone records may be described as system functions or data, not as Maestro delivery work. Mark unresolved mechanisms without inventing decisions.
 
 ## Milestone declarations
 
 Follow the [Maestro Declaration Guide](docs/maestro-declaration-guide.md). Apply the conventions without repeating their explanations or migration history in declaration sheets. Keep references to other declarations limited to actual dependencies and delivery responsibility.
+
+## Documentation review results
+
+Report documentation fidelity and completeness reviews in the conversation. Do not create or retain standalone repository review reports unless explicitly requested. Apply needed corrections to the authoritative documents. This rule does not remove review records required by Maestro's runtime or registration design.
