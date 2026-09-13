@@ -79,6 +79,45 @@ A wrapper script launches an assigned agent and performs deterministic checks ar
 
 Read-only assignments do not require commits solely to satisfy the wrapper. These checks establish observable facts; independent review assesses meaning and fidelity.
 
+### Model Execution Adapters
+
+A Model Execution Adapter is a Python module inside the runtime service that runs a particular agent tool. The assigned role defines responsibilities and authority; the adapter supplies the mechanics of running that role. The same adapter can support architect and reviewer assignments through separate agent runs, preserving reviewer independence.
+
+| Adapter part | Responsibility |
+|---|---|
+| Configuration | Identify the agent tool, model, launch settings, and configured access. |
+| Assignment preparation | Supply the assigned role, exact source revision, document references, selected scope, response format, permitted access, and limits. |
+| Working area | Provide access to the assigned sources and a location for output artifacts. |
+| Run control | Start the agent, retain its tracking handle, check status, and support cancellation. |
+| Progress collection | Return assignment-linked activity messages to the service for recording and display. |
+| Result collection | Retrieve the structured response, output artifacts, and clarification requests. |
+| Failure reporting | Distinguish launch failure, agent failure, missing output, and an unknown outcome following interruption. |
+
+The shared operation boundary is:
+
+| Operation | Expected result |
+|---|---|
+| Start assignment | Return a handle identifying the launched run, or a specific launch failure. |
+| Report progress | Return messages linked to the assignment; progress is not completion evidence. |
+| Check status | Report starting, running, completed, failed, cancelled, or unknown. Completed run status does not establish a valid result or registration approval. |
+| Collect result | Return the response and artifacts for service validation; missing output is reported explicitly. |
+| Cancel run | Request termination and report whether it actually stopped. A cancellation request alone is not proof of termination; saved work is not undone. |
+| Reconnect after interruption | Recover run status where the tool supports it; otherwise report uncertainty. Do not silently start a replacement. |
+
+For registration, the service supplies the software architect assignment, the adapter launches the selected tool, and the architect assesses the source and prepares the candidate package. The adapter returns progress and the final artifacts. The service validates and saves them, then arranges independent review. The adapter does not decide registration readiness.
+
+When an agent returns clarification required, the service records and routes the question. A subsequent assignment supplies the recorded answer and relevant context. The adapter does not interpret an answer as permission or independently choose the next activity.
+
+The service retains control of content validation, durable state, review and retry budgets, question routing, and registration activation. Adapter transport and process handling do not replace deterministic wrapper checks.
+
+### Returned implementation plan
+
+For an assigned execution work packet, the agent reads and understands the packet, returns its proposed implementation plan before making changes, and then continues the assigned work. The plan states the required outcome, relevant existing code, intended changes and sequence, necessary connections, basic verification and essential failures, and any blocking missing information or conflict.
+
+The service records and displays the plan as an assignment-linked intermediate output. It is distinct from the final result. Returning it introduces no additional review, approval, or pause before execution. A future plan-checking gate is outside the current behavior. Existing scope and authority limits still apply to actual blockers.
+
+This behavior concerns execution work packets. A registration architect returns its assessment and candidate under the registration response contract; registration does not acquire an implementation-plan or development-work stage.
+
 ## Connections and data
 
 ### System connections
@@ -593,7 +632,7 @@ The following architectural mechanisms remain unresolved:
 | Service interface | CLI contracts are defined above; operation-specific registration package payloads depend on the registration schema. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
-| Agent integration | Model Execution Adapters and artifact transport. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
+| Agent integration | Shared adapter responsibilities are defined. Agent tool selection, concrete launch/status/cancellation interfaces, artifact transport, and recovery capabilities remain open. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
 | Configuration | Review configuration location and format; numeric technical retry default. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
