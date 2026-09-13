@@ -53,7 +53,7 @@ Candidate preparation does not approve the source architecture, activate the pac
 
 Return the assessment, candidate contents, source references, blocking and non-blocking findings, needed clarifications, and responses to reviewer findings. Keep material changes traceable. The service manages durable records, deterministic validation, review routing, publication checks, and confirmation.
 
-Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Adapter transport and package file layout remain to be defined; do not invent them for a live assignment.
+Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Return the explicit assessment and candidate artifact references with the assigned run identity. Follow the defined adapter transport and workspace permissions; package file layout remains to be defined and must not be invented for a live assignment.
 
 ## Later design and development preparation
 
