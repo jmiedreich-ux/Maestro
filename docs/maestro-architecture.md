@@ -79,6 +79,12 @@ A wrapper script launches an assigned agent and performs deterministic checks ar
 
 Read-only assignments do not require commits solely to satisfy the wrapper. These checks establish observable facts; independent review assesses meaning and fidelity.
 
+### Registration agent-work boundary
+
+Registration runs agents to assess sources, prepare and amend candidates, and independently review their fidelity. Its assignment, supervision, permission, output-validation, publication, and recovery controls apply to that work. They do not establish the general software Execution policy.
+
+Implementation-review authority, coding correction limits, merge authority, and development-milestone completion policy remain provisional for separate Execution design. Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
+
 ### Model Execution Adapters
 
 A Model Execution Adapter is a Python module inside the runtime service that runs a particular agent tool. The assigned role defines responsibilities and authority; the adapter supplies the mechanics of running that role. The same adapter can support architect and reviewer assignments through separate agent runs, preserving reviewer independence.
@@ -543,14 +549,20 @@ Detailed development criteria belong to the subsequent breakdown process and rem
 
 ### Review limits and decisions
 
-A configuration file sets the maximum planning review rounds. The default is **two rounds**:
+The service reads `registration.maximum_fidelity_reviews` from `/etc/maestro/agents.toml`. The setting is a positive integer and defaults to **2** when omitted. An invalid value prevents a new registration with a plain configuration error.
 
-- One architect report followed by one independent review constitutes a round.
-- An amended report sent for another review consumes the next round.
-- Registration may reach readiness after the first round.
-- Source updates and clarifications do not silently reset the budget.
+At initiation, the service copies the effective limit into the registration activity in SQL. That saved value governs the whole attempt. Configuration changes affect future attempts, not one already running. This budget is separate from technical retries and run durations.
 
-At the limit, unresolved blockers or disagreement pause registration for an Owner decision. The limit neither forces approval nor starts another automatic review.
+| Event | Review-count effect |
+|---|---|
+| Architect prepares or amends an assessment | None. |
+| Independent reviewer returns a valid completed review of assessment and candidate | Consume one round for both together. |
+| Reviewer requests clarification without completing its review | None. |
+| Agent crashes or returns invalid output | Technical recovery; no round consumed. |
+| Answers or relevant source updates arrive | Preserve the existing count and limit. |
+| Accepted review output is delivered again | Return the saved receipt; do not count again. |
+
+Readiness after the first passing review does not require another review. At the saved limit, unresolved material blockers or disagreement pause registration for an Owner decision. The service neither forces approval, resets the count, nor launches another review beyond that limit.
 
 The registration view displays the current step, working agent, round and limit, findings, failures, progress or waiting state, and required decisions.
 
@@ -640,7 +652,21 @@ The discovery index is for navigation. Runtime work and downstream assignments u
 
 ### Re-registration
 
-Registration can be rerun during a project's lifecycle only when that project has no work in progress. Existing work must finish or be explicitly stopped. New project work is blocked until re-registration ends.
+Registration can be rerun during a project's lifecycle only when that project has no work in progress. The service checks recorded activities, reserved starts, pending external operations, and actual run status; an idle CLI or a quiet agent is not evidence that work has ended.
+
+The following prevent re-registration:
+
+- Reserved or queued assignments awaiting launch.
+- Running agents or reviewers.
+- Unfinished work waiting for answers, correction, or recovery.
+- Pending publication, merge, or activation operations.
+- A stop or run status that remains uncertain.
+
+Completed or cancelled activities do not block entry once their processes and external operations are resolved. Questions unrelated to unfinished work do not block entry. The CLI identifies each blocking activity by its plain subject and current state. Existing work must finish or be explicitly ended through its own process; re-registration never silently cancels it.
+
+The idle check and re-registration reservation occur in one SQL transaction under the project's start lock. Every operation that reserves or starts project work checks the same reservation in its transaction. Run-state uncertainty prevents an idle result. Once reserved, only assignments and operations belonging to that registration activity may proceed for the project; other project work cannot start. Unrelated projects continue normally.
+
+The reservation remains until registration has ended and its runs and external operations are resolved. Ending registration releases it without automatically restarting stopped work. The previous approved registration remains active unless its replacement was successfully confirmed. This shared start-check contract defines the interface registration requires; it does not define Execution scheduling or stopping commands.
 
 Each rerun creates the next registration version while preserving prior versions. The Maestro architect may add or amend project milestones within the candidate package. These changes use the same source, scope, review, and decision rules; they do not authorize general source-plan rewriting or development breakdown.
 
@@ -747,7 +773,7 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file; a
 | `tools.<tool>.settings_profile` | Reference to service-managed tool settings and permitted operations. |
 | `tools.<tool>.allowed_model_ids` | Full provider identifiers allowed for explicit role selection; not default model choices. |
 
-Effective configuration is hashed and recorded for each assignment/run. Changes affect new runs after validation, never a running agent. Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. Planning fidelity-review configuration remains separate from these technical limits.
+Effective configuration is hashed and recorded for each assignment/run. Changes affect new runs after validation, never a running agent. Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
 
 
 ## Journeys and interactions
@@ -844,6 +870,6 @@ The following architectural mechanisms remain unresolved:
 | Persistence | Physical SQL schema, broader runtime recovery internals, and database backup/restore procedures. Package publication and activation consistency are defined above. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
-| Configuration | Planning fidelity-review configuration location and format. Agent technical settings, registration duration, and retry accounting are defined above. |
+| Execution policy | Implementation-review authority, coding correction limits, merge authority, and development completion policy remain provisional and require separate Execution design. Registration controls do not settle them. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
