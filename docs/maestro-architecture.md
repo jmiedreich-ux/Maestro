@@ -96,7 +96,7 @@ Requests and events associated with a project carry its identity. Commands can b
 
 ### CLI connection configuration
 
-The CLI reads TOML from `$XDG_CONFIG_HOME/maestro/cli.toml`, or `~/.config/maestro/cli.toml` when that environment variable is unset. The optional `service_url` setting is an absolute HTTP URL with a host and port, without credentials, query, or fragment. The initial service listens on loopback; remote service exposure is outside this interface design.
+The CLI reads TOML from `$XDG_CONFIG_HOME/maestro/cli.toml`, or `~/.config/maestro/cli.toml` when that environment variable is unset. The optional `service_url` setting is an absolute HTTP URL with host `localhost`, `127.0.0.1`, or `[::1]` and a port from 1 through 65535, without credentials, query, fragment, or a path other than `/`. Other destinations are unsupported in this version and treated as invalid configuration. The initial service listens on loopback; remote service exposure is outside this interface design.
 
 The default address is `http://localhost:8787`; the service installation uses the same default port. Missing, unreadable, malformed, or invalid configuration uses that fallback, with a plain explanation and the effective address visible. A valid but unreachable configured address remains selected; connection failure does not trigger fallback.
 
@@ -123,7 +123,7 @@ The local API uses UTF-8 JSON under `/api/v1`. These are interface contracts for
 
 Read responses contain `data` and `event_cursor`. List responses include `next_cursor`, null when exhausted. Project summaries include identity, plain name, registration status, activity state, and attention count. Activity records include their project identity; question and finding records include both project and activity identities. Names and coded subjects remain human-readable even when internal IDs are opaque.
 
-A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Initial intake uses operation `registration.start` with repository and overview path; missing scope is collected through saved intake questions. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
+A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, and `registration.cancel`. Initial intake supplies repository and overview path; missing scope is collected through saved intake questions. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
 
 Receipts contain request identity, status, and any created project/activity identities. Status is accepted, completed, or rejected; accepted means durably recorded, not completed activity. Errors contain `code`, plain `message`, and affected fields. Invalid input returns 400, unavailable access 403, missing records 404, stale context or conflicting request content 409, and unavailable service 503. No error is rendered as an empty result.
 
@@ -220,7 +220,7 @@ A project activity is a particular registration attempt or other unit of ongoing
 
 Opening a project shows its single current activity, including an activity waiting for an answer. If several activities are underway, the CLI shows them for explicit selection rather than guessing. If none is underway, the project is labeled Idle and opens its most recently ended activity. Earlier activities remain available; the selected activity name and state stay visible. Navigation never starts, stops, or changes project work.
 
-Switching activities clears unsent text without saving, transfer, or warning, and puts input into commands-only mode. Explicitly opening an eligible question links input to that exact question. Opening attention selects its project and activity before linking the question. Opening a finding changes no finding state. Activity-specific commands use the selected activity; missing activity context requests selection. Historical activity actions remain subject to current eligibility.
+Switching activities clears unsent text without saving, transfer, or warning, and puts input into commands-only mode. Explicitly opening an eligible question links input to that exact question. Opening attention selects its project and activity before linking the question. Opening a finding changes no finding state. Activity-specific commands use the selected activity; missing activity context requests selection. `/registration` opens an ongoing registration attempt, or the latest registration record when none is underway, and applies the same activity-switching input rules. Historical activity actions remain subject to current eligibility.
 
 Registration creates durable project and activity identities during accepted intake, before assessment or approval. Questions use those identities even before the project is registered. Repository identity prevents duplicate project entries.
 
@@ -298,7 +298,7 @@ Empty states appear only after successful retrieval. A lookup failure is display
 |---|---|
 | No project entries | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters registration intake. |
 | No attention items across projects | “No questions or decisions need your attention.” |
-| No findings for the current process | “No findings recorded for this process.” |
+| No findings for the selected activity | “No findings recorded for this activity.” |
 | No registration for the selected project | “No registration exists for this project,” with a Register action. |
 
 ### Keyboard and terminal behavior
@@ -468,7 +468,7 @@ The following journeys connect the behavior defined in the sections above. Each 
 
 ### Open and use the workspace
 
-**Starting condition:** The CLI is installed; the service connection is configured. Connected views require readable service-held project and conversation records.
+**Starting condition:** The CLI is installed; a configured or fallback service address is available. The service may have no projects. Populated views use its saved records.
 
 **Entry:** Launch `maestro`.
 
