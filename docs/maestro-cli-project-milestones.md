@@ -8,7 +8,7 @@
 | Capability | Local terminal interface for multiple projects |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible project architect | Owner and software architect |
-| Document version | 3 |
+| Document version | 4 |
 | Declaration | CLI — Command-line interface |
 | Status | Proposed project outcomes for review; not a registration package, development breakdown, or implementation approval |
 | Design authority | [Maestro Architecture](maestro-architecture.md) |
@@ -131,8 +131,6 @@ Outcome-level behavior is largely specified. Several mechanisms and context rule
 
 These are delivery prerequisites or implementation choices, not extra product features. Missing mechanisms prevent a claim of implementation readiness; they do not invalidate the recorded CLI outcomes. Additional design decisions belong in the architecture, separately from milestone work.
 
-## Review and acceptance status
-
-The [CLI milestone detail review](maestro-cli-project-milestones-review.md) records fidelity, coverage, and unresolved details.
+## Acceptance status
 
 No milestone is currently claimed complete. Source review is not operational verification, registration acceptance, or authority to begin implementation.
