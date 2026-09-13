@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 1 |
+| Document version | 2 |
 
 ## Purpose
 
@@ -26,7 +26,7 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 
 | Capability or area | Current condition | Evidence level | Evidence or authoritative source | Known missing prerequisites |
 |---|---|---|---|---|
-| CLI/service foundation | Specified; current integrated operation not verified | Reported | `docs/maestro-cli-project-milestones.md` | Installed setup, project/question provisioning, context and connection contracts. |
+| CLI/service foundation | Specified; current integrated operation not verified | Reported | `docs/maestro-cli-project-milestones.md` | Installed setup and real registration integration for final connected acceptance. |
 | Registration and history | Specified; current integrated operation not verified | Reported | `docs/maestro-registration-project-milestones.md` | Agent/adapter contracts, publication access, package schema, work-state enforcement, persistence consistency. |
 | Existing service components | Source evidence from the recorded revision below; current capability not established by that evidence | Supported by source inspection at the cited revision only | Source observations below | Current source validation and actual operational evidence before claiming dependency readiness. |
 | Architecture and source documents | Supplied design material, not operational evidence | Not applicable to implementation status | Authoritative source list below | Unresolved mechanisms are identified in the architecture and declarations. |
@@ -59,7 +59,6 @@ Registration entry uses `docs/maestro-project-overview.md` within the repository
 | Missing or conflicting information | Affected source or capability | Clarification needed |
 |---|---|---|
 | Current implementation and operational evidence | Dependencies in both declarations | Establish the actual condition before claiming existing capability. |
-| Initial project/question source and process context | CLI entry and response journey | Resolve the named mechanisms in `docs/maestro-architecture.md#constraints-and-unresolved-details`. |
 | Agent, persistence, and work-state interfaces | Registration journeys | Resolve the architecture mechanisms and declaration-specific dependencies before affected development breakdown. |
 
 No narrower registration portion is selected by this overview. A registration request supplies its chosen boundary using the declaration references.
