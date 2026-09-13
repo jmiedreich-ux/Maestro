@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 7 |
+| Declaration version | 8 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -28,7 +28,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 5 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 6 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 5 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 5 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
@@ -50,6 +50,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 | Source consistency | `docs/maestro-architecture.md#source-consistency` |
 | Review budget and Owner decisions | `docs/maestro-architecture.md#review-limits-and-decisions` |
 | Identity and naming | `docs/maestro-architecture.md#identity-declarations-and-ordering` |
+| Agent response and adapter boundaries | `docs/maestro-architecture.md#registration-agent-response-contract`; `docs/maestro-architecture.md#model-execution-adapters` |
 | Actual publication checks | `docs/maestro-architecture.md#agent-delegation` |
 | Assessment and limits | `docs/maestro-architecture.md#assessment-and-independent-review` |
 | Purpose and dependency checks | `docs/maestro-architecture.md#purpose-and-dependency-checks` |
@@ -91,7 +92,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Role and adapter contracts | Real assessment/review cannot be delegated consistently yet. | Define Project Architect, Fidelity Reviewer, and Model Execution Adapter interfaces. |
+| Adapter implementation contract | Role responsibilities and structured responses are defined; the concrete agent-tool connection is not. | Select the tool and define launch, artifact transport, status, cancellation, and recovery under `docs/maestro-architecture.md#model-execution-adapters`. |
 | Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
 | Planning-review configuration | Default two-round behavior needs a configuration that can be installed and read. | Define configuration location and format without changing the agreed default. |
 | Output and persistence contracts | Package validation/publication/activation cannot rely on assumed formats. | Define JSON schema, package location/index, and SQL/GitHub record consistency. |
