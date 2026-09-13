@@ -289,7 +289,7 @@ Durable information follows this sequence:
 
 Service-wide requests remain service-wide. Saved records remain available after CLI exit or connection loss. Startup retrieves saved state through the service; reconnection also retrieves missed updates.
 
-Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; the relationship between SQL updates and GitHub package updates is not yet specified.
+Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; [publication and SQL consistency](#publication-and-sql-consistency) defines the separate durable operations.
 
 ### Identity, declarations, and ordering
 
@@ -558,18 +558,85 @@ A question identifies the relevant findings and registration version. Its record
 
 ### Package structure
 
-A registration package is stored in the project's own GitHub repository, with a separate folder per registration version.
+The project's own GitHub repository holds registration records under `.maestro/registrations/`. UTF-8 JSON is authoritative. The CLI renders these records instead of maintaining a separate account of their contents. Registration packages describe supplied project outcomes; they contain no generated development breakdown.
 
-| Record group | Contents |
+| Location | Purpose |
 |---|---|
-| Summary | Project identity, exact source references, findings, and registration outcome. |
-| Project outcome outline | Supplied milestones, purposes, scope, priorities, and dependencies. |
-| Completion requirements | Project-level criteria, definitions of done, usage walkthroughs, and required evidence. |
-| Review and decision records | Architect findings, independent reviews, amendments, retained non-blocking findings, linked clarifications, scope decisions, and accepted limitations. |
+| `index.json` | Discovery index with project identity, current confirmed package reference, and references to previous confirmations. It is not a substitute for an exact package reference. |
+| `versions/<registration-version>/candidates/<candidate-id>/manifest.json` | Immutable candidate identity, source and decision versions, and inventory of its record files and hashes. |
+| `summary.json` within the candidate | Project purpose, selected scope, exclusions, priorities, and overall assessment. |
+| `milestones/<record-key>.json` within the candidate | One supplied project milestone per file, preserving qualified identity, plain subject, order, version, purpose, scope, dependencies, and completion references. |
+| `requirements/<record-key>.json` within the candidate | Project or milestone completion requirements, expected journeys, interaction results, evidence, and accepted exceptions. |
+| `assessments/<record-key>.json` within the candidate | Architect assessment, findings, affected records, source evidence, and corrections. |
+| `reviews/<record-key>.json` within the candidate | Independent review outcome, exact reviewed content reference, findings, and review-round accounting. |
+| `decisions/<record-key>.json` within the candidate | Relevant clarifications and answers, scope/source choices, amendments, accepted limitations, and their authority. |
+| `confirmations/<confirmation-id>.json` beneath the registration root | Immutable record of the Owner's explicit confirmation of an exact published candidate. |
 
-Structured JSON is authoritative. Small, focused files contain plain descriptions and explicit relationships. An index identifies records, versions, and relative references. Python validates required fields and links against the schema.
+Record keys are filename-safe internal identities, not delivery order. Record contents always pair displayed coded identifiers with plain subjects. Registration versions are positive integers allocated once per attempt; cancelled attempts can leave gaps. Candidate identifiers are unique within the project and change whenever package bytes change. Confirmed candidates are never edited.
 
-Each fact has one authoritative location. The CLI and generated human-readable reports render package records instead of maintaining competing copies. Exact content versions remain identifiable; downstream processing consumes the confirmed package version rather than mutable latest files.
+#### Package record contract
+
+All package files declare `schema_version: 1`. Each record file contains `record_type`, `record_id`, `subject`, positive integer `record_version`, and `data`. Required text is nonempty. Unknown record types or schema versions are rejected; optional values use explicit null and optional collections use empty arrays.
+
+| Record type | Required data |
+|---|---|
+| Summary | `project_id`, `purpose`, `scope` with included and excluded outcomes, `priorities`, `assessment_outcome` (ready, clarification_required, or blocked), and references to project requirements. This outcome is not activation. |
+| Milestone | `declaration_id`, `milestone_id`, `delivery_order`, `purpose`, `included`, `excluded`, `dependencies`, `requirement_refs`, and `source_refs`. Each dependency identifies its subject, required outcome, and existing/included/missing state with supporting evidence. |
+| Requirement | `applies_to`, `expected_result`, `conditions`, `pass_boundary`, `verification`, `accepted_exception`, `source_refs`, and `journey`. Journey entries identify the interaction, expected result, and essential failure behavior; noninteractive requirements use an empty journey. |
+| Assessment | `assignment_id`, `run_id`, `source_commit`, `decision_version`, `summary`, and `findings`, using the registration response contract's finding structure. |
+| Review | `assignment_id`, `run_id`, `reviewer_identity`, `review_round`, `review_limit`, `reviewed_content_hash`, `reviewed_assessment_ref`, `outcome`, and `findings`. The service records identity and accounting; the reviewer cannot assign its own limits. |
+| Decision | `question`, ordered `answers`, `resolution`, `authority`, `affected_refs`, and `supersedes_ref`. Answers include their saved identity, author, text, and time. A decision without a question uses null; superseded decisions remain available. |
+
+References contain `record_id`, `subject`, `record_version`, and a package-relative `path`. External references also name the repository, exact commit, and source locator. Milestone dependencies preserve qualified declaration and milestone identities; delivery order is independent of identity. Facts are defined in their owning record and linked elsewhere.
+
+The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`. Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
+
+The service calculates `content_hash` from the path-sorted inventory of summary, milestone, requirement, assessment, and decision files: one `path`, tab, file hash, and newline per entry. Review files are excluded so a review can identify the content it reviewed without a circular hash. The manifest's own SHA-256 identifies the complete candidate including its reviews. Hashes bind saved bytes; formatting changes therefore create a different candidate.
+
+Python checks required fields and types, unique identities and paths, hashes, references, source/decision consistency, and review coverage before publication. Absolute paths, parent traversal, duplicate record identities, and references to nonexistent records are rejected. Agent-written hashes and readiness claims are checked independently.
+
+Changing reviewed content creates a new candidate and requires the affected review under the existing budget. Unchanged records preserve their record versions; changed records increment theirs. A focused recheck identifies the prior reviewed content and unchanged coverage as well as corrected findings. The service must establish coverage of the complete new content; an old approval alone cannot approve a new hash. A rejected candidate remains retrievable and is not overwritten.
+
+### Publication and SQL consistency
+
+SQL owns live activity, requests, budgets, and the active-version pointer. GitHub owns the published package and confirmation records. There is no assumed transaction spanning both systems. The runtime uses durable publication operations and verifies GitHub before reporting success.
+
+#### Candidate publication
+
+1. Validate and freeze the candidate in service-owned storage. Save its manifest hash, file inventory, intended repository/branch/path, and a unique publication operation in SQL before network writes.
+2. Publish the complete candidate in one Git commit on the project's authorized branch. Maestro's own repository uses `master`. Never publish a partial folder as a usable package.
+3. Verify the remote commit, all expected file bytes and hashes, permitted paths, and unchanged frozen content using wrapper checks.
+4. Save the verified commit and package reference in SQL, then emit the recorded publication result.
+
+A package reference contains repository, commit, manifest path, manifest hash, registration version, and candidate identity. All later review, confirmation, and downstream use bind to this reference rather than branch HEAD or a mutable latest path. Publication does not activate registration.
+
+Git updates use the expected branch head and never force-push over other changes. If the branch moves, preserve unrelated changes and retry publication only when the target paths remain absent or byte-identical. Conflicting existing bytes pause publication. Relevant source changes follow the existing explicit source-choice rules; publication never silently changes the assessed source.
+
+#### Confirmation and activation
+
+The CLI confirmation request identifies the displayed package reference and expected activity version. In a SQL transaction, the service verifies review coverage, current eligibility, unchanged candidate, and the Owner's explicit action, then records a pending confirmation and publication operation. The previous registration remains active while this operation is pending.
+
+The service publishes an immutable confirmation receipt and updates the discovery index together in one Git commit. The receipt contains schema version, confirmation/request/project identities, the exact package reference, Owner identity, confirmation time, and the previous confirmation reference or null. The index contains `schema_version`, `project_id`, `current_confirmation_ref`, and ordered `confirmation_refs`. Receipt references identify path and SHA-256; the receipt itself pins the candidate's commit. The index points to that receipt and retains previous references. The receipt records the accepted Owner action; it does not claim SQL activation has already completed.
+
+After verifying the receipt and index on GitHub, one SQL transaction updates the active pointer, completes the request and registration activity, and records the event for CLI delivery. Only then does the CLI report **Registered**. Initial registration stays pending until then; re-registration keeps its previous active version and Updating registration label.
+
+A pending confirmation serializes changes to that attempt. Competing cancellation, candidate replacement, or another confirmation is rejected as a conflict while its outcome is reconciled. It cannot race a second action into a different active version. Cancellation accepted before confirmation reservation prevents that reservation. A failed confirmation can return to an actionable paused state only after the service establishes that its GitHub write did not take effect.
+
+#### Publication recovery
+
+The SQL publication record retains operation type, exact target bytes/hashes, expected prior index value, request identity, remote commit when known, and state: prepared, writing, verified, applied, or paused. Every transition is durable and replayable.
+
+| Interruption | Recovery |
+|---|---|
+| Failure before a confirmed GitHub write | Inspect the intended target before resending. Missing expected content can be retried; matching content is reused. |
+| GitHub accepted the write but acknowledgment was lost | Locate and verify the exact candidate or receipt and commit. Record that success without creating another candidate or confirmation. |
+| GitHub is verified but the SQL activation transaction failed | Reapply the same SQL transaction using the saved request and receipt identities. Do not ask the Owner to confirm again. |
+| Content or index conflicts with the saved operation | Pause with the exact conflict; neither adopt different bytes nor overwrite them. |
+| GitHub cannot be queried | Keep the outcome unconfirmed and preserve the prior SQL active pointer. An unreachable service is not evidence that the write failed. |
+
+The same request cannot create multiple confirmations or activation events. Pending operations are reconciled before accepting another write for that project. Technical publication recovery uses the configured automatic recovery maximum with its own operation counter, separate from agent-launch retries and fidelity reviews. A failed push does not rerun the architect. Exhaustion pauses the publication operation with its saved evidence; investigation and retry target that operation, not a new registration.
+
+The discovery index is for navigation. Runtime work and downstream assignments use the SQL-confirmed exact package reference. A GitHub receipt awaiting SQL recovery cannot independently start work. Repository history alone cannot reconstruct unknown SQL conversation, budget, or pending-action state; database recovery must preserve those records.
 
 ### Re-registration
 
@@ -657,9 +724,11 @@ Internal tool/API retries stay within the same run and its unchanged duration. T
 
 The paused registration activity displays **Retry activity** alongside the failure reason and any known correction. It requests a short description of the intervention, then submits `registration.retry` through `POST /api/v1/requests`. This is an explicit activity action, not a slash command or ordinary answer.
 
-The existing request envelope supplies `request_id`, `project_id`, `activity_id`, `expected_version`, and null `question_id`. Its `payload` contains `assignment_id`, `failed_run_id`, and nonempty `intervention`. The text records what changed; it is not proof that access, model availability, or configuration is now valid.
+The existing request envelope supplies `request_id`, `project_id`, `activity_id`, `expected_version`, and null `question_id`. For an agent retry, its `payload` contains `assignment_id`, `failed_run_id`, and nonempty `intervention`. The text records what changed; it is not proof that access, model availability, or configuration is now valid.
 
 In one SQL transaction the service validates that the activity is technically paused, the referenced run is the current failed run, termination is confirmed, and no retry is pending. It saves the intervention and reserves one manual run under the same assignment. Capability/access checks must pass before the agent starts. A failed check returns the activity to its explained paused state without resetting counters.
+
+For a paused publication retry, the payload instead contains `publication_operation_id` and nonempty `intervention`; agent run fields are absent. The service validates the current operation and reserves reconciliation once under the same request identity. It queries GitHub before any write and applies [publication recovery](#publication-recovery), without launching an agent or resetting the publication counter. Each manual request permits one further write attempt after reconciliation; another failure pauses again. The view labels this action **Retry publication** so its effect is explicit.
 
 An identical request replay returns its saved receipt. Conflicting content or a stale activity/run returns 409; no extra launch occurs. A lost acknowledgment displays **Outcome not confirmed** and is reconciled through the existing request-status endpoint. Reconnection never resubmits automatically. Cancellation, a passing result, or a fidelity disagreement cannot be bypassed with technical retry.
 
@@ -770,11 +839,11 @@ The following architectural mechanisms remain unresolved:
 
 | Area | Unspecified detail |
 |---|---|
-| Service interface | CLI contracts are defined above; operation-specific registration package payloads depend on the registration schema. |
+| Service interface | CLI and package reference contracts are defined above; executable request and package validators remain implementation work. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
-| Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
+| Persistence | Physical SQL schema, broader runtime recovery internals, and database backup/restore procedures. Package publication and activation consistency are defined above. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
-| Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
+| Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Configuration | Planning fidelity-review configuration location and format. Agent technical settings, registration duration, and retry accounting are defined above. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
