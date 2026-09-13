@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 12 |
+| Declaration version | 13 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -22,14 +22,14 @@ The complete registration capability requires all three outcomes below. Initial 
 
 Unresolved details below require clarification in their authoritative sources before the affected development breakdown proceeds. They are not permission to invent behavior during implementation. Existing-code claims retain the evidence levels and limitations in the project overview.
 
-Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. The delivery-review roles and acceptance authority must be defined before the affected breakdown; runtime registration reviews are product behavior and do not substitute for implementation review.
+Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles and acceptance authority remain provisional for separate Execution design and must be defined before affected development breakdown. Registration's agent controls and fidelity reviews do not approve broader software execution policy.
 
 ## Milestones and order
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 9 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
-| 2 | REG-PM2 — Update a registration without losing approved history | 6 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 10 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 2 | REG-PM2 — Update a registration without losing approved history | 7 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 9 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
@@ -96,7 +96,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 |---|---|---|
 | Installed adapter verification | Transport and lifecycle contracts are defined, but the installed integrations have not been proven. | Verify both tool routes against `docs/maestro-architecture.md#tool-transport`, including actual model identity, required permissions, source isolation, structured response, and stopping. Unsupported configurations must explain the failure before assessment. |
 | Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
-| Planning-review configuration | Default two-round behavior needs a configuration that can be installed and read. | Define configuration location and format without changing the agreed default. |
+| Planning-review configuration implementation | The configured limit must survive changes and recovery. | Implement `registration.maximum_fidelity_reviews` under the architecture's review-limit contract, snapshotting the limit at initiation and counting accepted completed reviews once. |
 | Output and persistence implementation | Defined package contracts need executable validation and durable publication. | Implement `docs/maestro-architecture.md#package-record-contract` and `docs/maestro-architecture.md#publication-and-sql-consistency`; validate the actual connected journey before completion. |
 
 ## REG-PM2 — Update a registration without losing approved history
@@ -127,7 +127,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Project work is active | Re-registration cannot begin until all active work finishes or is explicitly stopped. Once re-registration begins, no new project work can start until it ends. | Runtime work-state evidence, a rejected re-registration request through the CLI, and a rejected new-work attempt at the service boundary. The work-state and start-inhibition connection is an explicit dependency, not a checkbox supplied by the reviewer. | None |
+| Project work is active | Re-registration cannot begin until all active work finishes or is explicitly stopped. The idle check and registration reservation are atomic. Reserved starts, unfinished waiting work, pending external operations, and uncertain runs prevent entry with named reasons. Once re-registration begins, only that registration's assignments and operations may start until it ends; other projects continue normally. | Runtime work-state evidence, a rejected re-registration request through the CLI, and a rejected new-work attempt at the service boundary. The work-state and start-inhibition connection is an explicit dependency, not a checkbox supplied by the reviewer. | None |
 | An idle project is re-registered | Create the next registration version while preserving previous versions. Additions or amendments concern project milestones, not development milestones or work packets. Apply the same fidelity loop and two-round configured limit. | Successive version folders, source and milestone versions, and real review records. | None |
 | A candidate differs from the active version | Show additions, changes, removals, affected scope or completion requirements, and reasons linked to findings or Owner decisions. | Comparison visible before confirmation, tied to the exact candidate. The project remains Registered with Updating registration displayed while the prior version stays active. | None |
 | The Owner confirms the candidate | The candidate becomes active only on explicit confirmation of the unchanged eligible version shown. Previous records remain retrievable. Item identities remain stable; changed items increment versions and unchanged items retain theirs. | Confirmation, version references, and GitHub history comparison. | None |
@@ -141,7 +141,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Work-state and start-inhibition interface | Idle-only registration cannot be enforced without its real runtime connection. | Specify how active work and prevention of new starts are represented and checked. |
+| Work-state enforcement implementation | The defined idle check requires actual activity and run state. | Implement the atomic project start lock and registration reservation under `docs/maestro-architecture.md#re-registration`; include pending, waiting, and uncertain work. |
 | Candidate and active-version implementation | Published receipts and SQL activation must reconcile without replacing prior approval early. | Implement `docs/maestro-architecture.md#confirmation-and-activation`, including pending confirmation and conflicts. |
 
 ## REG-PM3 — Recover registration without losing decisions or exceeding limits
