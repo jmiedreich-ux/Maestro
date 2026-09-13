@@ -20,4 +20,4 @@ Keep Maestro delivery plans, milestone drafts, work assignments, handoffs, and r
 
 ## Milestone declarations
 
-Each project-milestone declaration has its own stable designation and milestone-number sequence. References combine the declaration designation, milestone identifier, and plain subject. Keep delivery order in a separate ordered list. Inserting or reordering milestones must not renumber existing references. Cross-declaration dependencies use qualified references and subjects; document creation order does not establish delivery order.
+Follow the [Maestro Declaration Guide](docs/maestro-declaration-guide.md). Apply the conventions without repeating their explanations or migration history in declaration sheets. Keep references to other declarations limited to actual dependencies and delivery responsibility.
