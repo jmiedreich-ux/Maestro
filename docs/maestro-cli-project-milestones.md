@@ -8,10 +8,11 @@
 | Capability | Local terminal interface for multiple projects |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible project architect | Owner and software architect |
-| Document version | 1 |
+| Document version | 2 |
+| Declaration | CLI — Command-line interface |
 | Status | Proposed project outcomes for review; not a registration package, development breakdown, or implementation approval |
 | Design authority | [Maestro Architecture](maestro-architecture.md) |
-| Reviewed architecture | [Architecture source revision](https://github.com/jmiedreich-ux/Maestro/blob/bf12a1b95f696c8190b5756189bf025cd1aff26d/docs/maestro-architecture.md), content blob `a5dea960a97370099efc5a338813775944163558` |
+| Reviewed architecture | [Architecture source revision](https://github.com/jmiedreich-ux/Maestro/blob/7b97a460db371877bc4feb6b899ff06cffb0b7af/docs/maestro-architecture.md), content blob `4b56bbf598ddd466376fdf182b2d5f20da5f220c` |
 
 The architecture owns system behavior. This source defines delivery boundaries, usage journeys, acceptance evidence, and dependencies. The grouping is proposed; it does not add architecture or claim existing code satisfies the outcomes.
 
@@ -31,14 +32,21 @@ The architecture describes intended behavior. No source-code or running-system a
 
 Two proposed outcomes separate a usable read-only workspace from reliable responses. Both are prerequisites to registration development.
 
-| Project milestone | Outcome | Dependency |
+| Position | Project milestone | Outcome | Dependency |
+|---|---|---|---|
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | A usable terminal view of real service-held project state, conversations, findings, and attention. | First CLI outcome; includes the service and storage connections necessary for its own operation. |
+| 2 | CLI-PM2 — Reliable project questions and answers | Question-linked input is saved, acknowledged, routed, and recovered without accidental actions or duplicate effects. | Depends on CLI-PM1 — Connected multi-project CLI workspace. Together they establish the CLI foundation. |
+
+This is declaration version 2. Both milestone records are version 2 for the one-time adoption of qualified references; their outcomes are unchanged. Future insertion or reordering changes the position list without renumbering existing references.
+
+| Declaration | Source | Dependency |
 |---|---|---|
-| PM4 — Connected multi-project CLI workspace | A usable terminal view of real service-held project state, conversations, findings, and attention. | First CLI outcome; includes the service and storage connections necessary for its own operation. |
-| PM5 — Reliable project questions and answers | Question-linked input is saved, acknowledged, routed, and recovered without accidental actions or duplicate effects. | Depends on PM4 — Connected multi-project CLI workspace. Together they establish the CLI foundation. |
+| CLI — Command-line interface | This document | No dependency on completed registration. |
+| REG — Project registration | [Registration declaration](maestro-registration-project-milestones.md) | Registration development follows CLI-PM2 — Reliable project questions and answers, which depends on CLI-PM1 — Connected multi-project CLI workspace. |
 
-Both start at version 1. The existing registration source already assigns PM1 — Register and confirm a project through either interface, PM2 — Update a registration without losing approved history, and PM3 — Recover registration without losing decisions or exceeding limits. The CLI identifiers continue that sequence; identifier order is not delivery order. Existing identifiers are not renamed or renumbered by this document.
+Each declaration has its own milestone-number sequence. Cross-declaration references include the designation and subject. The older project-wide numbering is superseded by this naming revision.
 
-## PM4 — Connected multi-project CLI workspace
+## CLI-PM1 — Connected multi-project CLI workspace
 
 **Purpose:** A usable, read-only terminal workspace exposes live project information without mixing projects or controlling their work.
 
@@ -69,7 +77,7 @@ Controlled service activity may demonstrate workspace behavior without a project
 
 The keyboard and terminal choices required for use are documented, all observed failures against acceptance are resolved or explicitly accepted, and no limitation removes the stated usable-workspace purpose. Completion evidence includes the implementation revision, setup instructions, observations, and review results.
 
-## PM5 — Reliable project questions and answers
+## CLI-PM2 — Reliable project questions and answers
 
 **Purpose:** A response to a specific service-held question reaches the correct project/process, is saved before acknowledgment, and cannot silently become an approval or duplicate action.
 
@@ -97,7 +105,7 @@ Every answer-path acceptance row passes through the actual service and SQL, incl
 
 Controlled service-generated questions may demonstrate this transport and interaction capability. They do not prove agent reasoning, the registration fidelity loop, or package activation. Live agent roles and Model Execution Adapters retain their separate design boundaries.
 
-The connected workspace delivered by PM4 — Connected multi-project CLI workspace remains usable. Evidence identifies the service/CLI revision, submitted contexts, persisted results, observed process effects, and any explicitly accepted limitations.
+The connected workspace delivered by CLI-PM1 — Connected multi-project CLI workspace remains usable. Evidence identifies the service/CLI revision, submitted contexts, persisted results, observed process effects, and any explicitly accepted limitations.
 
 ## Registration integration coverage
 
@@ -105,15 +113,15 @@ This section assigns the CLI-facing integration to registration outcomes; it doe
 
 | Registration outcome | Required CLI integration |
 |---|---|
-| PM1 — Register and confirm a project through either interface | Amend this existing outcome to CLI-only scope while retaining its identifier. Connect `/register <repository>`, `/registration`, registration-specific findings/empty views, source scope selection, actual architect/reviewer messages, recorded answers, package inspection, explicit exact-candidate confirmation, and initial cancellation. The Register control and slash command use the same process. |
-| PM2 — Update a registration without losing approved history | Connect explicit re-registration identification, same-project idle enforcement, existing-process handling, version comparison, changed/ineligible candidate rejection, and confirmation/cancellation while preserving prior active history. |
-| PM3 — Recover registration without losing decisions or exceeding limits | Connect recovered status, saved decisions and limits, and Outcome not confirmed handling. Reconnection queries confirmation/cancellation outcomes; explicit retry cannot duplicate effects. |
+| REG-PM1 — Register and confirm a project through either interface | Amend this existing outcome to CLI-only scope while retaining its identifier. Connect `/register <repository>`, `/registration`, registration-specific findings/empty views, source scope selection, actual architect/reviewer messages, recorded answers, package inspection, explicit exact-candidate confirmation, and initial cancellation. The Register control and slash command use the same process. |
+| REG-PM2 — Update a registration without losing approved history | Connect explicit re-registration identification, same-project idle enforcement, existing-process handling, version comparison, changed/ineligible candidate rejection, and confirmation/cancellation while preserving prior active history. |
+| REG-PM3 — Recover registration without losing decisions or exceeding limits | Connect recovered status, saved decisions and limits, and Outcome not confirmed handling. Reconnection queries confirmation/cancellation outcomes; explicit retry cannot duplicate effects. |
 
 Initial registration and re-registration both return the existing process for duplicate requests and reject confirmation of changed or ineligible candidates; these protections are not limited to re-registration. Registration comparison shows changes and reasons against the active version. Confirmation/cancellation are focused view actions, never standalone slash commands or ordinary text replies. Cancellation identifies effects and retained history; neither action is preselected. Confirmation does not start development, and failure/cancellation does not restart work.
 
 Real GitHub package publication, independent agent review, source interpretation, duplicate-registration handling, and package activation must be exercised when these integration outcomes are assessed. Sample data or generic service demonstrations cannot satisfy registration completion.
 
-The separate registration source remains an earlier draft with both-interface scope. The amendments above are required alignment, not a claim that the existing document is already corrected or approved. No registration milestone is renumbered here.
+The separate registration source remains an earlier draft with both-interface scope. The amendments above are required alignment, not a claim that the existing document is already corrected or approved. Registration references use their declaration qualifier; the naming migration does not finalize their scope.
 
 ## Required detail before implementation
 
@@ -121,7 +129,7 @@ Outcome-level behavior is largely specified. Several mechanisms and context rule
 
 | Detail | Why it matters | Required resolution point |
 |---|---|---|
-| Project and question provisioning before registration | Foundation journeys need real service-held records without relying on an unavailable registration workflow. | Define the documented bounded provisioning mechanism before PM4 — Connected multi-project CLI workspace implementation; extend it for PM5 — Reliable project questions and answers. |
+| Project and question provisioning before registration | Foundation journeys need real service-held records without relying on an unavailable registration workflow. | Define the documented bounded provisioning mechanism before CLI-PM1 — Connected multi-project CLI workspace implementation; extend it for CLI-PM2 — Reliable project questions and answers. |
 | Project/process/question selection | A project can have historic or concurrent activity; “current process” must resolve unambiguously for findings and questions. Registration intake also begins before an existing project is selected. | Specify identity and selection rules before the relevant navigation or submission implementation. |
 | HTTP, event, and SQL contracts | CLI and service must agree on identities, payloads, status, save acknowledgment, and reads. | Specify together before implementing their connection; endpoint names alone are insufficient. |
 | Reconnect and duplicate recognition | Lost updates and uncertain sends require distinguishing the same submission from a new or edited answer. | Specify missed-update recovery and request identity before response/reconnect implementation. |
