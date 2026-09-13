@@ -16,7 +16,11 @@ The shared adapter behavior is documented in [Model Execution Adapters](../../do
 
 Claude Code or Codex can run either role, with separate exact model/version selections. The architect selection is explicit at registration initiation; no particular model version has been chosen. Workspaces, assignment snapshots, clarification follow-ups, progress, completion, cancellation, recovery, and retention behavior are agreed.
 
-Next: verify concrete Claude Code/Codex capabilities against the adapter design, then specify launch, model validation/reporting, assignment/output transport, status recovery, cancellation, and the activity-retry request interface. These tool capabilities remain unverified. Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
+The adapter contracts now specify Codex App Server over stdio, Claude Code print-mode streaming, explicit assessment artifacts, separate assignment/run identities, protected inputs, process supervision, internal retry accounting, technical configuration, and the durable Retry activity request. Official documentation supports the selected tool interfaces; installed compatibility and connected behavior remain unverified.
+
+Next: perform the basic real adapter checks on the AI box, then resolve registration package schema/location and SQL/GitHub publication consistency. This session could not reach the AI box's SSH endpoint (network unreachable), and neither agent CLI was installed in the available session environment. No live registration or adapter test was run. Existing service code must be inspected before claiming a connected journey is runnable; documentation does not supply missing implementation.
+
+Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
 
 ## Decisions to preserve
 
@@ -33,7 +37,7 @@ Next: verify concrete Claude Code/Codex capabilities against the adapter design,
 
 Registration architect and reviewer runs each default to 30 minutes, configured separately; other planning and execution assignments do not inherit that setting. The automatic technical recovery maximum is two attempts per assignment, separate from fidelity reviews. Failure classification determines whether another run is appropriate. Timeouts pause after confirmed stopping. Manual retry follows intervention, permits one run, and preserves the automatic budget and history. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.
 
-Adapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
+Installed adapter verification, registration package schema and locations, SQL/GitHub consistency and publication recovery, work-state enforcement, delivery-review authority, and planning-review configuration remain outstanding. Technical adapter configuration is defined in `/etc/maestro/agents.toml`. Routine technical settings can be resolved by the architect within the agreed scope.
 
 The current documents specify outcomes and behavior, not implementation completion. Existing code is assessed during relevant development preparation; registration only checks claimed dependencies as needed.
 
