@@ -210,6 +210,59 @@ Whole-milestone selections use explicit milestone references. A narrower portion
 
 Cancellation is not CLI exit or a general stop-development command. These actions remain within the terminal registration view rather than standalone slash commands.
 
+### Reading conversations, findings, and reports
+
+Opening a project shows recent messages first, with “Load earlier messages” above them. Current activity and pending questions remain visible separately. Opening a conversation does not answer questions or change project work.
+
+Findings and reports expand within the project conversation. Opening details preserves the selected project and question linked to the input; closing details returns to the same conversation position. Viewing does not acknowledge, resolve, or approve a finding.
+
+At the bottom, the conversation follows new messages. When the Owner scrolls up, retain the reading position and show a “New messages” indicator. Selecting it returns to the latest messages. This is the initial behavior and may be revised after practical use.
+
+When another project needs attention, show its name and the response needed without switching projects or interrupting input. Selecting the notice opens the question using the same behavior as `/attention`; the agreed project-switch rule still clears unsent text.
+
+### Disconnection and empty views
+
+If an open CLI loses its service connection, keep the displayed conversation visible and mark it “Disconnected—information may be out of date.” Do not accept new service actions or answers while disconnected. Keep `/help`, `/retry`, and `/exit` available.
+
+Reconnection refreshes state and retrieves missed messages; it does not automatically resubmit previous commands or answers. A disconnected CLI does not establish that project work has stopped.
+
+Show empty results only after a successful lookup. Failed retrieval must show a failure, not an empty result.
+
+| Successful lookup result | Display |
+|---|---|
+| No projects registered | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters the same flow as `/register <repository>`. |
+| No outstanding questions or decisions across projects | “No questions or decisions need your attention.” This is the scope of `/attention`, not only the selected project. |
+| No findings for the current process | “No findings recorded for this process.” |
+| No registration for the selected project | “No registration exists for this project,” with a Register action. |
+
+These empty states do not resolve missing project or process context; project targeting rules still apply.
+
+### Keyboard, longer answers, and terminal size
+
+| Key | Behavior |
+|---|---|
+| Tab / Shift+Tab | Move between available controls. |
+| Arrow keys | Move through a focused list or choice set. |
+| Enter | Activate the focused control; in the answer input, submit the answer. Selecting a choice still fills the answer area without submitting. |
+| Escape | Close an open list or detail view without changing project work. |
+| Shift+Enter | Insert a new line in an answer. |
+
+Keep keyboard focus clearly visible. Pasting multiple lines only fills the input; it never submits automatically. The input grows to a limited height and then scrolls internally, keeping the conversation and question visible. The exact height remains to be chosen.
+
+Set a minimum supported terminal width and height so project identity, the question, and input remain readable. Below it, show “Enlarge the terminal to continue,” without stopping service work. Choose actual dimensions during practical use, not in this draft.
+
+A possible mobile view is undecided and is not an initial-version requirement. Neither a mobile-terminal approach nor a separate interface has been selected.
+
+### Question and action validity
+
+Before accepting an answer, the service checks that the original question is still awaiting an answer. If the question was replaced or its registration cancelled, explain what changed and do not apply the answer to another question. If a replacement exists, offer to open it without transferring the answer automatically.
+
+The confirmation screen shows the project, exact candidate version, and Confirm registration action. If that candidate changed or is no longer eligible, reject the confirmation and explain why. The Owner must open and review the current candidate before confirming again; do not silently substitute a newer version.
+
+The cancellation screen shows the project and registration attempt, explains what remains saved, and offers Cancel registration or Go back. Confirmation and cancellation are not preselected for submission. An ordinary Enter press in the conversation cannot trigger them; deliberately focus the relevant action first.
+
+If confirmation or cancellation loses its connection before the result arrives, show “Outcome not confirmed,” not success or failure. On reconnection, check the recorded outcome with the service. Do not automatically repeat the action. An explicit retry must be recognized as the same request so it cannot cause duplicate effects.
+
 ### Multiple projects
 
 The CLI can focus on one project while others continue running. Each project keeps separate conversations, process state, pending decisions, and registration versions.
@@ -241,7 +294,7 @@ The CLI conversation receives information from three sources:
 |---|---|
 | Maestro service | Factual events and state changes, including work starting, waiting, stopping, or failing. |
 | Agents | Messages, explanations, findings, questions, and review results returned through assigned work. |
-| Owner | Commands, answers, direction, and confirmations submitted through the CLI. |
+| Owner | Commands, answers and written direction linked to existing questions, and explicit registration-view confirmations. This does not permit unsolicited agent chat. |
 
 Agents do not write directly to the terminal. The service validates, records, and delivers information to the appropriate project conversation. An agent message does not itself change project state; the service determines and records changes under the agreed process rules.
 
@@ -261,6 +314,88 @@ For Owner input, distinguish “sending” from “saved.” Do not imply the se
 
 This does not replace the authoritative versioned registration package in the project's GitHub repository. Registration decisions and responses still belong in that package as specified below. SQL schema, delivery mechanics, and the relationship between SQL records and package updates remain to be designed. Structured agent response formats have not yet been agreed.
 
+
+## Draft project milestone — Usable multi-project CLI foundation
+
+**Status:** Draft for Owner review, not a finalized milestone, implementation authorization, or completion claim. No identifier is assigned here; incorporate it into the project's sequential naming list when the milestone source is revised. This draft describes a project outcome, not development milestones or work packets.
+
+**Purpose:** The Owner can use the installed `maestro` terminal application to connect to the real Python service, navigate multiple projects, read durable activity, and answer service-delivered questions without cross-project confusion or accidental work changes.
+
+**Order:** Deliver this foundation before registration development. Registration later supplies its actual intake, source interpretation, agent reviews, package publication, confirmation, cancellation, and re-registration workflow through this CLI. The full eight-command list is an eventual capability list, not a claim that registration already works at foundation completion.
+
+**Included:** The terminal workspace and local service connection; HTTP requests and streamed service updates; SQL-backed conversation and state access; project selection and attention; generic question, finding, and response handling; keyboard controls; empty and disconnected states; bounded terminal layout; reconnect and exit behavior. The service endpoints and durable recording needed to exercise these capabilities are included prerequisites, not assumed to exist.
+
+**Excluded or deferred:** Command center; undecided mobile view; unsolicited agent conversations; draft retention across project switches; execution commands and a complete execution engine; actual registration review and package lifecycle, which belong to registration milestones. Agent-role definitions and Model Execution Adapters remain separate upcoming design work.
+
+**Usage walkthrough:** Follow documented Linux service and CLI setup, including a documented way to create demonstration project and question records through the real service. Start the service separately, then launch `maestro`. Observe the connected project overview, select one project, read service-recorded messages and findings, answer a linked question, and receive acknowledgment only after SQL saving. Open another project's attention item without mixing records or controlling work. Disconnect and reconnect to recover missed updates, then exit without stopping service work.
+
+### Draft acceptance and evidence
+
+Every row requires observed behavior from the connected CLI and service, with records or captures sufficient to verify its stated boundary. These are proposed milestone criteria derived from the agreed CLI design, for Owner review.
+
+| Capability | Required result and evidence |
+|---|---|
+| Install and connect | Document and exercise the Linux service and CLI setup, required configuration and access. Launch connects without starting the service. Show connecting, connected, and unavailable states, including retry. Record actual service/API connection evidence without secret values. |
+| Project separation | Demonstrate at least two separately identified projects. Startup selects none; overview and attention selection focus the correct conversation without starting or stopping work. Show target validation, visible project identity, and no transferred drafts or answers. |
+| Real durable information | Demonstrate service events and questions saved in SQL and delivered to the CLI, with source labels and consistent project references. Reads do not create replacement status records or conversation entries. Reopen and recover saved history and missed updates. Screens backed only by hardcoded sample data do not satisfy this criterion. |
+| Answer lifecycle | Demonstrate choice-to-input, optional written clarification, explicit sending, save acknowledgment, “Answer received,” linked follow-up, stale-question rejection, and explicit retry without duplicate effects after lost acknowledgment. Ordinary text is limited to selected questions. |
+| Reading and notifications | Demonstrate recent and earlier messages, inline findings, preserved reading and input context, the new-message indicator, and cross-project attention notices that do not pull focus automatically. |
+| Controls and empty states | Demonstrate keyboard focus and navigation, multiline input and safe paste, exit warning, no-project and empty-result messages after successful reads, and visibly distinct retrieval failures. |
+| Disconnection and size | Demonstrate retained but stale-marked display, unavailable service actions, local help/retry/exit, and reconnection without replay. Exercise the minimum terminal size chosen during implementation; resizing or CLI exit must not stop service work. |
+| Honest capability boundary | Expose only implemented commands in help. Demonstrate the foundation's implemented command paths; registration-specific commands and activation/cancellation remain unavailable until their real process exists. Record their remaining delivery responsibility rather than demonstrating fabricated approval. |
+
+### Draft definition of done
+
+All foundation acceptance rows have connected evidence, and the Owner has reviewed the usable journey and any explicitly accepted limitations. Record the implementation revision, setup instructions, configuration references, service/SQL evidence, and any remaining registration dependencies. No essential connection may be left to an undocumented manual step.
+
+Do not claim the foundation delivers registration. Registration milestones must demonstrate the full real CLI registration journey, including source selection, genuine agent reviews, version comparison, guarded confirmation/cancellation, stale-candidate rejection, and recovery of uncertain action outcomes. These are not optional because the foundation is delivered first.
+
+Controlled demonstration inputs may exercise generic questions and events, but they must traverse the actual service, SQL, and CLI. Label them as demonstrations; they are not evidence that the pending agent roles, adapters, registration, or execution workflows exist.
+
+### Remaining design and source alignment
+
+Exact API endpoints, SQL/event schemas, duplicate-request mechanism, input limits, terminal dimensions, and the SQL-to-GitHub-package update relationship remain explicit design work. The draft does not select a UI toolkit, model provider, credential mechanism, or mobile implementation.
+
+The [registration project milestone source](maestro-registration-project-milestones.md) predates the CLI-only decision and still needs its planned revision. Its both-interface requirements and placement of startup inside registration must not override this architecture. Finalizing that source follows Owner review of this foundation draft; retain existing item identities when revising it.
+
+## Independent CLI fidelity review
+
+**Result:** Passed for documentation fidelity. A separate read-only reviewer checked the visible CLI conversation, the prior architecture, and this proposed consolidation and foundation draft. This is not implementation verification, milestone completion, registration approval, or Owner acceptance of the new milestone.
+
+**Baseline:** Architecture content blob `d91b623629def6d8f20183f65e5c690131b03ed9`. Repository working rules and additional agent instructions were read. The review covered retained decisions, newly agreed interactions, deferred scope, and whether the foundation's promised outcome could be demonstrated honestly.
+
+| Conversation subject | Fidelity result |
+|---|---|
+| CLI foundation before registration; Python Linux service; multiple projects | Preserved. Initial scope remains CLI-only; command center excluded and mobile undecided. |
+| Attributed project conversation and fixed input | Preserved. Current status is separate; unsolicited agent chats are excluded. |
+| SQL-first durable records; HTTP and streamed updates | Preserved. Read-only requests do not create status/history duplicates. SQL does not replace the authoritative GitHub registration package. |
+| Startup and connection | Preserved. No project selected at startup; launch does not start the service. Connection failures are not empty lists. |
+| Project overview and targeting | Preserved. Attention-first ordering, selected versus working terminology, explicit targeting, and no guessing remain. |
+| Attention and question choices | Preserved. Cross-project scope, linked answers, justified recommendations, tradeoffs, and free-text alternatives remain. |
+| Eight starting commands | Preserved. Dropped shortcuts stay excluded; commands appear as implemented functionality becomes available. |
+| Registration entry and portion selection | Preserved. Explicit repository, guide-readable milestone subjects, confirmed boundaries, duplicate prevention, and idle-only re-registration remain later registration integration. |
+| Question-only ordinary text | Preserved. Written direction is linked to an existing question, not unrestricted agent conversation. |
+| Unsent text | Preserved. Project switching clears it; draft retention and switch safeguard are deferred; exit warning remains. |
+| Answer submission and clarification | Preserved. Choice fills input, explicit send, “Sending,” “Not sent,” “Answer received,” linked clarification, and duplicate-safe retry remain distinct from approval. |
+| Inline findings and reports | Added faithfully. Context and reading position are preserved; viewing does not approve or resolve. |
+| Scroll-follow and new messages | Added faithfully as initial behavior subject to practical feedback. |
+| Other-project notice | Added faithfully. Names project and needed response without forced switching or input interruption. |
+| Disconnection | Added faithfully. Visible stale data, blocked service submissions, local help/retry/exit, and reconnect without replay. |
+| Recent history and empty states | Added faithfully. Earlier history remains accessible; empty results require successful lookup, and attention's empty result covers all projects. |
+| Confirmation and cancellation | Added faithfully. Exact project/candidate or attempt, visible effects, no preselected submission, and deliberate focus. |
+| Keyboard, multiline input, and terminal size | Added faithfully. Paste never sends; dimensions remain open. Mobile implementation is not selected. |
+| Stale questions and candidates | Added faithfully. No answer rerouting or silent candidate substitution. The existing explicit choice to retain reviewed source is preserved. |
+| Uncertain action outcome | Added faithfully. “Outcome not confirmed,” recorded-outcome lookup, no automatic replay, and duplicate-safe explicit retry. |
+
+### Milestone review and limitations
+
+The draft requires an actual CLI/service/SQL connection and a documented way to supply demonstration records. Controlled inputs prove that foundation only; they cannot establish completed agent reviews, registration, package publication, or execution. Registration-specific commands and actions must be delivered with their real workflow rather than exposed as fabricated completed functionality.
+
+No material CLI agreement was found omitted or contradicted in the reviewed revision. The author clarified the Owner-input source as question-linked direction and made demonstration setup explicit. These are fidelity clarifications, not new workflow authority.
+
+The separate registration milestone source remains stale: its reviewed content blob is `595a78dd3e92ca9f923c43def0ea315db2b52a7e`, and PM1 — Register and confirm a project through either interface still includes both-interface requirements and CLI prerequisites. That source is explicitly flagged for the next milestone revision, not approved by this review.
+
+API/event/SQL formats, duplicate-request mechanics, the SQL-to-package relationship, and terminal dimensions remain open. The foundation milestone remains a draft for Owner review with no invented identifier. No source-code execution or operational capability was verified in this documentation review.
 
 ## Planning: evolving registration concepts
 
