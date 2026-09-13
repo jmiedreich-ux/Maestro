@@ -321,7 +321,7 @@ A minimum terminal width and height protects readable project, question, and inp
 
 Registration checks whether Maestro can understand and operate on supplied project information. It identifies the project, verifies repository access, locates source material, checks its format and meaning, and produces a versioned package for confirmation.
 
-The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The Maestro architect assesses the source; a separate Fidelity Reviewer checks the assessment. The Owner role supplies decisions and final confirmation through the CLI.
+The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The [Maestro Project Architect](agents/architecture-agent.md) performs software architecture assessment of the source and prepares the candidate registration package. A separate Fidelity Reviewer checks both the assessment and the package against that source and recorded decisions. The Owner role supplies decisions and final confirmation through the CLI.
 
 Registration does not approve the project's architecture, start development, or perform development-milestone and work-packet breakdown. Change boundaries, repository rules, coding conventions, and execution authority belong to Execution. Project-specific overrides of those rules are not part of registration.
 
@@ -369,9 +369,9 @@ Unrelated commits and changes to review reports are not treated as changed plann
 The registration loop separates format checks, architectural judgment, and independent review:
 
 1. Python validates required fields, file locations, document structure, and references.
-2. The Maestro architect assesses meaning, scope, dependencies, and evidence, then produces findings.
-3. The Fidelity Reviewer independently compares the findings with the source and checks whether blockers are justified.
-4. The Maestro architect amends its findings where needed.
+2. The Maestro architect assesses meaning, scope, dependencies, and evidence, then produces findings and prepares the candidate package.
+3. The Fidelity Reviewer independently compares the findings and candidate package with the same source and recorded decisions, checking fidelity and whether blockers are justified.
+4. The Maestro architect amends its findings or candidate package where needed. Package review stays within the same review budget.
 5. Any further review covers affected findings only.
 
 The resulting report identifies what was found, readiness, and required attention, with file and passage references where available. Source-plan contradictions and missing source answers are returned to the project architect; the Maestro architect does not resolve them by inventing requirements.
