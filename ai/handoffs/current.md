@@ -16,7 +16,7 @@ The shared adapter behavior is documented in [Model Execution Adapters](../../do
 
 Claude Code or Codex can run either role, with separate exact model/version selections. The architect selection is explicit at registration initiation; no particular model version has been chosen. Workspaces, assignment snapshots, clarification follow-ups, progress, completion, cancellation, recovery, and retention behavior are agreed.
 
-Next: choose initial per-role run-duration limits and verify concrete Claude Code/Codex capabilities against the design. Tool flags, exact model reporting, transport, status recovery, and cancellation mechanics are not yet verified. Explicit retry after the automatic limit still needs its request interface and accounting defined.
+Next: verify concrete Claude Code/Codex capabilities against the adapter design, then specify launch, model validation/reporting, assignment/output transport, status recovery, cancellation, and the activity-retry request interface. These tool capabilities remain unverified. Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
 
 ## Decisions to preserve
 
@@ -31,7 +31,7 @@ Next: choose initial per-role run-duration limits and verify concrete Claude Cod
 
 ## Remaining design
 
-The automatic technical recovery default is two attempts per assignment, separate from fidelity reviews. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.
+Registration architect and reviewer runs each default to 30 minutes, configured separately; other planning and execution assignments do not inherit that setting. The automatic technical recovery maximum is two attempts per assignment, separate from fidelity reviews. Failure classification determines whether another run is appropriate. Timeouts pause after confirmed stopping. Manual retry follows intervention, permits one run, and preserves the automatic budget and history. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.
 
 Adapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
 
