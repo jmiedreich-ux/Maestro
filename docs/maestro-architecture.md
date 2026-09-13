@@ -1,8 +1,8 @@
 # Maestro Architecture
 
-## Purpose and scope
+## Purpose and boundaries
 
-Maestro coordinates project development through three functional areas: Planning, Execution, and Monitoring. A persistent Python service manages system activity, communicates with agents, and supplies information to a terminal application.
+The [project overview](maestro-project-overview.md) defines project purpose, delivery scope, and current-state evidence. This architecture defines the service, agent, storage, and terminal boundaries.
 
 This document describes system structure and behavior. It is a design specification, not a statement of implemented capability. Sections marked **provisional** describe unsettled architecture.
 
@@ -20,25 +20,15 @@ The three functional areas are established. Their detailed responsibilities and 
 
 Registration is the entry process for Planning. The registration behavior is described separately below.
 
-## Runtime and deployment
+## Components and responsibilities
 
-The runtime is a Python backend running continuously as a Linux service on the AI box. It runs under `systemd`, which starts the service at boot and restarts it after a crash.
-
-The installed terminal application is launched with `maestro`. It connects to the existing service; launching the CLI does not start the service. Closing the CLI disconnects that session without stopping service activity.
-
-Agents communicate with the service through command-line tools or APIs. They do not write directly to the terminal.
-
-### System connections
-
-| Connection | Mechanism | Responsibility |
-|---|---|---|
-| CLI to service | HTTP requests to a local API on `localhost` | Retrieve information and submit commands, answers, and explicit actions. |
-| Service to CLI | Server-Sent Events over a persistent connection | Deliver recorded messages, progress, findings, and input requests. |
-| Service to agents | Agent command-line tools or APIs | Supply assignments and receive results. |
-| Service to SQL database | Database access | Store project state and durable conversation records. |
-| Registration process to project repository | GitHub | Read a specific source commit and publish versioned registration packages. |
-
-Requests and events associated with a project carry its identity. Commands can be submitted while updates arrive. A separate agent is not required to maintain the CLI connection.
+| Component | Responsibility |
+|---|---|
+| Python runtime service | Own process activity, validate requests, persist records, and coordinate assigned agent operations. |
+| Maestro CLI | Display service information and collect explicit commands, linked answers, and registration actions. |
+| SQL database | Hold current state and durable conversation/action records. |
+| Agent processes | Perform assigned assessment or review work; return results through the service. |
+| Project repository | Supply versioned project sources and hold the authoritative registration package. |
 
 ### Internal responsibilities
 
@@ -53,6 +43,14 @@ The following module boundaries are **provisional**. They may remain modules wit
 | Health supervision | Observe agent activity, deadlines, and failures; apply authorized recovery or stopping rules. |
 
 The runtime handles deterministic enforcement; assigned agents supply judgment. A successful command or an agent's message does not constitute approval or automatically change project state. State changes follow the relevant process rules.
+
+## Runtime and prerequisites
+
+The runtime is a Python backend running continuously as a Linux service on the AI box. It runs under `systemd`, which starts the service at boot and restarts it after a crash.
+
+The installed terminal application is launched with `maestro`. It connects to the existing service; launching the CLI does not start the service. Closing the CLI disconnects that session without stopping service activity.
+
+Agents communicate with the service through command-line tools or APIs. They do not write directly to the terminal.
 
 ### Automated coordination
 
@@ -81,7 +79,20 @@ A wrapper script launches an assigned agent and performs deterministic checks ar
 
 Read-only assignments do not require commits solely to satisfy the wrapper. These checks establish observable facts; independent review assesses meaning and fidelity.
 
-## Data and state
+## Connections and data
+
+### System connections
+
+| Connection | Mechanism | Responsibility |
+|---|---|---|
+| CLI to service | HTTP requests to a local API on `localhost` | Retrieve information and submit commands, answers, and explicit actions. |
+| Service to CLI | Server-Sent Events over a persistent connection | Deliver recorded messages, progress, findings, and input requests. |
+| Service to agents | Agent command-line tools or APIs | Supply assignments and receive results. |
+| Service to SQL database | Database access | Store project state and durable conversation records. |
+| Registration process to project repository | GitHub | Read a specific source commit and publish versioned registration packages. |
+
+Requests and events associated with a project carry its identity. Commands can be submitted while updates arrive. A separate agent is not required to maintain the CLI connection.
+
 
 ### Record ownership
 
@@ -390,13 +401,99 @@ Completed reports, reviews, decisions, and source/version references survive age
 
 Technical failures do not consume planning review rounds. Technical retries have a separate configurable limit. Reaching it pauses registration and produces an attention item. The technical retry default is unspecified.
 
-## Unspecified mechanisms
+## Journeys and interactions
+
+The following journeys connect the behavior defined in the sections above. Each row identifies the interaction, result, and essential failure behavior; linked sections own the detailed rules. These scenarios define expected behavior, not a requirement for a separate test per row.
+
+### Open and use the workspace
+
+**Starting condition:** The CLI is installed; the service connection is configured. Connected views require readable service-held project and conversation records.
+
+**Entry:** Launch `maestro`.
+
+**Expected journey result:** The project overview and selected conversation display recorded service information. Navigation changes interface focus without controlling project work.
+
+| Sequence and interaction | Trigger | System behavior | Expected result | Essential failure behavior |
+|---|---|---|---|---|
+| Launch | `maestro` | Contact the configured service; use [startup states](#startup-and-connection-states). | Connected overview, with no project selected; no automatic service start. | Unavailable state and retry option; no false empty list. |
+| Inspect commands | `/help` or command-specific help | Use the [command definitions](#commands). | Available syntax and context guidance, also offline; no state change. | Unimplemented commands are excluded; context limitations are explained. |
+| Select a project | Project control or `/projects`, followed by selection | Apply [project targeting](#projects-and-targeting). | Correct conversation and visible selected project; unsent text clears on a switch. | Missing, ambiguous, or conflicting targets require resolution. |
+| Read history and findings | Load earlier, New messages, `/findings`, or expand/close details | Use [conversation behavior](#layout-and-conversation). | Recorded content, stable context, and correct reading position; viewing changes no finding state. | Failed retrieval is distinct from [empty results](#empty-results). Missing current-process selection rules remain unresolved below. |
+| Open attention | `/attention` or another-project notice | Follow [attention routing](#attention). | Selected question opens in its project; a notice alone does not pull focus. | Disconnection blocks service retrieval; no items is shown only after successful lookup. |
+| Reconnect | `/retry` after connection loss | Refresh saved state and missed updates under [connection rules](#startup-and-connection-states). | Current information restored without replaying earlier submissions. | Stale-marked conversation remains until connection succeeds. |
+| Exit | `/exit` | Close the CLI session. | Service activity and saved records remain; a new launch selects no project. | Unsent text triggers the defined exit warning. |
+| Use terminal controls | Focus keys, resize, or paste | Apply [keyboard and terminal behavior](#keyboard-and-terminal-behavior). | Focused control activation, readable context, and paste without automatic submission. | An undersized terminal requests enlargement without stopping service work. |
+
+### Answer a project question
+
+**Starting condition:** A connected service has an identified question awaiting an answer; the question is selected in its project or registration context.
+
+**Entry:** Open the question from attention or the conversation.
+
+**Expected journey result:** An explicit answer is recorded once against the original question and delivered to its process. Receipt and resolution remain separate.
+
+| Sequence and interaction | Trigger | System behavior | Expected result | Essential failure behavior |
+|---|---|---|---|---|
+| Prepare an answer | Select a choice or enter text | Apply [question input rules](#questions-and-answers). | Choice fills the input; optional clarification and new lines remain unsent. | Without a selected question, ordinary text is not accepted; invalid context cannot execute. |
+| Send | Send or Enter in answer input | Validate the original question and follow [save and delivery](#save-and-delivery-sequence). | Sending becomes Answer received only after SQL save acknowledgment; answer appears and input clears. | Not sent retains text for explicit retry. A stale question is explained, not rerouted. |
+| Retry an uncertain answer | Explicit resubmission | Recognize the original request. | At most one recorded answer and process effect. | Lost acknowledgment is identified as unconfirmed delivery; reconnect alone does not resubmit. |
+| Resolve clarification | A process asks a linked follow-up | Retain the original answer and identify the missing information. | New question/input context is explicit. | Ambiguity remains a clarification request, not an approval. |
+
+### Register a project or selected portion
+
+**Starting condition:** The service and CLI are connected; repository and overview path are available. Actual assessment requires configured agents, source access, and package publication access.
+
+**Entry:** `/register <repository>` or Register project, with the required overview path and scope supplied during intake.
+
+**Expected journey result:** A ready package becomes active only after explicit confirmation of the exact candidate. Development does not start.
+
+| Sequence and interaction | Trigger | System behavior | Expected result | Essential failure behavior |
+|---|---|---|---|---|
+| Supply entry and scope | Registration request | Read overview references and apply [intake and scope](#intake-and-scope). | Intended project and confirmed whole/partial boundary; an existing process is reused. | Missing access, source, or required clarity is reported; no guessed documents or silent scope expansion. |
+| Assess source | Validated intake | Use [assessment and review](#assessment-and-independent-review), [dependency checks](#purpose-and-dependency-checks), and [review limits](#review-limits-and-decisions). | Source-backed findings, non-blocking observations, and readiness or a specific needed decision. | Material blockers or unresolved disagreement pause at the configured limit; technical failure follows recovery rules. |
+| Inspect or answer | `/registration`, findings, or a linked question | Render the process and [package records](#package-structure); use the answer journey. | Exact findings, versions, limits, and retained decision records are visible. | Missing records and retrieval failures remain distinct; receipt is not package approval. |
+| Handle changed source | Relevant source commit changes | Apply [source consistency](#source-consistency). | Explicit choice to retain reviewed source or recheck updated source within the existing budget. | No mixed source versions or silent budget reset. |
+| Confirm | Deliberately focused Confirm registration | Apply [activation rules](#comparison-activation-and-cancellation). | Exact eligible candidate active and retrievable from GitHub. | Changed/ineligible candidate is rejected; uncertain delivery shows Outcome not confirmed. |
+| Cancel or go back | Explicit cancellation or Go back | Apply the same action rules. | Confirmed cancellation ends the attempt and retains saved history; Go back does not cancel. | No accidental action from ordinary conversation Enter; unknown outcome is reconciled from saved records. |
+
+### Update a registration
+
+**Starting condition:** A project has an active registration. Its work must finish or be explicitly stopped before re-registration.
+
+**Entry:** Registration intake for the already registered project.
+
+**Expected journey result:** A reviewed revision can replace the active version while preserving history.
+
+| Interaction | Trigger | System behavior | Expected result | Essential failure behavior |
+|---|---|---|---|---|
+| Begin re-registration | Explicit request | Apply [re-registration rules](#re-registration). | Request identified as re-registration; new starts blocked until it ends. | Existing work prevents entry; unrelated projects are unaffected. |
+| Compare candidate | Compare action | Apply [version comparison](#comparison-activation-and-cancellation). | Additions, changes, removals, and reasons shown against the active version. | Exact version checks prevent silent substitution. |
+| Review and resolve | Assessment, answer, confirmation, or cancellation | Reuse the registration and answer journeys above. | Confirmed new version or retained prior active version, with history preserved. | Failure/cancellation retains prior active registration and does not restart project work. |
+
+### Recover an interrupted registration
+
+**Starting condition:** Registration has saved process, source, review, and decision records.
+
+**Entry:** Agent failure, publication failure, service restart, or an uncertain confirmation/cancellation outcome.
+
+**Expected journey result:** Activity resumes from the last verified step or pauses visibly at a configured limit, without false completion or duplicate effects.
+
+| Interaction | Trigger | System behavior | Expected result | Essential failure behavior |
+|---|---|---|---|---|
+| Resume verified work | Technical interruption | Apply [technical recovery](#technical-recovery). | Reports, answers, versions, and review budget survive; unverified results stay incomplete. | Technical retry limit pauses activity and raises attention. |
+| Verify publication | Agent assignment requires a commit | Apply [delegation checks](#agent-delegation). | Required commit and permitted changes verified on GitHub. | A reported or local-only commit cannot establish publication. |
+| Reconcile an action | Connection returns after unknown action outcome | Query saved outcome under [activation rules](#comparison-activation-and-cancellation). | Recorded result displayed; explicit retry cannot duplicate effects. | No automatic replay or inferred success. |
+
+## Constraints and unresolved details
 
 The following architectural mechanisms remain unresolved:
 
 | Area | Unspecified detail |
 |---|---|
 | Service interface | API endpoint names, connection configuration, and request/event schemas. |
+| Source of initial project activity | The supported way to supply real project, event, and question records before registration exists is not defined. |
+| Process context | Selection among historic or concurrent processes, and question context during pre-project registration intake, needs explicit rules. |
+| Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQL schema, broader runtime recovery internals, duplicate-request recognition, and SQL-to-GitHub package update consistency. |
 | Agent integration | Detailed Project Architect and Fidelity Reviewer contracts, structured agent response formats, and Model Execution Adapters. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
