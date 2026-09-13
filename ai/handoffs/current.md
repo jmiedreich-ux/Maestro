@@ -31,7 +31,9 @@ Next: choose initial per-role run-duration limits and verify concrete Claude Cod
 
 ## Remaining design
 
-The automatic technical recovery default is two attempts per assignment, separate from fidelity reviews. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.\n\nAdapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
+The automatic technical recovery default is two attempts per assignment, separate from fidelity reviews. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.
+
+Adapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
 
 The current documents specify outcomes and behavior, not implementation completion. Existing code is assessed during relevant development preparation; registration only checks claimed dependencies as needed.
 
