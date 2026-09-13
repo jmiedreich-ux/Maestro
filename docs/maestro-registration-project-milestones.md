@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 6 |
+| Declaration version | 7 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -18,13 +18,19 @@ The CLI foundation implementation precedes registration. Final connected CLI acc
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
+The complete registration capability requires all three outcomes below. Initial registration completion does not establish re-registration or interruption recovery. Acceptance of each outcome uses its stated boundary.
+
+Unresolved details below require clarification in their authoritative sources before the affected development breakdown proceeds. They are not permission to invent behavior during implementation. Existing-code claims retain the evidence levels and limitations in the project overview.
+
+Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. The delivery-review roles and acceptance authority must be defined before the affected breakdown; runtime registration reviews are product behavior and do not substitute for implementation review.
+
 ## Milestones and order
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 4 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
-| 2 | REG-PM2 — Update a registration without losing approved history | 4 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 4 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 5 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 2 | REG-PM2 — Update a registration without losing approved history | 5 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 5 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -32,7 +38,7 @@ Verification follows `docs/planning-guide/README.md#verification-expectations`: 
 
 **Included:** Overview-based intake, source validation, scope and dependency assessment, independent fidelity review, naming/versions, questions and decisions, package publication, exact-candidate confirmation, and cancellation.
 
-**Excluded:** Re-registration history changes, technical-recovery completeness, command center, and development execution.
+**Excluded:** Re-registration history changes, agent/service interruption recovery, command center, and development execution.
 
 ### Architecture and journeys
 
@@ -42,6 +48,9 @@ Verification follows `docs/planning-guide/README.md#verification-expectations`: 
 | Project entries, activities, and visible labels | `docs/maestro-architecture.md#project-activities-and-registration-labels` |
 | Inputs and overview entry | `docs/maestro-architecture.md#source-format-and-inputs` |
 | Source consistency | `docs/maestro-architecture.md#source-consistency` |
+| Review budget and Owner decisions | `docs/maestro-architecture.md#review-limits-and-decisions` |
+| Identity and naming | `docs/maestro-architecture.md#identity-declarations-and-ordering` |
+| Actual publication checks | `docs/maestro-architecture.md#agent-delegation` |
 | Assessment and limits | `docs/maestro-architecture.md#assessment-and-independent-review` |
 | Purpose and dependency checks | `docs/maestro-architecture.md#purpose-and-dependency-checks` |
 | Package and activation | `docs/maestro-architecture.md#package-structure` |
@@ -62,27 +71,29 @@ Verification follows `docs/planning-guide/README.md#verification-expectations`: 
 |---|---|---|---|
 | The Owner follows startup and access instructions | The preceding CLI/service foundation is available, and the registration process reaches configured agents and the project repository using real authorized access. No missing service account or unpublished manual command is needed to reach intake. | Startup and connection evidence from the AI box, including access to the running service; record configuration references without secret values. | None |
 | Source prepared using the Planning Guide is submitted | The explicit repository-relative overview path locates the architecture and declarations; Python validates identity, scope, architecture, current state, project milestones, project-level completion requirements, and authoritative document locations. The responsible project architect may be a person, an agent, or both. Missing required inputs are identified specifically. | Guide and validation-format references, source commit, accepted input record, and a rejected-input example identifying the missing field or document. Coding rules are not demanded as registration inputs. | None |
-| Whole-project or partial-project scope is selected | The candidate records included outcomes, explicit exclusions, partial-milestone boundaries, and outside dependencies. Missing essentials produce a finding, not a silent scope expansion. | Inspect candidate boundaries and a dependency finding. Include a targeted source check distinguishing reported existence, source-supported implementation, and operationally verified behavior. No full code audit is required. | None |
+| Whole-project or partial-project scope is selected | The interpreted boundary is presented for explicit scope confirmation before assessment proceeds. The candidate records included outcomes, explicit exclusions, partial-milestone boundaries, and outside dependencies. Missing essentials produce a finding, not a silent scope expansion. | Inspect the presented boundary, recorded scope confirmation, candidate boundaries, and a dependency finding. Scope confirmation is distinct from final registration activation. Include a targeted source check distinguishing reported existence, source-supported implementation, and operationally verified behavior. No full code audit is required. | None |
 | A milestone promises a usable capability | The architect records its usage journey, prerequisite coverage, and completion evidence. Essential operations cannot be excluded while the completion claim remains unchanged. Optional improvements do not block. | A source-backed assessment showing how required connections are covered and why each blocker prevents the stated purpose; a non-blocking finding retained without preventing readiness. | None |
 | The architect submits findings for review | A separate agent performs fidelity review against the same source commit. The architect may amend its report. Rechecks cover affected findings only. With the configured initial maximum of two rounds, unresolved blockers or disagreement pause and reach the Owner; readiness may occur after one round. | Distinct architect and reviewer results, source references, amendments, and round counts. No invented reviewer approval, extra requirements, automatic third round, or forced approval. | None |
 | The Owner needs to understand or answer registration | Registration creates real project/activity identities before approval. The project entry and labels follow the architecture, including Registering, waiting, and Not registered after an ended unsuccessful attempt. The CLI shows the current step, working agent, round and limit, findings, failures, and progress or waiting state. A choice or written clarification is recorded against its question and version, routed back to the paused step, and retained with affected milestones or criteria. Ambiguous responses request clarification. | Connected CLI records of the same process, including a decision and resumed step. Answering a question does not confirm registration. | None |
-| A second registration request arrives for the same project | The CLI shows the existing active process; no competing process or new registration version is created. | Submit duplicate CLI requests and inspect the single process and candidate. | None |
+| A second registration request arrives for the same project | The CLI shows the existing active process; no competing process or new registration version is created. | Submit duplicate CLI requests and inspect the single activity and candidate. A request for another project remains separately addressable; its questions and decisions cannot be applied to this project. | None |
 | Relevant planning inputs change during review | Both agents retain a consistent source version. Before confirmation, the Owner sees the change and chooses to retain the reviewed source or update the candidate and recheck affected findings. The two-round limit is not silently reset. Unrelated commits or report updates do not count as input changes. | Before-and-after source references, Owner choice, resulting candidate, and unchanged review-budget accounting. | None |
-| A candidate is ready for confirmation | The package contains the summary, supplied project milestone outline, project-level completion requirements, review records, and retained Owner decisions. Exact content versions are identified. It contains no generated development breakdown. | Inspect the JSON package against the defined output schema and index; validate required fields and references. | None |
-| The Owner confirms through the CLI | Only explicit confirmation makes the exact unchanged, eligible candidate active. Changed or ineligible candidates require renewed inspection before confirmation. That version is available in the project's GitHub repository; confirmation does not launch development. The confirmed contents cannot silently change afterward. | Owner confirmation tied to the candidate, authoritative GitHub commit and package location, active-version record, and evidence that no development was started. | None |
+| A candidate is ready for confirmation | The package contains the summary, supplied project milestone outline, project-level completion requirements, review records, and retained Owner decisions. Exact content versions are identified. It preserves qualified milestone identities with plain subjects, delivery order, dependencies, versions, and the Owner-authorized naming conventions. It contains no generated development breakdown. | Inspect the JSON package against the defined output schema and index; validate required fields and references. | None |
+| The Owner confirms through the CLI | Only explicit confirmation makes the exact unchanged, eligible candidate active. Changed or ineligible candidates require renewed inspection before confirmation. That version is available in the project's GitHub repository; confirmation does not launch development. The confirmed contents cannot silently change afterward. | Owner confirmation tied to the candidate, authoritative GitHub commit and package location, active-version record, and evidence that no development was started. Required wrapper checks verify repository, branch, allowed files, remote commit existence, and agreement with the reported commit before publication is counted as successful. | None |
 | Registration is cancelled or action acknowledgment is lost | Explicit cancellation ends the attempt with saved history retained. Confirmation/cancellation are deliberate view actions, not ordinary text submission. An uncertain result shows Outcome not confirmed; reconnect queries the saved outcome and explicit retry cannot duplicate effects. | Main cancellation path and a necessary lost-acknowledgment case using the actual service. | None |
 
 ### Definition of done
 
 The real CLI registration journey also supplies final connected workspace/answer acceptance evidence for the CLI declaration and supplies evidence for every criterion, including source reading, genuine architect/reviewer activity, a retained response, exact package publication, and deliberate confirmation. Basic essential-failure evidence establishes source rejection, review limits, stale-candidate protection, and uncertain-action handling; criteria can share one journey.
 
-The confirmed JSON package is retrievable in GitHub and usable by the next process without relying on mutable latest files. Required role review and evidence are complete. Fake-data screens or fabricated approvals cannot demonstrate registration. No development breakdown or work start occurs.
+The confirmed JSON package is retrievable in GitHub and usable by the next process without relying on mutable latest files. Completion evidence and delivery reviews meet the common completion requirements above. Fake-data screens or fabricated approvals cannot demonstrate registration. No development breakdown or work start occurs.
 
 ### Unresolved details
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Role and adapter contracts | Real assessment/review cannot be delegated consistently yet. | Define Project Architect, Fidelity Reviewer, and Model Execution Adapter interfaces. |
+| Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
+| Planning-review configuration | Default two-round behavior needs a configuration that can be installed and read. | Define configuration location and format without changing the agreed default. |
 | Output and persistence contracts | Package validation/publication/activation cannot rely on assumed formats. | Define JSON schema, package location/index, and SQL/GitHub record consistency. |
 
 ## REG-PM2 — Update a registration without losing approved history
@@ -113,7 +124,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Project work is active | Re-registration cannot begin until all active work finishes or is explicitly stopped. Once re-registration begins, no new project work can start until it ends. | Runtime work-state evidence and rejected start attempts through the CLI. The work-state and start-inhibition connection is an explicit dependency, not a checkbox supplied by the reviewer. | None |
+| Project work is active | Re-registration cannot begin until all active work finishes or is explicitly stopped. Once re-registration begins, no new project work can start until it ends. | Runtime work-state evidence, a rejected re-registration request through the CLI, and a rejected new-work attempt at the service boundary. The work-state and start-inhibition connection is an explicit dependency, not a checkbox supplied by the reviewer. | None |
 | An idle project is re-registered | Create the next registration version while preserving previous versions. Additions or amendments concern project milestones, not development milestones or work packets. Apply the same fidelity loop and two-round configured limit. | Successive version folders, source and milestone versions, and real review records. | None |
 | A candidate differs from the active version | Show additions, changes, removals, affected scope or completion requirements, and reasons linked to findings or Owner decisions. | Comparison visible before confirmation, tied to the exact candidate. The project remains Registered with Updating registration displayed while the prior version stays active. | None |
 | The Owner confirms the candidate | The candidate becomes active only on explicit confirmation of the unchanged eligible version shown. Previous records remain retrievable. Item identities remain stable; changed items increment versions and unchanged items retain theirs. | Confirmation, version references, and GitHub history comparison. | None |
@@ -121,7 +132,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 ### Definition of done
 
-The connected re-registration journey and essential rejection/cancellation paths establish all criteria with preserved GitHub history, explicit comparison, and exact-candidate activation. Work-state enforcement must use actual service state; a reviewer checkbox is not proof. The prior version remains available, and project work never restarts automatically.
+The connected re-registration journey and essential rejection/cancellation paths establish all criteria with preserved GitHub history, explicit comparison, and exact-candidate activation. Work-state enforcement must use actual service state; a reviewer checkbox is not proof. The prior version remains available, and project work never restarts automatically. Completion evidence and delivery reviews meet the common completion requirements above.
 
 ### Unresolved details
 
@@ -152,7 +163,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
 | Registration journeys | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Required connected predecessors. |
-| Durable checkpoints and remote evidence | `docs/maestro-architecture.md#technical-recovery` | Concrete recovery/duplicate contracts and technical retry default remain unspecified; included before completion. |
+| Durable checkpoints and remote evidence | `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Agent checkpoints, external publication recovery, and the technical retry default remain to be defined before affected breakdown. |
 
 ### Acceptance criteria
 
@@ -167,13 +178,13 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 Basic controlled interruptions of actual agent, publication, and service operations establish recovery from the last verified step and preserved review budgets. Retained reports, decisions, versions, and remote commits are checked directly. Necessary simulated conditions identify their reason and limitation; no exhaustive failure-combination suite is required.
 
-Both registration journeys remain valid after recovery. Retry functions alone do not establish completion.
+Both registration journeys remain valid after recovery. Completion evidence and delivery reviews meet the common completion requirements above. Successful publication checks are already required by REG-PM1 — Register and confirm a project through the CLI; this outcome adds interruption and recovery evidence. Retry functions alone do not establish completion.
 
 ### Unresolved details
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Recovery checkpoint and request contracts | Retrying or resuming could duplicate work or accept an unverified result. | Specify checkpoint validation and duplicate recognition. |
+| Agent and publication recovery contracts | Resuming external work could duplicate it or accept an unverified result despite reliable CLI receipts. | Specify checkpoint validation and external operation reconciliation; retain the defined CLI request identity rules. |
 | Technical retry configuration | Limit enforcement needs a concrete configuration and value. | Select the technical retry default and configuration location; the planning-review default remains two rounds. |
 
 ## Partial-registration boundary
