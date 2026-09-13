@@ -88,7 +88,7 @@ Use one continuous terminal workspace, similar to Codex but with more interactiv
 
 Typed commands and equivalent controls invoke the same operation. Free-text answers are clearly distinguished from commands and tied to a specific question and project. A clarification does not become an accidental command or registration confirmation.
 
-The CLI supports starting registration with a repository and scope, opening an existing process, inspecting findings and the exact candidate, submitting responses, explicitly confirming, and cancelling. Exact command names and input syntax remain to be designed; this document does not invent them.
+The CLI supports starting registration with a repository and scope, opening an existing process, inspecting findings and the exact candidate, submitting responses, explicitly confirming, and cancelling. The initial command names and boundaries are agreed below. Detailed argument syntax and remaining input behavior still need design.
 
 Exiting closes the CLI connection, not the running process. Cancellation is a separate action. Reopening `maestro` retrieves the current service state and reconnects to updates.
 
@@ -134,16 +134,64 @@ When information is needed rather than a choice, request a written answer instea
 Before project selection, the startup input supports service-wide actions, including selecting a project or beginning registration, and clearly displays “No project selected.”
 
 - Every startup begins with no selected project, even when only one project exists.
-- Selecting a project sets the active project. Its name remains visible above the input.
-- A project-specific command uses the explicitly named project or, when none is named, the active project.
+- Selecting a project sets the selected project. Its name remains visible above the input.
+- A project-specific command uses the explicitly named project or, when none is named, the selected project.
 - If neither is available, request project selection and do not execute.
-- If the explicitly named project differs from the active project, require the Owner to resolve the mismatch before execution.
+- If the explicitly named project differs from the selected project, require the Owner to resolve the mismatch before execution.
 - Unknown or ambiguous project names must be resolved before execution.
 - Switching projects must not silently transfer an unsent message or pending answer to the new project.
 - Service-wide commands do not inherit a project target.
 - Do not guess a command's or message's project from conversation text.
 
-These rules define routing boundaries, not command names or syntax. The handling of retained drafts during project switching remains to be designed.
+A selected project is the CLI's focus; a working project is one where Maestro is performing work. Do not use “active project” to mean either. This terminology does not change the meaning of an active registration version.
+
+The handling of retained drafts during project switching remains to be designed.
+
+### Initial command list
+
+These commands are agreed for future delivery as their functionality is built. This list does not claim implementation or authorize development. Commands use a leading slash; ordinary replies remain separate from operational commands.
+
+| Command | Purpose and boundary |
+|---|---|
+| `/help` | List implemented commands with plain explanations. `/help <command>` shows syntax, required inputs, an example, and whether project selection is required. Explain contextual unavailability. Help works without a service connection and changes no project state. |
+| `/projects` | Open the startup-style project overview from any conversation. This is the typed equivalent of opening the project selector. Showing the list does not change selection; choosing an entry selects that project and opens its conversation. Neither action starts or stops work. Read through the service without adding a conversation entry; show connection failure rather than an empty list. |
+| `/attention` | Open outstanding questions and decisions across projects. Selecting one switches to its project, opens the question, and links the reply input. |
+| `/register <repository>` | Begin registration using an explicit repository, without assuming the selected project. Request the whole plan or a defined portion and open the registration conversation. Reuse this command for eligible re-registration. |
+| `/registration` | Open the selected project's existing registration process or registration record, including the candidate when available. Do not start registration. |
+| `/findings` | Open a compact list of blockers, non-blocking observations, and review findings for the selected project's current process. Selecting a finding opens its explanation and evidence. Unlike attention, findings need not require an Owner response. Do not start a review or change project state. |
+| `/retry` | Retry a failed service connection without exiting the CLI. Equivalent to the Retry connection control. Do not start or restart the service, repeat submitted commands, or retry project work. |
+| `/exit` | Disconnect this CLI session without stopping service or project work. Preserve saved conversations and pending questions. Warn before exiting if unsent text would be lost. |
+
+Project-specific commands follow the explicit targeting rules above. Listing or opening information is not approval or a request to start work.
+
+Do not add separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` commands to this starting list. Project selection belongs in the project overview, current status remains visible, and answers use question-linked input. Comparison, confirmation, and cancellation belong in the registration view as described below.
+
+Execution commands such as start, pause, resume, and stop remain deferred until their operations are defined. Extend the command list through further agreement, not speculative additions.
+
+### Registration entry and scope selection
+
+The repository supplied to `/register <repository>` is explicit. If registration is already underway for that project, show its existing process rather than starting a duplicate. If already registered, clearly identify the request as re-registration and enforce the no-project-work-in-progress restriction.
+
+The entry flow asks whether to register the whole supplied plan or selected milestones or a defined portion. Registration review does not start development.
+
+Defined-portion selection reads planning source formatted according to the Maestro Planning Guide:
+
+1. Identify the supplied project milestones and their boundaries.
+2. Present milestones with both their identifiers and plain subjects.
+3. Let the Owner select milestones or describe a narrower portion.
+4. Present the interpreted inclusions, exclusions, and outside dependencies for confirmation.
+
+Whole-milestone selections use explicit milestone references. A narrower portion requires a recorded scope description; an agent must not silently decide what the Owner's words include. Detailed source format and selection mechanics remain to be designed.
+
+### Actions inside the registration view
+
+| Action | Behavior |
+|---|---|
+| Compare registration versions | Compare the candidate with the currently approved registration version. Show additions, changes, removals, and reasons, tied to the exact versions reviewed. |
+| Confirm registration | Explicitly identify the project and exact candidate version being accepted. Confirmation activates that version but does not start development. Ordinary conversation replies never count as confirmation. |
+| Cancel registration | Identify the project and registration process, explain the effect, and request explicit confirmation. End that registration attempt while preserving saved history and any previously approved registration version. Do not automatically restart project work. |
+
+Cancellation is not CLI exit or a general stop-development command. These actions remain within the terminal registration view rather than standalone slash commands.
 
 ### Multiple projects
 
@@ -180,11 +228,15 @@ The CLI conversation receives information from three sources:
 
 Agents do not write directly to the terminal. The service validates, records, and delivers information to the appropriate project conversation. An agent message does not itself change project state; the service determines and records changes under the agreed process rules.
 
-Record information in the SQL database before delivering it as a saved update to the CLI:
+For durable actions, answers, messages, and state changes, record information in SQL before acknowledging it as saved or delivering the saved update:
 
-1. The service receives the agent result, service event, or Owner input.
+1. The service receives the agent result, service event, or Owner input requiring durable recording.
 2. It validates the information and records it against the appropriate project and conversation. Service-wide inputs remain service-wide.
 3. Only after saving succeeds does it acknowledge or publish the recorded information to the CLI.
+
+SQL stores current project state and durable conversation history; it is not merely a queue of screen output. Live delivery notifies the CLI of recorded changes.
+
+Read-only requests retrieve and display existing state without creating another status record or conversation entry. They do not require durable recording merely to be handled. This qualifies the save-first rule above; viewing state is different from changing it.
 
 SQL is the durable record for this conversation information and displayed state. Startup retrieves saved state through the service, then receives subsequent updates. Reconnection retrieves missed information; closing the CLI or losing its connection does not discard saved conversation history.
 
