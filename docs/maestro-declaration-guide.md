@@ -4,7 +4,7 @@
 
 This guide defines Maestro's declaration naming, ordering, and version conventions. Declaration sheets apply these conventions without repeating their explanation or naming-change history.
 
-Architecture documents describe system behavior. Declaration sheets contain project outcomes, delivery positions, dependencies, scope, acceptance criteria, and completion evidence. Reviews and handoffs remain separate.
+Architecture documents describe system behavior. Declaration sheets contain project outcomes, delivery positions, dependencies, scope, acceptance criteria, and completion evidence. Handoffs remain separate. Documentation review results are reported in the conversation rather than retained as standalone repository reports.
 
 ## References and ordering
 
