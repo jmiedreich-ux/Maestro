@@ -2,6 +2,8 @@
 
 ## Start here
 
+- [Maestro Planning Guide and source templates](../../docs/planning-guide/README.md)
+
 - [Repository working rules](../../AGENTS.md)
 - [Additional agent instructions](../../CLAUDE.md)
 - [Maestro architecture](../../docs/maestro-architecture.md) — current design and evolving concepts.
