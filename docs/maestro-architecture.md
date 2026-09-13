@@ -106,9 +106,62 @@ The shared operation boundary is:
 
 For registration, the service supplies the software architect assignment, the adapter launches the selected tool, and the architect assesses the source and prepares the candidate package. The adapter returns progress and the final artifacts. The service validates and saves them, then arranges independent review. The adapter does not decide registration readiness.
 
-When an agent returns clarification required, the service records and routes the question. A subsequent assignment supplies the recorded answer and relevant context. The adapter does not interpret an answer as permission or independently choose the next activity.
-
 The service retains control of content validation, durable state, review and retry budgets, question routing, and registration activation. Adapter transport and process handling do not replace deterministic wrapper checks.
+
+#### Tool and model selection
+
+Registration initiation explicitly selects Claude Code or Codex and the exact model/version for the architect. The fidelity reviewer has a separate tool and model/version selection. The service checks that the selected model/version is supported by the selected tool before that role begins. An unavailable or unverifiable selection is reported before launch; no silent substitution is permitted. Records retain the requested model and the model reported by the tool. Concrete tool support for these checks remains to be verified.
+
+#### Agent workspaces
+
+Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<registration-attempt-id>/` beneath it. Its architect workspace contains `source/` at the exact assigned repository revision and `output/` for assessments and candidate files. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt directories isolate concurrent projects.
+
+The fidelity reviewer receives a separate workspace with read-only access to the exact source, architect assessment, and candidate under review, plus a separate writable output directory. It cannot amend the architect's files.
+
+Completed, cancelled, and interrupted workspaces remain until explicitly removed; automatic cleanup is outside the initial behavior. Removal is permitted only when no agent uses the workspace and no pending review or recovery depends on it. Removing a workspace does not remove SQL registration history or published GitHub documents. Those durable records remain authoritative; workspace files support inspection and recovery.
+
+#### Assignment delivery and clarification
+
+The service prepares a structured assignment file containing:
+
+- Project, registration activity, assignment identity, and assigned role.
+- Role responsibilities and the specific task.
+- Exact source revision, document paths, selected scope, recorded decisions, relevant answers, and outstanding questions.
+- Prior findings and candidate references when continuing work.
+- Permitted actions, writable locations, limits, and conditions requiring clarification.
+- Required response format and output location.
+
+The adapter launches the selected tool and model in the workspace with instructions to read this file. Each run receives a fixed assignment snapshot. Later answers remain recorded by the service and enter a follow-up assignment; they do not change a running assignment.
+
+Clarification can contain several questions, several answers, and additional follow-ups. The complete exchange stays linked to the same registration activity. An agent returning clarification ends that run. A follow-up assignment supplies the relevant saved context rather than relying on prior session memory. Incomplete answers or newly identified ambiguity can produce specific follow-up questions without resetting the fidelity review budget.
+
+The architect resumes when answers needed for its next step are available. Questions that do not prevent that step may remain open. Individual answer arrival does not itself launch another run.
+
+#### Progress reporting
+
+The CLI distinguishes confirmed service status from agent-reported progress. Service status describes facts such as running, waiting for answers, completed, or failed. Agent progress briefly describes work such as reading source documents, assessing architecture, preparing findings, or submitting results.
+
+The service saves these updates in SQL before display. Progress messages establish neither completion nor approval. No estimated completion percentage is shown. During silence, the CLI retains the last update and shows elapsed time without assuming the run has stalled.
+
+#### Completion handling
+
+The service checks that the returned response matches the assigned project, activity, source revision, and [registration response contract](#registration-agent-response-contract). Referenced files must exist in permitted locations and match their recorded hashes. Required publication must pass the [GitHub wrapper checks](#agent-delegation).
+
+The service saves the validated response, findings, questions, and artifact references before advancing the activity. A successful tool exit alone is insufficient. Missing or invalid output enters [technical recovery](#technical-recovery).
+
+A valid architect assessment proceeds to independent fidelity review. Clarification waits for the necessary answers. Passing review still requires registration eligibility checks and explicit final confirmation before activation.
+
+#### Cancellation
+
+The service records cancellation and asks the adapter to stop the active run. The CLI displays **Stopping** until termination is confirmed, then **Cancelled**. Saved findings and files remain available; unfinished output cannot advance registration. Cancellation does not undo commits or previously accepted work.
+
+If termination cannot be confirmed, the CLI displays **Stop unconfirmed** and the service blocks replacement runs until the original status is resolved. A completion received while cancellation is pending is retained but cannot advance the activity. Sending a stop request is not proof of termination.
+
+#### Unresponsive runs
+
+Silence alone does not trigger a restart. When the adapter confirms a quiet run is active, the service continues waiting within its run-duration limit. When status cannot be established, it reports uncertainty and blocks a replacement.
+
+Maximum run duration is configurable by role; starting durations remain undecided. Progress messages do not reset the limit. Reaching the limit requests termination. Recovery can start only after termination is confirmed and remains subject to the technical retry budget.
 
 ### Returned implementation plan
 
@@ -384,7 +437,7 @@ Project milestones describe meaningful outcomes, releases, or component boundari
 
 ### Intake and scope
 
-The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
+Registration initiation includes [architect tool and model selection](#tool-and-model-selection) before agent launch. The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
 
 Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
 
@@ -489,7 +542,7 @@ Confirmation is a separate explicit action displaying the project and exact cand
 
 Successful confirmation makes the candidate the active registration version. Previously approved versions remain retrievable. Confirmed content cannot change silently, and activation does not start development.
 
-Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation ends that attempt and preserves its saved history. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
+Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation follows [agent stopping rules](#cancellation) when a run is active; only confirmed termination ends the attempt. When no run is active, cancellation ends the attempt directly. Saved history is preserved. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
 
 Neither confirmation nor cancellation is preselected for submission. Deliberate focus on the relevant action is required before Enter activates it.
 
@@ -538,7 +591,9 @@ The service validates against the assignment's source, decision snapshot, and ar
 
 Completed reports, reviews, decisions, and source/version references survive agent failure, failed GitHub publication, or service restart. Registration resumes from the last verified step; unverified results do not count as completed work.
 
-Technical failures do not consume planning review rounds. Technical retries have a separate configurable limit. Reaching it pauses registration and produces an attention item. The technical retry default is unspecified.
+Before restarting interrupted agent work, the service checks whether the original run remains active. Unknown status pauses recovery immediately and blocks a replacement. Once the run is confirmed ended, recovery supplies the saved assignment, answers, findings, and candidate files. Unfinished output remains draft until a complete response passes deterministic checks.
+
+Technical failures do not consume planning review rounds. The separate configurable technical retry limit defaults to **two automatic recovery attempts per agent assignment**, excluding its initial run. Recovery runs retain the same assignment retry accounting. After both attempts fail, the activity pauses with a plain explanation, an attention item, and an explicit retry action in the CLI. This action does not bypass an unresolved original-run status. Its concrete request interface and post-limit retry accounting remain to be specified.
 
 ## Journeys and interactions
 
@@ -632,8 +687,8 @@ The following architectural mechanisms remain unresolved:
 | Service interface | CLI contracts are defined above; operation-specific registration package payloads depend on the registration schema. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
-| Agent integration | Shared adapter responsibilities are defined. Agent tool selection, concrete launch/status/cancellation interfaces, artifact transport, and recovery capabilities remain open. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
+| Agent integration | Tool/model selection and shared adapter behavior are defined above. Concrete Claude Code and Codex launch/status/cancellation interfaces, artifact transport, and recovery capabilities remain to be verified. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
-| Configuration | Review configuration location and format; numeric technical retry default. |
+| Configuration | Review and technical retry configuration location and format; initial per-role run-duration limits; explicit post-limit retry request and accounting. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
