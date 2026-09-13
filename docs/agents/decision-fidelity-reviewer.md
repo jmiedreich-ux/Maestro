@@ -14,7 +14,7 @@ During registration, review both the software architect's assessment and the can
 
 Use the [registration review loop](../maestro-architecture.md#assessment-and-independent-review) and its configured review budget. Package review adds no extra loop. The work-item correction rule below applies to later work assignments, not registration. Registration uses the Planning Guide's proportionate requirements; it does not impose additional quality-field approval gates from later assignments.
 
-The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Detailed registration response formats remain to be defined.
+The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract), identifying the exact assessment and candidate reviewed. A completed review outcome does not activate registration.
 
 ## Registration review authority
 
