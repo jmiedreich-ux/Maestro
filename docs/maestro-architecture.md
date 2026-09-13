@@ -45,7 +45,7 @@ The following response chart is retained as a proposal. It does not grant automa
 
 Proposed boundaries: unattended operation has explicit authority limits; Execution does not approve its own results; Monitoring reports and routes problems rather than silently changing requirements. Planning's ability to adapt remains to be defined with the Owner.
 
-The earlier shared-record and restart design was withdrawn as an assumed architecture. State storage and restart recovery appear below only as evolving runtime concepts, not as an agreed storage design.
+The earlier shared-record and restart design was withdrawn as an assumed architecture. The CLI section now establishes SQL-first recording for conversation information and displayed state. Broader runtime storage and restart mechanics remain evolving concepts; this agreement does not reinstate the earlier design.
 
 ## Runtime
 
@@ -92,6 +92,59 @@ The CLI supports starting registration with a repository and scope, opening an e
 
 Exiting closes the CLI connection, not the running process. Cancellation is a separate action. Reopening `maestro` retrieves the current service state and reconnects to updates.
 
+### Agreed conversation direction
+
+The approved visual direction is a terminal interface, not a command-center dashboard: project switching at the top, one continuous conversation per project, prominent pending questions, and a fixed input area with a clearly displayed recipient.
+
+Every message identifies its source: the Owner, the speaking agent, or the Maestro service. Major activities such as registration, milestone planning, and execution have clear section markers. Routine progress stays compact; findings and reports can be expanded. The conversation is the interaction history; the persistent status area shows current state without requiring backward scrolling.
+
+The Owner can address a particular agent from the same input area, with the recipient visible. Exact recipient-selection behavior and general input syntax remain to be designed. The mockup's sample messages and command hints are illustrative, not additional workflow decisions.
+
+### Startup and service connection
+
+Launching `maestro` attempts to connect to the configured service. It does not start the service automatically.
+
+| Connection state | Display and behavior |
+|---|---|
+| Connecting | Show that the connection is being established. |
+| Connected | The service responds; the CLI can request project information. |
+| Unavailable | Show a plain reason and a retry option. Do not present an empty project list as though no projects exist. |
+
+Startup opens the project overview, not a project's conversation. It provides service connection status, the project list, outstanding questions or decisions, and a persistent command input.
+
+The project list shows each project's plain name, current activity or reason for waiting, and whether it needs attention. Order projects needing attention first, working projects next, and idle projects last. Selecting a project opens its conversation without starting, stopping, or otherwise changing project work.
+
+### Questions needing attention
+
+The startup attention section shows each outstanding question or decision, its project, and the agent or process asking. Selecting an item opens the correct project conversation at that question and links the input to it.
+
+Opening a question does not answer or resolve it. It remains outstanding until resolved.
+
+When a question has clear alternatives, present:
+
+- A plainly worded question.
+- A recommended option with a short reason, when there is a justified recommendation.
+- Other viable options with their tradeoffs, not automatic labels of “less recommended.”
+- A free-text response so the Owner can provide a different answer or amend an option.
+
+When information is needed rather than a choice, request a written answer instead of forcing multiple choices.
+
+### Explicit project targeting
+
+Before project selection, the startup input supports service-wide actions, including selecting a project or beginning registration, and clearly displays “No project selected.”
+
+- Every startup begins with no selected project, even when only one project exists.
+- Selecting a project sets the active project. Its name remains visible above the input.
+- A project-specific command uses the explicitly named project or, when none is named, the active project.
+- If neither is available, request project selection and do not execute.
+- If the explicitly named project differs from the active project, require the Owner to resolve the mismatch before execution.
+- Unknown or ambiguous project names must be resolved before execution.
+- Switching projects must not silently transfer an unsent message or pending answer to the new project.
+- Service-wide commands do not inherit a project target.
+- Do not guess a command's or message's project from conversation text.
+
+These rules define routing boundaries, not command names or syntax. The handling of retained drafts during project switching remains to be designed.
+
 ### Multiple projects
 
 The CLI can focus on one project while others continue running. Each project keeps separate conversations, process state, pending decisions, and registration versions.
@@ -114,6 +167,31 @@ Each project-specific request and event carries the project's identity. The CLI 
 The service owns the running work. Closing the terminal does not stop service activity; reconnecting retrieves authoritative current state and resumes updates. A separate agent process is not needed merely to maintain this connection.
 
 API endpoint names, connection configuration, and event schemas remain implementation details to define.
+
+### Information sources and SQL-first delivery
+
+The CLI conversation receives information from three sources:
+
+| Source | Information |
+|---|---|
+| Maestro service | Factual events and state changes, including work starting, waiting, stopping, or failing. |
+| Agents | Messages, explanations, findings, questions, and review results returned through assigned work. |
+| Owner | Commands, answers, direction, and confirmations submitted through the CLI. |
+
+Agents do not write directly to the terminal. The service validates, records, and delivers information to the appropriate project conversation. An agent message does not itself change project state; the service determines and records changes under the agreed process rules.
+
+Record information in the SQL database before delivering it as a saved update to the CLI:
+
+1. The service receives the agent result, service event, or Owner input.
+2. It validates the information and records it against the appropriate project and conversation. Service-wide inputs remain service-wide.
+3. Only after saving succeeds does it acknowledge or publish the recorded information to the CLI.
+
+SQL is the durable record for this conversation information and displayed state. Startup retrieves saved state through the service, then receives subsequent updates. Reconnection retrieves missed information; closing the CLI or losing its connection does not discard saved conversation history.
+
+For Owner input, distinguish “sending” from “saved.” Do not imply the service has received and saved an answer until it confirms that recording succeeded.
+
+This does not replace the authoritative versioned registration package in the project's GitHub repository. Registration decisions and responses still belong in that package as specified below. SQL schema, delivery mechanics, and the relationship between SQL records and package updates remain to be designed. Structured agent response formats have not yet been agreed.
+
 
 ## Planning: evolving registration concepts
 
