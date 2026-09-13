@@ -1,5 +1,9 @@
 # Maestro CLI — Milestone Detail Review
 
+## Reference revision
+
+This report now uses declaration-qualified references from version 2 of the CLI and registration declaration sheets. The reviews below assessed the original milestone content; this naming-only update does not claim a new independent review. Delivery positions are separate from identifiers, and the reviewed outcome scope is unchanged.
+
 ## Result and scope
 
 **The proposed milestones are suitable for review. All implementation details are not yet defined.**
@@ -20,19 +24,19 @@ No source-code execution or operating-environment inspection was performed. Exis
 
 | Architectural behavior | Milestone coverage |
 |---|---|
-| Installed CLI, separate service startup, local API, systemd lifecycle | PM4 — Connected multi-project CLI workspace: setup, connection, and real service evidence. |
-| SQL records, HTTP reads, streamed events, no history mutation from reads | PM4 — Connected multi-project CLI workspace: durable information and live updates. |
-| No startup selection, multiple projects, overview order, selected versus working | PM4 — Connected multi-project CLI workspace: project separation and visible context. |
-| Recent/earlier history, inline findings, reading position, visible activity/questions | PM4 — Connected multi-project CLI workspace: reading and findings acceptance. |
-| Cross-project attention without forced focus | PM4 — Connected multi-project CLI workspace: notice contents and explicit navigation. |
-| Disconnected display, local commands, retry, empty result versus failure | PM4 — Connected multi-project CLI workspace: connection and lookup cases. |
-| Keyboard, minimum size, multiline input, paste | Workspace controls in PM4 — Connected multi-project CLI workspace; answer controls in PM5 — Reliable project questions and answers. |
-| Question-only text, recommendations, alternatives, choice then explicit send | PM5 — Reliable project questions and answers: question and input cases. |
-| Saving before acknowledgment, linked routing, receipt versus resolution | PM5 — Reliable project questions and answers: submission and follow-up evidence. |
-| Lost acknowledgments, explicit retry, no duplicate effect, stale questions | PM5 — Reliable project questions and answers: failure and validity cases. |
-| Concurrent updates and submissions | PM5 — Reliable project questions and answers: targets and input remain stable while streamed updates arrive. |
-| Clearing drafts on switch; warning on exit | PM5 — Reliable project questions and answers: switch, exit, and reopen cases. |
-| All eight agreed commands | Six workspace commands in PM4 — Connected multi-project CLI workspace; registration commands connect with actual registration. Unimplemented commands remain excluded from help. |
+| Installed CLI, separate service startup, local API, systemd lifecycle | CLI-PM1 — Connected multi-project CLI workspace: setup, connection, and real service evidence. |
+| SQL records, HTTP reads, streamed events, no history mutation from reads | CLI-PM1 — Connected multi-project CLI workspace: durable information and live updates. |
+| No startup selection, multiple projects, overview order, selected versus working | CLI-PM1 — Connected multi-project CLI workspace: project separation and visible context. |
+| Recent/earlier history, inline findings, reading position, visible activity/questions | CLI-PM1 — Connected multi-project CLI workspace: reading and findings acceptance. |
+| Cross-project attention without forced focus | CLI-PM1 — Connected multi-project CLI workspace: notice contents and explicit navigation. |
+| Disconnected display, local commands, retry, empty result versus failure | CLI-PM1 — Connected multi-project CLI workspace: connection and lookup cases. |
+| Keyboard, minimum size, multiline input, paste | Workspace controls in CLI-PM1 — Connected multi-project CLI workspace; answer controls in CLI-PM2 — Reliable project questions and answers. |
+| Question-only text, recommendations, alternatives, choice then explicit send | CLI-PM2 — Reliable project questions and answers: question and input cases. |
+| Saving before acknowledgment, linked routing, receipt versus resolution | CLI-PM2 — Reliable project questions and answers: submission and follow-up evidence. |
+| Lost acknowledgments, explicit retry, no duplicate effect, stale questions | CLI-PM2 — Reliable project questions and answers: failure and validity cases. |
+| Concurrent updates and submissions | CLI-PM2 — Reliable project questions and answers: targets and input remain stable while streamed updates arrive. |
+| Clearing drafts on switch; warning on exit | CLI-PM2 — Reliable project questions and answers: switch, exit, and reopen cases. |
+| All eight agreed commands | Six workspace commands in CLI-PM1 — Connected multi-project CLI workspace; registration commands connect with actual registration. Unimplemented commands remain excluded from help. |
 | Scope interpretation, actual reviews, confirmation, cancellation, comparisons, recovery | Explicit registration integration coverage, using real source and package workflows. These are not claimed complete by the CLI foundation. |
 
 Command center, unsolicited agent conversations, retained cross-project drafts, removed shortcuts, and execution commands remain excluded. Mobile remains undecided. The source does not introduce development milestones, work packets, an agent provider, or a database implementation.
@@ -64,10 +68,10 @@ Each reviewing agent rechecked the relevant correction. These clarifications pre
 
 ## Dependency and completion assessment
 
-PM4 — Connected multi-project CLI workspace and PM5 — Reliable project questions and answers have separate useful component boundaries and both precede registration development. Their provisioning prerequisite prevents a circular dependency on registration.
+CLI-PM1 — Connected multi-project CLI workspace and CLI-PM2 — Reliable project questions and answers have separate useful component boundaries and both precede registration development. Their provisioning prerequisite prevents a circular dependency on registration.
 
 Controlled service-generated events and questions can demonstrate those components only when the actual service, SQL, and CLI are exercised. They cannot prove agent reasoning, registration assessment, GitHub publication, or activation.
 
-The existing [registration project milestone source](maestro-registration-project-milestones.md) still has both-interface wording and needs alignment with CLI-only scope and the preceding CLI foundation. Its stable identifiers remain unchanged. The new CLI source records the required integration coverage without pretending that the older source has already been finalized.
+The existing [registration project milestone source](maestro-registration-project-milestones.md) still has both-interface wording and needs alignment with CLI-only scope and the preceding CLI foundation. Its current references use the registration declaration designation; future order changes preserve those references. The new CLI source records the required integration coverage without pretending that the older source has already been finalized.
 
 All milestone acceptance rows still require operational evidence. The project source format remains provisional until the Maestro Planning Guide is specified. The review therefore establishes a faithful, reviewable draft with identified gaps—not a fully specified implementation package or a registration pass.
