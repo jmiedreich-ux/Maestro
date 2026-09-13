@@ -94,6 +94,41 @@ Read-only assignments do not require commits solely to satisfy the wrapper. Thes
 Requests and events associated with a project carry its identity. Commands can be submitted while updates arrive. A separate agent is not required to maintain the CLI connection.
 
 
+### CLI connection configuration
+
+The CLI reads TOML from `$XDG_CONFIG_HOME/maestro/cli.toml`, or `~/.config/maestro/cli.toml` when that environment variable is unset. The optional `service_url` setting is an absolute HTTP URL with a host and port, without credentials, query, or fragment. The initial service listens on loopback; remote service exposure is outside this interface design.
+
+The default address is `http://localhost:8787`; the service installation uses the same default port. Missing, unreadable, malformed, or invalid configuration uses that fallback, with a plain explanation and the effective address visible. A valid but unreachable configured address remains selected; connection failure does not trigger fallback.
+
+Connection attempts time out after 5 seconds; ordinary requests time out after 15 seconds. Long-running activity is accepted as a durable request and followed through events rather than holding an HTTP request open.
+
+After losing an established connection, automatic attempts wait 1, 2, 4, 8, 16, then 30 seconds between failed attempts, continuing at 30 seconds while the CLI remains open. Automatic attempts keep the effective address. `/retry` rereads configuration and attempts immediately, replacing any scheduled attempt. Only one attempt runs at a time. Success resets the delay. Initial startup failure waits for explicit retry.
+
+Connection status updates in place without repeated conversation messages. Reconnection refreshes saved state and preserves valid project/activity viewing context. A changed service address clears the old service's view and input before loading the new overview. Commands and answers are never automatically replayed.
+
+### CLI request and event contract
+
+The local API uses UTF-8 JSON under `/api/v1`. These are interface contracts for implementation, not claims about existing endpoints.
+
+| Operation | HTTP interface | Result |
+|---|---|---|
+| Initial or refreshed workspace | GET `/workspace` | Project summaries, attention, service identity, and a consistent event cursor. |
+| Project conversation | GET `/projects/{project_id}/conversation?before={cursor}&limit=50` | Chronological messages, activity references, and an older-page cursor; omission of before returns the latest page. |
+| Project activities | GET `/projects/{project_id}/activities` | Activity identities, names, states, and start/end times. |
+| Activity detail | GET `/activities/{activity_id}` | Current state, questions, findings, and available actions. |
+| Registration view | GET `/projects/{project_id}/registration` | Existing attempt or approved record; absence is explicit and starts nothing. |
+| Submit an operation | POST `/requests` | Durable receipt for registration intake, an answer, or an explicit registration action. |
+| Reconcile an uncertain submission | GET `/requests/{request_id}` | Saved status and result, or explicit not-found. |
+| Live updates | GET `/events` | Server-Sent Events with durable cursor IDs. |
+
+Read responses contain `data` and `event_cursor`. List responses include `next_cursor`, null when exhausted. Project summaries include identity, plain name, registration status, activity state, and attention count. Activity records include their project identity; question and finding records include both project and activity identities. Names and coded subjects remain human-readable even when internal IDs are opaque.
+
+A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Initial intake uses operation `registration.start` with repository and overview path; missing scope is collected through saved intake questions. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
+
+Receipts contain request identity, status, and any created project/activity identities. Status is accepted, completed, or rejected; accepted means durably recorded, not completed activity. Errors contain `code`, plain `message`, and affected fields. Invalid input returns 400, unavailable access 403, missing records 404, stale context or conflicting request content 409, and unavailable service 503. No error is rendered as an empty result.
+
+Events carry `schema_version`, `event_id`, `occurred_at` in UTC, `project_id`, `activity_id`, `type`, and `data`. Types cover project/activity changes, conversation messages, questions, findings, request outcomes, and attention changes. Events are emitted only after SQL commit. Service-wide events have null project/activity context. The initial snapshot cursor and SSE replay prevent gaps between loading and subscribing; repeated event IDs are ignored. Reconnect uses `Last-Event-ID`; an unavailable cursor requires a fresh snapshot. Heartbeat comments arrive every 15 seconds; 45 seconds without stream traffic triggers disconnection. Heartbeats create no SQL or conversation records.
+
 ### Record ownership
 
 | Record | Authoritative location and use |
@@ -141,7 +176,7 @@ The CLI uses a continuous terminal workspace with:
 
 Activity sections distinguish processes such as registration, milestone planning, and execution. Routine progress remains compact. Detailed findings and reports expand within the conversation.
 
-Opening details preserves the selected project and question linked to the input. Closing details restores the prior reading position. Viewing a finding does not acknowledge, resolve, or approve it.
+Opening details within the same activity preserves the selected project and question linked to the input. Switching activities follows the activity-selection rules below. Closing details restores the prior reading position. Viewing a finding does not acknowledge, resolve, or approve it.
 
 A newly opened project shows recent messages with “Load earlier messages” above them. Current activity and pending questions remain accessible separately from history. Opening the conversation does not change project work or answer questions.
 
@@ -179,9 +214,29 @@ Project targeting follows these rules:
 
 Switching projects clears unsent text. It is neither saved nor transferred. Draft retention and a warning before project switching are outside the initial behavior. The exit warning is defined with `/exit`.
 
+### Project activities and registration labels
+
+A project activity is a particular registration attempt or other unit of ongoing project activity, with its own questions, findings, progress, and result. It is distinct from an operating-system process. One project conversation retains these activity associations.
+
+Opening a project shows its single current activity, including an activity waiting for an answer. If several activities are underway, the CLI shows them for explicit selection rather than guessing. If none is underway, the project is labeled Idle and opens its most recently ended activity. Earlier activities remain available; the selected activity name and state stay visible. Navigation never starts, stops, or changes project work.
+
+Switching activities clears unsent text without saving, transfer, or warning, and puts input into commands-only mode. Explicitly opening an eligible question links input to that exact question. Opening attention selects its project and activity before linking the question. Opening a finding changes no finding state. Activity-specific commands use the selected activity; missing activity context requests selection. Historical activity actions remain subject to current eligibility.
+
+Registration creates durable project and activity identities during accepted intake, before assessment or approval. Questions use those identities even before the project is registered. Repository identity prevents duplicate project entries.
+
+| Registration condition | Project label | Activity display |
+|---|---|---|
+| Initial registration underway | Registering | Current step and progress. |
+| Initial registration awaiting an answer | Registering | Waiting for your answer; question appears in attention. |
+| Initial attempt ended without approval | Not registered | Reason and saved findings; registration can be started again. A recoverable pause still belongs to the current attempt. |
+| Initial registration confirmed | Registered | Idle, with completed registration visible; no development starts. |
+| Re-registration underway | Registered | Updating registration, including any waiting reason; approved version stays active until replacement confirmation. |
+
+An empty service is a supported startup condition. Registration supplies the first real project, activity, and question records; no separate temporary project/question generator is part of the product. A project list with unapproved attempts still displays those entries rather than replacing them with an empty screen.
+
 ### Attention
 
-The attention view lists outstanding questions and decisions across projects, identifying the project, requesting agent or process, and response needed. Selecting an entry opens the corresponding project and question with the input linked to it.
+The attention view lists outstanding questions and decisions across projects, identifying the project, requesting agent or process, and response needed. Selecting an entry opens the corresponding project, activity, and question with the input linked to it.
 
 A notice identifies the other project and the response needed. It does not change focus or interrupt input. Selecting the notice uses the same attention-navigation behavior, including the project-switch rule.
 
@@ -198,8 +253,8 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 | `/attention` | Open questions and decisions across projects. |
 | `/register <repository>` | Start registration intake for an explicit repository without assuming the selected project. The same entry handles eligible re-registration. |
 | `/registration` | Open the selected project's existing registration process or record, including a candidate where available. It does not start registration. |
-| `/findings` | Open blockers, non-blocking observations, and review findings for the selected project's current process. A selected finding exposes explanation and evidence; no review or state change is initiated. |
-| `/retry` | Retry the service connection. It does not start the service, repeat previous submissions, or retry project work. |
+| `/findings` | Open blockers, non-blocking observations, and review findings for the selected project's selected activity. A selected finding exposes explanation and evidence; no review or state change is initiated. |
+| `/retry` | Reread connection configuration and retry the service connection immediately. It does not start the service, repeat previous submissions, or retry project work. |
 | `/exit` | Close the CLI session. Saved conversations and pending questions remain available. Unsent text triggers a warning before exit. |
 
 The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions.
@@ -229,13 +284,19 @@ Clarification explains what information is missing instead of simply repeating a
 
 Failed-answer retention applies only to the current input; it does not create saved drafts across project switches.
 
+### Answer identity and uncertain delivery
+
+Each explicit submission receives a client-generated request identity. Retrying unchanged text and choice for the same question reuses that identity. Edited content receives a new identity only after the previous submission is reconciled. If the earlier answer was received, show its receipt without replacing it. If its outcome remains unknown, retain edited text as unsent. If the earlier request is absent or rejected and the question remains eligible, an explicit new submission can proceed.
+
+SQL enforces unique request identities and stores their payload and result. Same identity and same payload returns the recorded result; same identity with different payload is rejected. Request recording, question eligibility, and answer acceptance occur atomically so racing or delayed submissions cannot both answer the same question. Saved answers are routed through a durable pending-delivery record. Consumers use request identity to recognize repeated delivery and apply the answer once; a service restart cannot silently lose the accepted answer. This receipt contract does not claim that arbitrary external agent operations are exactly-once.
+
 ### Empty results
 
 Empty states appear only after successful retrieval. A lookup failure is displayed as a failure, and missing project or process context follows the targeting rules.
 
 | Result | Display |
 |---|---|
-| No registered projects | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters registration intake. |
+| No project entries | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters registration intake. |
 | No attention items across projects | “No questions or decisions need your attention.” |
 | No findings for the current process | “No findings recorded for this process.” |
 | No registration for the selected project | “No registration exists for this project,” with a Register action. |
@@ -252,7 +313,7 @@ Empty states appear only after successful retrieval. A lookup failure is display
 
 Focus remains visible. Multiline paste fills the input without submission. The input grows to a limited height and then scrolls internally so conversation and question context remain visible.
 
-A minimum terminal width and height protects readable project, question, and input context. Below that size, the CLI displays “Enlarge the terminal to continue.” Resizing does not stop service work. Exact dimensions and input-height limits are unspecified.
+A minimum terminal width and height protects readable project, question, and input context. Below that size, the CLI displays “Enlarge the terminal to continue.” Resizing does not stop service work. The minimum is 80 columns by 24 rows. The answer input grows from one to six visible lines, then scrolls internally. These initial dimensions can be adjusted after practical use without changing context or submission rules.
 
 ## Registration
 
@@ -418,7 +479,7 @@ The following journeys connect the behavior defined in the sections above. Each 
 | Launch | `maestro` | Contact the configured service; use [startup states](#startup-and-connection-states). | Connected overview, with no project selected; no automatic service start. | Unavailable state and retry option; no false empty list. |
 | Inspect commands | `/help` or command-specific help | Use the [command definitions](#commands). | Available syntax and context guidance, also offline; no state change. | Unimplemented commands are excluded; context limitations are explained. |
 | Select a project | Project control or `/projects`, followed by selection | Apply [project targeting](#projects-and-targeting). | Correct conversation and visible selected project; unsent text clears on a switch. | Missing, ambiguous, or conflicting targets require resolution. |
-| Read history and findings | Load earlier, New messages, `/findings`, or expand/close details | Use [conversation behavior](#layout-and-conversation). | Recorded content, stable context, and correct reading position; viewing changes no finding state. | Failed retrieval is distinct from [empty results](#empty-results). Missing current-process selection rules remain unresolved below. |
+| Read history and findings | Load earlier, New messages, `/findings`, or expand/close details | Use [conversation behavior](#layout-and-conversation). | Recorded content, stable context, and correct reading position; viewing changes no finding state. | Failed retrieval is distinct from [empty results](#empty-results). Activity selection follows [project activity rules](#project-activities-and-registration-labels). |
 | Open attention | `/attention` or another-project notice | Follow [attention routing](#attention). | Selected question opens in its project; a notice alone does not pull focus. | Disconnection blocks service retrieval; no items is shown only after successful lookup. |
 | Reconnect | `/retry` after connection loss | Refresh saved state and missed updates under [connection rules](#startup-and-connection-states). | Current information restored without replaying earlier submissions. | Stale-marked conversation remains until connection succeeds. |
 | Exit | `/exit` | Close the CLI session. | Service activity and saved records remain; a new launch selects no project. | Unsent text triggers the defined exit warning. |
@@ -490,13 +551,11 @@ The following architectural mechanisms remain unresolved:
 
 | Area | Unspecified detail |
 |---|---|
-| Service interface | API endpoint names, connection configuration, and request/event schemas. |
-| Source of initial project activity | The supported way to supply real project, event, and question records before registration exists is not defined. |
-| Process context | Selection among historic or concurrent processes, and question context during pre-project registration intake, needs explicit rules. |
+| Service interface | CLI contracts are defined above; operation-specific registration package payloads depend on the registration schema. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
-| Persistence | SQL schema, broader runtime recovery internals, duplicate-request recognition, and SQL-to-GitHub package update consistency. |
+| Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
 | Agent integration | Detailed Project Architect and Fidelity Reviewer contracts, structured agent response formats, and Model Execution Adapters. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
 | Configuration | Review configuration location and format; numeric technical retry default. |
-| Terminal behavior | Remaining argument syntax, input-height limit, minimum supported dimensions, and practical evaluation of message scrolling. |
+| Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
