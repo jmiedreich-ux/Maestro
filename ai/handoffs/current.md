@@ -18,7 +18,7 @@ Claude Code or Codex can run either role, with separate exact model/version sele
 
 The adapter contracts now specify Codex App Server over stdio, Claude Code print-mode streaming, explicit assessment artifacts, separate assignment/run identities, protected inputs, process supervision, internal retry accounting, technical configuration, and the durable Retry activity request. Official documentation supports the selected tool interfaces; installed compatibility and connected behavior remain unverified.
 
-Next: define registration package schema and locations, then SQL/GitHub publication consistency. Live adapter verification is deferred to implementation and is not required for the current architecture documentation work. Continue documenting and committing the design without attempting AI box checks at this stage.
+Package records and locations, exact candidate references, publication operations, confirmation receipts, and SQL activation/recovery are now defined in the architecture. Next: define project work-state enforcement for idle-only re-registration, followed by the remaining planning-review configuration and delivery-review authority. Live adapter verification is deferred to implementation and is not required for the current architecture documentation work. Continue documenting and committing the design without attempting AI box checks at this stage.
 
 Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
 
@@ -37,7 +37,7 @@ Resolve routine technical details as the software architect and document their r
 
 Registration architect and reviewer runs each default to 30 minutes, configured separately; other planning and execution assignments do not inherit that setting. The automatic technical recovery maximum is two attempts per assignment, separate from fidelity reviews. Failure classification determines whether another run is appropriate. Timeouts pause after confirmed stopping. Manual retry follows intervention, permits one run, and preserves the automatic budget and history. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.
 
-Registration package schema and locations, SQL/GitHub consistency and publication recovery, work-state enforcement, delivery-review authority, and planning-review configuration remain outstanding. Technical adapter configuration is defined in `/etc/maestro/agents.toml`. Routine technical settings can be resolved by the architect within the agreed scope.
+Work-state enforcement, delivery-review authority, and planning-review configuration remain design items. Executable package schemas, physical SQL tables, publication operations, and adapter verification belong to implementation of the defined contracts. Technical adapter configuration is defined in `/etc/maestro/agents.toml`. Routine technical settings can be resolved by the architect within the agreed scope.
 
 The current documents specify outcomes and behavior, not implementation completion. Existing code is assessed during relevant development preparation; registration only checks claimed dependencies as needed.
 
