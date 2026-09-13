@@ -2,11 +2,13 @@
 
 ## Purpose and boundaries
 
-The [project overview](maestro-project-overview.md) defines project purpose, delivery scope, and current-state evidence. This architecture defines the service, agent, storage, and terminal boundaries.
+The [project overview](maestro-project-overview.md) explains the project's purpose, delivery scope, and evidence of what exists. This architecture explains how the service, agents, storage, and terminal interface work together.
 
-This document describes system structure and behavior. It is a design specification, not a statement of implemented capability. Sections marked **provisional** describe unsettled architecture.
+This document specifies how the system should work; it does not claim that the software is implemented. Sections marked **provisional** describe decisions that are not settled.
 
 The initial interface is the Maestro CLI. The command center within the Reporting and Command Interface is outside the initial scope. Command-center support uses the same service operations, registration process, and record sources. Mobile presentation is undecided; neither a mobile terminal nor a separate interface is specified.
+
+Read by subject: [runtime and agents](#runtime-and-prerequisites), [connections and data](#connections-and-data), [CLI](#cli-workspace), [registration](#registration), [journeys](#journeys-and-interactions), and [unresolved details](#constraints-and-unresolved-details).
 
 ### Functional areas
 
@@ -24,9 +26,9 @@ Registration is the entry process for Planning. The registration behavior is des
 
 | Component | Responsibility |
 |---|---|
-| Python runtime service | Own process activity, validate requests, persist records, and coordinate assigned agent operations. |
+| Python runtime service | Manage activities, validate requests, save records, and coordinate assigned agent work. |
 | Maestro CLI | Display service information and collect explicit commands, linked answers, and registration actions. |
-| SQL database | Hold current state and durable conversation/action records. |
+| SQL database | Store current state and conversation/action records that survive restarts. |
 | Agent processes | Perform assigned assessment or review work; return results through the service. |
 | Project repository | Supply versioned project sources and hold the authoritative registration package. |
 
@@ -42,7 +44,7 @@ The following module boundaries are **provisional**. They may remain modules wit
 | State storage | Record running, finished, and waiting activity to support recovery. |
 | Health supervision | Observe agent activity, deadlines, and failures; apply authorized recovery or stopping rules. |
 
-The runtime handles deterministic enforcement; assigned agents supply judgment. A successful command or an agent's message does not constitute approval or automatically change project state. State changes follow the relevant process rules.
+The runtime enforces rules that code can check; assigned agents supply judgment. A successful command or an agent message does not grant approval or automatically change project state. Each state change must follow the relevant process rules.
 
 ## Runtime and prerequisites
 
@@ -118,7 +120,7 @@ The service retains control of content validation, durable state, review and ret
 
 Registration initiation explicitly selects Claude Code or Codex and the exact model/version for the architect. The fidelity reviewer has a separate tool and model/version selection. The service checks that the selected model/version is supported by the selected tool before that role begins. An unavailable or unverifiable selection is reported before launch; no silent substitution is permitted. Records retain the requested model, tool-reported model, provider, installed tool version, and capability-check result. A full provider model identifier is required; moving aliases are not accepted as exact-version selections. Provider identifiers establish the observable model version, not an undisclosed internal snapshot.
 
-Before an assignment launches, a capability check under the same service credentials and effective configuration verifies model selection, authentication, and structured-output support without reading project sources. Its result is bound to the tool version, account/provider, model, and configuration hash. Changed credentials, configuration, or tool version invalidate it. Runtime-reported model metadata is checked again; missing or different identity stops acceptance and raises a specific integration failure. Model identity is not taken from agent-authored prose.
+Before launch, the service checks model selection, authentication, and structured-output support using the credentials and configuration assigned to the run. This check does not read project sources. Its result records the tool version, account/provider, model, and configuration hash. A change to credentials, configuration, or tool version invalidates the check. The service also checks the model identity reported by the running tool. Missing or different identity prevents result acceptance and produces a specific integration failure. Agent-written text is not evidence of model identity.
 
 Automatic model substitution is disabled in the effective tool configuration. A refusal remains a refusal; a different model is not used to bypass it. If the installed tool cannot enforce the selected identifier or supply the required evidence, that route is unavailable until corrected. The service does not silently weaken this requirement. [Claude model configuration](https://code.claude.com/docs/en/model-config) documents aliases and fallback; the selected settings must prevent those switches.
 
@@ -139,9 +141,9 @@ Each adapter targets an explicitly recorded, capability-checked tool release. Co
 
 Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<registration-attempt-id>/` beneath it. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
 
-The fidelity reviewer receives a separate workspace with read-only access to the exact source, architect assessment, and candidate under review, plus a separate writable output directory. It cannot amend the architect's files. Both roles receive immutable source inputs: a Linux mount namespace exposes source, assignment, and prior-artifact paths read-only; only the assigned output and scratch paths are writable. The agent runs unprivileged without permission to change mounts, escape its process group, or access another run's workspace. Folder names and prompt instructions alone do not enforce isolation.
+The fidelity reviewer has a separate workspace containing the exact source, architect assessment, and candidate under review. These files are read-only; the reviewer writes to its own output directory and cannot amend the architect's files. Both roles use a Linux mount namespace that makes source, assignment, and prior-artifact paths read-only. Only assigned output and scratch paths are writable. The agent runs without privileges to change mounts, escape its process group, or access another run's workspace. Folder names and instructions alone do not enforce these boundaries.
 
-The service stages the exact assessment and candidate into the reviewer's input area, checks their hashes, and records the mapping from original artifact identity to staged relative path. The reviewer returns those assigned references. Source and input mounts remain read-only even when output writing is permitted by the agent tool.
+The service places the exact assessment and candidate in the reviewer's input area and checks their hashes. It records each artifact's original identity and assigned relative path. The reviewer returns these assigned references. Permission to write output through the agent tool does not make the source or input mounts writable.
 
 Service-managed tool settings pre-authorize only assigned operations. An unexpected permission request is denied and reported as a missing-permission failure; it cannot hang waiting for a terminal answer. Required credentials are provisioned for the service account before use, with no secrets in assignment files or logs. Registration agents have no GitHub write credentials; package publication is a separate service-owned operation subject to wrapper checks. Repository instructions are assessment inputs and cannot expand the assigned role's permissions.
 
@@ -166,23 +168,23 @@ The architect resumes when answers needed for its next step are available. Quest
 
 #### Assignment and run identity
 
-An assignment identifies the logical assessment or review and owns its automatic retry budget. A run identifies one launch. Initial execution, automatic recovery, and manual retry have different `run_id` values under the same `assignment_id`. A clarification follow-up receives a new assignment linked to its predecessor because the saved inputs changed; it retains the registration activity and review budget.
+An assignment identifies one assessment or review and tracks its automatic retry budget. A run identifies one agent launch. The initial launch, automatic recovery, and manual retry each receive a different `run_id` under the same `assignment_id`. A clarification follow-up receives a new assignment linked to the previous one because its saved inputs have changed. It remains within the same registration activity and review budget.
 
-SQL reserves the run and advances the assignment's current-run pointer atomically before launch. The supervisor unit is created once for that reserved run; reconciliation checks whether it already exists before any repeated start request. Records include the run kind, assignment snapshot hash, source and decision versions, model selection, duration, configuration hash, launch time, supervisor identity, and tool session/thread/turn identifiers when available. A launch reservation prevents concurrent dispatchers from launching the same assignment.
+Before launch, one SQL transaction reserves the run and marks it as the assignment's current run. The supervisor unit is created once for that reservation. Before repeating a start request, the service checks whether the unit already exists. The record contains the run kind, assignment snapshot hash, source and decision versions, model selection, duration, configuration hash, launch time, supervisor identity, and available tool session/thread/turn identifiers. The reservation prevents simultaneous dispatchers from launching the same assignment.
 
 Responses must match both assignment and current run. A delayed result from an older run is retained as diagnostic evidence and cannot update the candidate or consume a review round. An identical replay of an accepted response returns its original receipt without repeating effects.
 
 #### Process supervision and interruption recovery
 
-Each run has a service-owned supervisor in a dedicated systemd unit named from its opaque run identity. The supervisor owns the tool pipes, drains stdout and stderr, and writes a sequenced local event spool outside agent-writable paths. The runtime saves normalized events in SQL before publishing them to the CLI. Replay is deduplicated by run and sequence; a spool entry alone cannot advance registration.
+Each run has a service-owned supervisor in a dedicated systemd unit named from the run's internal identifier. The supervisor controls the tool pipes, continuously reads stdout and stderr, and stores numbered events locally outside agent-writable paths. The runtime converts these events to Maestro's event format and saves them in SQL before sending them to the CLI. It ignores replayed events with the same run and sequence number. A locally stored event alone cannot advance registration.
 
-The supervisor remains separate from the main Maestro service process. After a service restart, Maestro reconciles the recorded unit invocation and replays unread events instead of launching a replacement. Unit identity and host boot identity are checked; a PID alone is insufficient. The supervisor enforces the original monotonic deadline, so runtime restart does not grant additional time.
+The supervisor runs separately from the main Maestro service. After a service restart, Maestro checks the recorded systemd unit invocation and replays unread events without launching a replacement. It checks both the unit identity and the host boot identity; a process ID alone is insufficient. The supervisor retains the original deadline, measured by an elapsed-time clock unaffected by wall-clock changes. Restarting Maestro does not grant more time.
 
-Stopping first requests native interruption when available. The supervisor then terminates the run's process group. The unit uses `KillMode=control-group`, `TimeoutStopSec=30s`, and `SendSIGKILL=yes` for forced termination after that grace. **Stopped** requires confirmation that the run's cgroup is empty, including child commands. An acknowledgment, closed pipe, tool turn status, or main-process exit alone is insufficient. [systemd's process control interface](https://wiki.freedesktop.org/www/Software/systemd/dbus/) provides unit-wide signaling and control-group identity. This mechanism must be verified against the AI box's installed systemd and permission configuration.
+Stopping first uses the tool's interruption request where available. The supervisor then terminates the run's process group. The systemd unit uses `KillMode=control-group`, `TimeoutStopSec=30s`, and `SendSIGKILL=yes` to force termination after a 30-second grace period. **Stopped** means the run's control group (cgroup) is confirmed empty, including child commands. An acknowledgment, closed pipe, tool turn status, or main-process exit alone does not prove this. [systemd's process control interface](https://wiki.freedesktop.org/www/Software/systemd/dbus/) provides unit-wide signaling and control-group identity. This mechanism requires verification against the AI box's installed systemd and permissions.
 
 If the supervisor is gone but descendants remain, terminate and confirm them before recovery. If identity or termination cannot be established, report unknown status and block replacement. Confirmed host reboot establishes that the old local processes ended, but does not establish publication success. Reconcile any external operation separately.
 
-After a terminal result, the adapter closes the tool transport and requests normal exit of the per-run tool server. A normal final response is staged until the supervisor confirms no child work remains and the service validates the response and files. The service copies accepted artifacts into a service-owned immutable artifact store before exposing them to review. If a child outlives the tool's completed turn, stop it and treat completion as unverified. Fresh recovery uses saved inputs and verified artifacts; tool conversation resume is not used as proof of a live process or completed work.
+After a final result, the adapter closes the tool connection and requests normal exit of that run's tool server. The response remains pending until the supervisor confirms that no child work remains and the service validates the response and files. Before review, the service copies accepted artifacts into a service-owned store where they cannot be changed. A child process that remains after the tool's completed turn must be stopped; completion remains unverified. Recovery uses saved inputs and verified artifacts. Resuming a tool conversation does not prove that a process is still running or that work completed.
 
 #### Progress reporting
 
@@ -241,7 +243,7 @@ The CLI reads TOML from `$XDG_CONFIG_HOME/maestro/cli.toml`, or `~/.config/maest
 
 The default address is `http://localhost:8787`; the service installation uses the same default port. Missing, unreadable, malformed, or invalid configuration uses that fallback, with a plain explanation and the effective address visible. A valid but unreachable configured address remains selected; connection failure does not trigger fallback.
 
-Connection attempts time out after 5 seconds; ordinary requests time out after 15 seconds. Long-running activity is accepted as a durable request and followed through events rather than holding an HTTP request open.
+Connection attempts time out after 5 seconds; ordinary requests time out after 15 seconds. For long-running activity, the service saves the request and returns a receipt. Subsequent events report progress without keeping the HTTP request open.
 
 After losing an established connection, automatic attempts wait 1, 2, 4, 8, 16, then 30 seconds between failed attempts, continuing at 30 seconds while the CLI remains open. Automatic attempts keep the effective address. `/retry` rereads configuration and attempts immediately, replacing any scheduled attempt. Only one attempt runs at a time. Success resets the delay. Initial startup failure waits for explicit retry.
 
@@ -262,13 +264,15 @@ The local API uses UTF-8 JSON under `/api/v1`. These are interface contracts for
 | Reconcile an uncertain submission | GET `/requests/{request_id}` | Saved status and result, or explicit not-found. |
 | Live updates | GET `/events` | Server-Sent Events with durable cursor IDs. |
 
-Read responses contain `data` and `event_cursor`. List responses include `next_cursor`, null when exhausted. Project summaries include identity, plain name, registration status, activity state, and attention count. Activity records include their project identity; question and finding records include both project and activity identities. Names and coded subjects remain human-readable even when internal IDs are opaque.
+Read responses contain `data` and `event_cursor`, which identifies the corresponding position in the event stream. List responses also contain `next_cursor` for the next page, or null when no pages remain. Project summaries contain identity, plain name, registration status, activity state, and attention count. Activity records identify their project; question and finding records identify both their project and activity. Names and coded subjects remain plainly worded even when internal IDs have no readable meaning.
 
 A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, `registration.cancel`, and `registration.retry`. The retry payload and eligibility rules are defined under [activity retry request](#activity-retry-request). Initial intake supplies repository and overview path; saved intake questions collect missing scope and the explicit architect tool and exact model/version selection required by [tool and model selection](#tool-and-model-selection). Selection must be recorded before architect launch. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
 
 Receipts contain request identity, status, and any created project/activity identities. Status is accepted, completed, or rejected; accepted means durably recorded, not completed activity. Errors contain `code`, plain `message`, and affected fields. Invalid input returns 400, unavailable access 403, missing records 404, stale context or conflicting request content 409, and unavailable service 503. No error is rendered as an empty result.
 
-Events carry `schema_version`, `event_id`, `occurred_at` in UTC, `project_id`, `activity_id`, `type`, and `data`. Types cover project/activity changes, conversation messages, questions, findings, request outcomes, and attention changes. Events are emitted only after SQL commit. Service-wide events have null project/activity context. The initial snapshot cursor and SSE replay prevent gaps between loading and subscribing; repeated event IDs are ignored. Reconnect uses `Last-Event-ID`; an unavailable cursor requires a fresh snapshot. Heartbeat comments arrive every 15 seconds; 45 seconds without stream traffic triggers disconnection. Heartbeats create no SQL or conversation records.
+Events carry `schema_version`, `event_id`, `occurred_at` in UTC, `project_id`, `activity_id`, `type`, and `data`. Types cover project/activity changes, conversation messages, questions, findings, request outcomes, and attention changes. The service sends events only after the SQL transaction commits. Service-wide events have null project/activity context.
+
+The initial data snapshot includes an event cursor. Replaying Server-Sent Events from that cursor supplies updates made between loading the snapshot and opening the stream. Repeated event IDs are ignored. Reconnection uses `Last-Event-ID`; if that cursor is unavailable, the CLI loads a fresh snapshot. Heartbeat comments arrive every 15 seconds. A 45-second gap with no stream traffic triggers disconnection. Heartbeats create no SQL or conversation records.
 
 ### Record ownership
 
@@ -361,7 +365,9 @@ A project activity is a particular registration attempt or other unit of ongoing
 
 Opening a project shows its single current activity, including an activity waiting for an answer. If several activities are underway, the CLI shows them for explicit selection rather than guessing. If none is underway, the project is labeled Idle and opens its most recently ended activity. Earlier activities remain available; the selected activity name and state stay visible. Navigation never starts, stops, or changes project work.
 
-Switching activities clears unsent text without saving, transfer, or warning, and puts input into commands-only mode. Explicitly opening an eligible question links input to that exact question. Opening attention selects its project and activity before linking the question. Opening a finding changes no finding state. Activity-specific commands use the selected activity; missing activity context requests selection. `/registration` opens an ongoing registration attempt, or the latest registration record when none is underway, and applies the same activity-switching input rules. Historical activity actions remain subject to current eligibility.
+Switching activities clears unsent text without saving, transferring it, or showing a warning. Input then accepts commands only. Opening an eligible question links the input to that exact question. Opening an attention item first selects its project and activity, then links the question. Opening a finding does not change its state.
+
+Activity-specific commands use the selected activity. If none is selected, the CLI requests selection. `/registration` opens the ongoing registration attempt, or the latest registration record if no attempt is underway. It follows the same activity-switching input rules. Actions on historical activities must still meet the current eligibility rules.
 
 Registration creates durable project and activity identities during accepted intake, before assessment or approval. Questions use those identities even before the project is registered. Repository identity prevents duplicate project entries.
 
@@ -427,9 +433,11 @@ Failed-answer retention applies only to the current input; it does not create sa
 
 ### Answer identity and uncertain delivery
 
-Each explicit submission receives a client-generated request identity. Retrying unchanged text and choice for the same question reuses that identity. Edited content receives a new identity only after the previous submission is reconciled. If the earlier answer was received, show its receipt without replacing it. If its outcome remains unknown, retain edited text as unsent. If the earlier request is absent or rejected and the question remains eligible, an explicit new submission can proceed.
+The CLI creates a request identity for each explicit submission. Retrying the same text and choice for the same question reuses that identity. Before submitting edited content under a new identity, the CLI checks the previous request's recorded outcome. If the answer was received, it shows the receipt without replacing the answer. If the outcome is unknown, edited text remains unsent. A new explicit submission is permitted only if the earlier request is absent or rejected and the question still accepts an answer.
 
-SQL enforces unique request identities and stores their payload and result. Same identity and same payload returns the recorded result; same identity with different payload is rejected. Request recording, question eligibility, and answer acceptance occur atomically so racing or delayed submissions cannot both answer the same question. Saved answers are routed through a durable pending-delivery record. Consumers use request identity to recognize repeated delivery and apply the answer once; a service restart cannot silently lose the accepted answer. This receipt contract does not claim that arbitrary external agent operations are exactly-once.
+SQL enforces unique request identities and stores each request's submitted content and result. Repeating the same identity and content returns the saved result; reusing the identity with different content is rejected. One SQL transaction checks question eligibility, records the request, and accepts the answer. Simultaneous or delayed submissions therefore cannot both answer the same question.
+
+An accepted answer also has a saved pending-delivery record. The receiving component uses the request identity to recognize repeat delivery and apply the answer once. A service restart cannot silently lose the accepted answer. This guarantee covers answer receipt and delivery; it does not guarantee that every external agent operation happens exactly once.
 
 ### Empty results
 
@@ -480,7 +488,7 @@ The [Maestro Planning Guide](planning-guide/README.md) specifies three Markdown 
 | Completion requirements | Project-level acceptance criteria and definitions of done. |
 | Source locations | Authoritative documents and their guide-compatible formats. |
 
-Inputs require sufficient clarity to organize work without inventing requirements, not a fully specified implementation or a complete code audit.
+Inputs must be clear enough to organize work without inventing requirements. They need not specify every implementation detail or include a complete code audit.
 
 Project milestones describe meaningful outcomes, releases, or component boundaries. The subsequent breakdown process produces development milestones linked to those outcomes, without assuming a one-to-one relationship or redefining the project scope. Registration retains the supplied outcome structure.
 
@@ -490,7 +498,7 @@ Registration initiation includes [architect tool and model selection](#tool-and-
 
 Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
 
-Defined-portion selection interprets guide-compatible source, displays milestone identifiers with their plain subjects, and accepts selected milestones or a narrower written boundary. The interpreted inclusions, exclusions, and outside dependencies are presented for confirmation. A narrower portion requires a recorded description, not an inferred expansion.
+To register a portion, the service reads guide-compatible source and displays milestone identifiers with their plain subjects. Selection can cover milestones or a narrower written boundary. The service presents the included work, exclusions, and outside dependencies for confirmation. A narrower boundary must be recorded explicitly; the service cannot expand it by inference.
 
 The Maestro architect checks whether outside dependencies exist or need work. Missing essentials become findings for a decision. For example, a publishing outcome dependent on authentication must identify authentication as existing, included, or missing essential work. Partial registration covers only its recorded boundary.
 
@@ -529,7 +537,7 @@ Review does not introduce new requirements. Readiness requires no remaining bloc
 
 The assessment examines whether scope can deliver the stated outcome, rather than only whether the description is clear.
 
-A usage walkthrough identifies how the capability is entered, its prerequisites and connections, and how its result is observed. Each essential dependency must already exist or be included in the supplied work and dependency structure. An exclusion cannot remove an essential operation while preserving the same completion claim; the missing work or a narrower outcome requires an explicit scope decision.
+A usage walkthrough explains how to start using the capability, what it depends on, how its parts connect, and how to observe the result. Each essential dependency must already exist or be included in the supplied work and dependency structure. Excluding an essential operation requires an explicit scope decision: include the missing work or narrow the claimed outcome.
 
 Targeted source inspection checks claimed dependencies. For authentication, relevant evidence includes route protection, application or API connections, required configuration or credentials, unfinished components, and operational results.
 
@@ -541,7 +549,7 @@ Targeted source inspection checks claimed dependencies. For authentication, rele
 
 Source inspection is not operational proof. Unverified behavior remains identified, and the assessment is not a full code audit.
 
-Registration records the usage walkthrough, prerequisites, and completion evidence in the supplied outcome's acceptance criteria and definition of done. Each criterion identifies expected behavior and conditions, verification evidence, the pass boundary, and accepted exceptions. The definition of done also includes required reviews and other completion obligations.
+Registration records the usage walkthrough, prerequisites, and completion evidence in the supplied outcome's acceptance criteria and definition of done. Each criterion states the expected behavior, applicable conditions, required evidence, what counts as passing, and accepted exceptions. The definition of done also states required reviews and other completion obligations.
 
 A declared usable capability requires evidence of the same journey through the actual connected system. Completed components or sample-data screens alone do not establish it. Component outcomes remain valid when identified and assessed as components. Registration assesses this expected completion path without requiring unbuilt functionality to exist already.
 
@@ -584,7 +592,7 @@ The project's own GitHub repository holds registration records under `.maestro/r
 | `decisions/<record-key>.json` within the candidate | Relevant clarifications and answers, scope/source choices, amendments, accepted limitations, and their authority. |
 | `confirmations/<confirmation-id>.json` beneath the registration root | Immutable record of the Owner's explicit confirmation of an exact published candidate. |
 
-Record keys are filename-safe internal identities, not delivery order. Record contents always pair displayed coded identifiers with plain subjects. Registration versions are positive integers allocated once per attempt; cancelled attempts can leave gaps. Candidate identifiers are unique within the project and change whenever package bytes change. Confirmed candidates are never edited.
+Record keys identify files and must be safe for filenames; they do not determine delivery order. Records pair every displayed coded identifier with its plain subject. Each attempt receives one positive-integer registration version, so cancelled attempts can leave gaps. Candidate identifiers are unique within the project. Any change to package bytes requires a new candidate identifier. Confirmed candidates are never edited.
 
 #### Package record contract
 
@@ -603,15 +611,15 @@ References contain `record_id`, `subject`, `record_version`, and a package-relat
 
 The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`. Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
 
-The service calculates `content_hash` from the path-sorted inventory of summary, milestone, requirement, assessment, and decision files: one `path`, tab, file hash, and newline per entry. Review files are excluded so a review can identify the content it reviewed without a circular hash. The manifest's own SHA-256 identifies the complete candidate including its reviews. Hashes bind saved bytes; formatting changes therefore create a different candidate.
+To calculate `content_hash`, the service sorts summary, milestone, requirement, assessment, and decision files by path. Each inventory entry contains `path`, a tab, the file hash, and a newline. Review files are excluded so the reviewed content's hash does not depend on the review itself. The manifest's SHA-256 identifies the complete candidate, including its reviews. Hashes identify exact saved bytes, so formatting changes also create a different candidate.
 
 Python checks required fields and types, unique identities and paths, hashes, references, source/decision consistency, and review coverage before publication. Absolute paths, parent traversal, duplicate record identities, and references to nonexistent records are rejected. Agent-written hashes and readiness claims are checked independently.
 
-Changing reviewed content creates a new candidate and requires the affected review under the existing budget. Unchanged records preserve their record versions; changed records increment theirs. A focused recheck identifies the prior reviewed content and unchanged coverage as well as corrected findings. The service must establish coverage of the complete new content; an old approval alone cannot approve a new hash. A rejected candidate remains retrievable and is not overwritten.
+Changing reviewed content creates a new candidate. The affected content must be reviewed within the existing budget. Unchanged records keep their versions; changed records increment theirs. A focused recheck identifies the previously reviewed content, the review coverage that still applies, and the corrected findings. The service must verify review coverage for the entire new candidate; an old approval alone cannot approve a new hash. Rejected candidates remain retrievable and are never overwritten.
 
 ### Publication and SQL consistency
 
-SQL owns live activity, requests, budgets, and the active-version pointer. GitHub owns the published package and confirmation records. There is no assumed transaction spanning both systems. The runtime uses durable publication operations and verifies GitHub before reporting success.
+SQL stores live activity, requests, budgets, and the reference to the active version. GitHub stores published packages and confirmation records. A single transaction cannot be assumed to update both systems. The runtime therefore saves each publication operation and verifies its GitHub result before reporting success.
 
 #### Candidate publication
 
@@ -622,7 +630,7 @@ SQL owns live activity, requests, budgets, and the active-version pointer. GitHu
 
 A package reference contains repository, commit, manifest path, manifest hash, registration version, and candidate identity. All later review, confirmation, and downstream use bind to this reference rather than branch HEAD or a mutable latest path. Publication does not activate registration.
 
-Git updates use the expected branch head and never force-push over other changes. If the branch moves, preserve unrelated changes and retry publication only when the target paths remain absent or byte-identical. Conflicting existing bytes pause publication. Relevant source changes follow the existing explicit source-choice rules; publication never silently changes the assessed source.
+Git updates check the expected branch head and never force-push over other changes. If the branch moves, publication preserves unrelated changes. It can retry only if the target paths are absent or contain exactly the intended bytes; different content pauses publication. Relevant source changes follow the explicit source-choice rules. Publication cannot silently change the assessed source.
 
 #### Confirmation and activation
 
@@ -632,7 +640,7 @@ The service publishes an immutable confirmation receipt and updates the discover
 
 After verifying the receipt and index on GitHub, one SQL transaction updates the active pointer, completes the request and registration activity, and records the event for CLI delivery. Only then does the CLI report **Registered**. Initial registration stays pending until then; re-registration keeps its previous active version and Updating registration label.
 
-A pending confirmation serializes changes to that attempt. Competing cancellation, candidate replacement, or another confirmation is rejected as a conflict while its outcome is reconciled. It cannot race a second action into a different active version. Cancellation accepted before confirmation reservation prevents that reservation. A failed confirmation can return to an actionable paused state only after the service establishes that its GitHub write did not take effect.
+While confirmation is pending, the service rejects cancellation, candidate replacement, and another confirmation as conflicts. It first establishes the pending confirmation's outcome, preventing competing actions from activating different versions. Cancellation accepted before confirmation is reserved prevents that reservation. A failed confirmation can return to a paused state that accepts actions only after the service establishes that its GitHub write did not take effect.
 
 #### Publication recovery
 
@@ -646,7 +654,7 @@ The SQL publication record retains operation type, exact target bytes/hashes, ex
 | Content or index conflicts with the saved operation | Pause with the exact conflict; neither adopt different bytes nor overwrite them. |
 | GitHub cannot be queried | Keep the outcome unconfirmed and preserve the prior SQL active pointer. An unreachable service is not evidence that the write failed. |
 
-The same request cannot create multiple confirmations or activation events. Pending operations are reconciled before accepting another write for that project. Technical publication recovery uses the configured automatic recovery maximum with its own operation counter, separate from agent-launch retries and fidelity reviews. A failed push does not rerun the architect. Exhaustion pauses the publication operation with its saved evidence; investigation and retry target that operation, not a new registration.
+One request cannot create multiple confirmations or activation events. The service resolves pending operations before accepting another write for that project. Publication recovery uses the configured automatic recovery limit, with a separate counter for each operation. It does not consume agent-launch retries or fidelity reviews, and a failed push does not rerun the architect. Reaching the limit pauses publication and preserves its evidence. Investigation and retry continue that operation without starting a new registration.
 
 The discovery index is for navigation. Runtime work and downstream assignments use the SQL-confirmed exact package reference. A GitHub receipt awaiting SQL recovery cannot independently start work. Repository history alone cannot reconstruct unknown SQL conversation, budget, or pending-action state; database recovery must preserve those records.
 
@@ -664,7 +672,7 @@ The following prevent re-registration:
 
 Completed or cancelled activities do not block entry once their processes and external operations are resolved. Questions unrelated to unfinished work do not block entry. The CLI identifies each blocking activity by its plain subject and current state. Existing work must finish or be explicitly ended through its own process; re-registration never silently cancels it.
 
-The idle check and re-registration reservation occur in one SQL transaction under the project's start lock. Every operation that reserves or starts project work checks the same reservation in its transaction. Run-state uncertainty prevents an idle result. Once reserved, only assignments and operations belonging to that registration activity may proceed for the project; other project work cannot start. Unrelated projects continue normally.
+One SQL transaction holds the project's start lock, checks that the project is idle, and reserves it for re-registration. Every operation that reserves or starts project work checks this reservation in its own transaction. An uncertain run status prevents the project from being considered idle. While reserved, the project permits only assignments and operations belonging to that registration activity. Other work for that project cannot start; unrelated projects continue normally.
 
 The reservation remains until registration has ended and its runs and external operations are resolved. Ending registration releases it without automatically restarting stopped work. The previous approved registration remains active unless its replacement was successfully confirmed. This shared start-check contract defines the interface registration requires; it does not define Execution scheduling or stopping commands.
 
@@ -722,7 +730,7 @@ Local keys are unique within the response and only link its entries. They are no
 | Wrong context, unknown version, malformed fields, conflicting result, or unverifiable artifact | Preserve diagnostic evidence and apply technical recovery; do not infer success or turn it into a substantive planning rejection. |
 | Duplicate or late response | A matching replay of an already accepted assignment/run result returns its recorded receipt. Conflicting content, a superseded assignment, or a non-current run cannot overwrite the result or current candidate. |
 
-The service validates against the assignment's source, decision snapshot, and artifact versions. It records accepted responses and their resulting findings/questions atomically before acknowledgment or CLI delivery. Technical response correction follows the technical retry budget; substantive completed reviews consume the existing planning-review budget. The agent cannot set review counts, grant extra rounds, activate registration, or issue execution commands through this object.
+The service checks the response against the assignment's source, saved decisions, and artifact versions. It saves the accepted response and resulting findings and questions together in one SQL transaction before acknowledging or displaying them. Technical response corrections use the technical retry budget; completed substantive reviews use the planning-review budget. The response cannot set review counts, grant extra rounds, activate registration, or issue execution commands.
 
 ### Technical recovery
 
@@ -744,7 +752,7 @@ After the automatic limit is exhausted, the activity pauses with a plain failure
 
 Each explicit manual retry permits one additional run, preserves failure history and review counts, and does not reset the automatic retry budget. Failure pauses the activity again. This activity action is distinct from the connection-only `/retry` command and cannot bypass unresolved original-run status. The [activity retry request](#activity-retry-request) records the intervention and launch reservation.
 
-Internal tool/API retries stay within the same run and its unchanged duration. They do not consume Maestro's launch-recovery counter. When exposed, their count and reason are recorded separately. Only an automatic replacement launch consumes a Maestro recovery attempt; supervisor reconciliation and event replay do not. The supervisor's deadline bounds internal retries even when the tool does not expose their count.
+A tool or API may retry internally within the same run, but these retries do not extend its duration or consume Maestro's launch-recovery allowance. Their count and reasons are recorded separately when available. Only launching an automatic replacement consumes a Maestro recovery attempt; checking supervisor state and replaying events do not. The supervisor enforces the deadline even when the tool does not report its internal retry count.
 
 #### Activity retry request
 
@@ -856,7 +864,7 @@ The following journeys connect the behavior defined in the sections above. Each 
 | Interaction | Trigger | System behavior | Expected result | Essential failure behavior |
 |---|---|---|---|---|
 | Resume verified work | Technical interruption | Apply [technical recovery](#technical-recovery). | Reports, answers, versions, and review budget survive; unverified results stay incomplete. | Technical retry limit pauses activity and raises attention. |
-| Verify publication | Agent assignment requires a commit | Apply [delegation checks](#agent-delegation). | Required commit and permitted changes verified on GitHub. | A reported or local-only commit cannot establish publication. |
+| Verify publication | Candidate or confirmation publication | Apply [publication and SQL consistency](#publication-and-sql-consistency) and [delegation checks](#agent-delegation). | Required commit and permitted changes verified on GitHub. | A reported or local-only commit cannot establish publication. |
 | Reconcile an action | Connection returns after unknown action outcome | Query saved outcome under [activation rules](#comparison-activation-and-cancellation). | Recorded result displayed; explicit retry cannot duplicate effects. | No automatic replay or inferred success. |
 
 ## Constraints and unresolved details
