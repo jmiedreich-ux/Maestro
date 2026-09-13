@@ -456,6 +456,45 @@ Neither confirmation nor cancellation is preselected for submission. Deliberate 
 
 A lost action acknowledgment displays “Outcome not confirmed.” Reconnection checks the recorded outcome rather than automatically repeating the action. Explicit retries identify the original request and cannot duplicate effects.
 
+### Registration agent response contract
+
+Each assigned architect or fidelity-reviewer run returns one UTF-8 JSON object using contract version 1. Progress messages are separate from the final response. The service validates the object before recording findings, routing questions, or accepting a result. Free text is never interpreted as an approval or command.
+
+| Field | Type and meaning |
+|---|---|
+| `contract_version` | Integer; 1. |
+| `assignment_id`, `project_id`, `activity_id` | Nonempty strings copied from the service assignment. |
+| `role` | `project_architect` or `fidelity_reviewer`; must match the assigned role. |
+| `source_commit` | Exact source commit supplied in the assignment. |
+| `decision_version` | Nonempty string identifying the assigned snapshot of recorded Owner decisions. |
+| `result` | `completed`, `clarification_required`, or `technical_failure`. Completion describes the assignment, not registration activation. |
+| `summary` | Nonempty plain description of the result. |
+| `findings` | Array of finding objects; empty when none. |
+| `questions` | Array of clarification objects; empty when none. |
+| `candidate` | Immutable artifact reference for the architect's candidate or the reviewer's exact reviewed candidate; null when unavailable. |
+| `reviewed_assessment` | Immutable assessment reference for the reviewer; null for the architect or when review could not be performed. |
+| `review_outcome` | `APPROVE` or `REQUEST_CHANGES` for a completed reviewer assignment; null otherwise. Always null for the architect. |
+| `failure` | Object with nonempty `code` and plain `message` for technical failure; null otherwise. |
+
+All listed fields are required; no other top-level fields are accepted. An artifact reference contains `path` (relative to the assigned artifact root), `sha256` (64 hexadecimal characters), and `version` (nonempty string). Absolute paths and parent traversal are invalid. The wrapper verifies artifact existence, content hash, and permitted location. For repository publication it also performs the GitHub checks under [agent delegation](#agent-delegation); an artifact hash alone is not publication evidence. The adapter defines how artifacts are transported without changing these checks.
+
+Each finding contains `local_key`, `subject`, `severity` (`blocking` or `non_blocking`), `explanation`, `impact`, `requested_correction`, `source_refs`, and `affected_items`. Text fields are nonempty. Source references contain a repository-relative `path`, `commit`, and a heading or line locator. Missing-source findings instead include a nonempty `missing_information` explanation and may have an empty source-reference list. Affected-item references include the existing identifier, plain subject, and version. Empty affected-item lists are permitted for project-wide findings.
+
+Each question contains `local_key`, plain `subject`, `question`, `reason`, `recipient` (`project_architect` or `owner`), linked finding keys, and `options`. Options contain a local key, plain label, tradeoff, and recommendation reason or null. An empty options array requests written information; all questions allow written clarification. Questions follow existing authority boundaries and do not solicit approval for routine technical choices.
+
+Local keys are unique within the response and only link its entries. They are not milestone, finding, or review numbers. The service assigns persistent record identities under the naming conventions and resolves local links when saving. References to existing records preserve their identities and subjects.
+
+| Validation condition | Required result |
+|---|---|
+| Completed architect assignment | Candidate reference present; findings may still block registration. |
+| Completed reviewer assignment | Exact assigned assessment and candidate references present. APPROVE has no blocking findings or unanswered questions. REQUEST_CHANGES has at least one blocking finding. |
+| Clarification required | At least one specific question; available partial candidate may be referenced. No review approval. |
+| Technical failure | Failure details present; no review approval. Partial findings or artifacts are not accepted as completed work. |
+| Wrong context, unknown version, malformed fields, conflicting result, or unverifiable artifact | Preserve diagnostic evidence and apply technical recovery; do not infer success or turn it into a substantive planning rejection. |
+| Duplicate or late response | A matching replay of an already accepted assignment result returns its recorded receipt. Conflicting content or a superseded assignment cannot overwrite the result or current candidate. |
+
+The service validates against the assignment's source, decision snapshot, and artifact versions. It records accepted responses and their resulting findings/questions atomically before acknowledgment or CLI delivery. Technical response correction follows the technical retry budget; substantive completed reviews consume the existing planning-review budget. The agent cannot set review counts, grant extra rounds, activate registration, or issue execution commands through this object.
+
 ### Technical recovery
 
 Completed reports, reviews, decisions, and source/version references survive agent failure, failed GitHub publication, or service restart. Registration resumes from the last verified step; unverified results do not count as completed work.
@@ -554,7 +593,7 @@ The following architectural mechanisms remain unresolved:
 | Service interface | CLI contracts are defined above; operation-specific registration package payloads depend on the registration schema. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
-| Agent integration | Detailed Project Architect and Fidelity Reviewer contracts, structured agent response formats, and Model Execution Adapters. |
+| Agent integration | Model Execution Adapters and artifact transport. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
 | Configuration | Review configuration location and format; numeric technical retry default. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
