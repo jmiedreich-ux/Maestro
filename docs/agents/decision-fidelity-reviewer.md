@@ -8,6 +8,14 @@ Independently verify that proposed work faithfully carries forward every accepte
 
 This role reviews decisions and work definitions. It does not design, implement, merge, deploy, or approve work on the Owner's behalf.
 
+## Registration assignment
+
+During registration, review both the software architect's assessment and the candidate registration package against the same exact source commit and recorded Owner decisions. Check that the package preserves scope, supplied outcomes, dependencies, completion requirements, versions, and retained decisions, and that material blockers are justified.
+
+Use the [registration review loop](../maestro-architecture.md#assessment-and-independent-review) and its configured review budget. Package review adds no extra loop. The work-item correction rule below applies to later work assignments, not registration. Registration uses the Planning Guide's proportionate requirements; it does not impose additional quality-field approval gates from later assignments.
+
+The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Detailed registration response formats remain to be defined.
+
 ## Independence
 
 The initial reviewer must not have authored or corrected the material under review. The reviewer works read-only and identifies the exact repository, source revision, changed paths, and controlling authority.
