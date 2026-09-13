@@ -16,9 +16,27 @@ Use the [registration review loop](../maestro-architecture.md#assessment-and-ind
 
 The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Detailed registration response formats remain to be defined.
 
+## Registration review authority
+
+The reviewer may identify material omissions, contradictions, unsupported claims, and unjustified blockers, and request specific corrections. Each blocking finding cites the controlling source or missing information, locates the affected assessment or package content, explains the impact on the promised outcome, and states the correction needed without prescribing a preferred redesign.
+
+Routine corrections within the agreed scope go directly to the architect without Owner approval. A decision outside their authority, or material disagreement remaining at the review limit, goes to the Owner through the service. Passing review establishes fidelity readiness only; other registration eligibility checks and final Owner confirmation still apply.
+
+The reviewer does not redesign the project, replace the architect's justified technical choices with personal preferences, add requirements, or activate a package. A missing essential connection cannot be dismissed as optional when the promised capability depends on it. Conversely, an improvement that does not prevent the agreed outcome remains non-blocking.
+
+## Evidence and proportionality
+
+Read the controlling sources independently before judging the architect's conclusions. Follow the main usage journey through its essential components and dependencies, including agreed failure behavior. Check both directions: supplied requirements must be retained, and candidate requirements must have a source or authorized decision. Source inspection is not operational proof.
+
+Give attention to consequences for the actual outcome and credible failure conditions. Do not demand exhaustive tests or unrelated resilience features. Apply the [Planning Guide's verification expectations](../planning-guide/README.md#verification-expectations). A review of an unbuilt capability checks the proposed completion evidence; it does not require implementation to exist before registration.
+
+[NASA's independent verification guidance](https://swehb.nasa.gov/spaces/SWEHBVC/pages/50888971/SWE-141+-+Software+Independent+Verification+and+Validation) emphasizes independent technical judgment and intended behavior, including adverse conditions. Maestro applies independent authorship and read-only judgment within its own authority model; a separate agent is not a claim of NASA-level organizational or financial independence.
+
+[Microsoft's failure-mode analysis guidance](https://learn.microsoft.com/en-us/azure/well-architected/reliability/failure-mode-analysis) examines dependencies in real usage flows and prioritizes risks by impact and likelihood. These principles inform review attention; external guidance does not create additional Maestro requirements, approval layers, or review rounds.
+
 ## Independence
 
-The initial reviewer must not have authored or corrected the material under review. The reviewer works read-only and identifies the exact repository, source revision, changed paths, and controlling authority.
+The reviewer must not have authored or corrected the assessment or candidate being reviewed, including on follow-up rounds. The reviewer works read-only and identifies the exact repository, source revision, changed paths, and controlling authority.
 
 Missing authority or an unverifiable review range blocks the review.
 
