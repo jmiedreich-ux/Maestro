@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 9 |
+| Declaration version | 10 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -30,7 +30,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 |---|---|---|---|
 | 1 | REG-PM1 — Register and confirm a project through the CLI | 7 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 5 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 6 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 7 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -174,7 +174,8 @@ The connected re-registration journey and essential rejection/cancellation paths
 |---|---|---|---|
 | An agent crashes, a push fails, or the service restarts | Preserve completed reports, reviews, and Owner decisions. Resume from the last verified step; unverified results are not treated as completed. | Before-and-after records for each interruption, resumed step, and retained exact source and candidate versions. | None |
 | A delegated operation requires a GitHub commit | The wrapper checks the expected repository and branch, committed and pushed changes, remote commit existence, permitted changed files, and agreement with the reported commit. A local commit or agent assertion alone cannot pass. Read-only reviews do not require unnecessary commits. | Wrapper results and remote GitHub evidence for successful publication and a deliberately unsuccessful publication. | None |
-| Technical retries occur | A separate configurable technical limit defaults to two automatic recovery attempts per agent assignment after the initial run. Technical failures do not consume planning review rounds. At the limit, registration pauses, explains the failure, and provides an explicit CLI retry action. Unknown original-run status blocks replacement; only confirmed termination permits recovery. | Configuration value used, retry count, unchanged planning-review count, and visible Owner alert. Verify the default two-attempt limit and confirm that recovery runs do not reset assignment accounting. | None |
+| Technical retries occur | A separate configurable technical limit defaults to two automatic recovery attempts per agent assignment after the initial run. Technical failures do not consume planning review rounds. Retries follow the architecture's failure classification; intervention-dependent or unknown causes pause without exhausting attempts. At the limit, registration pauses and explains the failure. Manual Retry activity follows intervention, permits one additional run, and preserves the automatic budget and history. Unknown original-run status blocks replacement; only confirmed termination permits recovery. | Configuration value used, retry count, unchanged planning-review count, and visible Owner alert. Verify the default two-attempt limit and confirm that recovery runs do not reset assignment accounting. | None |
+| A registration agent reaches its configured duration | Apply the 30-minute per-run default separately to the registration architect and reviewer. Request termination, preserve output, and pause after confirmed stopping; timeout alone cannot trigger automatic retry. Other planning and execution roles do not inherit this default. | Configured limit, elapsed time, last progress, confirmed or uncertain stop, and retained output. Basic controlled timeout evidence may use a shorter configured duration. | None |
 | Recovery concerns a re-registration candidate | Preserve the previous active registration until explicit confirmation of the recovered candidate. Failure or cancellation does not restart project work. Duplicate requests still return the existing process. | Active and candidate version records, duplicate-request result, and work-state evidence after recovery. | None |
 
 ### Definition of done
@@ -188,7 +189,7 @@ Both registration journeys remain valid after recovery. Completion evidence and 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Agent and publication recovery contracts | Resuming external work could duplicate it or accept an unverified result despite reliable CLI receipts. | Specify checkpoint validation and external operation reconciliation; retain the defined CLI request identity rules. |
-| Technical retry configuration | Limit enforcement needs a concrete configuration and value. | Define configuration location/format, initial per-role duration limits, and explicit post-limit retry request/accounting; preserve the agreed two-attempt automatic default. |
+| Technical retry configuration | Limit enforcement needs a concrete configuration and value. | Define configuration location/format and the explicit activity-retry request interface; preserve the architecture's agreed duration defaults and retry accounting. |
 
 ## Partial-registration boundary
 
