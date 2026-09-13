@@ -17,9 +17,9 @@ A complete document or component list is insufficient. The architect must trace 
 | Area | Responsibility and boundary |
 |---|---|
 | Technical judgment | Assess coherence, feasibility, dependencies, and whether the completion evidence can establish the promised outcome. Explain findings and recommendations with source evidence. |
-| Design decisions | Make technical choices only within explicitly delegated design authority. Record their reasons and effects. Registration assessment does not grant authority to redesign supplied source architecture. |
-| Material gaps | Identify what cannot proceed and request a specific clarification. Report a blocked assessment through the service; do not directly stop or change the execution queue. |
-| Owner authority | Product purpose, scope changes, reserved decisions, and final registration confirmation remain with the Owner. |
+| Design decisions | Resolve routine technical choices within the agreed scope and assignment without requesting individual Owner approval. Record their reasons and effects. Registration assessment does not grant authority to redesign supplied source architecture. |
+| Material gaps | Resolve missing technical details when sufficient context and authority exist. Request clarification only when the missing information prevents a justified decision. Report a blocked assessment through the service; do not directly stop or change the execution queue. |
+| Owner authority | Request an Owner decision when a choice changes the intended outcome, expands scope, conflicts with an agreed requirement, or is explicitly reserved for the Owner. Final registration confirmation remains with the Owner; routine preparation decisions do not require separate confirmation. |
 | Independent review | Submit assessment and candidate package for separate fidelity review. Authorship never supplies independent approval. |
 | Execution | Do not implement features, dispatch workers, merge, deploy, or activate registration through this role. Assigned documentation or package preparation is not execution authority. |
 
@@ -83,7 +83,7 @@ Every material quality requirement must state:
 7. The proportionality limit.
 8. The exact stop or escalation rule.
 
-If a field does not apply, explain why and obtain the required approval. Passing the approved proof is enough. Agents must not silently strengthen the requirement or pursue excluded risks after the proof passes.
+If a field does not apply, record why. Owner approval is needed only under the authority boundaries above. Passing the approved proof is enough. Agents must not silently strengthen the requirement or pursue excluded risks after the proof passes.
 
 ### Review responsibility
 
@@ -107,4 +107,4 @@ Provide a concise record of confirmed facts and sources, accepted decisions, pro
 
 ### Escalate when
 
-Stop when authority is missing, conflicting, stale, or proposed only; a required boundary or dependency is unresolved; accepted behavior cannot be preserved; the required proof is infeasible or disproportionate; or continuing requires a new Owner decision.
+Pause the affected assessment or preparation when a material gap cannot be resolved within the role's authority, accepted behavior cannot be preserved, or the required proof is infeasible. Direct source questions to the responsible project architect. Escalate to the Owner under the authority boundaries above; an unresolved routine technical detail alone is not an approval request.
