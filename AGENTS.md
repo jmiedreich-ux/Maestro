@@ -20,8 +20,8 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Milestone declarations
 
-Follow the [Maestro Declaration Guide](docs/maestro-declaration-guide.md). Apply the conventions without repeating their explanations or migration history in declaration sheets. Keep references to other declarations limited to actual dependencies and delivery responsibility.
+Follow the [Maestro Planning Guide](docs/planning-guide/README.md). Apply the conventions without repeating their explanations or migration history in declaration sheets. Keep references to other declarations limited to actual dependencies and delivery responsibility.
 
 ## Documentation review results
 
-Report documentation fidelity and completeness reviews in the conversation. Do not create or retain standalone repository review reports unless explicitly requested. Apply needed corrections to the authoritative documents. This rule does not remove review records required by Maestro's runtime or registration design.
+Apply documentation review corrections directly to the authoritative documents. Do not present review results or create standalone review reports unless explicitly requested. Raise only unresolved issues that require an Owner decision. This rule does not remove review records required by Maestro's runtime or registration design.
