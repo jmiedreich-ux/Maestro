@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 8 |
+| Declaration version | 9 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -28,9 +28,9 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 6 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 7 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 5 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 5 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 6 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -82,6 +82,8 @@ Completion evidence for each milestone identifies the implementation revision, r
 | The Owner confirms through the CLI | Only explicit confirmation makes the exact unchanged, eligible candidate active. Changed or ineligible candidates require renewed inspection before confirmation. That version is available in the project's GitHub repository; confirmation does not launch development. The confirmed contents cannot silently change afterward. | Owner confirmation tied to the candidate, authoritative GitHub commit and package location, active-version record, and evidence that no development was started. Required wrapper checks verify repository, branch, allowed files, remote commit existence, and agreement with the reported commit before publication is counted as successful. | None |
 | Registration is cancelled or action acknowledgment is lost | Explicit cancellation ends the attempt with saved history retained. Confirmation/cancellation are deliberate view actions, not ordinary text submission. An uncertain result shows Outcome not confirmed; reconnect queries the saved outcome and explicit retry cannot duplicate effects. | Main cancellation path and a necessary lost-acknowledgment case using the actual service. | None |
 
+Agent integration acceptance also follows [adapter behavior](maestro-architecture.md#model-execution-adapters): explicit architect tool/model selection at initiation, separate reviewer selection and workspace, immutable assignment inputs, linked clarification follow-ups, SQL-recorded progress, and validated output before advancement. Unsupported or unverifiable model selection prevents launch. Cancellation displays Stopping until confirmed or Stop unconfirmed when uncertain; completion during pending cancellation cannot advance registration.
+
 ### Definition of done
 
 The real CLI registration journey also supplies final connected workspace/answer acceptance evidence for the CLI declaration and supplies evidence for every criterion, including source reading, genuine architect/reviewer activity, a retained response, exact package publication, and deliberate confirmation. Basic essential-failure evidence establishes source rejection, review limits, stale-candidate protection, and uncertain-action handling; criteria can share one journey.
@@ -92,7 +94,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Adapter implementation contract | Role responsibilities and structured responses are defined; the concrete agent-tool connection is not. | Select the tool and define launch, artifact transport, status, cancellation, and recovery under `docs/maestro-architecture.md#model-execution-adapters`. |
+| Adapter implementation contract | Role responsibilities and structured responses are defined; the concrete agent-tool connection is not. | Implement the agreed tool/model selection and verify concrete launch, artifact transport, status, cancellation, and recovery capabilities under `docs/maestro-architecture.md#model-execution-adapters`. |
 | Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
 | Planning-review configuration | Default two-round behavior needs a configuration that can be installed and read. | Define configuration location and format without changing the agreed default. |
 | Output and persistence contracts | Package validation/publication/activation cannot rely on assumed formats. | Define JSON schema, package location/index, and SQL/GitHub record consistency. |
@@ -164,7 +166,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
 | Registration journeys | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Required connected predecessors. |
-| Durable checkpoints and remote evidence | `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Agent checkpoints, external publication recovery, and the technical retry default remain to be defined before affected breakdown. |
+| Durable checkpoints and remote evidence | `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Agent checkpoints and external publication recovery remain to be defined before affected breakdown; the automatic agent recovery default is two attempts per assignment. |
 
 ### Acceptance criteria
 
@@ -172,7 +174,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 |---|---|---|---|
 | An agent crashes, a push fails, or the service restarts | Preserve completed reports, reviews, and Owner decisions. Resume from the last verified step; unverified results are not treated as completed. | Before-and-after records for each interruption, resumed step, and retained exact source and candidate versions. | None |
 | A delegated operation requires a GitHub commit | The wrapper checks the expected repository and branch, committed and pushed changes, remote commit existence, permitted changed files, and agreement with the reported commit. A local commit or agent assertion alone cannot pass. Read-only reviews do not require unnecessary commits. | Wrapper results and remote GitHub evidence for successful publication and a deliberately unsuccessful publication. | None |
-| Technical retries occur | A separate configurable technical limit applies. Technical failures do not consume planning review rounds. At the recorded technical limit, registration pauses and alerts the Owner instead of retrying indefinitely. | Configuration value used, retry count, unchanged planning-review count, and visible Owner alert. No numeric default is invented by this source. | None |
+| Technical retries occur | A separate configurable technical limit defaults to two automatic recovery attempts per agent assignment after the initial run. Technical failures do not consume planning review rounds. At the limit, registration pauses, explains the failure, and provides an explicit CLI retry action. Unknown original-run status blocks replacement; only confirmed termination permits recovery. | Configuration value used, retry count, unchanged planning-review count, and visible Owner alert. Verify the default two-attempt limit and confirm that recovery runs do not reset assignment accounting. | None |
 | Recovery concerns a re-registration candidate | Preserve the previous active registration until explicit confirmation of the recovered candidate. Failure or cancellation does not restart project work. Duplicate requests still return the existing process. | Active and candidate version records, duplicate-request result, and work-state evidence after recovery. | None |
 
 ### Definition of done
@@ -186,7 +188,7 @@ Both registration journeys remain valid after recovery. Completion evidence and 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Agent and publication recovery contracts | Resuming external work could duplicate it or accept an unverified result despite reliable CLI receipts. | Specify checkpoint validation and external operation reconciliation; retain the defined CLI request identity rules. |
-| Technical retry configuration | Limit enforcement needs a concrete configuration and value. | Select the technical retry default and configuration location; the planning-review default remains two rounds. |
+| Technical retry configuration | Limit enforcement needs a concrete configuration and value. | Define configuration location/format, initial per-role duration limits, and explicit post-limit retry request/accounting; preserve the agreed two-attempt automatic default. |
 
 ## Partial-registration boundary
 
