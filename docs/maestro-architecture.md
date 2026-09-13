@@ -1,450 +1,122 @@
 # Maestro Architecture
 
-## Document status
+## Purpose and scope
 
-This document records the architecture being developed with the Owner. Confirmed foundations and evolving proposals are distinguished below. Proposals are subject to change and do not authorize implementation.
+Maestro coordinates project development through three functional areas: Planning, Execution, and Monitoring. A persistent Python service manages system activity, communicates with agents, and supplies information to a terminal application.
 
-The [Maestro Information Review](maestro-information-review.md) remains separate reference material. Its rules and implementation details are not automatically decisions for this architecture.
+This document describes system structure and behavior. It is a design specification, not a statement of implemented capability. Sections marked **provisional** describe unsettled architecture.
 
-## Confirmed foundations
+The initial interface is the Maestro CLI. The command center within the Reporting and Command Interface is outside the initial scope. Command-center support uses the same service operations, registration process, and record sources. Mobile presentation is undecided; neither a mobile terminal nor a separate interface is specified.
 
-- Maestro covers three major functional areas during project development: Planning, Execution, and Monitoring.
-- The runtime is a Python backend running as a Linux service on the AI box, managed by `systemd`, communicating with agents through command-line tools or APIs.
-- A future Maestro Planning Guide will define conventions and formats for project architects' planning outputs.
-- A dedicated Maestro CLI is a foundational project milestone delivered before registration development.
-- The initial version uses the Maestro CLI for the complete operator workflow. The command center is future scope.
-- Maestro supports working on multiple projects concurrently from the foundation.
-- Planning begins with project registration, initiated through the Maestro CLI.
+### Functional areas
 
-The runtime's internal parts and the registration process below are evolving concepts. Planning's responsibilities and authority must be defined explicitly with the Owner, not inferred from earlier designs.
+The three functional areas are established. Their detailed responsibilities and automation authority remain **provisional**.
 
-## Functional areas: working descriptions
+| Area | Provisional responsibility |
+|---|---|
+| Planning | Interpret requirements and architecture, organize work and dependencies, define completion criteria, and handle authorized changes. |
+| Execution | Assign approved work to agents, manage implementation and checks, obtain reviews, and carry out authorized corrections and merges. |
+| Monitoring | Report activity, progress, failures, resource use, pending decisions, and action history. |
 
-Only the three area names are established here. These descriptions and examples are proposals, not settled responsibilities.
+Registration is the entry process for Planning. The registration behavior is described separately below.
 
-| Area | Working description | Proposed coverage |
+## Runtime and deployment
+
+The runtime is a Python backend running continuously as a Linux service on the AI box. It runs under `systemd`, which starts the service at boot and restarts it after a crash.
+
+The installed terminal application is launched with `maestro`. It connects to the existing service; launching the CLI does not start the service. Closing the CLI disconnects that session without stopping service activity.
+
+Agents communicate with the service through command-line tools or APIs. They do not write directly to the terminal.
+
+### System connections
+
+| Connection | Mechanism | Responsibility |
 |---|---|---|
-| Planning | Define what should be built and how work is organized. | Requirements, architecture, scope, work breakdown, dependencies, acceptance criteria, and approved plan changes. |
-| Execution | Carry out approved work. | Agent assignments, workspaces, implementation, checks, independent reviews, corrections, and authorized merges. |
-| Monitoring | Show what is happening and where attention is needed. | Progress, agent activity, blockers, failures, time and resource usage, notifications, and action and decision history. |
+| CLI to service | HTTP requests to a local API on `localhost` | Retrieve information and submit commands, answers, and explicit actions. |
+| Service to CLI | Server-Sent Events over a persistent connection | Deliver recorded messages, progress, findings, and input requests. |
+| Service to agents | Agent command-line tools or APIs | Supply assignments and receive results. |
+| Service to SQL database | Database access | Store project state and durable conversation records. |
+| Registration process to project repository | GitHub | Read a specific source commit and publish versioned registration packages. |
 
-## Unattended operation: evolving concept
+Requests and events associated with a project carry its identity. Commands can be submitted while updates arrive. A separate agent is not required to maintain the CLI connection.
 
-A proposed loop connects the three areas: Planning supplies approved work; Execution carries it out and obtains checks and reviews; Monitoring tracks progress and problems. The runtime coordinates the next action under explicitly agreed rules.
+### Internal responsibilities
 
-The following response chart is retained as a proposal. It does not grant automatic replanning, acceptance, or merge authority.
+The following module boundaries are **provisional**. They may remain modules within one Python service rather than separate services.
 
-| Situation | Proposed automated response |
+| Responsibility | Behavior |
 |---|---|
-| Work passes its checks and independent review | Complete it, merge if already authorized, and release dependent tasks. |
-| A worker crashes or stalls | Recover or reassign within the approved retry limit. |
-| Review finds an implementation defect | Send a bounded correction back to Execution. |
-| Work reveals a missing dependency or flawed breakdown | Return it to Planning; revise automatically only within explicitly delegated authority. |
-| A decision changes scope, architecture, or an owner-reserved requirement | Pause the affected work and ask the Owner. Unrelated approved work can continue. |
-| Time, cost, or retry limits are reached | Stop the affected work and report why. |
+| Command handling | Receive interface requests and apply the relevant operation rules. |
+| Work coordination | Determine which approved action can run next and whether required resources are available. |
+| Agent connections | Launch agents, supply instructions, and receive results. |
+| State storage | Record running, finished, and waiting activity to support recovery. |
+| Health supervision | Observe agent activity, deadlines, and failures; apply authorized recovery or stopping rules. |
 
-Proposed boundaries: unattended operation has explicit authority limits; Execution does not approve its own results; Monitoring reports and routes problems rather than silently changing requirements. Planning's ability to adapt remains to be defined with the Owner.
+The runtime handles deterministic enforcement; assigned agents supply judgment. A successful command or an agent's message does not constitute approval or automatically change project state. State changes follow the relevant process rules.
 
-The earlier shared-record and restart design was withdrawn as an assumed architecture. The CLI section now establishes SQL-first recording for conversation information and displayed state. Broader runtime storage and restart mechanics remain evolving concepts; this agreement does not reinstate the earlier design.
+### Automated coordination
 
-## Runtime
+The general unattended loop remains **provisional**: Planning supplies approved work, Execution performs it, and Monitoring reports progress and problems.
 
-Maestro's runtime is a backend program written in Python, running continuously as a Linux service on the AI box.
-
-It runs under `systemd`, which starts it when the machine boots and restarts it if it crashes. The program launches agent processes and communicates with them through their command-line tools or APIs.
-
-### Evolving runtime concepts
-
-These are working concepts, not fixed architectural requirements or implementation instructions. Their names, boundaries, and responsibilities may change as Maestro is designed.
-
-| Proposed part | Working responsibility |
+| Situation | Provisional response |
 |---|---|
-| Command handling | Receive requests to start, pause, resume, or stop work from the Maestro CLI; a future command center can use the same service interfaces. |
-| Work coordination | Determine which approved action can run next and start it when the required resources are available. |
-| Agent connections | Launch agents through their command-line tools or APIs, supply instructions, and receive results. |
-| State storage | Record what is running, finished, or waiting to support recovery after a service restart. |
-| Health supervision | Watch agent activity, deadlines, and failures, then apply agreed recovery or stopping rules. |
+| Checks and independent review pass | Complete the work, merge where already authorized, and release dependent work. |
+| A worker crashes or stalls | Recover or reassign within the authorized retry limit. |
+| Review identifies an implementation defect | Request a bounded correction. |
+| A dependency or work breakdown is flawed | Return the issue to Planning; automatic revision requires explicit delegated authority. |
+| Scope, architecture, or an Owner-reserved requirement changes | Pause affected work and request a decision. Unrelated approved work may continue. |
+| Time, cost, or retry limits are reached | Stop affected work and report the reason. |
 
-These parts could initially be modules within one Python service rather than separately deployed services.
+Execution does not approve its own results. Monitoring reports and routes problems without changing requirements. This provisional loop does not grant automatic replanning, acceptance, or merge authority.
 
-The proposed boundary is mechanics versus judgment: the runtime enforces an agreed review requirement and receives and validates the assigned reviewer's result. A successful command does not itself count as approval.
+### Agent delegation
 
-Planning, Execution, and Monitoring could use these shared mechanisms. This sketch does not define their responsibilities or grant them decision-making authority; those will be defined separately.
+A wrapper script launches an assigned agent and performs deterministic checks around its work. For assignments requiring GitHub commits, the wrapper verifies:
 
-## Maestro CLI foundation
+- The expected repository and branch.
+- Required changes committed and pushed.
+- The commit's existence on GitHub.
+- Changes limited to permitted files.
+- Agreement between the reported commit and the actual commit.
 
-The Maestro CLI is an installed operator application launched with `maestro`. Its foundation comes before registration development: service connection, project navigation, submitting actions, receiving responses, and reconnecting after exit. Registration then adds its specific workflow.
+Read-only assignments do not require commits solely to satisfy the wrapper. These checks establish observable facts; independent review assesses meaning and fidelity.
 
-The initial version is CLI-only. The command center within the Reporting and Command Interface is deferred. Status, questions, written responses, candidate review, explicit confirmation, and cancellation must all remain usable through the CLI.
+## Data and state
 
-### Conversation-first interaction
+### Record ownership
 
-Use one continuous terminal workspace, similar to Codex but with more interactive controls:
-
-- A persistent input area supports typed commands.
-- The main area shows agent messages, progress, findings, and results.
-- Interactive choices appear in the flow for project selection, expanding findings, answering questions, comparing versions, and confirming packages.
-- A persistent status area identifies the selected project, current process, and whether Maestro is working or waiting for the Owner.
-
-Typed commands and equivalent controls invoke the same operation. Free-text answers are clearly distinguished from commands and tied to a specific question and project. A clarification does not become an accidental command or registration confirmation.
-
-The CLI supports starting registration with a repository and scope, opening an existing process, inspecting findings and the exact candidate, submitting responses, explicitly confirming, and cancelling. The initial command names and boundaries are agreed below. Detailed argument syntax and remaining input behavior still need design.
-
-Exiting closes the CLI connection, not the running process. Cancellation is a separate action. Reopening `maestro` retrieves the current service state and reconnects to updates.
-
-### Agreed conversation direction
-
-The approved visual direction is a terminal interface, not a command-center dashboard: project switching at the top, one continuous conversation per project, prominent pending questions, and a fixed input area with a clearly displayed recipient.
-
-Every message identifies its source: the Owner, the speaking agent, or the Maestro service. Major activities such as registration, milestone planning, and execution have clear section markers. Routine progress stays compact; findings and reports can be expanded. The conversation is the interaction history; the persistent status area shows current state without requiring backward scrolling.
-
-In this version, ordinary text is limited to answering an existing selected question. The input shows the project or registration context, requesting agent or process, and question. Without a selected question, the input accepts commands only. Starting a separate conversation with an agent is outside this version; the earlier recipient-selection concept is deferred. The mockup's sample messages and command hints are illustrative, not additional workflow decisions.
-
-### Startup and service connection
-
-Launching `maestro` attempts to connect to the configured service. It does not start the service automatically.
-
-| Connection state | Display and behavior |
+| Record | Authoritative location and use |
 |---|---|
-| Connecting | Show that the connection is being established. |
-| Connected | The service responds; the CLI can request project information. |
-| Unavailable | Show a plain reason and a retry option. Do not present an empty project list as though no projects exist. |
+| Current project state | SQL; describes current activity and waiting conditions. |
+| Conversation history | SQL; stores messages, events, questions, answers, and recorded actions. |
+| Project source | An exact Git commit in the supplied repository. |
+| Registration package | Versioned JSON records in the registered project's GitHub repository. |
+| Live CLI updates | Notifications of recorded information, not an independent source of truth. |
 
-Startup opens the project overview, not a project's conversation. It provides service connection status, the project list, outstanding questions or decisions, and a persistent command input.
+SQL is not merely a queue of screen output. Read-only requests display existing records without creating another status record or conversation entry.
 
-The project list shows each project's plain name, current activity or reason for waiting, and whether it needs attention. Order projects needing attention first, working projects next, and idle projects last. Selecting a project opens its conversation without starting, stopping, or otherwise changing project work.
+Service events describe observable activity and state changes. Agent results contain explanations, findings, questions, and review results. Interface submissions contain commands, answers to existing questions, and explicit registration actions.
 
-### Questions needing attention
+### Save and delivery sequence
 
-The startup attention section shows each outstanding question or decision, its project, and the agent or process asking. Selecting an item opens the correct project conversation at that question and links the input to it.
+Durable information follows this sequence:
 
-Opening a question does not answer or resolve it. It remains outstanding until resolved.
+1. The service receives an event, agent result, answer, or action.
+2. It validates the information against the relevant project and process.
+3. It saves the record in SQL.
+4. It acknowledges the save and delivers the recorded update to connected interfaces.
 
-When a question has clear alternatives, present:
+Service-wide requests remain service-wide. Saved records remain available after CLI exit or connection loss. Startup retrieves saved state through the service; reconnection also retrieves missed updates.
 
-- A plainly worded question.
-- A recommended option with a short reason, when there is a justified recommendation.
-- Other viable options with their tradeoffs, not automatic labels of “less recommended.”
-- A free-text response so the Owner can provide a different answer or amend an option.
+Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; the relationship between SQL updates and GitHub package updates is not yet specified.
 
-When information is needed rather than a choice, request a written answer instead of forcing multiple choices.
+### Identity and versioning
 
-### Answer submission and clarification
+Registration establishes names for the planning records that Maestro processes. Source-code conventions are separate Execution rules.
 
-Selecting a choice fills the answer area; it does not submit it. The Owner can add written clarification, then explicitly submit with Send or Enter. Choices and written answers use the same submission step.
+Every coded record uses an item-type prefix, a sequential number, and a plain subject. The subject accompanies the identifier wherever displayed or referenced.
 
-| Stage | CLI behavior |
-|---|---|
-| Sending | Show “Sending” while waiting for the service to confirm that the answer was saved. |
-| Sending fails or delivery is unconfirmed | Show “Not sent” with a plain reason and retain the answer in the input for explicit retry. Reconnecting alone does not resubmit it. |
-| Saved acknowledgment received | Show the answer in the conversation and clear the input. Mark the question “Answer received,” not “Resolved,” until the process evaluates it. |
-| Clarification needed | Ask a specific follow-up linked to the original question. Keep the previous answer visible and identify the new question above the input. Explain what needs clarification rather than simply repeating the question or treating the answer as approval. |
-
-If the connection drops before acknowledgment, explain: “Delivery not confirmed. Retrying will not submit your answer twice.” The “Not sent” label does not establish that the service never received it.
-
-The service must recognize a repeated submission so a retry cannot record or act on the same answer twice, including when the original acknowledgment was lost. The technical mechanism remains to be designed.
-
-Retaining a failed answer in the current input does not introduce draft storage: switching projects still clears unsent text under this version's rule. Receipt, evaluation, resolution, and explicit registration confirmation remain distinct.
-
-### Explicit project targeting
-
-Before project selection, the startup input supports service-wide actions, including selecting a project or beginning registration, and clearly displays “No project selected.”
-
-- Every startup begins with no selected project, even when only one project exists.
-- Selecting a project sets the selected project. Its name remains visible above the input.
-- A project-specific command uses the explicitly named project or, when none is named, the selected project.
-- If neither is available, request project selection and do not execute.
-- If the explicitly named project differs from the selected project, require the Owner to resolve the mismatch before execution.
-- Unknown or ambiguous project names must be resolved before execution.
-- Switching projects must not silently transfer an unsent message or pending answer to the new project.
-- Service-wide commands do not inherit a project target.
-- Do not guess a command's or message's project from conversation text.
-
-A selected project is the CLI's focus; a working project is one where Maestro is performing work. Do not use “active project” to mean either. This terminology does not change the meaning of an active registration version.
-
-In this version, switching projects clears unsent text. It is not saved, restored, or transferred to another project. Draft retention and a project-switch safeguard are deferred. The separate warning about unsent text when exiting remains required.
-
-### Initial command list
-
-These commands are agreed for future delivery as their functionality is built. This list does not claim implementation or authorize development. Commands use a leading slash; ordinary replies remain separate from operational commands.
-
-| Command | Purpose and boundary |
-|---|---|
-| `/help` | List implemented commands with plain explanations. `/help <command>` shows syntax, required inputs, an example, and whether project selection is required. Explain contextual unavailability. Help works without a service connection and changes no project state. |
-| `/projects` | Open the startup-style project overview from any conversation. This is the typed equivalent of opening the project selector. Showing the list does not change selection; choosing an entry selects that project and opens its conversation. Neither action starts or stops work. Read through the service without adding a conversation entry; show connection failure rather than an empty list. |
-| `/attention` | Open outstanding questions and decisions across projects. Selecting one switches to its project, opens the question, and links the reply input. |
-| `/register <repository>` | Begin registration using an explicit repository, without assuming the selected project. Request the whole plan or a defined portion and open the registration conversation. Reuse this command for eligible re-registration. |
-| `/registration` | Open the selected project's existing registration process or registration record, including the candidate when available. Do not start registration. |
-| `/findings` | Open a compact list of blockers, non-blocking observations, and review findings for the selected project's current process. Selecting a finding opens its explanation and evidence. Unlike attention, findings need not require an Owner response. Do not start a review or change project state. |
-| `/retry` | Retry a failed service connection without exiting the CLI. Equivalent to the Retry connection control. Do not start or restart the service, repeat submitted commands, or retry project work. |
-| `/exit` | Disconnect this CLI session without stopping service or project work. Preserve saved conversations and pending questions. Warn before exiting if unsent text would be lost. |
-
-Project-specific commands follow the explicit targeting rules above. Listing or opening information is not approval or a request to start work.
-
-Do not add separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` commands to this starting list. Project selection belongs in the project overview, current status remains visible, and answers use question-linked input. Comparison, confirmation, and cancellation belong in the registration view as described below.
-
-Execution commands such as start, pause, resume, and stop remain deferred until their operations are defined. Extend the command list through further agreement, not speculative additions.
-
-### Registration entry and scope selection
-
-The repository supplied to `/register <repository>` is explicit. If registration is already underway for that project, show its existing process rather than starting a duplicate. If already registered, clearly identify the request as re-registration and enforce the no-project-work-in-progress restriction.
-
-The entry flow asks whether to register the whole supplied plan or selected milestones or a defined portion. Registration review does not start development.
-
-Defined-portion selection reads planning source formatted according to the Maestro Planning Guide:
-
-1. Identify the supplied project milestones and their boundaries.
-2. Present milestones with both their identifiers and plain subjects.
-3. Let the Owner select milestones or describe a narrower portion.
-4. Present the interpreted inclusions, exclusions, and outside dependencies for confirmation.
-
-Whole-milestone selections use explicit milestone references. A narrower portion requires a recorded scope description; an agent must not silently decide what the Owner's words include. Detailed source format and selection mechanics remain to be designed.
-
-### Actions inside the registration view
-
-| Action | Behavior |
-|---|---|
-| Compare registration versions | Compare the candidate with the currently approved registration version. Show additions, changes, removals, and reasons, tied to the exact versions reviewed. |
-| Confirm registration | Explicitly identify the project and exact candidate version being accepted. Confirmation activates that version but does not start development. Ordinary conversation replies never count as confirmation. |
-| Cancel registration | Identify the project and registration process, explain the effect, and request explicit confirmation. End that registration attempt while preserving saved history and any previously approved registration version. Do not automatically restart project work. |
-
-Cancellation is not CLI exit or a general stop-development command. These actions remain within the terminal registration view rather than standalone slash commands.
-
-### Reading conversations, findings, and reports
-
-Opening a project shows recent messages first, with “Load earlier messages” above them. Current activity and pending questions remain visible separately. Opening a conversation does not answer questions or change project work.
-
-Findings and reports expand within the project conversation. Opening details preserves the selected project and question linked to the input; closing details returns to the same conversation position. Viewing does not acknowledge, resolve, or approve a finding.
-
-At the bottom, the conversation follows new messages. When the Owner scrolls up, retain the reading position and show a “New messages” indicator. Selecting it returns to the latest messages. This is the initial behavior and may be revised after practical use.
-
-When another project needs attention, show its name and the response needed without switching projects or interrupting input. Selecting the notice opens the question using the same behavior as `/attention`; the agreed project-switch rule still clears unsent text.
-
-### Disconnection and empty views
-
-If an open CLI loses its service connection, keep the displayed conversation visible and mark it “Disconnected—information may be out of date.” Do not accept new service actions or answers while disconnected. Keep `/help`, `/retry`, and `/exit` available.
-
-Reconnection refreshes state and retrieves missed messages; it does not automatically resubmit previous commands or answers. A disconnected CLI does not establish that project work has stopped.
-
-Show empty results only after a successful lookup. Failed retrieval must show a failure, not an empty result.
-
-| Successful lookup result | Display |
-|---|---|
-| No projects registered | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters the same flow as `/register <repository>`. |
-| No outstanding questions or decisions across projects | “No questions or decisions need your attention.” This is the scope of `/attention`, not only the selected project. |
-| No findings for the current process | “No findings recorded for this process.” |
-| No registration for the selected project | “No registration exists for this project,” with a Register action. |
-
-These empty states do not resolve missing project or process context; project targeting rules still apply.
-
-### Keyboard, longer answers, and terminal size
-
-| Key | Behavior |
-|---|---|
-| Tab / Shift+Tab | Move between available controls. |
-| Arrow keys | Move through a focused list or choice set. |
-| Enter | Activate the focused control; in the answer input, submit the answer. Selecting a choice still fills the answer area without submitting. |
-| Escape | Close an open list or detail view without changing project work. |
-| Shift+Enter | Insert a new line in an answer. |
-
-Keep keyboard focus clearly visible. Pasting multiple lines only fills the input; it never submits automatically. The input grows to a limited height and then scrolls internally, keeping the conversation and question visible. The exact height remains to be chosen.
-
-Set a minimum supported terminal width and height so project identity, the question, and input remain readable. Below it, show “Enlarge the terminal to continue,” without stopping service work. Choose actual dimensions during practical use, not in this draft.
-
-A possible mobile view is undecided and is not an initial-version requirement. Neither a mobile-terminal approach nor a separate interface has been selected.
-
-### Question and action validity
-
-Before accepting an answer, the service checks that the original question is still awaiting an answer. If the question was replaced or its registration cancelled, explain what changed and do not apply the answer to another question. If a replacement exists, offer to open it without transferring the answer automatically.
-
-The confirmation screen shows the project, exact candidate version, and Confirm registration action. If that candidate changed or is no longer eligible, reject the confirmation and explain why. The Owner must open and review the current candidate before confirming again; do not silently substitute a newer version.
-
-The cancellation screen shows the project and registration attempt, explains what remains saved, and offers Cancel registration or Go back. Confirmation and cancellation are not preselected for submission. An ordinary Enter press in the conversation cannot trigger them; deliberately focus the relevant action first.
-
-If confirmation or cancellation loses its connection before the result arrives, show “Outcome not confirmed,” not success or failure. On reconnection, check the recorded outcome with the service. Do not automatically repeat the action. An explicit retry must be recognized as the same request so it cannot cause duplicate effects.
-
-### Multiple projects
-
-The CLI can focus on one project while others continue running. Each project keeps separate conversations, process state, pending decisions, and registration versions.
-
-Switching projects does not stop their work. Every project-specific command, response, and event clearly identifies its target project. The CLI surfaces when another project needs attention without mixing its decisions into the selected project's conversation.
-
-The single active registration restriction applies per project, not across Maestro. Re-registration's no-work-in-progress restriction also applies to that project; it does not stop unrelated projects.
-
-### Communication with the service
-
-The Python service provides a local API. The CLI connects to `localhost` on the AI box.
-
-| Direction | Mechanism | Purpose |
-|---|---|---|
-| CLI to service | HTTP requests | Start registration, submit an Owner response, confirm a candidate, cancel a process, or retrieve current status. |
-| Service to CLI | Server-Sent Events over a persistent connection | Stream agent messages, progress, findings, and requests for input. |
-
-Each project-specific request and event carries the project's identity. The CLI can send commands while receiving streamed updates.
-
-The service owns the running work. Closing the terminal does not stop service activity; reconnecting retrieves authoritative current state and resumes updates. A separate agent process is not needed merely to maintain this connection.
-
-API endpoint names, connection configuration, and event schemas remain implementation details to define.
-
-### Information sources and SQL-first delivery
-
-The CLI conversation receives information from three sources:
-
-| Source | Information |
-|---|---|
-| Maestro service | Factual events and state changes, including work starting, waiting, stopping, or failing. |
-| Agents | Messages, explanations, findings, questions, and review results returned through assigned work. |
-| Owner | Commands, answers and written direction linked to existing questions, and explicit registration-view confirmations. This does not permit unsolicited agent chat. |
-
-Agents do not write directly to the terminal. The service validates, records, and delivers information to the appropriate project conversation. An agent message does not itself change project state; the service determines and records changes under the agreed process rules.
-
-For durable actions, answers, messages, and state changes, record information in SQL before acknowledging it as saved or delivering the saved update:
-
-1. The service receives the agent result, service event, or Owner input requiring durable recording.
-2. It validates the information and records it against the appropriate project and conversation. Service-wide inputs remain service-wide.
-3. Only after saving succeeds does it acknowledge or publish the recorded information to the CLI.
-
-SQL stores current project state and durable conversation history; it is not merely a queue of screen output. Live delivery notifies the CLI of recorded changes.
-
-Read-only requests retrieve and display existing state without creating another status record or conversation entry. They do not require durable recording merely to be handled. This qualifies the save-first rule above; viewing state is different from changing it.
-
-SQL is the durable record for this conversation information and displayed state. Startup retrieves saved state through the service, then receives subsequent updates. Reconnection retrieves missed information; closing the CLI or losing its connection does not discard saved conversation history.
-
-For Owner input, distinguish “sending” from “saved.” Do not imply the service has received and saved an answer until it confirms that recording succeeded.
-
-This does not replace the authoritative versioned registration package in the project's GitHub repository. Registration decisions and responses still belong in that package as specified below. SQL schema, delivery mechanics, and the relationship between SQL records and package updates remain to be designed. Structured agent response formats have not yet been agreed.
-
-
-## Draft project milestone — Usable multi-project CLI foundation
-
-**Status:** Draft for Owner review, not a finalized milestone, implementation authorization, or completion claim. No identifier is assigned here; incorporate it into the project's sequential naming list when the milestone source is revised. This draft describes a project outcome, not development milestones or work packets.
-
-**Purpose:** The Owner can use the installed `maestro` terminal application to connect to the real Python service, navigate multiple projects, read durable activity, and answer service-delivered questions without cross-project confusion or accidental work changes.
-
-**Order:** Deliver this foundation before registration development. Registration later supplies its actual intake, source interpretation, agent reviews, package publication, confirmation, cancellation, and re-registration workflow through this CLI. The full eight-command list is an eventual capability list, not a claim that registration already works at foundation completion.
-
-**Included:** The terminal workspace and local service connection; HTTP requests and streamed service updates; SQL-backed conversation and state access; project selection and attention; generic question, finding, and response handling; keyboard controls; empty and disconnected states; bounded terminal layout; reconnect and exit behavior. The service endpoints and durable recording needed to exercise these capabilities are included prerequisites, not assumed to exist.
-
-**Excluded or deferred:** Command center; undecided mobile view; unsolicited agent conversations; draft retention across project switches; execution commands and a complete execution engine; actual registration review and package lifecycle, which belong to registration milestones. Agent-role definitions and Model Execution Adapters remain separate upcoming design work.
-
-**Usage walkthrough:** Follow documented Linux service and CLI setup, including a documented way to create demonstration project and question records through the real service. Start the service separately, then launch `maestro`. Observe the connected project overview, select one project, read service-recorded messages and findings, answer a linked question, and receive acknowledgment only after SQL saving. Open another project's attention item without mixing records or controlling work. Disconnect and reconnect to recover missed updates, then exit without stopping service work.
-
-### Draft acceptance and evidence
-
-Every row requires observed behavior from the connected CLI and service, with records or captures sufficient to verify its stated boundary. These are proposed milestone criteria derived from the agreed CLI design, for Owner review.
-
-| Capability | Required result and evidence |
-|---|---|
-| Install and connect | Document and exercise the Linux service and CLI setup, required configuration and access. Launch connects without starting the service. Show connecting, connected, and unavailable states, including retry. Record actual service/API connection evidence without secret values. |
-| Project separation | Demonstrate at least two separately identified projects. Startup selects none; overview and attention selection focus the correct conversation without starting or stopping work. Show target validation, visible project identity, and no transferred drafts or answers. |
-| Real durable information | Demonstrate service events and questions saved in SQL and delivered to the CLI, with source labels and consistent project references. Reads do not create replacement status records or conversation entries. Reopen and recover saved history and missed updates. Screens backed only by hardcoded sample data do not satisfy this criterion. |
-| Answer lifecycle | Demonstrate choice-to-input, optional written clarification, explicit sending, save acknowledgment, “Answer received,” linked follow-up, stale-question rejection, and explicit retry without duplicate effects after lost acknowledgment. Ordinary text is limited to selected questions. |
-| Reading and notifications | Demonstrate recent and earlier messages, inline findings, preserved reading and input context, the new-message indicator, and cross-project attention notices that do not pull focus automatically. |
-| Controls and empty states | Demonstrate keyboard focus and navigation, multiline input and safe paste, exit warning, no-project and empty-result messages after successful reads, and visibly distinct retrieval failures. |
-| Disconnection and size | Demonstrate retained but stale-marked display, unavailable service actions, local help/retry/exit, and reconnection without replay. Exercise the minimum terminal size chosen during implementation; resizing or CLI exit must not stop service work. |
-| Honest capability boundary | Expose only implemented commands in help. Demonstrate the foundation's implemented command paths; registration-specific commands and activation/cancellation remain unavailable until their real process exists. Record their remaining delivery responsibility rather than demonstrating fabricated approval. |
-
-### Draft definition of done
-
-All foundation acceptance rows have connected evidence, and the Owner has reviewed the usable journey and any explicitly accepted limitations. Record the implementation revision, setup instructions, configuration references, service/SQL evidence, and any remaining registration dependencies. No essential connection may be left to an undocumented manual step.
-
-Do not claim the foundation delivers registration. Registration milestones must demonstrate the full real CLI registration journey, including source selection, genuine agent reviews, version comparison, guarded confirmation/cancellation, stale-candidate rejection, and recovery of uncertain action outcomes. These are not optional because the foundation is delivered first.
-
-Controlled demonstration inputs may exercise generic questions and events, but they must traverse the actual service, SQL, and CLI. Label them as demonstrations; they are not evidence that the pending agent roles, adapters, registration, or execution workflows exist.
-
-### Remaining design and source alignment
-
-Exact API endpoints, SQL/event schemas, duplicate-request mechanism, input limits, terminal dimensions, and the SQL-to-GitHub-package update relationship remain explicit design work. The draft does not select a UI toolkit, model provider, credential mechanism, or mobile implementation.
-
-The [registration project milestone source](maestro-registration-project-milestones.md) predates the CLI-only decision and still needs its planned revision. Its both-interface requirements and placement of startup inside registration must not override this architecture. Finalizing that source follows Owner review of this foundation draft; retain existing item identities when revising it.
-
-## Independent CLI fidelity review
-
-**Result:** Passed for documentation fidelity. A separate read-only reviewer checked the visible CLI conversation, the prior architecture, and this proposed consolidation and foundation draft. This is not implementation verification, milestone completion, registration approval, or Owner acceptance of the new milestone.
-
-**Baseline:** Architecture content blob `d91b623629def6d8f20183f65e5c690131b03ed9`. Repository working rules and additional agent instructions were read. The review covered retained decisions, newly agreed interactions, deferred scope, and whether the foundation's promised outcome could be demonstrated honestly.
-
-| Conversation subject | Fidelity result |
-|---|---|
-| CLI foundation before registration; Python Linux service; multiple projects | Preserved. Initial scope remains CLI-only; command center excluded and mobile undecided. |
-| Attributed project conversation and fixed input | Preserved. Current status is separate; unsolicited agent chats are excluded. |
-| SQL-first durable records; HTTP and streamed updates | Preserved. Read-only requests do not create status/history duplicates. SQL does not replace the authoritative GitHub registration package. |
-| Startup and connection | Preserved. No project selected at startup; launch does not start the service. Connection failures are not empty lists. |
-| Project overview and targeting | Preserved. Attention-first ordering, selected versus working terminology, explicit targeting, and no guessing remain. |
-| Attention and question choices | Preserved. Cross-project scope, linked answers, justified recommendations, tradeoffs, and free-text alternatives remain. |
-| Eight starting commands | Preserved. Dropped shortcuts stay excluded; commands appear as implemented functionality becomes available. |
-| Registration entry and portion selection | Preserved. Explicit repository, guide-readable milestone subjects, confirmed boundaries, duplicate prevention, and idle-only re-registration remain later registration integration. |
-| Question-only ordinary text | Preserved. Written direction is linked to an existing question, not unrestricted agent conversation. |
-| Unsent text | Preserved. Project switching clears it; draft retention and switch safeguard are deferred; exit warning remains. |
-| Answer submission and clarification | Preserved. Choice fills input, explicit send, “Sending,” “Not sent,” “Answer received,” linked clarification, and duplicate-safe retry remain distinct from approval. |
-| Inline findings and reports | Added faithfully. Context and reading position are preserved; viewing does not approve or resolve. |
-| Scroll-follow and new messages | Added faithfully as initial behavior subject to practical feedback. |
-| Other-project notice | Added faithfully. Names project and needed response without forced switching or input interruption. |
-| Disconnection | Added faithfully. Visible stale data, blocked service submissions, local help/retry/exit, and reconnect without replay. |
-| Recent history and empty states | Added faithfully. Earlier history remains accessible; empty results require successful lookup, and attention's empty result covers all projects. |
-| Confirmation and cancellation | Added faithfully. Exact project/candidate or attempt, visible effects, no preselected submission, and deliberate focus. |
-| Keyboard, multiline input, and terminal size | Added faithfully. Paste never sends; dimensions remain open. Mobile implementation is not selected. |
-| Stale questions and candidates | Added faithfully. No answer rerouting or silent candidate substitution. The existing explicit choice to retain reviewed source is preserved. |
-| Uncertain action outcome | Added faithfully. “Outcome not confirmed,” recorded-outcome lookup, no automatic replay, and duplicate-safe explicit retry. |
-
-### Milestone review and limitations
-
-The draft requires an actual CLI/service/SQL connection and a documented way to supply demonstration records. Controlled inputs prove that foundation only; they cannot establish completed agent reviews, registration, package publication, or execution. Registration-specific commands and actions must be delivered with their real workflow rather than exposed as fabricated completed functionality.
-
-No material CLI agreement was found omitted or contradicted in the reviewed revision. The author clarified the Owner-input source as question-linked direction and made demonstration setup explicit. These are fidelity clarifications, not new workflow authority.
-
-The separate registration milestone source remains stale: its reviewed content blob is `595a78dd3e92ca9f923c43def0ea315db2b52a7e`, and PM1 — Register and confirm a project through either interface still includes both-interface requirements and CLI prerequisites. That source is explicitly flagged for the next milestone revision, not approved by this review.
-
-API/event/SQL formats, duplicate-request mechanics, the SQL-to-package relationship, and terminal dimensions remain open. The foundation milestone remains a draft for Owner review with no invented identifier. No source-code execution or operational capability was verified in this documentation review.
-
-## Planning: evolving registration concepts
-
-This section records agreed registration concepts and explicitly labeled proposals. The design can evolve through further agreement; it is not an instruction to implement the process.
-
-### Maestro Planning Guide
-
-A future Maestro Planning Guide will define the conventions and formats project architects use for their planning outputs so Maestro can understand and use them. The agreed input categories are below. The guide's detailed formats remain to be designed.
-
-### Registration entry points and purpose
-
-Planning begins with project registration through the Maestro CLI. A future command center will use the same service process. References to future command-center support do not make it a requirement for the initial version.
-
-Registration would identify the project, confirm repository access, locate planning material, check compatibility with the guide, and present the result for confirmation. It checks whether Maestro can understand and work with the supplied plan; it does not approve the architecture or start development. Re-registration permits milestone additions and amendments as described below, not a general rewrite of the project's plan.
-
-### Agreed registration inputs
-
-Registration needs enough clear, consistent information to organize the work without inventing requirements. It does not require every implementation detail to be decided.
-
-| Input | Required information and boundary |
-|---|---|
-| Project identity | Plain project name, repository location, and responsible project architect: a person, an agent, or both. Maestro checks that the repository is readable and belongs to the intended project. |
-| Purpose and scope | What the project should accomplish, what is included in the work being registered, and what is explicitly excluded. |
-| Architecture | Major components and their responsibilities, interactions, and decided technical choices and constraints. Distinguish settled decisions from details left open. Enough structure is needed to organize work without inventing architectural decisions, not a fully detailed design. |
-| Current state | Whether the project is new or already under development; what exists and is considered complete; what is unfinished, partially working, or known to be broken. Distinguish reported status from verified facts and flag conflicting status information. Registration does not require a full code audit. |
-| Planned work | Desired features or outcomes, relative priorities, and known dependencies or required ordering. Planning uses the shared milestone model below. |
-| Acceptance and completion | Explicit project-level acceptance criteria and definitions of done. Development-level criteria and completion requirements are created in the next process after registration. |
-| Document locations and format | Identify authoritative planning documents and format their contents according to the Maestro Planning Guide so Maestro can find and interpret them consistently. |
-
-### Shared planning and milestones
-
-Planning is shared between the project architect and the Maestro architect, similar to the collaborative process used to design Maestro itself.
-
-| Perspective | Milestone meaning and responsibility |
-|---|---|
-| Project architect | Defines meaningful project outcomes and delivery boundaries. A project milestone can represent a usable capability, release, or architectural foundation. |
-| Maestro architect | In the next process after registration, organizes the work into manageable development milestones that contribute to those project outcomes. |
-
-Registration retains the supplied project milestones without breaking them into development milestones or work packets. That breakdown belongs to the next process after registration.
-
-When the breakdown is performed, project milestones and development milestones are explicitly linked; they do not need a one-to-one relationship. One project milestone can contain several development milestones. Maestro must not quietly redefine a project outcome or release boundary when organizing development.
-
-### Planning identifiers, names, and versions
-
-Registration establishes a consistent naming scheme for planning items. This concerns planning identifiers and subjects, not source-code conventions, which remain part of Execution.
-
-Use a short item-type prefix, a sequential number, and a plain subject. Always display the subject alongside the identifier; never refer to a coded item by its identifier alone.
-
-| Item type | Example |
+| Record type | Format example |
 |---|---|
 | Project milestone | PM1 — First usable release · version 2 |
 | Development milestone | DM1 — Project registration · version 3 |
@@ -453,247 +125,298 @@ Use a short item-type prefix, a sequential number, and a plain subject. Always d
 | Review | RV1 — Registration findings fidelity review · round 1 |
 | Replan | RP1 — Revise registration delivery sequence |
 
-These are naming examples, not actual project records.
+These examples describe record formats, not Maestro delivery assignments.
 
-Numbers are assigned sequentially within each item type for each project. Agents must not invent numbers. No random numbering, reused identifiers, or unexplained numbering jumps are permitted. Retired identifiers are never reused.
+Numbers are sequential within each record type and project. Random assignment, reuse, and unexplained sequence gaps are prohibited; retired identifiers remain retired. One naming-convention list supports Owner-authorized additions of types and prefixes.
 
-Keep identity separate from version:
+An item's identifier remains stable when its title or content changes. Only changed items receive the next version; previous versions remain available. Reviews identify exact reviewed versions, with review rounds separate from document versions. Replans identify reasons and affected records.
 
-- An item keeps its identifier when its title or content changes.
-- Versions increase sequentially only when that item changes; preserve earlier versions.
-- Each work packet has its own identifier and an explicit link to its development milestone.
-- Reviews record the exact item versions reviewed. Review rounds are separate from document versions.
-- Replans record why the plan changed and which items were added or revised. Unchanged items keep their identifiers and versions.
+Relationships are explicit references rather than encoded hierarchies. Each work packet has its own identity and a link to its development milestone. Moving it does not require a new identifier.
 
-Store relationships explicitly rather than encoding the full hierarchy into names. Moving a work packet between milestones does not require a new identifier.
+## CLI workspace
 
-Maintain one naming-convention list that the Owner can extend with new item types and prefixes as the project develops. The initial list does not need to cover everything.
+### Layout and conversation
 
-### Acceptance criteria and definition of done
+The CLI uses a continuous terminal workspace with:
 
-The project architect defines what makes each project milestone successful. In the next process after registration, the Maestro architect develops detailed criteria for development milestones, traceable to project criteria without adding requirements.
+- A project selector and service connection status.
+- The selected project's activity and waiting state.
+- One conversation per project, with the source of each message identified.
+- Visible questions requiring a response.
+- A persistent input area showing its current context.
 
-Each acceptance criterion states:
+Activity sections distinguish processes such as registration, milestone planning, and execution. Routine progress remains compact. Detailed findings and reports expand within the conversation.
 
-- Expected result: what must happen and under which conditions.
-- Verification: how it will be checked and what evidence is required.
-- Pass boundary: the exact result or threshold that counts as success.
-- Exceptions: explicitly accepted limitations.
+Opening details preserves the selected project and question linked to the input. Closing details restores the prior reading position. Viewing a finding does not acknowledge, resolve, or approve it.
 
-Acceptance criteria state what must be true. The definition of done states everything required to declare the milestone complete, including required reviews and evidence. Passing acceptance criteria is not enough if other completion requirements remain unmet. Development milestones must support, not weaken, the project milestone's definition of done.
+A newly opened project shows recent messages with “Load earlier messages” above them. Current activity and pending questions remain accessible separately from history. Opening the conversation does not change project work or answer questions.
 
-During registration, only ambiguity affecting the work or its acceptance blocks registration; optional improvements do not. If the later milestone breakdown exposes ambiguity, Maestro returns it for clarification rather than silently choosing an interpretation.
+The initial scrolling behavior follows incoming messages only at the bottom. Scrolling upward holds the reading position and shows “New messages”; selecting that indicator returns to the latest content. This behavior remains subject to practical evaluation.
 
-### Working rules belong to Execution
+### Startup and connection states
 
-Change boundaries, decision authority, repository rules, and coding conventions belong in the Execution phase, not the required registration inputs.
+Startup opens the project overview with “No project selected” above the input, including when only one project exists.
 
-Project-specific overrides of execution rules are a future possibility only. They are not being designed or required for registration now.
-
-### Proposed registration process
-
-| Step | Proposed mechanism |
+| State | Interface behavior |
 |---|---|
-| Receive the request | The Owner supplies the repository location and selects the whole plan or a defined portion through the Maestro CLI. If registration is already active, show its status instead of starting another. |
-| Identify the project and confirm access | Python records the project name, repository, and responsible project architect, checks read access and that the repository belongs to the intended project, and reports missing permissions. |
-| Read a specific version | Python reads the repository at a recorded Git commit shared by both reviewers. Relevant source changes are flagged for an explicit Owner choice before confirmation. |
-| Locate planning inputs | The guide could require a small registration file listing project details and the locations of authoritative planning documents. Working rules belong to Execution, not registration. |
-| Check format and completeness | Python checks required fields, file locations, document structure, and references against the guide. |
-| Check meaning and consistency | The Maestro architect reviews milestone purpose and scope, outside dependencies, and claimed existing capabilities through targeted source checks. It reports unclear instructions, contradictions, missing essentials, and the level of supporting evidence. |
-| Independently review the findings | A separate reviewer checks fidelity to the project's source material and whether blockers are justified. The Maestro architect can amend its report; rechecks cover affected findings only, within the configured review limit. |
-| Present the registration report | Maestro combines the findings into a plain summary of what was found, what needs attention, and whether the project is ready to register. Issues point to the relevant file and passage where available. |
-| Resolve issues and confirm | The project architect supplies needed source corrections. Maestro rechecks affected findings within the configured review limit. When no blockers or unresolved disagreements remain, the Owner confirms the versioned registration package through the Maestro CLI, making it active. Non-blocking findings do not prevent registration. |
+| Connecting | Show connection progress while contacting the configured service. |
+| Connected | Retrieve project information and accept available service operations. |
+| Unavailable | Show the reason and Retry connection. A failed connection is not an empty project list. |
+| Disconnected during use | Keep the visible conversation and mark it “Disconnected—information may be out of date.” Block new service actions and answer submissions. |
 
-The Maestro architect may amend its own findings report. During re-registration, it can add or amend project milestones within the reviewed registration package, but development-milestone and work-packet breakdown remains in the next process. This does not authorize it to resolve source-plan contradictions, invent missing answers, or otherwise rewrite the project's plan. The project architect supplies source corrections. The registration-file format remains subject to design.
+During disconnection, `/help`, `/retry`, and `/exit` remain available. Reconnection refreshes state without automatically repeating submitted commands or answers. Loss of the CLI connection does not establish that service work stopped.
 
-### Registration outputs and final confirmation
+### Projects and targeting
 
-Successful registration produces one versioned package:
+A **selected project** is the CLI's current focus. A **working project** has activity being performed by Maestro. Selection does not start or stop work.
 
-| Output | Contents |
+The project overview shows each project's plain name, current activity or reason for waiting, and attention needed. Projects needing attention appear first, followed by working projects and then idle projects.
+
+The CLI can display one project while other projects continue running. Each project has separate conversation records, process state, questions, decisions, and registration versions.
+
+Project targeting follows these rules:
+
+- The selected project's name remains visible above the input.
+- A project-specific command targets an explicitly named project or the selected project.
+- Missing targets require selection before execution.
+- A named target that differs from the selected project requires explicit resolution before execution.
+- Unknown or ambiguous names require resolution; conversation text is not used to guess a target.
+- Service-wide commands do not inherit the selected project.
+
+Switching projects clears unsent text. It is neither saved nor transferred. Draft retention and a warning before project switching are outside the initial behavior. The exit warning is defined with `/exit`.
+
+### Attention
+
+The attention view lists outstanding questions and decisions across projects, identifying the project, requesting agent or process, and response needed. Selecting an entry opens the corresponding project and question with the input linked to it.
+
+A notice identifies the other project and the response needed. It does not change focus or interrupt input. Selecting the notice uses the same attention-navigation behavior, including the project-switch rule.
+
+Opening a question does not resolve it. It remains outstanding until the process resolves it.
+
+### Commands
+
+Slash commands perform defined operations. Ordinary text follows the answer rules in the next section. Equivalent typed commands and controls invoke the same operation.
+
+| Command | Behavior |
 |---|---|
-| Registration summary | Project identity, source documents and their reviewed versions, findings, and registration outcome. |
-| Project milestone outline | Supplied project milestones with purposes, scope, priorities, and dependencies, without development-milestone or work-packet breakdown. |
-| Project-level completion requirements | Acceptance criteria, definitions of done, usage walkthroughs, and required completion evidence. |
-| Review record | Architect findings, independent fidelity reviews, amendments, retained non-blocking findings, and linked Owner decisions, clarifications, and accepted limitations. |
+| `/help` | List implemented commands and plain explanations. `/help <command>` shows syntax, required inputs, an example, and required project context. Contextually unavailable commands explain why. Help works without the service and changes no project state. |
+| `/projects` | Open the project overview. Showing the list preserves selection; choosing an entry selects that project. |
+| `/attention` | Open questions and decisions across projects. |
+| `/register <repository>` | Start registration intake for an explicit repository without assuming the selected project. The same entry handles eligible re-registration. |
+| `/registration` | Open the selected project's existing registration process or record, including a candidate where available. It does not start registration. |
+| `/findings` | Open blockers, non-blocking observations, and review findings for the selected project's current process. A selected finding exposes explanation and evidence; no review or state change is initiated. |
+| `/retry` | Retry the service connection. It does not start the service, repeat previous submissions, or retry project work. |
+| `/exit` | Close the CLI session. Saved conversations and pending questions remain available. Unsent text triggers a warning before exit. |
 
-The package identifies the exact versions of its contents rather than relying on whichever files happen to be latest.
+The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions.
 
-The Owner gives final confirmation through the Maestro CLI. Confirmation accepts the registration package and activates that registration version; it does not start development.
+Execution commands for starting, pausing, resuming, and stopping work are not specified.
 
-### Machine-first package storage
+### Questions and answers
 
-Store the registration package in the project's own GitHub repository, with a separate folder for each registration version. The Maestro Planning Guide defines the folder location and consistent filenames.
+Ordinary text is accepted only as an answer to an existing selected question. The input identifies the project or registration context, requesting agent or process, and question. Without a selected question, it accepts commands only. Unsolicited agent conversations are outside the initial interface.
 
-Optimize the package for agents and Python:
+Questions with clear alternatives include a plain question, a justified recommendation with its reason where appropriate, viable alternatives with tradeoffs, and a free-text option. Alternatives are not automatically labeled less recommended. Information requests use written answers rather than forced choices.
 
-- Structured JSON is authoritative, with a defined schema.
-- A small index identifies records, registration and source versions, and relationships through explicit references and relative links.
-- Use small, focused files so agents load only what they need.
-- Keep plain-language descriptions inside the structured records.
-- Python validates required fields and references.
+Selecting a choice fills the input without submitting it. Additional written clarification can be included before Send or Enter submits the answer.
 
-Each fact has one authoritative location. The CLI presents the same package; human-readable reports are generated from it, not maintained as competing sources of truth. The future command center will also render these records. The next planning process uses the exact confirmed package version.
-
-### Source changes during review
-
-Each review uses an exact Git commit. The Maestro architect and independent fidelity reviewer use the same source version.
-
-If relevant planning inputs change, Maestro flags that the reviewed version is no longer current and shows the changes before confirmation. It does not silently mix source versions.
-
-| Owner choice | Treatment |
+| Submission state | Behavior |
 |---|---|
-| Finish with the reviewed source version | Registration explicitly covers the original requirements. Newer changes are not included. |
-| Include the updated source version | Update the candidate package and recheck affected findings within the existing review limit. Do not silently reset the two-round limit. |
+| Sending | Wait for acknowledgment that the service saved the answer. |
+| Not sent | Show a plain reason and retain the answer for explicit retry. Reconnection alone does not resubmit it. |
+| Answer received | After save acknowledgment, show the answer in the conversation and clear the input. Receipt is not resolution. |
+| Clarification required | Present a specific follow-up linked to the original question, retaining the previous answer and identifying the new question above the input. |
 
-This applies to changes in planning inputs, not unrelated commits or the registration reports themselves.
+A lost acknowledgment may leave delivery uncertain. In that case, “Not sent” is accompanied by “Delivery not confirmed. Retrying will not submit your answer twice.” The service recognizes repeated submissions and prevents duplicate recording or effects.
 
-### Duplicate registration requests
+Before accepting an answer, the service checks that the original question still awaits a response. A replaced question or cancelled process produces an explanation rather than rerouting the answer. An available replacement can be opened without automatically transferring the text.
 
-Only one registration process may be active per project. A second request through the CLI, or a future command-center request, shows the existing process's current status rather than starting a competing process or creating another version.
+Clarification explains what information is missing instead of simply repeating a question. An answer does not become registration confirmation.
 
-### Registration visibility and Owner responses
+Failed-answer retention applies only to the current input; it does not create saved drafts across project switches.
 
-The Maestro CLI shows:
+### Empty results
 
-- The current step and working agent.
-- The review round and configured limit.
-- Blockers, non-blocking findings, and technical failures.
-- Whether registration is progressing, paused, or waiting for the Owner.
-- Decisions needed from the Owner and the relevant findings.
+Empty states appear only after successful retrieval. A lookup failure is displayed as a failure, and missing project or process context follows the targeting rules.
 
-A decision request provides a specific question, relevant findings, and the affected registration version. The Owner submits a choice or written clarification through the Maestro CLI.
-
-Maestro records the response against that request in the registration package. The runtime routes it to the paused step; the architect amends its report if needed, and affected findings are rechecked within the existing review limit.
-
-If a response is ambiguous, Maestro asks for clarification rather than treating it as approval. Answering a question is not final registration confirmation; confirmation remains a separate explicit action.
-
-### Changes presented for confirmation
-
-Before re-registration confirmation, compare the candidate package with the active registration version. Show:
-
-- What was added, changed, or removed.
-- Affected project milestones, scope boundaries, and completion requirements.
-- Why each change was made, with links to findings or Owner decisions.
-
-The Owner confirms the exact candidate version shown. That confirmed package must not silently change afterward.
-
-### Partial-project registration
-
-Through the Maestro CLI, the Owner chooses the whole supplied project plan or specific project milestones.
-
-The candidate package records included milestones and outcomes, explicit exclusions, and dependencies outside that boundary. If only part of a milestone is included, describe that portion explicitly; an identifier alone is insufficient.
-
-The Maestro architect checks whether outside dependencies already exist or need additional work. Present boundaries and dependencies before confirmation. Successful registration covers only the selected portion, not the whole project.
-
-For example, registering menu creation and publishing could exclude billing. If publishing requires authentication, authentication must already exist, be included, or be identified as missing essential work. Maestro raises the dependency for a decision rather than silently expanding scope.
-
-### Targeted source checks for dependencies
-
-Registration includes targeted source-code inspection of dependencies claimed to exist, not a full code audit.
-
-For an authentication dependency, inspect whether it is connected to the relevant application or API, protects the required routes, depends on missing configuration or credentials or unfinished components, and has evidence of working.
-
-The report distinguishes:
-
-| Evidence level | Meaning |
+| Result | Display |
 |---|---|
-| Reported to exist | Claimed in supplied information, without verification. |
-| Supported by source inspection | The implementation appears present and connected based on source evidence. |
-| Verified in operation | Operational evidence supports that it works. |
+| No registered projects | “No projects registered,” a Register project action, and the command input. The action requests a repository and enters registration intake. |
+| No attention items across projects | “No questions or decisions need your attention.” |
+| No findings for the current process | “No findings recorded for this process.” |
+| No registration for the selected project | “No registration exists for this project,” with a Register action. |
 
-Source inspection alone does not prove running-system behavior. Anything not verified remains explicit.
+### Keyboard and terminal behavior
 
-### Retained Owner decisions
-
-Include Owner clarifications, accepted limitations, and scope decisions in the registration package, linked to their decision requests where applicable and to affected milestones and criteria. Later agents use these recorded decisions rather than reconstructing them from chat.
-
-### Registration review loop
-
-Registration has its own bounded loop:
-
-1. Python checks the inputs.
-2. The Maestro architect examines the source material, checks milestone purpose and scope through a usage walkthrough, and produces findings.
-3. An independent fidelity reviewer checks those findings against the source material and assesses whether blockers are justified.
-4. The Maestro architect amends its report if needed.
-5. Any further review checks affected findings only.
-
-The loop ends with readiness for registration confirmation, specific blockers returned to the project architect, or unresolved disagreement brought to the Owner. It must not become an endless search for reasons to fail registration.
-
-### Milestone purpose and scope review
-
-Registration review checks whether each supplied project milestone's scope is sufficient to deliver its stated purpose, not merely whether its description is clear. This review does not break milestones into development milestones or work packets. Completing a task list does not prove the promised capability works.
-
-| When | Required check |
+| Key | Behavior |
 |---|---|
-| During registration review, before work starts | Walk through how someone will actually use the capability. Identify the prerequisites and connections needed for that journey. Confirm that each already exists or is included in the planned work and its dependencies. |
-| Before declaring the milestone complete | Demonstrate the same journey using the actual connected system. Completed components or test-data demonstrations alone do not prove an operational capability. |
+| Tab / Shift+Tab | Move between controls. |
+| Arrow keys | Move within a focused list or choice set. |
+| Enter | Activate the focused control or submit from the answer input. Choice activation only fills the input. |
+| Escape | Close a list or detail view without affecting project work. |
+| Shift+Enter | Add a line to an answer. |
 
-The Maestro architect records the usage walkthrough, prerequisites, and required completion evidence in the milestone's acceptance criteria and definition of done. The independent fidelity reviewer checks that these support the stated purpose and that any missing essentials are justified findings. This is part of the existing registration review loop, with the same configurable two-round limit, not an additional review loop.
+Focus remains visible. Multiline paste fills the input without submission. The input grows to a limited height and then scrolls internally so conversation and question context remain visible.
 
-For a control-loop milestone, the walkthrough would cover how the service is started, how it authenticates, how a project becomes available to it, how work is initiated, and how the result is observed. These are examples of essential operations to examine, not a requirement that every milestone deliver a whole product.
+A minimum terminal width and height protects readable project, question, and input context. Below that size, the CLI displays “Enlarge the terminal to continue.” Resizing does not stop service work. Exact dimensions and input-height limits are unspecified.
 
-A component milestone is valid, but it must be named and judged as a component. It must not be reported as a working end-to-end capability.
+## Registration
 
-An exclusion cannot remove something essential to the milestone's purpose while leaving its completion claim unchanged. Include the missing work or explicitly narrow the milestone with the Owner; do not silently weaken its purpose or definition of done.
+### Purpose and authority
 
-Registration checks the planned path to a usable outcome. It does not require the capability to be built already. Optional improvements remain non-blocking; a missing essential must be tied to the stated purpose, not a reviewer's preference.
+Registration checks whether Maestro can understand and operate on supplied project information. It identifies the project, verifies repository access, locates source material, checks its format and meaning, and produces a versioned package for confirmation.
 
-### Good enough to proceed
+The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The Maestro architect assesses the source; a separate Fidelity Reviewer checks the assessment. The Owner role supplies decisions and final confirmation through the CLI.
+
+Registration does not approve the project's architecture, start development, or perform development-milestone and work-packet breakdown. Change boundaries, repository rules, coding conventions, and execution authority belong to Execution. Project-specific overrides of those rules are not part of registration.
+
+### Source format and inputs
+
+The Maestro Planning Guide defines source conventions and document locations that can be interpreted consistently. Its exact formats are not specified. A small source index identifying project details and authoritative documents is a **provisional** mechanism, not a required file format.
+
+| Input | Required information |
+|---|---|
+| Identity | Plain project name, repository location, and responsible project architect. |
+| Purpose and scope | Intended result, included work, and explicit exclusions. |
+| Architecture | Main components, responsibilities, interactions, technical choices, constraints, and unresolved details. |
+| Current state | New or existing development, reported completed capability, unfinished or broken areas, supporting evidence, and conflicting claims. |
+| Work outline | Desired features or outcomes, priorities, dependencies, ordering, and supplied project milestones. |
+| Completion requirements | Project-level acceptance criteria and definitions of done. |
+| Source locations | Authoritative documents and their guide-compatible formats. |
+
+Inputs require sufficient clarity to organize work without inventing requirements, not a fully specified implementation or a complete code audit.
+
+Project milestones describe meaningful outcomes, releases, or component boundaries. The subsequent breakdown process produces development milestones linked to those outcomes, without assuming a one-to-one relationship or redefining the project scope. Registration retains the supplied outcome structure.
+
+### Intake and scope
+
+The intake request provides an explicit repository and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
+
+Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
+
+Defined-portion selection interprets guide-compatible source, displays milestone identifiers with their plain subjects, and accepts selected milestones or a narrower written boundary. The interpreted inclusions, exclusions, and outside dependencies are presented for confirmation. A narrower portion requires a recorded description, not an inferred expansion.
+
+The Maestro architect checks whether outside dependencies exist or need work. Missing essentials become findings for a decision. For example, a publishing outcome dependent on authentication must identify authentication as existing, included, or missing essential work. Partial registration covers only its recorded boundary.
+
+### Source consistency
+
+Review uses an exact Git commit shared by the Maestro architect and Fidelity Reviewer. Relevant input changes are shown before confirmation.
+
+| Explicit source choice | Effect |
+|---|---|
+| Retain the reviewed source | The package covers the original requirements and excludes newer changes. |
+| Include updated source | The candidate changes and affected findings are rechecked within the existing review budget. |
+
+Unrelated commits and changes to review reports are not treated as changed planning inputs. Source versions are never silently mixed.
+
+### Assessment and independent review
+
+The registration loop separates format checks, architectural judgment, and independent review:
+
+1. Python validates required fields, file locations, document structure, and references.
+2. The Maestro architect assesses meaning, scope, dependencies, and evidence, then produces findings.
+3. The Fidelity Reviewer independently compares the findings with the source and checks whether blockers are justified.
+4. The Maestro architect amends its findings where needed.
+5. Any further review covers affected findings only.
+
+The resulting report identifies what was found, readiness, and required attention, with file and passage references where available. Source-plan contradictions and missing source answers are returned to the project architect; the Maestro architect does not resolve them by inventing requirements.
 
 | Finding | Treatment |
 |---|---|
-| Blocker | Missing or contradictory information that prevents Maestro from understanding the work or following its rules safely. Explain what Maestro cannot do because of it, with source evidence or an identified missing required input. |
-| Non-blocking finding | Wording preferences, improvements, or minor gaps that do not prevent registration. Report them without requiring correction. |
-| Review disagreement | Allow the Maestro architect to amend its report. If disagreement remains at the review limit, bring it to the Owner. |
+| Blocker | Missing or contradictory information prevents reliable interpretation or operation under the applicable rules. The finding identifies what cannot proceed and cites evidence or a missing required input. |
+| Non-blocking finding | Wording preferences, optional improvements, or gaps that do not prevent registration remain recorded without requiring correction. |
+| Review disagreement | The assessment may be amended. Unresolved disagreement at the review limit requires an Owner decision. |
 
-Independent fidelity review checks accuracy and justified blockers; it must not introduce new requirements. “This could be better” is not grounds for failure.
+Review does not introduce new requirements. Readiness requires no remaining blockers or unresolved disagreements; minor improvements do not prevent readiness.
 
-### Configurable planning review limit
+### Purpose and dependency checks
 
-A configuration file will set the maximum planning review rounds. The agreed initial limit is **2 rounds**, configurable:
+The assessment examines whether scope can deliver the stated outcome, rather than only whether the description is clear.
 
-1. Initial Maestro architect report and independent fidelity review.
-2. Amended report and independent recheck of affected findings, only if needed.
+A usage walkthrough identifies how the capability is entered, its prerequisites and connections, and how its result is observed. Each essential dependency must already exist or be included in the supplied work and dependency structure. An exclusion cannot remove an essential operation while preserving the same completion claim; the missing work or a narrower outcome requires an explicit scope decision.
 
-One round means an architect report followed by an independent fidelity review. Sending an amended report for review counts as the next round. Registration can pass after the first round.
+Targeted source inspection checks claimed dependencies. For authentication, relevant evidence includes route protection, application or API connections, required configuration or credentials, unfinished components, and operational results.
 
-At the limit, unresolved blockers or disagreements pause the registration and go to the Owner. The limit does not force approval or trigger another automatic retry. Configuration-file location and format are not specified here.
+| Evidence level | Meaning |
+|---|---|
+| Reported to exist | A source claim without verification. |
+| Supported by source inspection | Code appears present and connected. |
+| Verified in operation | Operational evidence supports the capability. |
 
-### Re-registration and registration versions
+Source inspection is not operational proof. Unverified behavior remains identified, and the assessment is not a full code audit.
 
-Registration may be rerun at any point in a project's lifecycle, but only when no work is in progress on that project. All active project work must finish or be explicitly stopped first. Maestro prevents new project work from starting until re-registration ends.
+Registration records the usage walkthrough, prerequisites, and completion evidence in the supplied outcome's acceptance criteria and definition of done. Each criterion identifies expected behavior and conditions, verification evidence, the pass boundary, and accepted exceptions. The definition of done also includes required reviews and other completion obligations.
 
-Each rerun creates the next registration version: registration version 2, then registration version 3, and so on. Previous registration versions are preserved rather than overwritten.
+A declared usable capability requires evidence of the same journey through the actual connected system. Completed components or sample-data screens alone do not establish it. Component outcomes remain valid when identified and assessed as components. Registration assesses this expected completion path without requiring unbuilt functionality to exist already.
 
-During re-registration, the Maestro architect can add project milestones or amend existing project milestones; it does not perform the subsequent development breakdown. These changes are included in the new registration version and go through the same independent fidelity-review loop.
+Detailed development criteria belong to the subsequent breakdown process and remain traceable to project criteria without weakening them. Material ambiguity encountered there requires clarification.
 
-The same configurable planning review limit applies, initially two rounds. Non-blocking findings do not prevent registration; unresolved blockers or disagreements at the limit go to the Owner.
+### Review limits and decisions
 
-### Failed or interrupted registration
+A configuration file sets the maximum planning review rounds. The default is **two rounds**:
 
-Preserve completed reports and review results. After an agent crash, failed push, or service restart, resume from the last verified step.
+- One architect report followed by one independent review constitutes a round.
+- An amended report sent for another review consumes the next round.
+- Registration may reach readiness after the first round.
+- Source updates and clarifications do not silently reset the budget.
 
-Technical failures do not consume planning review rounds. Technical retries have a separate configurable limit. Reaching that limit pauses registration and alerts the Owner. The technical retry limit has no agreed numeric value yet.
+At the limit, unresolved blockers or disagreement pause registration for an Owner decision. The limit neither forces approval nor starts another automatic review.
 
-### Registration version activation
+The registration view displays the current step, working agent, round and limit, findings, failures, progress or waiting state, and required decisions.
 
-A new registration version remains a candidate until the Owner confirms it. Confirmation makes it active while preserving the previous version.
+A question identifies the relevant findings and registration version. Its recorded response is routed to the paused step; the architect can amend the report and affected findings can be rechecked within the remaining budget. Clarifications, scope decisions, and accepted limitations remain linked to their requests and affected outcomes or criteria in the package.
 
-If re-registration fails or is cancelled, the previous registration version remains active. Project work does not automatically restart.
+### Package structure
 
-### Agent delegation wrapper
+A registration package is stored in the project's own GitHub repository, with a separate folder per registration version.
 
-The runtime delegates to an agent through a wrapper script that launches the agent and performs deterministic checks around its work.
+| Record group | Contents |
+|---|---|
+| Summary | Project identity, exact source references, findings, and registration outcome. |
+| Project outcome outline | Supplied milestones, purposes, scope, priorities, and dependencies. |
+| Completion requirements | Project-level criteria, definitions of done, usage walkthroughs, and required evidence. |
+| Review and decision records | Architect findings, independent reviews, amendments, retained non-blocking findings, linked clarifications, scope decisions, and accepted limitations. |
 
-For tasks requiring GitHub commits, the wrapper verifies:
+Structured JSON is authoritative. Small, focused files contain plain descriptions and explicit relationships. An index identifies records, versions, and relative references. Python validates required fields and links against the schema.
 
-- The expected repository and branch were used.
-- Required changes were committed and pushed.
-- The commit exists on GitHub.
-- Only permitted files changed.
-- The agent's reported commit matches the actual commit.
+Each fact has one authoritative location. The CLI and generated human-readable reports render package records instead of maintaining competing copies. Exact content versions remain identifiable; downstream processing consumes the confirmed package version rather than mutable latest files.
 
-These checks apply when commits are required; a read-only review does not require a commit merely to satisfy the wrapper.
+### Re-registration
 
-The wrapper verifies observable facts. The independent reviewer checks meaning and fidelity. An agent's statement that it committed successfully is not verification, and passing wrapper checks is not independent approval.
+Registration can be rerun during a project's lifecycle only when that project has no work in progress. Existing work must finish or be explicitly stopped. New project work is blocked until re-registration ends.
+
+Each rerun creates the next registration version while preserving prior versions. The Maestro architect may add or amend project milestones within the candidate package. These changes use the same source, scope, review, and decision rules; they do not authorize general source-plan rewriting or development breakdown.
+
+### Comparison, activation, and cancellation
+
+Comparison is an action in the registration view. It shows candidate additions, changes, and removals against the active version, including affected scope and completion requirements and reasons linked to findings or decisions.
+
+Confirmation is a separate explicit action displaying the project and exact candidate version. The service verifies that this candidate is unchanged and eligible. A changed or ineligible candidate is rejected with an explanation; the current candidate must be opened and reviewed before another confirmation.
+
+Successful confirmation makes the candidate the active registration version. Previously approved versions remain retrievable. Confirmed content cannot change silently, and activation does not start development.
+
+Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation ends that attempt and preserves its saved history. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
+
+Neither confirmation nor cancellation is preselected for submission. Deliberate focus on the relevant action is required before Enter activates it.
+
+A lost action acknowledgment displays “Outcome not confirmed.” Reconnection checks the recorded outcome rather than automatically repeating the action. Explicit retries identify the original request and cannot duplicate effects.
+
+### Technical recovery
+
+Completed reports, reviews, decisions, and source/version references survive agent failure, failed GitHub publication, or service restart. Registration resumes from the last verified step; unverified results do not count as completed work.
+
+Technical failures do not consume planning review rounds. Technical retries have a separate configurable limit. Reaching it pauses registration and produces an attention item. The technical retry default is unspecified.
+
+## Unspecified mechanisms
+
+The following architectural mechanisms remain unresolved:
+
+| Area | Unspecified detail |
+|---|---|
+| Service interface | API endpoint names, connection configuration, and request/event schemas. |
+| Persistence | SQL schema, broader runtime recovery internals, duplicate-request recognition, and SQL-to-GitHub package update consistency. |
+| Agent integration | Detailed Project Architect and Fidelity Reviewer contracts, structured agent response formats, and Model Execution Adapters. |
+| Registration formats | Planning Guide source formats, JSON package schema, index details, folder locations, and filenames. |
+| Configuration | Review configuration location and format; numeric technical retry default. |
+| Terminal behavior | Remaining argument syntax, input-height limit, minimum supported dimensions, and practical evaluation of message scrolling. |
+
