@@ -10,14 +10,14 @@
 | Owner and human project architect | Jeremy Miedreich |
 | Authoring role | AI assistant acting as the project architect |
 | Intended reader | Maestro architect performing a later registration review |
-| Document version | 3 |
+| Document version | 4 |
 | Declaration | REG — Project registration |
 | Status | Proposed project milestone source for Owner review; not a registration package or approval |
 | Architecture baseline | [Maestro Architecture at the reviewed source commit](https://github.com/jmiedreich-ux/Maestro/blob/8d1448473c7f95fa830fac9e49d36b8cdb7cf17d/docs/maestro-architecture.md) |
 
 This is the project architect's input to registration. It describes project outcomes, not development milestones or work packets. The proposed milestone grouping and order below translate the agreed architecture into project planning; they do not change its requirements.
 
-The Maestro Planning Guide's exact source format is not yet defined. This Markdown document uses consistent, plainly worded sections as a provisional source format. The machine-first JSON requirement applies to the registration package Maestro will produce, not an invented registration record in this document.
+The [Maestro Planning Guide](planning-guide/README.md) defines Markdown source preparation. The machine-first JSON requirement applies to the registration package Maestro produces, not this project milestone declaration.
 
 A later registration review must assess this source on its merits. Authorship by the same assistant does not count as independent review, successful registration, or Owner confirmation.
 
