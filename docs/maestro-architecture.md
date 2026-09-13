@@ -110,28 +110,31 @@ Service-wide requests remain service-wide. Saved records remain available after 
 
 Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; the relationship between SQL updates and GitHub package updates is not yet specified.
 
-### Identity and versioning
+### Identity, declarations, and ordering
 
-Registration establishes names for the planning records that Maestro processes. Source-code conventions are separate Execution rules.
+Registration associates project milestones with a named declaration. Each declaration has a stable designation unique within its project. A project can have several declarations, regardless of the order in which their contents were authored.
 
-Every coded record uses an item-type prefix, a sequential number, and a plain subject. The subject accompanies the identifier wherever displayed or referenced.
+A project-milestone reference combines the declaration designation, the milestone type and number, and a plain subject. Numbers are assigned sequentially within that declaration, not across the project. The number identifies the milestone; it does not determine its delivery position.
 
-| Record type | Format example |
+| Record | Format example |
 |---|---|
-| Project milestone | PM1 — First usable release · version 2 |
+| Declaration | APP — Application |
+| Project milestone | APP-PM1 — Application startup · version 2 |
 | Development milestone | DM1 — Project registration · version 3 |
 | Planning document | PD1 — API contract · version 2 |
 | Work packet | WP1 — Implement registration input checks · version 1 |
 | Review | RV1 — Registration findings fidelity review · round 1 |
 | Replan | RP1 — Revise registration delivery sequence |
 
-These examples describe record formats, not Maestro delivery assignments.
+These examples describe record formats, not Maestro delivery assignments. Subjects accompany coded references wherever displayed or referenced.
 
-Numbers are sequential within each record type and project. Random assignment, reuse, and unexplained sequence gaps are prohibited; retired identifiers remain retired. One naming-convention list supports Owner-authorized additions of types and prefixes.
+Each declaration stores an ordered list of its milestone references. Inserting a milestone assigns its next unused identifier and places that reference at the required position. Reordering changes the list, not milestone identities. Dependencies between qualified references determine prerequisites across declarations; declaration creation order imposes no delivery order.
 
-An item's identifier remains stable when its title or content changes. Only changed items receive the next version; previous versions remain available. Reviews identify exact reviewed versions, with review rounds separate from document versions. Replans identify reasons and affected records.
+An identifier remains stable when an item moves in delivery order or its title or content changes. Retired identifiers are not reused. Non-milestone record types retain their sequential per-type, per-project numbering. Random assignment and unexplained assignment gaps are prohibited.
 
-Relationships are explicit references rather than encoded hierarchies. Each work packet has its own identity and a link to its development milestone. Moving it does not require a new identifier.
+One naming-convention list supports Owner-authorized additions of declaration designations, record types, and prefixes. Versions are separate from identities and ordering: changed records receive their next version, and previous versions remain available. An ordering change updates the declaration version, not unchanged milestone versions. Reviews identify the exact item and declaration versions reviewed; review rounds remain separate from document versions.
+
+Relationships are explicit references rather than encoded hierarchies. Each work packet has its own identity and a link to its development milestone. Moving it does not require a new identifier. Replans record reasons and affected records.
 
 ## CLI workspace
 
