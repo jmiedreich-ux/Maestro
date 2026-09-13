@@ -14,7 +14,7 @@ A lower level may add restrictions but cannot weaken a higher level. If two auth
 
 ## Roles
 
-- [Project Architecture Agent](architecture-agent.md)
+- [Maestro Project Architect — Software Architecture Role](architecture-agent.md)
 - [Maestro Development Manager](maestro-development-manager.md)
 - [Decision Fidelity Reviewer](decision-fidelity-reviewer.md)
 - [Integration Agent](integration-agent.md)
