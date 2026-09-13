@@ -98,7 +98,7 @@ The approved visual direction is a terminal interface, not a command-center dash
 
 Every message identifies its source: the Owner, the speaking agent, or the Maestro service. Major activities such as registration, milestone planning, and execution have clear section markers. Routine progress stays compact; findings and reports can be expanded. The conversation is the interaction history; the persistent status area shows current state without requiring backward scrolling.
 
-The Owner can address a particular agent from the same input area, with the recipient visible. Exact recipient-selection behavior and general input syntax remain to be designed. The mockup's sample messages and command hints are illustrative, not additional workflow decisions.
+In this version, ordinary text is limited to answering an existing selected question. The input shows the project or registration context, requesting agent or process, and question. Without a selected question, the input accepts commands only. Starting a separate conversation with an agent is outside this version; the earlier recipient-selection concept is deferred. The mockup's sample messages and command hints are illustrative, not additional workflow decisions.
 
 ### Startup and service connection
 
@@ -129,6 +129,23 @@ When a question has clear alternatives, present:
 
 When information is needed rather than a choice, request a written answer instead of forcing multiple choices.
 
+### Answer submission and clarification
+
+Selecting a choice fills the answer area; it does not submit it. The Owner can add written clarification, then explicitly submit with Send or Enter. Choices and written answers use the same submission step.
+
+| Stage | CLI behavior |
+|---|---|
+| Sending | Show “Sending” while waiting for the service to confirm that the answer was saved. |
+| Sending fails or delivery is unconfirmed | Show “Not sent” with a plain reason and retain the answer in the input for explicit retry. Reconnecting alone does not resubmit it. |
+| Saved acknowledgment received | Show the answer in the conversation and clear the input. Mark the question “Answer received,” not “Resolved,” until the process evaluates it. |
+| Clarification needed | Ask a specific follow-up linked to the original question. Keep the previous answer visible and identify the new question above the input. Explain what needs clarification rather than simply repeating the question or treating the answer as approval. |
+
+If the connection drops before acknowledgment, explain: “Delivery not confirmed. Retrying will not submit your answer twice.” The “Not sent” label does not establish that the service never received it.
+
+The service must recognize a repeated submission so a retry cannot record or act on the same answer twice, including when the original acknowledgment was lost. The technical mechanism remains to be designed.
+
+Retaining a failed answer in the current input does not introduce draft storage: switching projects still clears unsent text under this version's rule. Receipt, evaluation, resolution, and explicit registration confirmation remain distinct.
+
 ### Explicit project targeting
 
 Before project selection, the startup input supports service-wide actions, including selecting a project or beginning registration, and clearly displays “No project selected.”
@@ -145,7 +162,7 @@ Before project selection, the startup input supports service-wide actions, inclu
 
 A selected project is the CLI's focus; a working project is one where Maestro is performing work. Do not use “active project” to mean either. This terminology does not change the meaning of an active registration version.
 
-The handling of retained drafts during project switching remains to be designed.
+In this version, switching projects clears unsent text. It is not saved, restored, or transferred to another project. Draft retention and a project-switch safeguard are deferred. The separate warning about unsent text when exiting remains required.
 
 ### Initial command list
 
