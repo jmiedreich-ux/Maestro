@@ -12,11 +12,11 @@
 
 ## Where the discussion paused
 
-The discussion reached the [Model Execution Adapter's internal responsibilities and shared operations](../../docs/maestro-architecture.md#model-execution-adapters).
+The shared adapter behavior is documented in [Model Execution Adapters](../../docs/maestro-architecture.md#model-execution-adapters). The first integration remains the Maestro Project Architect performing registration, followed by an independent Fidelity Reviewer.
 
-The first agent integration to design is the Maestro Project Architect performing registration: assessing sources and preparing the candidate package. Agent software and model have not been chosen. Codex CLI was suggested but was not selected. Do not substitute an implementation worker as the first integration.
+Claude Code or Codex can run either role, with separate exact model/version selections. The architect selection is explicit at registration initiation; no particular model version has been chosen. Workspaces, assignment snapshots, clarification follow-ups, progress, completion, cancellation, recovery, and retention behavior are agreed.
 
-Continue with the concrete adapter connection for that registration assignment: tool selection, launch configuration, working area and artifact transport, run tracking, cancellation, and interruption recovery. Keep tool choice separate from the architect role and its authority.
+Next: choose initial per-role run-duration limits and verify concrete Claude Code/Codex capabilities against the design. Tool flags, exact model reporting, transport, status recovery, and cancellation mechanics are not yet verified. Explicit retry after the automatic limit still needs its request interface and accounting defined.
 
 ## Decisions to preserve
 
@@ -31,7 +31,7 @@ Continue with the concrete adapter connection for that registration assignment: 
 
 ## Remaining design
 
-Adapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
+The automatic technical recovery default is two attempts per assignment, separate from fidelity reviews. Unknown original-run status blocks replacement. Workspaces remain until explicit removal and cannot be removed while needed by a run, review, or recovery. See the architecture for authoritative rules.\n\nAdapter-specific mechanics, registration package schema and locations, SQL/GitHub consistency, work-state enforcement, agent/publication recovery checkpoints, delivery-review authority, and review configuration remain to be defined. Routine technical settings can be resolved by the architect within the agreed scope.
 
 The current documents specify outcomes and behavior, not implementation completion. Existing code is assessed during relevant development preparation; registration only checks claimed dependencies as needed.
 
