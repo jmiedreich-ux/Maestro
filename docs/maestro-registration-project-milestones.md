@@ -10,7 +10,7 @@
 | Owner and human project architect | Jeremy Miedreich |
 | Authoring role | AI assistant acting as the project architect |
 | Intended reader | Maestro architect performing a later registration review |
-| Document version | 2 |
+| Document version | 3 |
 | Declaration | REG — Project registration |
 | Status | Proposed project milestone source for Owner review; not a registration package or approval |
 | Architecture baseline | [Maestro Architecture at the reviewed source commit](https://github.com/jmiedreich-ux/Maestro/blob/8d1448473c7f95fa830fac9e49d36b8cdb7cf17d/docs/maestro-architecture.md) |
@@ -52,7 +52,7 @@ These are source observations, not operational verification. No milestone below 
 
 ## Project milestone outline
 
-All three milestones are required for the registration capability described here. The order is a proposed delivery sequence, not a development breakdown. References use the registration declaration designation and a local milestone number, always paired with the subject. The position column controls order independently of identity.
+All three milestones are required for the registration capability described here. The order is a proposed delivery sequence, not a development breakdown.
 
 | Position | Project milestone | Outcome | Priority and dependency |
 |---|---|---|---|
@@ -60,11 +60,9 @@ All three milestones are required for the registration capability described here
 | 2 | REG-PM2 — Update a registration without losing approved history | Re-registration safely changes coverage or project milestones and activates only the exact version the Owner confirms. | Second; depends on REG-PM1 — Register and confirm a project through either interface. |
 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | Interrupted registration resumes correctly or pauses visibly within separate technical and review limits. | Third; depends on REG-PM1 — Register and confirm a project through either interface and REG-PM2 — Update a registration without losing approved history. |
 
-This is declaration version 2. Each milestone record is version 2 for the one-time adoption of qualified references. Milestone outcomes and acceptance text remain the earlier draft; none is demonstrated. Future additions use the next unused reference and can be inserted anywhere in the ordered list without renumbering existing milestones. Reordering changes the declaration version, not unchanged milestone versions.
-
 **Cross-declaration prerequisite:** CLI-PM2 — Reliable project questions and answers in the [CLI declaration](maestro-cli-project-milestones.md), following CLI-PM1 — Connected multi-project CLI workspace, precedes registration development.
 
-**Scope status:** This naming revision does not finalize the older both-interface registration scope or its startup allocation. Those still require alignment with the CLI-only architecture. The [current identity rules](maestro-architecture.md#identity-declarations-and-ordering) govern qualified references; the pinned baseline above remains the source of the earlier registration draft.
+**Scope status:** The both-interface registration scope and startup allocation remain draft material requiring alignment with the CLI-only architecture.
 
 ## REG-PM1 — Register and confirm a project through either interface
 
