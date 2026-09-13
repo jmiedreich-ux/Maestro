@@ -8,7 +8,7 @@
 | Capability | Local terminal interface for multiple projects |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible project architect | Owner and software architect |
-| Document version | 4 |
+| Document version | 5 |
 | Declaration | CLI — Command-line interface |
 | Status | Proposed project outcomes for review; not a registration package, development breakdown, or implementation approval |
 | Design authority | [Maestro Architecture](maestro-architecture.md) |
@@ -16,7 +16,7 @@
 
 The architecture owns system behavior. This source defines delivery boundaries, usage journeys, acceptance evidence, and dependencies. The grouping is proposed; it does not add architecture or claim existing code satisfies the outcomes.
 
-The source format is provisional until the Maestro Planning Guide format is defined. No development milestones or work packets are created here.
+Source preparation follows the [Maestro Planning Guide](planning-guide/README.md). No development milestones or work packets are created here.
 
 ## Purpose, scope, and current state
 
