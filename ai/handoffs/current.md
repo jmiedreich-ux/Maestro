@@ -50,7 +50,7 @@ Use the architecture for the complete registration design. These distinctions ar
 
 ## Outstanding document alignment
 
-Revise the registration project milestone source after the CLI discussion. Add the foundational CLI milestone before registration development and remove initial command-center delivery requirements. Use declaration-qualified references: CLI — Command-line interface and REG — Project registration. Each declaration has its own milestone-number sequence and a separate ordered list. Preserve these qualified identities when inserting or reordering; use explicit cross-declaration dependencies. The declaration sheets and CLI review now use this naming model.
+Revise the registration project milestone source after the CLI discussion. Add the foundational CLI milestone before registration development and remove initial command-center delivery requirements. Use declaration-qualified references: CLI — Command-line interface and REG — Project registration. Each declaration has its own milestone-number sequence and a separate ordered list. Preserve these qualified identities when inserting or reordering; use explicit cross-declaration dependencies. The declaration sheets use this naming model.
 
 Keep the source document distinct from the registration package that Maestro would produce after reviewing it. Do not silently turn evolving concepts into settled requirements.
 
