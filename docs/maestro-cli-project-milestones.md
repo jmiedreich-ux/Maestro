@@ -8,7 +8,7 @@
 | Capability | Local terminal interface for multiple projects |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible project architect | Owner and software architect |
-| Document version | 2 |
+| Document version | 3 |
 | Declaration | CLI — Command-line interface |
 | Status | Proposed project outcomes for review; not a registration package, development breakdown, or implementation approval |
 | Design authority | [Maestro Architecture](maestro-architecture.md) |
@@ -36,15 +36,6 @@ Two proposed outcomes separate a usable read-only workspace from reliable respon
 |---|---|---|---|
 | 1 | CLI-PM1 — Connected multi-project CLI workspace | A usable terminal view of real service-held project state, conversations, findings, and attention. | First CLI outcome; includes the service and storage connections necessary for its own operation. |
 | 2 | CLI-PM2 — Reliable project questions and answers | Question-linked input is saved, acknowledged, routed, and recovered without accidental actions or duplicate effects. | Depends on CLI-PM1 — Connected multi-project CLI workspace. Together they establish the CLI foundation. |
-
-This is declaration version 2. Both milestone records are version 2 for the one-time adoption of qualified references; their outcomes are unchanged. Future insertion or reordering changes the position list without renumbering existing references.
-
-| Declaration | Source | Dependency |
-|---|---|---|
-| CLI — Command-line interface | This document | No dependency on completed registration. |
-| REG — Project registration | [Registration declaration](maestro-registration-project-milestones.md) | Registration development follows CLI-PM2 — Reliable project questions and answers, which depends on CLI-PM1 — Connected multi-project CLI workspace. |
-
-Each declaration has its own milestone-number sequence. Cross-declaration references include the designation and subject. The older project-wide numbering is superseded by this naming revision.
 
 ## CLI-PM1 — Connected multi-project CLI workspace
 
@@ -121,7 +112,7 @@ Initial registration and re-registration both return the existing process for du
 
 Real GitHub package publication, independent agent review, source interpretation, duplicate-registration handling, and package activation must be exercised when these integration outcomes are assessed. Sample data or generic service demonstrations cannot satisfy registration completion.
 
-The separate registration source remains an earlier draft with both-interface scope. The amendments above are required alignment, not a claim that the existing document is already corrected or approved. Registration references use their declaration qualifier; the naming migration does not finalize their scope.
+The separate registration source remains an earlier draft with both-interface scope. The amendments above are required alignment, not a claim that the existing document is already corrected or approved.
 
 ## Required detail before implementation
 
