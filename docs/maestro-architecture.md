@@ -114,7 +114,7 @@ Read-only lookups do not require a new durable record before handling. SQL recor
 
 Registration records declaration identity, milestone identity, delivery position, dependencies, and versions separately. Ordering changes do not change references. Reviews bind to exact record versions, and work-packet relationships use explicit references rather than encoded hierarchies.
 
-The [Maestro Declaration Guide](maestro-declaration-guide.md) defines naming, numbering, ordering, and version conventions.
+The [Maestro Planning Guide](planning-guide/README.md#naming-ordering-and-versions) defines naming, numbering, ordering, and version conventions.
 
 ## CLI workspace
 
@@ -255,13 +255,13 @@ Registration does not approve the project's architecture, start development, or 
 
 ### Source format and inputs
 
-The Maestro Planning Guide defines source conventions and document locations that can be interpreted consistently. Its exact formats are not specified. A small source index identifying project details and authoritative documents is a **provisional** mechanism, not a required file format.
+The [Maestro Planning Guide](planning-guide/README.md) specifies three Markdown source types: a project overview, architecture, and milestone declarations. Registration receives the repository-relative overview path. The overview identifies the authoritative architecture and declarations through explicit source references; repository scanning is not used to guess the entry document.
 
 | Input | Required information |
 |---|---|
 | Identity | Plain project name, repository location, and responsible project architect. |
 | Purpose and scope | Intended result, included work, and explicit exclusions. |
-| Architecture | Main components, responsibilities, interactions, technical choices, constraints, and unresolved details. |
+| Architecture | Main components, responsibilities, interactions and journeys with expected results, technical choices, constraints, and unresolved details. |
 | Current state | New or existing development, reported completed capability, unfinished or broken areas, supporting evidence, and conflicting claims. |
 | Work outline | Desired features or outcomes, priorities, dependencies, ordering, and supplied project milestones. |
 | Completion requirements | Project-level acceptance criteria and definitions of done. |
@@ -273,7 +273,7 @@ Project milestones describe meaningful outcomes, releases, or component boundari
 
 ### Intake and scope
 
-The intake request provides an explicit repository and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
+The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
 
 Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
 
@@ -399,7 +399,7 @@ The following architectural mechanisms remain unresolved:
 | Service interface | API endpoint names, connection configuration, and request/event schemas. |
 | Persistence | SQL schema, broader runtime recovery internals, duplicate-request recognition, and SQL-to-GitHub package update consistency. |
 | Agent integration | Detailed Project Architect and Fidelity Reviewer contracts, structured agent response formats, and Model Execution Adapters. |
-| Registration formats | Planning Guide source formats, JSON package schema, index details, folder locations, and filenames. |
+| Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
 | Configuration | Review configuration location and format; numeric technical retry default. |
 | Terminal behavior | Remaining argument syntax, input-height limit, minimum supported dimensions, and practical evaluation of message scrolling. |
 
