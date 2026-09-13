@@ -1,136 +1,138 @@
-# Maestro CLI — Project Milestone Source
+# CLI — Command-line Interface Milestone Declaration
 
-## Identity and status
+## Declaration identity
 
 | Field | Value |
 |---|---|
 | Project | Maestro |
-| Capability | Local terminal interface for multiple projects |
-| Repository | https://github.com/jmiedreich-ux/Maestro |
-| Responsible project architect | Owner and software architect |
-| Document version | 5 |
 | Declaration | CLI — Command-line interface |
-| Status | Proposed project outcomes for review; not a registration package, development breakdown, or implementation approval |
-| Design authority | [Maestro Architecture](maestro-architecture.md) |
-| Reviewed architecture | [Architecture source revision](https://github.com/jmiedreich-ux/Maestro/blob/7b97a460db371877bc4feb6b899ff06cffb0b7af/docs/maestro-architecture.md), content blob `4b56bbf598ddd466376fdf182b2d5f20da5f220c` |
+| Declaration version | 6 |
+| Status | Proposed outcomes; no recorded implementation completion |
+| Architecture source | `docs/maestro-architecture.md` |
 
-The architecture owns system behavior. This source defines delivery boundaries, usage journeys, acceptance evidence, and dependencies. The grouping is proposed; it does not add architecture or claim existing code satisfies the outcomes.
+## Capability and scope
 
-Source preparation follows the [Maestro Planning Guide](planning-guide/README.md). No development milestones or work packets are created here.
+The declaration delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [project overview](maestro-project-overview.md) identifies current-state evidence.
 
-## Purpose, scope, and current state
+Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this declaration. Registration-specific intake and package actions are delivered through the [registration declaration](maestro-registration-project-milestones.md).
 
-The CLI provides an installed `maestro` terminal application connected to the Python service on the Linux AI box. It displays separately identified projects, recorded conversations, findings, and attention items, and accepts explicit answers to service-delivered questions.
+Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
-The scope includes the service/API/SQL connections required for those capabilities. It is not limited to terminal rendering. HTTP requests and Server-Sent Events connect the CLI and service; SQL stores current state and durable history.
+## Milestones and order
 
-Excluded: command center, undecided mobile interface, unsolicited agent conversations, saved drafts across project switches, execution commands, and a complete project execution engine. Actual registration assessment, package publication, and activation belong to the registration outcomes; their CLI integration is mapped below.
-
-The architecture describes intended behavior. No source-code or running-system assessment was performed for this milestone document. Existing implementation readiness is **unknown**. Reuse requires evidence of the described operation, not file names or earlier completion claims.
-
-## Project outcomes and order
-
-Two proposed outcomes separate a usable read-only workspace from reliable responses. Both are prerequisites to registration development.
-
-| Position | Project milestone | Outcome | Dependency |
+| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | A usable terminal view of real service-held project state, conversations, findings, and attention. | First CLI outcome; includes the service and storage connections necessary for its own operation. |
-| 2 | CLI-PM2 — Reliable project questions and answers | Question-linked input is saved, acknowledged, routed, and recovered without accidental actions or duplicate effects. | Depends on CLI-PM1 — Connected multi-project CLI workspace. Together they establish the CLI foundation. |
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | 3 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
+| 2 | CLI-PM2 — Reliable project questions and answers | 3 | `docs/maestro-cli-project-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
 
 ## CLI-PM1 — Connected multi-project CLI workspace
 
-**Purpose:** A usable, read-only terminal workspace exposes live project information without mixing projects or controlling their work.
+**Outcome:** A usable read-only terminal view of real service-held project activity, conversations, findings, and attention.
 
-**Scope:** Linux service and CLI setup; local connection; HTTP reads and streamed updates; durable state retrieval; project navigation; conversations, findings, attention, keyboard controls, empty/error states, and reconnection.
+**Included:** Installed CLI, Linux service connection and necessary setup, HTTP reads, streamed updates, SQL records, project navigation, reading controls, keyboard and size handling, empty/failure states, reconnect, and exit.
 
-**Usage journey:** Follow documented setup and start the service separately. Launch `maestro`, inspect the overview, select a project, read recent and earlier messages, expand findings, and inspect another project's attention item. Produce further service activity while reading history. Disconnect and reconnect, retrieve missed updates, and exit without stopping the service.
+**Excluded:** Answer submission and actual registration. A read-only workspace is not a completed registration interface.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Open and use the workspace | `docs/maestro-architecture.md#open-and-use-the-workspace` |
+| Component and runtime boundaries | `docs/maestro-architecture.md#components-and-responsibilities` |
+| Actual deployment and connection | `docs/maestro-architecture.md#runtime-and-prerequisites` |
+| Record ownership and live delivery | `docs/maestro-architecture.md#connections-and-data` |
+| Detailed CLI behavior | `docs/maestro-architecture.md#cli-workspace` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Running service and readable project/event records | `docs/maestro-architecture.md#runtime-and-prerequisites` | Operational readiness unknown; required service/API/SQL setup is included in this milestone. |
+| Record provisioning before registration exists | `docs/maestro-architecture.md#constraints-and-unresolved-details` | Mechanism unresolved; a usable source must be defined before affected implementation. |
+| Existing component evidence | `docs/maestro-project-overview.md#current-state` | Earlier source observations are not proof of current integrated operation. |
 
 ### Acceptance criteria
 
-| Condition | Required result and pass boundary | Evidence |
-|---|---|---|
-| Service and CLI are installed using documented instructions | The Python service runs under `systemd`; boot start and crash restart are demonstrated. `maestro` connects to the existing service without starting it. Required configuration and access are documented. | Commands used, installed revision, service state, connection results, and configuration references without secret values. |
-| Startup succeeds or connection fails | The overview starts with visible “No project selected,” even with one project. Connecting, connected, unavailable, and retry behavior are distinguishable. A failed lookup is not an empty list. | Connected and unavailable journeys, including successful retry without reopening the CLI. |
-| Multiple projects are present | The overview orders attention-needed, working, then idle projects. Selection opens the correct conversation without changing work. Project names and record associations remain distinct. | At least two separately identified service-held projects, their before/after state, and selection captures. |
-| Messages and state change | Actual service/SQL records feed HTTP reads and streamed updates. Messages identify their source; read-only requests create no duplicate status or conversation records. | Correlated API, SQL, and displayed records; service-generated updates for both projects. Hardcoded terminal sample data is insufficient. |
-| Earlier content or findings are opened | Recent history and Load earlier messages work while current activity or waiting state and pending questions remain accessible. Details expand inline, preserve the selected project and question linked to input, and restore reading position when closed. Viewing does not acknowledge or resolve a finding. At the bottom, messages follow; above it, New messages appears without pulling the reading position. | Captures of each state and unchanged finding/process state after viewing. |
-| Another project needs attention | The notice names the project and required response without switching focus. The attention list covers all projects; selecting an entry opens its project and question. | Notice while another project is selected, followed by explicit navigation to the correct record. |
-| A successful lookup contains no results | Correct empty messages appear for projects, attention, and findings. Retrieval failure and missing context remain distinct. Registration-specific empty actions are completed with registration integration. | Actual empty-query and failed-query observations, with current context identified. |
-| The connection drops during use | Visible content remains marked disconnected and potentially stale. Service actions are unavailable; local help, retry, and exit remain. Reconnect retrieves recorded changes without replaying earlier submissions. | Disconnect/reconnect record and uninterrupted independent service activity. |
-| Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. |
-| Commands are invoked | Help, projects, attention, findings, retry, and exit work within this milestone's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. |
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
+|---|---|---|---|
+| Service and CLI are installed using documented instructions | The Python service runs under `systemd`; boot start and crash restart are demonstrated. `maestro` connects to the existing service without starting it. Required configuration and access are documented. | Commands used, installed revision, service state, connection results, and configuration references without secret values. | None |
+| Startup succeeds or connection fails | The overview starts with visible “No project selected,” even with one project. Connecting, connected, unavailable, and retry behavior are distinguishable. A failed lookup is not an empty list. | Connected and unavailable journeys, including successful retry without reopening the CLI. | None |
+| Multiple projects are present | The overview orders attention-needed, working, then idle projects. Selection opens the correct conversation without changing work. Project names and record associations remain distinct. | At least two separately identified service-held projects, their before/after state, and selection captures. | None |
+| Messages and state change | Actual service/SQL records feed HTTP reads and streamed updates. Messages identify their source; read-only requests create no duplicate status or conversation records. | Correlated API, SQL, and displayed records; service-generated updates for both projects. Hardcoded terminal sample data is insufficient. | None |
+| Earlier content or findings are opened | Recent history and Load earlier messages work while current activity or waiting state and pending questions remain accessible. Details expand inline, preserve the selected project and question linked to input, and restore reading position when closed. Viewing does not acknowledge or resolve a finding. At the bottom, messages follow; above it, New messages appears without pulling the reading position. | Captures of each state and unchanged finding/process state after viewing. | None |
+| Another project needs attention | The notice names the project and required response without switching focus. The attention list covers all projects; selecting an entry opens its project and question. | Notice while another project is selected, followed by explicit navigation to the correct record. | None |
+| A successful lookup contains no results | Correct empty messages appear for projects, attention, and findings. Retrieval failure and missing context remain distinct. Registration-specific empty actions are completed with registration integration. | Actual empty-query and failed-query observations, with current context identified. | None |
+| The connection drops during use | Visible content remains marked disconnected and potentially stale. Service actions are unavailable; local help, retry, and exit remain. Reconnect retrieves recorded changes without replaying earlier submissions. | Disconnect/reconnect record and uninterrupted independent service activity. | None |
+| Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. | None |
+| Commands are invoked | Help, projects, attention, findings, retry, and exit work within this milestone's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. | None |
 
 ### Definition of done
 
-Every acceptance row has evidence from the installed CLI, actual service, and persistent SQL records. Project and event creation for demonstration is documented and reproducible before registration exists; no hidden manual database edits or undocumented setup are required.
+The main connected journey and essential failure cases provide evidence for all criteria using the installed CLI, service, and SQL. Setup and project/event provisioning are reproducible without hidden manual database edits. The implementation revision, instructions, actual observations, and required implementation review evidence are available.
 
-Controlled service activity may demonstrate workspace behavior without a project execution engine. Such activity is labeled as a demonstration and proves only this read-only outcome. Answer submission and registration are not represented as operational at this boundary.
+Real service activity is preferred. If controlled data is necessary before registration exists, the reason and limit are explicit; only the workspace connection is demonstrated. It cannot establish agent reasoning, registration, or execution completion. No accepted limitation removes the usable-workspace outcome.
 
-The keyboard and terminal choices required for use are documented, all observed failures against acceptance are resolved or explicitly accepted, and no limitation removes the stated usable-workspace purpose. Completion evidence includes the implementation revision, setup instructions, observations, and review results.
+### Unresolved details
+
+| Missing detail | Effect on the outcome | Clarification needed |
+|---|---|---|
+| Initial records and process selection | The entry to project views and the meaning of current process are not complete. | Resolve the corresponding items in `docs/maestro-architecture.md#constraints-and-unresolved-details`. |
+| API/SQL/event contracts and setup | Connections cannot be built from assumed formats or access. | Specify contracts and reproducible setup before implementation. |
+| Terminal choices | Dimensions, input limits, and detailed argument behavior need practical definition. | Record choices against the architectural behavior before completion. |
 
 ## CLI-PM2 — Reliable project questions and answers
 
-**Purpose:** A response to a specific service-held question reaches the correct project/process, is saved before acknowledgment, and cannot silently become an approval or duplicate action.
+**Outcome:** An explicit answer reaches the correct question and process, is saved before acknowledgment, and cannot silently become approval or a duplicate effect.
 
-**Scope:** Question rendering, recommendations and alternatives, input context, choice-to-input behavior, written and multiline answers, validation, SQL recording, response routing, acknowledgment, clarification, stale-question checks, and explicit retry. The generic service-side question/response path is included.
+**Included:** Question rendering, recommendations and alternatives, linked text/choice input, multiline behavior, context validation, SQL recording, routing, receipt, clarification, stale-question handling, explicit retry, and unsent-input handling.
 
-**Usage journey:** Open an attention item, select a choice, add clarification, and send. Observe save acknowledgment and the recorded answer. Obtain a linked follow-up. Repeat with a lost acknowledgment and an explicit retry, then with a question that is replaced before submission. Switch projects with an unsent answer and exit with another unsent answer.
+**Excluded:** Unsolicited agent conversations and actual registration assessment or activation. Generic response transport does not establish agent judgment.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Answer a project question | `docs/maestro-architecture.md#answer-a-project-question` |
+| Input and receipt rules | `docs/maestro-architecture.md#questions-and-answers` |
+| Project targeting | `docs/maestro-architecture.md#projects-and-targeting` |
+| Save before acknowledgment | `docs/maestro-architecture.md#save-and-delivery-sequence` |
+| Keyboard and paste | `docs/maestro-architecture.md#keyboard-and-terminal-behavior` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Connected workspace | CLI-PM1 — Connected multi-project CLI workspace | Required preceding outcome, not yet claimed complete. |
+| Supported question producer and consuming process | `docs/maestro-architecture.md#constraints-and-unresolved-details` | Unresolved before registration exists; required generic service-side path is included here. |
+| Question identity, request identity, and durable delivery | `docs/maestro-architecture.md#questions-and-answers` | Required behavior is defined; technical contracts and duplicate-recognition mechanism remain unspecified. |
 
 ### Acceptance criteria
 
-| Condition | Required result and pass boundary | Evidence |
-|---|---|---|
-| A question requests a choice or information | Clear alternatives include a justified recommendation where appropriate, tradeoffs, and a written alternative. Information requests allow writing without forced choices. | Actual service-delivered examples of both question types; no hardcoded display-only questions. |
-| Input has or lacks a selected question | Project or registration context, requester, and question are visible. Ordinary text is accepted only for that question; otherwise input is commands-only. Missing, unknown, conflicting, or ambiguous project targets cannot execute by guessing. | Submitted context and service validation results, including rejection of an invalid target. |
-| A choice is activated | The choice fills the input without submission. Optional text can be added. Send or Enter submits explicitly. | No service submission on choice selection; one submission after explicit send. |
-| A long answer is entered | Shift+Enter adds a line; multiline paste does not submit. The input grows to its documented limit then scrolls internally. | Keyboard and paste walkthrough with preserved question/conversation visibility. |
-| An answer is submitted | Commands and answers can be submitted while streamed updates arrive without changing their target or disrupting input. Sending remains until the service confirms SQL saving. The saved answer appears in the conversation, input clears, and the question shows Answer received rather than Resolved. | Request, saved record, acknowledgment, and displayed state linked to the same question. |
-| Clarification is required | The service/process receives the recorded answer. A specific follow-up explains the missing information, links the original question and answer, and sets the new input context. It does not count as registration confirmation. | Response routing record, follow-up, original answer, and unchanged approval state. |
-| Sending fails or acknowledgment is lost | Not sent and a plain reason appear; uncertain delivery includes the agreed explanation. The current input retains the answer for explicit retry. Reconnection alone never resubmits. A repeated submission cannot record or act twice. | Lost-acknowledgment observation with one durable answer and one process effect after explicit retry. |
-| The question has been replaced or its process cancelled | The original question's eligibility is checked before acceptance. The reason is shown, no answer is applied elsewhere, and an available replacement is offered without transferring text. | Stale-question submission and unaffected replacement record. |
-| Projects are switched or the CLI exits | Switching clears unsent text without saving or transfer. Exit warns about unsent text. Saved records remain retrievable after reopening; startup again selects no project. | Before/after input and record observations for switch, exit, and reopen. |
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
+|---|---|---|---|
+| A question requests a choice or information | Clear alternatives include a justified recommendation where appropriate, tradeoffs, and a written alternative. Information requests allow writing without forced choices. | Actual service-delivered examples of both question types; no hardcoded display-only questions. | None |
+| Input has or lacks a selected question | Project or registration context, requester, and question are visible. Ordinary text is accepted only for that question; otherwise input is commands-only. Missing, unknown, conflicting, or ambiguous project targets cannot execute by guessing. | Submitted context and service validation results, including rejection of an invalid target. | None |
+| A choice is activated | The choice fills the input without submission. Optional text can be added. Send or Enter submits explicitly. | No service submission on choice selection; one submission after explicit send. | None |
+| A long answer is entered | Shift+Enter adds a line; multiline paste does not submit. The input grows to its documented limit then scrolls internally. | Keyboard and paste walkthrough with preserved question/conversation visibility. | None |
+| An answer is submitted | Commands and answers can be submitted while streamed updates arrive without changing their target or disrupting input. Sending remains until the service confirms SQL saving. The saved answer appears in the conversation, input clears, and the question shows Answer received rather than Resolved. | Request, saved record, acknowledgment, and displayed state linked to the same question. | None |
+| Clarification is required | The service/process receives the recorded answer. A specific follow-up explains the missing information, links the original question and answer, and sets the new input context. It does not count as registration confirmation. | Response routing record, follow-up, original answer, and unchanged approval state. | None |
+| Sending fails or acknowledgment is lost | Not sent and a plain reason appear; uncertain delivery includes the agreed explanation. The current input retains the answer for explicit retry. Reconnection alone never resubmits. A repeated submission cannot record or act twice. | Lost-acknowledgment observation with one durable answer and one process effect after explicit retry. | None |
+| The question has been replaced or its process cancelled | The original question's eligibility is checked before acceptance. The reason is shown, no answer is applied elsewhere, and an available replacement is offered without transferring text. | Stale-question submission and unaffected replacement record. | None |
+| Projects are switched or the CLI exits | Switching clears unsent text without saving or transfer. Exit warns about unsent text. Saved records remain retrievable after reopening; startup again selects no project. | Before/after input and record observations for switch, exit, and reopen. | None |
 
 ### Definition of done
 
-Every answer-path acceptance row passes through the actual service and SQL, including the lost-acknowledgment and stale-question cases. Generic question creation, consumption, and follow-up behavior are documented and reproducible without requiring the unfinished registration process.
+The connected answer journey and essential failure cases establish the criteria, including lost acknowledgment and stale-question rejection, without an exhaustive test matrix. Evidence links submission, saved record, receipt, and process effect to the same question. The preceding workspace remains usable.
 
-Controlled service-generated questions may demonstrate this transport and interaction capability. They do not prove agent reasoning, the registration fidelity loop, or package activation. Live agent roles and Model Execution Adapters retain their separate design boundaries.
+Question creation and response consumption use the actual service and SQL. Necessary controlled inputs are identified and justified; they prove only this response component. Real agent and registration behavior require their own connected integration evidence.
 
-The connected workspace delivered by CLI-PM1 — Connected multi-project CLI workspace remains usable. Evidence identifies the service/CLI revision, submitted contexts, persisted results, observed process effects, and any explicitly accepted limitations.
+### Unresolved details
 
-## Registration integration coverage
-
-This section assigns the CLI-facing integration to registration outcomes; it does not create another registration process or declare one complete.
-
-| Registration outcome | Required CLI integration |
-|---|---|
-| REG-PM1 — Register and confirm a project through either interface | Amend this existing outcome to CLI-only scope while retaining its identifier. Connect `/register <repository>`, `/registration`, registration-specific findings/empty views, source scope selection, actual architect/reviewer messages, recorded answers, package inspection, explicit exact-candidate confirmation, and initial cancellation. The Register control and slash command use the same process. |
-| REG-PM2 — Update a registration without losing approved history | Connect explicit re-registration identification, same-project idle enforcement, existing-process handling, version comparison, changed/ineligible candidate rejection, and confirmation/cancellation while preserving prior active history. |
-| REG-PM3 — Recover registration without losing decisions or exceeding limits | Connect recovered status, saved decisions and limits, and Outcome not confirmed handling. Reconnection queries confirmation/cancellation outcomes; explicit retry cannot duplicate effects. |
-
-Initial registration and re-registration both return the existing process for duplicate requests and reject confirmation of changed or ineligible candidates; these protections are not limited to re-registration. Registration comparison shows changes and reasons against the active version. Confirmation/cancellation are focused view actions, never standalone slash commands or ordinary text replies. Cancellation identifies effects and retained history; neither action is preselected. Confirmation does not start development, and failure/cancellation does not restart work.
-
-Real GitHub package publication, independent agent review, source interpretation, duplicate-registration handling, and package activation must be exercised when these integration outcomes are assessed. Sample data or generic service demonstrations cannot satisfy registration completion.
-
-The separate registration source remains an earlier draft with both-interface scope. The amendments above are required alignment, not a claim that the existing document is already corrected or approved.
-
-## Required detail before implementation
-
-Outcome-level behavior is largely specified. Several mechanisms and context rules still need a recorded design; this source does not silently select them.
-
-| Detail | Why it matters | Required resolution point |
+| Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Project and question provisioning before registration | Foundation journeys need real service-held records without relying on an unavailable registration workflow. | Define the documented bounded provisioning mechanism before CLI-PM1 — Connected multi-project CLI workspace implementation; extend it for CLI-PM2 — Reliable project questions and answers. |
-| Project/process/question selection | A project can have historic or concurrent activity; “current process” must resolve unambiguously for findings and questions. Registration intake also begins before an existing project is selected. | Specify identity and selection rules before the relevant navigation or submission implementation. |
-| HTTP, event, and SQL contracts | CLI and service must agree on identities, payloads, status, save acknowledgment, and reads. | Specify together before implementing their connection; endpoint names alone are insufficient. |
-| Reconnect and duplicate recognition | Lost updates and uncertain sends require distinguishing the same submission from a new or edited answer. | Specify missed-update recovery and request identity before response/reconnect implementation. |
-| Setup and local service access | Installation, runtime dependencies, service configuration, and actual connection access must work without omitted steps. | Document the chosen mechanism before acceptance; no credential or security model is invented here. |
-| Terminal implementation | Toolkit/runtime, supported terminal behavior, remaining command arguments, history loading, input-height limit, and minimum dimensions need concrete choices. | Select during implementation; verify against the agreed behavior before completion. |
-| Registration formats and roles | Source interpretation, package schema, review roles/adapters, and work-state enforcement are dependencies of actual registration. | Resolve in registration and agent design before their CLI integration is declared complete. |
-| SQL and GitHub package consistency | A saved answer or action must not be confused with completed package publication or activation. | Define the record relationship and failure behavior before registration actions are integrated. |
+| Question source and context | Submission cannot rely on guessed recipients or a not-yet-available registration process. | Resolve the initial-record and process-context items in `docs/maestro-architecture.md#constraints-and-unresolved-details`. |
+| Same request versus edited response | Retry must avoid duplicate effects without confusing a new answer with a prior submission. | Specify the request identity and recovery contract. |
 
-These are delivery prerequisites or implementation choices, not extra product features. Missing mechanisms prevent a claim of implementation readiness; they do not invalidate the recorded CLI outcomes. Additional design decisions belong in the architecture, separately from milestone work.
+## Partial-registration boundary
 
-## Acceptance status
-
-No milestone is currently claimed complete. Source review is not operational verification, registration acceptance, or authority to begin implementation.
+No narrower portion is declared. Any selected subset requires explicit scope, outside dependencies, relevant journey references, and acceptance coverage before registration confirmation.
