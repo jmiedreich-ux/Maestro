@@ -10,7 +10,8 @@
 | Owner and human project architect | Jeremy Miedreich |
 | Authoring role | AI assistant acting as the project architect |
 | Intended reader | Maestro architect performing a later registration review |
-| Document version | 1 |
+| Document version | 2 |
+| Declaration | REG — Project registration |
 | Status | Proposed project milestone source for Owner review; not a registration package or approval |
 | Architecture baseline | [Maestro Architecture at the reviewed source commit](https://github.com/jmiedreich-ux/Maestro/blob/8d1448473c7f95fa830fac9e49d36b8cdb7cf17d/docs/maestro-architecture.md) |
 
@@ -51,17 +52,21 @@ These are source observations, not operational verification. No milestone below 
 
 ## Project milestone outline
 
-All three milestones are required for the registration capability described here. The order is a proposed delivery sequence, not a development breakdown. Milestone identifiers are sequential project-planning identifiers, always paired with their subjects; the architecture's naming examples are not existing milestone records.
+All three milestones are required for the registration capability described here. The order is a proposed delivery sequence, not a development breakdown. References use the registration declaration designation and a local milestone number, always paired with the subject. The position column controls order independently of identity.
 
-| Project milestone | Outcome | Priority and dependency |
-|---|---|---|
-| PM1 — Register and confirm a project through either interface | A real, connected initial registration reaches explicit Owner confirmation and a usable package in GitHub. | First; includes its startup, access, guide, validation, review, and publication prerequisites. |
-| PM2 — Update a registration without losing approved history | Re-registration safely changes coverage or project milestones and activates only the exact version the Owner confirms. | Second; depends on PM1 — Register and confirm a project through either interface. |
-| PM3 — Recover registration without losing decisions or exceeding limits | Interrupted registration resumes correctly or pauses visibly within separate technical and review limits. | Third; depends on PM1 — Register and confirm a project through either interface and PM2 — Update a registration without losing approved history. |
+| Position | Project milestone | Outcome | Priority and dependency |
+|---|---|---|---|
+| 1 | REG-PM1 — Register and confirm a project through either interface | A real, connected initial registration reaches explicit Owner confirmation and a usable package in GitHub. | First; includes its startup, access, guide, validation, review, and publication prerequisites. |
+| 2 | REG-PM2 — Update a registration without losing approved history | Re-registration safely changes coverage or project milestones and activates only the exact version the Owner confirms. | Second; depends on REG-PM1 — Register and confirm a project through either interface. |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | Interrupted registration resumes correctly or pauses visibly within separate technical and review limits. | Third; depends on REG-PM1 — Register and confirm a project through either interface and REG-PM2 — Update a registration without losing approved history. |
 
-Each milestone starts at version 1 and is not yet demonstrated. A title or content amendment preserves its identifier and increments its version. Never reuse retired identifiers.
+This is declaration version 2. Each milestone record is version 2 for the one-time adoption of qualified references. Milestone outcomes and acceptance text remain the earlier draft; none is demonstrated. Future additions use the next unused reference and can be inserted anywhere in the ordered list without renumbering existing milestones. Reordering changes the declaration version, not unchanged milestone versions.
 
-## PM1 — Register and confirm a project through either interface
+**Cross-declaration prerequisite:** CLI-PM2 — Reliable project questions and answers in the [CLI declaration](maestro-cli-project-milestones.md), following CLI-PM1 — Connected multi-project CLI workspace, precedes registration development.
+
+**Scope status:** This naming revision does not finalize the older both-interface registration scope or its startup allocation. Those still require alignment with the CLI-only architecture. The [current identity rules](maestro-architecture.md#identity-declarations-and-ordering) govern qualified references; the pinned baseline above remains the source of the earlier registration draft.
+
+## REG-PM1 — Register and confirm a project through either interface
 
 **Purpose:** The Owner can register a whole project or defined portion without assembling disconnected components by hand.
 
@@ -90,7 +95,7 @@ Every acceptance row passes with recorded evidence from the connected system. Th
 
 Startup, credentials, agent calls, Owner responses, and publication are exercised—not replaced by test-data screens or manually fabricated approvals. Required reviews and evidence are complete. Any accepted limitation is recorded explicitly and cannot remove an essential operation while this milestone retains its purpose.
 
-## PM2 — Update a registration without losing approved history
+## REG-PM2 — Update a registration without losing approved history
 
 **Purpose:** The Owner can revise an existing registration while preserving the prior approved version and controlling exactly what becomes active.
 
@@ -110,9 +115,9 @@ Startup, credentials, agent calls, Owner responses, and publication are exercise
 
 ### Definition of done
 
-All acceptance rows pass against the registration delivered by PM1 — Register and confirm a project through either interface. Retained history and candidate comparison are usable through both interfaces. The actual work-state and start-inhibition connection is demonstrated; absent execution controls cannot be disguised as successful enforcement. No complete project execution engine is required beyond that bounded dependency.
+All acceptance rows pass against the registration delivered by REG-PM1 — Register and confirm a project through either interface. Retained history and candidate comparison are usable through both interfaces. The actual work-state and start-inhibition connection is demonstrated; absent execution controls cannot be disguised as successful enforcement. No complete project execution engine is required beyond that bounded dependency.
 
-## PM3 — Recover registration without losing decisions or exceeding limits
+## REG-PM3 — Recover registration without losing decisions or exceeding limits
 
 **Purpose:** Technical interruptions cannot erase completed review work, fabricate completion, or create unlimited retries.
 
@@ -131,7 +136,7 @@ All acceptance rows pass against the registration delivered by PM1 — Register 
 
 ### Definition of done
 
-Each interruption has been exercised against the connected registration process, with evidence that records and review budgets remain correct. PM1 — Register and confirm a project through either interface and PM2 — Update a registration without losing approved history still behave as specified after recovery. Recovery capability is not complete merely because retry functions exist.
+Each interruption has been exercised against the connected registration process, with evidence that records and review budgets remain correct. REG-PM1 — Register and confirm a project through either interface and REG-PM2 — Update a registration without losing approved history still behave as specified after recovery. Recovery capability is not complete merely because retry functions exist.
 
 ## Required prerequisite coverage
 
@@ -139,11 +144,11 @@ These dependencies are not claimed ready merely because related files exist.
 
 | Dependency | Coverage |
 |---|---|
-| Running Python service, Linux startup, GitHub access, agent availability, and both registration interfaces | Included in PM1 — Register and confirm a project through either interface. Account setup and access instructions must make the real journey possible; this source does not choose a credential mechanism. |
-| Planning Guide, source conventions, output schema, index, and package location | Included in PM1 — Register and confirm a project through either interface. Detailed format selection is implementation specification work, not an assumed existing validator. |
+| Running Python service, Linux startup, GitHub access, agent availability, and both registration interfaces | Included in REG-PM1 — Register and confirm a project through either interface. Account setup and access instructions must make the real journey possible; this source does not choose a credential mechanism. |
+| Planning Guide, source conventions, output schema, index, and package location | Included in REG-PM1 — Register and confirm a project through either interface. Detailed format selection is implementation specification work, not an assumed existing validator. |
 | Sequential identifiers with plainly worded subjects, stable identities, separate item versions and review rounds, non-reused retired identifiers, and an Owner-extendable naming list | Required across the milestones, using the architecture's naming conventions. Relationships remain explicit rather than encoded into identifiers. |
-| Live project work-state reporting and prevention of new starts | Required by PM2 — Update a registration without losing approved history. If not already available, the bounded connection must be delivered; a complete downstream execution workflow is outside this source. |
-| Checkpoint persistence and separate technical retry configuration | Included in PM3 — Recover registration without losing decisions or exceeding limits. Storage internals and the technical retry value remain explicit implementation choices. |
+| Live project work-state reporting and prevention of new starts | Required by REG-PM2 — Update a registration without losing approved history. If not already available, the bounded connection must be delivered; a complete downstream execution workflow is outside this source. |
+| Checkpoint persistence and separate technical retry configuration | Included in REG-PM3 — Recover registration without losing decisions or exceeding limits. Storage internals and the technical retry value remain explicit implementation choices. |
 
 ## Package expectations for the delivered capability
 
@@ -164,13 +169,13 @@ The author manually checked the source against the architecture's registration r
 | Architecture subject | Where covered |
 |---|---|
 | Identity, scope, architecture, current state, planned work, acceptance, document locations | Identity through project milestone sections and the linked architecture baseline |
-| Shared planning; breakdown after registration | Scope, milestone outline, and PM1 — Register and confirm a project through either interface |
-| Naming and stable versions | Project milestone outline, prerequisite coverage, and PM2 — Update a registration without losing approved history |
-| Purpose walkthroughs; good-enough findings; independent review; two-round limit | PM1 — Register and confirm a project through either interface |
-| Machine-first outputs; source changes; partial scope; targeted source checks | PM1 — Register and confirm a project through either interface and package expectations |
-| Both interfaces; duplicate requests; Owner responses and retained decisions; final confirmation | PM1 — Register and confirm a project through either interface |
-| Idle-only re-registration; comparisons; history; activation | PM2 — Update a registration without losing approved history |
-| Wrapper evidence; interrupted work; separate technical retries | PM3 — Recover registration without losing decisions or exceeding limits |
+| Shared planning; breakdown after registration | Scope, milestone outline, and REG-PM1 — Register and confirm a project through either interface |
+| Naming and stable versions | Project milestone outline, prerequisite coverage, and REG-PM2 — Update a registration without losing approved history |
+| Purpose walkthroughs; good-enough findings; independent review; two-round limit | REG-PM1 — Register and confirm a project through either interface |
+| Machine-first outputs; source changes; partial scope; targeted source checks | REG-PM1 — Register and confirm a project through either interface and package expectations |
+| Both interfaces; duplicate requests; Owner responses and retained decisions; final confirmation | REG-PM1 — Register and confirm a project through either interface |
+| Idle-only re-registration; comparisons; history; activation | REG-PM2 — Update a registration without losing approved history |
+| Wrapper evidence; interrupted work; separate technical retries | REG-PM3 — Recover registration without losing decisions or exceeding limits |
 | No full audit, execution-rule overrides, automatic development start, or invented missing requirements | Scope, acceptance criteria, and specification boundaries |
 
 The architecture remains the design authority. If a later source revision changes a requirement, review the affected milestone and retain the exact source version rather than silently mixing versions.
