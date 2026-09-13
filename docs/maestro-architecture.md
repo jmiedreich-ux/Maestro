@@ -161,7 +161,9 @@ If termination cannot be confirmed, the CLI displays **Stop unconfirmed** and th
 
 Silence alone does not trigger a restart. When the adapter confirms a quiet run is active, the service continues waiting within its run-duration limit. When status cannot be established, it reports uncertainty and blocks a replacement.
 
-Maximum run duration is configurable by role; starting durations remain undecided. Progress messages do not reset the limit. Reaching the limit requests termination. Recovery can start only after termination is confirmed and remains subject to the technical retry budget.
+The registration architect and registration fidelity reviewer each default to **30 minutes per run**, configurable separately. Other planning and execution assignments require their own duration settings; they do not inherit this default. Timing starts at launch. Progress does not reset it. A clarification response ends the run, so waiting for answers consumes no run time. Each follow-up or recovery run has its own timer.
+
+Reaching the limit requests termination, preserves available output, and pauses the activity once stopping is confirmed. Timeout alone does not trigger automatic retry: an identical run may reach the same limit. The CLI shows elapsed time, last reported progress, and whether termination was confirmed. Investigation or an appropriate duration adjustment precedes manual retry. Unknown termination status continues to block replacement.
 
 ### Returned implementation plan
 
@@ -593,7 +595,20 @@ Completed reports, reviews, decisions, and source/version references survive age
 
 Before restarting interrupted agent work, the service checks whether the original run remains active. Unknown status pauses recovery immediately and blocks a replacement. Once the run is confirmed ended, recovery supplies the saved assignment, answers, findings, and candidate files. Unfinished output remains draft until a complete response passes deterministic checks.
 
-Technical failures do not consume planning review rounds. The separate configurable technical retry limit defaults to **two automatic recovery attempts per agent assignment**, excluding its initial run. Recovery runs retain the same assignment retry accounting. After both attempts fail, the activity pauses with a plain explanation, an attention item, and an explicit retry action in the CLI. This activity action is distinct from the connection-only `/retry` command and does not bypass an unresolved original-run status. Its concrete request interface and post-limit retry accounting remain to be specified.
+Technical failures do not consume planning review rounds. The separate configurable technical retry limit defaults to **two automatic recovery attempts per agent assignment**, excluding its initial run. Recovery runs retain the same assignment retry accounting. This is a maximum, not a requirement to exhaust attempts.
+
+| Failure | Recovery behavior |
+|---|---|
+| Temporary tool or service interruption | Retry within the automatic limit once the original run is confirmed ended. |
+| Correctable response-format or output validation failure | Supply the specific validation errors with the recovery assignment, within the automatic limit. |
+| Missing access, unsupported model, or another cause requiring intervention | Pause immediately and explain the required correction. |
+| Unknown cause | Pause for investigation rather than blindly repeat the run. |
+| Run-duration limit | Follow [unresponsive-run handling](#unresponsive-runs); no automatic retry for timeout alone. |
+
+After the automatic limit is exhausted, the activity pauses with a plain failure explanation, an attention item, and any known corrective action. Manual **Retry activity** is appropriate after intervention, such as restored access, corrected configuration, or recovered tool availability; it is not the default recommendation for an unchanged failure.
+
+Each explicit manual retry permits one additional run, preserves failure history and review counts, and does not reset the automatic retry budget. Failure pauses the activity again. This activity action is distinct from the connection-only `/retry` command and cannot bypass unresolved original-run status. Its concrete request interface remains to be specified.
+
 
 ## Journeys and interactions
 
@@ -689,6 +704,6 @@ The following architectural mechanisms remain unresolved:
 | Persistence | SQL schema, broader runtime recovery internals, registration checkpoint internals, and SQL-to-GitHub package update consistency. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Concrete Claude Code and Codex launch/status/cancellation interfaces, artifact transport, and recovery capabilities remain to be verified. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | JSON package schema, package index details, package folder locations and filenames, and detailed source validation mechanics. Markdown source templates are defined in the Planning Guide. |
-| Configuration | Review and technical retry configuration location and format; initial per-role run-duration limits; explicit post-limit retry request and accounting. |
+| Configuration | Review, technical retry, and duration configuration location and format; explicit activity-retry request interface. Registration duration and retry accounting are defined above. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
