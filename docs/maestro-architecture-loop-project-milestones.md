@@ -6,8 +6,8 @@
 |---|---|
 | Project | Maestro |
 | Declaration | ARC — Architecture loop |
-| Declaration version | 2 |
-| Status | Draft outcomes; unresolved contracts identified; no implementation completion or registration-readiness claim |
+| Declaration version | 3 |
+| Status | Proposed outcomes with defined technical contracts; no implementation completion or confirmed registration claimed |
 | Architecture source | `docs/maestro-architecture.md` |
 
 ## Capability and scope
@@ -16,7 +16,7 @@ This declaration delivers the manually started architecture loop after confirmed
 
 The [Runtime Service declaration](maestro-runtime-service-project-milestones.md) owns shared storage, APIs, supervised agents, and process-definition handling. The [CLI declaration](maestro-cli-project-milestones.md) owns the terminal workspace and question controls. This declaration owns architecture-specific commands/actions and their service handlers, persistent architect-session continuation using the adapters, output schemas and publication rules, and connected loop behavior. The [registration declaration](maestro-registration-project-milestones.md) supplies confirmed registration.
 
-Scheduling, source implementation, worker dispatch, automatic execution start, command center, and mobile UI are excluded. General replanning and Execution policy are not defined by these outcomes. An architecture-loop milestone declaration describes Maestro delivery; the development milestones produced by the loop are project data.
+Scheduling, source implementation, worker dispatch, automatic execution start, command center, and mobile UI are excluded. Replanning is included only as reconciliation after confirmed re-registration and a manual architecture-loop start. General Execution policy is excluded. An architecture-loop milestone declaration describes Maestro delivery; the development milestones produced by the loop are project data.
 
 ### Dependencies and evidence
 
@@ -30,9 +30,9 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
-| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
-| 3 | ARC-PM3 — Review and confirm the development breakdown | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
+| 1 | ARC-PM1 — Establish the project's architectural foundations | 3 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
+| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 3 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
+| 3 | ARC-PM3 — Review and confirm the development breakdown | 3 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
 ## ARC-PM1 — Establish the project's architectural foundations
 
@@ -48,6 +48,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 |---|---|
 | Entry and persistent session | `docs/maestro-architecture.md#entry-and-responsibility`; `docs/maestro-architecture.md#persistent-architect-session` |
 | Code investigation and lasting foundations | `docs/maestro-architecture.md#initial-code-investigation`; `docs/maestro-architecture.md#lasting-project-structure-and-specialist-guidance` |
+| Exact session transport and output shapes | `docs/maestro-architecture.md#persistent-session-adapter-contract`; `docs/maestro-architecture.md#architecture-assignment-and-response-contract` |
 | Session limits, cancellation, and replacement | `docs/maestro-architecture.md#publication-recovery-and-cancellation` |
 | Exact document locations and ownership | `docs/maestro-architecture.md#architecture-output-locations-and-records` |
 | Whole-product evaluation and shared output handling | `docs/maestro-architecture.md#whole-product-architectural-evaluation`; `docs/maestro-architecture.md#shared-output-handling-and-process-boundaries` |
@@ -77,8 +78,8 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Tool continuation contract | Persistent continuity needs exact adapter operations. | Specify tool resume and active/waiting event mapping under the agreed session behavior; idle entry, selections, cancellation, and limits are settled. |
-| Executable validation | Fixed paths and source-local publication are defined in the architecture. | Implement validators and adapter response schemas for those contracts; do not reopen names, ownership, or publication behavior. |
+| Installed adapter verification | Continuation operations and event mapping are specified. | Implement and verify the selected protocols against the installed tool releases during development. |
+| Validator integration | Exact schemas are supplied in `docs/schemas/architecture-loop.schema.json`. | Integrate schema and semantic checks during implementation. No new Owner decision is identified. |
 
 ## ARC-PM2 — Produce a bounded and parallel-ready work breakdown
 
@@ -95,6 +96,7 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Packet-first breakdown and parallelism | `docs/maestro-architecture.md#work-packet-first-breakdown` |
 | Questions and answers | `docs/maestro-architecture.md#information-sufficiency-and-clarification` |
 | Ongoing product coherence | `docs/maestro-architecture.md#whole-product-architectural-evaluation` |
+| Exact schemas and allocation | `docs/maestro-architecture.md#architecture-schema-and-process-definition-binding`; `docs/maestro-architecture.md#architecture-assignment-and-response-contract` |
 | Fixed packet and milestone fields | `docs/maestro-architecture.md#architecture-record-contract` |
 | Wrapper validation and bounded corrections | `docs/maestro-architecture.md#deterministic-packet-checks-and-correction` |
 | Saved identities | `docs/maestro-architecture.md#identity-declarations-and-ordering`; `docs/maestro-architecture.md#shared-output-handling-and-process-boundaries` |
@@ -126,8 +128,8 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Executable record schemas | Required fields, references, names, and version rules are defined. | Implement JSON Schemas and canonical inventory serialization against the architecture record contract. |
-| General replanning | Later changes must respect existing work and authority. | Separate replanning design remains; changed-registration invalidation and manual resumption rules are already defined. |
+| Record validation implementation | Schemas and canonical hashing are supplied. | Implement the documented validation and publication rules; verify real output sets during development. |
+| Replanning implementation | Reconciliation is permitted only after confirmed re-registration. | Implement the existing manual architecture entry and affected-record preservation rules; no separate trigger or design prerequisite. |
 
 ## ARC-PM3 — Review and confirm the development breakdown
 
@@ -142,6 +144,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Required behavior or journey | Architecture section |
 |---|---|
 | Review and amendments | `docs/maestro-architecture.md#independent-review-and-amendments` |
+| API and re-registration-only replanning | `docs/maestro-architecture.md#architecture-api-operations`; `docs/maestro-architecture.md#replanning-after-re-registration` |
 | Current versus confirmed data and invalidation | `docs/maestro-architecture.md#current-versions-and-stale-data-prevention` |
 | Publication, cancellation, and restart | `docs/maestro-architecture.md#publication-recovery-and-cancellation` |
 | Exact-version confirmation | `docs/maestro-architecture.md#confirmation-and-completion` |
@@ -165,7 +168,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
 | The loop completes or is interrupted | Completion does not schedule or start execution. Interruption reconciles the same publication/confirmation operation without a new version, repeated completed agent work, or another Owner confirmation already recorded. Advance SQL references only after verified publication; unknown outcomes pause. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
 | The loop is cancelled or later restarted | Preserve saved work and prior confirmation; retain the project reservation until agents and pending operations resolve. A new activity reuses valid work and carries the same unresolved-work budgets rather than resetting them. | Actual cancellation/restart and linked accounting records, with no automatic execution. | None |
-| A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually. | None |
+| A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually after that re-registration is confirmed; a same-registration completed breakdown is viewed rather than replanned. | None |
 
 ### Definition of done
 
@@ -175,9 +178,9 @@ A real registration-to-architecture journey reaches independently reviewed and e
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Exact request and response schemas | The confirmation comparison, receipt, publication journal, and recovery behavior are defined. | Specify executable API/agent schemas and tool continuation without changing the agreed process. |
-| General replanning | Prior confirmation cannot silently authorize changed work. | Complete separate replanning design; preserve the already defined invalidation of affected work and retained unaffected coverage. |
+| Connected contract verification | Request/response schemas and tool continuation are defined. | Implement and verify their integration with confirmation and recovery during development. |
+| Later registration integration | Confirmed re-registration is the only replanning entry. | Verify reconciliation through manual architecture start with affected invalidation and retained unaffected coverage. |
 
 ## Partial-registration boundary
 
-No narrower portion is selected. Registering a subset requires explicit selected outcomes, outside dependencies and evidence, exclusions, and acceptance coverage. The unresolved contracts above prevent a claim that the complete loop is registration-ready merely because its milestones are documented.
+No narrower portion is selected. Registering a subset requires explicit selected outcomes, outside dependencies and evidence, exclusions, and acceptance coverage. Documentation sufficiency permits registration assessment; only the separate registration process can produce and confirm its actual registration package.
