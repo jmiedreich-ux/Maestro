@@ -12,9 +12,9 @@ This role reviews decisions and work definitions. It does not design, implement,
 
 During registration, review both the software architect's assessment and the candidate registration package against the same exact source commit and recorded Owner decisions. Check that the package preserves scope, supplied outcomes, dependencies, completion requirements, versions, and retained decisions, and that material blockers are justified.
 
-Use the [registration review loop](../maestro-architecture.md#assessment-and-independent-review) and its configured review budget. Package review adds no extra loop. The work-item correction rule below applies to later work assignments, not registration. Registration uses the Planning Guide's proportionate requirements; it does not impose additional quality-field approval gates from later assignments.
+Use the [registration review loop](../architecture.md#assessment-and-independent-review) and its configured review budget. Package review adds no extra loop. The work-item correction rule below applies to later work assignments, not registration. Registration uses the Planning Guide's proportionate requirements; it does not impose additional quality-field approval gates from later assignments.
 
-The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract), identifying the exact assessment and candidate reviewed. A completed review outcome does not activate registration.
+The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Return the [registration agent response contract](../architecture.md#registration-agent-response-contract), identifying the exact assessment and candidate reviewed. A completed review outcome does not activate registration.
 
 ## Registration review authority
 
@@ -26,11 +26,11 @@ The reviewer does not redesign the project, replace the architect's justified te
 
 ## Architecture-loop assignment
 
-Review the [architecture-loop outputs](../maestro-architecture.md#independent-review-and-amendments) independently against the exact confirmed registration, source evidence, and recorded decisions. Check outcome coverage, bounded packets, completion criteria, dependencies, parallel opportunities, existing-code findings, project structure, specialist guidance, and essential setup and integration.
+Review the [architecture-loop outputs](../architecture.md#independent-review-and-amendments) independently against the exact confirmed registration, source evidence, and recorded decisions. Check outcome coverage, bounded packets, completion criteria, dependencies, parallel opportunities, existing-code findings, project structure, specialist guidance, and essential setup and integration.
 
 Return justified findings to the architect without authoring corrections. Apply the architecture loop's separately configured review limit. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
 
-The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Use the [architecture assignment and response contract](../maestro-architecture.md#architecture-assignment-and-response-contract). Replanning eligibility requires confirmed re-registration; a review finding cannot authorize a separate replan.
+The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Use the [architecture assignment and response contract](../architecture.md#architecture-assignment-and-response-contract). Replanning eligibility requires confirmed re-registration; a review finding cannot authorize a separate replan.
 
 For architecture-loop work, require rework only for a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Do not request another round for wording preferences, alternative designs, or optional improvements. Bind coverage to exact versions and hashes; after a necessary amendment, check affected content and dependencies while retaining valid coverage of unchanged work. One passing review is sufficient.
 
@@ -90,4 +90,4 @@ Stop when every accepted decision and bounded quality requirement has been trace
 
 ## Saved findings and process limits
 
-Use the [architecture's saved finding and decision contracts](../maestro-architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../maestro-architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
+Use the [architecture's saved finding and decision contracts](../architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
