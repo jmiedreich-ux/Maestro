@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 3 |
+| Declaration version | 4 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -44,7 +44,7 @@ Existing-code condition remains as recorded in the [project overview](maestro-pr
 | 2 | SVC-PM2 — Preserve project activity and requests | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
 | 4 | SVC-PM4 — Run and recover assigned agents | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
+| 5 | SVC-PM5 — Apply shared process definitions | 3 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -256,8 +256,8 @@ Both real processes use the common runtime handling and their own recorded defin
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Architecture-loop adapter contracts | Process behavior, paths, records, and counters are defined; exact tool continuation remains. | Specify resume/event and response contracts before affected breakdown; implement their validators during development. |
-| Executable definition schema and handler mapping | The runtime must validate and execute the documented behavior. | Implement schema validation and handler mappings; this does not require live checks during documentation. |
+| Architecture-loop integration | Exact continuation, response, output, and API contracts are specified in the architecture and schema bundle. | Implement the shared handlers and verify installed compatibility during development; no further process-design decision is identified. |
+| Executable definition schema and handler mapping | The runtime must validate and execute the documented behavior. | Use the architecture's policy mapping and supplied process-definition schema; implement the validation and handlers during development. |
 
 ## Partial-registration boundary
 
