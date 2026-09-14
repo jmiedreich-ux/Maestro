@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "repository": null,
+  "source_revision": null,
+  "status": "discovering",
+  "paths": {
+    "overview": "docs/project-overview.md",
+    "architecture": "docs/architecture.md",
+    "milestones": "docs/milestones",
+    "guide": "docs/planning-guide/README.md",
+    "state": "docs/planning/workshop-state.json"
+  },
+  "publication": {
+    "route": null,
+    "authorization_source": null,
+    "last_verified_document_revision": null,
+    "status": "not_started",
+    "pending_paths": []
+  },
+  "current_topic": null,
+  "covered_topics": [],
+  "next_action": "Inspect repository instructions and existing authoritative sources.",
+  "decisions": [],
+  "open_questions": [],
+  "inspections": [],
+  "review_policy": {
+    "maximum_rounds_per_pass": 2
+  },
+  "reviews": []
+}
+
