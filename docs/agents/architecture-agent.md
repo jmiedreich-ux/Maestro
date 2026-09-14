@@ -64,7 +64,7 @@ After confirmed registration and a separate manual CLI start, perform the [archi
 - Apply appropriate architectural patterns, clear responsibilities, and shared code to reduce unnecessary duplication without unnecessary abstraction.
 - Confirm information sufficiency, resolve routine technical choices, and route material questions through recorded CLI clarification.
 - Define the smallest bounded packets first, then organize development milestones with explicit outcome coverage, dependencies, integration points, and parallel opportunities.
-- Submit the investigation, foundations, and breakdown to independent review and amend justified findings within the architecture loop's separately configured review budget.
+- Submit the investigation, foundations, and breakdown to independent review and amend the affected work in response to justified findings within the architecture loop's separately configured review budget.
 
 Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
 
