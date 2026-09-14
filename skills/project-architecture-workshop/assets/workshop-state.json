@@ -28,5 +28,76 @@
   "review_policy": {
     "maximum_rounds_per_pass": 2
   },
-  "reviews": []
+  "reviews": [],
+  "review_templates": {
+    "record": {
+      "id": null,
+      "subject": null,
+      "pass_type": null,
+      "mode": null,
+      "parent_review_id": null,
+      "scope": [],
+      "budget_key": null,
+      "round": null,
+      "reviewer": {
+        "agent_id": null,
+        "session_id": null,
+        "independence": null,
+        "authored_or_corrected_reviewed_content": null,
+        "prohibited_input_exposure": null
+      },
+      "snapshot": {
+        "repository": null,
+        "commit": null,
+        "document_hashes": [],
+        "packet_hash": null,
+        "filtered_passages": [],
+        "decision_evidence_refs": []
+      },
+      "sources_examined": [],
+      "journeys": [],
+      "not_assessed": [],
+      "missing_evidence": [],
+      "findings": [],
+      "result": null,
+      "conclusion": null,
+      "coverage_complete": false,
+      "round_consumed": false,
+      "correction_refs": [],
+      "invalidated_by": []
+    },
+    "source": {
+      "path": null,
+      "revision_or_hash": null,
+      "headings": []
+    },
+    "journey": {
+      "subject": null,
+      "trace_items": []
+    },
+    "trace_item": {
+      "category": null,
+      "status": null,
+      "locations": [],
+      "explanation": null
+    },
+    "location": {
+      "path": null,
+      "heading": null,
+      "detail": null
+    },
+    "finding": {
+      "id": null,
+      "subject": null,
+      "classification": null,
+      "information": null,
+      "locations": [],
+      "absence": null,
+      "affected_outcome": null,
+      "impact": null,
+      "minimum_correction": null,
+      "disposition": null,
+      "canonical_ref": null
+    }
+  }
 }
