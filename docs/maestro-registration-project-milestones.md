@@ -6,13 +6,15 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 15 |
+| Declaration version | 16 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
 ## Capability and scope
 
 The declaration delivers project registration through the CLI: source intake, bounded assessment and independent review, recorded decisions, versioned GitHub packages, explicit activation, re-registration, and technical recovery. Current-state evidence belongs in the [project overview](maestro-project-overview.md).
+
+Registration uses SVC-PM5 — Apply shared process definitions for common initiation, output handling, review accounting, confirmation, and recovery dispatch. Registration owns its package schema, eligibility, publication/activation policies, and process-specific handlers; shared mechanics are not reimplemented here.
 
 Implemented runtime interfaces and CLI foundation precede registration integration. Final connected CLI acceptance is completed with initial registration, using its real projects and questions; final runtime recovery evidence is shared with registration recovery. The [Runtime Service declaration](maestro-runtime-service-project-milestones.md) owns service installation, storage/request mechanisms, API transport, start reservations, adapters, and agent supervision. Registration owns process-specific eligibility, role assignments and response semantics, review policy, package schema/publication/activation, and their actual use of those runtime capabilities. Implemented dependencies are required; their final shared acceptance is not a prerequisite to starting registration development. Command center, project implementation, automatic development start, development breakdown, full code audits, and execution-rule overrides are excluded.
 
@@ -28,9 +30,9 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 12 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 13 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 9 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 11 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 12 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -61,6 +63,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
+| Shared process handling | SVC-PM5 — Apply shared process definitions | Implemented common handlers support registration; registration supplies its exact schemas and policies. Final runtime acceptance shares the connected process evidence. |
 | CLI foundation | CLI-PM2 — Reliable project questions and answers, following CLI-PM1 — Connected multi-project CLI workspace | Implemented workspace and answer interfaces precede development; final connected acceptance is shared here. Prior final acceptance of those integrated CLI journeys is not a prerequisite. |
 | Project sources | `docs/planning-guide/README.md` | Markdown source structure and package record contracts are specified. Executable validators are included implementation work. |
 | Runtime records, API, and agents | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Runtime Service implements shared storage, request delivery, tool setup, routing mechanics, and supervision. Registration supplies real architect/reviewer assignments and verifies their use. Final shared acceptance follows integration. |
@@ -167,6 +170,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
 | Registration journeys | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Required connected predecessors. |
+| Shared configured recovery | SVC-PM5 — Apply shared process definitions | Registration retains the publication journal and activation semantics; shared handlers apply its policy and recorded definition without resetting budgets. |
 | Durable checkpoints and remote evidence | SVC-PM4 — Run and recover assigned agents; `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Run identity, supervision, and event replay are defined in `docs/maestro-architecture.md#process-supervision-and-interruption-recovery`; publication reconciliation is defined in `docs/maestro-architecture.md#publication-recovery`. The automatic agent recovery default is two attempts per assignment. |
 
 ### Acceptance criteria
