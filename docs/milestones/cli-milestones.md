@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | CLI — Command-line interface |
-| Declaration version | 12 |
+| Declaration version | 13 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -26,7 +26,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | 7 | `docs/milestones/cli-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | 8 | `docs/milestones/cli-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
 | 2 | CLI-PM2 — Reliable project questions and answers | 5 | `docs/milestones/cli-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
 
 ## CLI-PM1 — Connected multi-project CLI workspace
@@ -73,6 +73,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 | Commands are invoked | Help, projects, attention, findings, retry, and exit work within this milestone's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. | None |
 | Project activities and registration states are displayed | Opening a project selects its single current activity, offers selection when several are underway, or shows the latest ended activity with Idle. Waiting remains current. Registration labels and attention targeting follow the architecture; unapproved attempts remain accessible. | Real initial registration attempts demonstrate current, waiting, ended, and historical views, with correct input context. The Updating registration label is verified with REG-PM2 — Update a registration without losing approved history and is outside this milestone's initial-registration acceptance. Multiple concurrent activity selection may use a necessary isolated check until another activity type exists; it does not prove execution. | None |
 | The CLI accesses the local service | Read the protected configured Owner credential and send it only to the validated loopback address, without credential redirects. Show setup or authorization failures clearly; offline help and exit remain available. | Connected access and essential credential failure evidence against `docs/architecture.md#local-owner-identity-and-credentials`, without recording the secret. | None |
+| Runtime performance or context state changes | Existing activity details display active/waiting time, input/output tokens, context used/limit/percentage and capacity status from SQL-backed service data. Show unknown, estimated and stale readings plainly. | Real service observations and one unavailable-reading case follow `docs/architecture.md#visibility-and-delivery-boundary`; no new dashboard or completion percentage. | None |
 
 ### Definition of done
 
