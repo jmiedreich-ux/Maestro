@@ -121,13 +121,7 @@ Use a non-live repository for any verification that may alter files or Git state
 
 ## Backup and recovery
 
-The accepted local backup target is a dedicated 32 GB USB device.
-
-Create database snapshots nightly and before schema migration, recovery, or maintenance that could affect data. Use SQLite's safe backup mechanism rather than copying a live database file.
-
-Record a SHA-256 manifest and make backup failures visible. Retain 21 daily snapshots and 8 weekly snapshots. Perform a restore exercise monthly.
-
-Restore to a new path, validate it, and reconcile it before use. Never overwrite the live database during restore. Do not place credentials, source repositories, or worktrees on the backup device.
+SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain defined in the [architecture](maestro-architecture.md).
 
 ## Notifications
 
