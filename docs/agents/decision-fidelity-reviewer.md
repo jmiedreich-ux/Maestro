@@ -60,6 +60,8 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
+The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration, whose review budget is defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
+
 Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
 
 A follow-up review checks only the named findings, the correction-only change, and directly affected consistency. Reopen broader review only when the source range changed materially, unrelated work appeared, evidence became unreliable, or independence was lost.
