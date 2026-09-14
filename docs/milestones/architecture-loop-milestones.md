@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | ARC — Architecture loop |
-| Declaration version | 4 |
+| Declaration version | 5 |
 | Status | Proposed outcomes with defined technical contracts; no implementation completion or confirmed registration claimed |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,7 +30,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
+| 1 | ARC-PM1 — Establish the project's architectural foundations | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
 | 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
 | 3 | ARC-PM3 — Review and confirm the development breakdown | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
@@ -70,6 +70,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 | Foundations are created | Saved structure maps current and intended locations. Specialist files follow the exact manifest paths under their source area, including `role-<role-title>.md`, `context.md`, and optional `memory.md`. The architect owns the role and starting context; verified specialist knowledge updates cannot alter authority or overwrite another current version. | Actual saved files and repository references; no worker launch or source implementation. | None |
 | Work continues after clarification or interruption | Retain established findings, structure, and specialist records. Keep the same session across answers and corrections; when unavailable, use the same role and exact model in a replacement from verified records or pause on uncertainty. Enforce separate active-run deadlines without charging waiting for the Owner; do not silently recreate foundations. | Basic real continuation and necessary interruption evidence with preserved record identities. | None |
 | Findings and supporting decisions are retained | Publish stable embedded finding identities and a service-built fixed `decisions.json` snapshot under the architecture version. Preserve unchanged identities and versions; bind references to exact containing artifacts. | Actual investigation and snapshot records conform to `docs/architecture.md#saved-findings-and-architecture-decisions` and its schema. | None |
+| A persistent session approaches its context limit | Use shared context handling without resetting occupancy on each run. Preserve verified findings, decisions, pending answers, work progress and accounting through compaction or linked replacement. | Connected continuation and saved input/output references follow `docs/architecture.md#checkpoints-and-safe-continuation`; no repeated investigation or capacity-related quality penalty. | None |
 
 ### Definition of done
 
