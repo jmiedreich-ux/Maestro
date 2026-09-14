@@ -68,7 +68,9 @@ The following responsibilities apply only to a separately authorized design or d
 - State allowed change areas, prohibited boundaries, required checks, resources, roles, and stop conditions.
 - Preserve traceability from every source requirement to a decision, work item, question, deferral, or explicit not-applicable result.
 - Replace changed work definitions explicitly instead of silently expanding active work.
-- Permit at most one targeted correction for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance. A different failure class after the correction returns to Architecture and the Owner.
+- **Provisional for Execution:** Permit at most one targeted correction for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance. A different failure class after the correction returns to Architecture and the Owner.
+
+The later work-item correction limits and implementation acceptance policies below are **provisional** pending separate Execution design. They are retained design material, not authority granted by registration. The registration scope and routine architecture decision authority above remain controlling.
 
 ### Quality boundary
 
