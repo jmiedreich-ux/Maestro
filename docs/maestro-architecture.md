@@ -114,9 +114,9 @@ A saved-output definition identifies the required record type, schema and format
 
 The common handler verifies project/activity identity, allowed destination, required outputs, schema validity, and version references before reporting the output set saved. SQL records the operation and its result; repository writes use verified publication and recovery handling. A partial external write cannot be presented as a completed output set. Existing accepted versions remain available.
 
-For registration, the output set is the [registration package](#package-structure), with its existing publication, hashing, review, confirmation, and activation rules. Configuration references that contract; it does not replace its schemas, relocate records arbitrarily, or bypass eligibility. The same handlers accept architecture-loop output definitions once their record schemas and publication rules are specified.
+For registration, the output set is the [registration package](#package-structure), with its existing publication, hashing, review, confirmation, and activation rules. Configuration references that contract; it does not replace its schemas, relocate records arbitrarily, or bypass eligibility. The same handlers apply the architecture-loop output definitions and publication rules below.
 
-Architecture-loop outputs include the investigation, code-direction decisions, project structure, specialist definitions and starting context, development milestones, work packets, and their review and confirmation references. Specialist roles and any maintained memory remain close to the relevant source. A location rule such as source-local placement requires a resolved permitted path; a descriptive label alone is not a valid destination. Their exact schemas and source-local publication mechanics remain under [architecture-loop details still to define](#architecture-loop-details-still-to-define).
+Architecture-loop outputs include the investigation, code-direction decisions, project structure, specialist definitions and starting context, development milestones, work packets, and their review and confirmation references. Specialist roles and any maintained memory remain close to the relevant source. A location rule such as source-local placement requires a resolved permitted path; a descriptive label alone is not a valid destination. Their record fields, paths, and publication rules are defined under [architecture output locations and records](#architecture-output-locations-and-records) and [publication, recovery, and cancellation](#publication-recovery-and-cancellation).
 
 A shared handler does not make all process rules interchangeable. Registration retains fresh agent conversations and its package activation rules; the architecture loop requires a persistent architect session and confirms a breakdown. Both stop at their defined completion boundary. Execution remains a separate manual start and its policies are not supplied by these definitions.
 
@@ -167,7 +167,7 @@ Automatic model substitution is disabled in the effective tool configuration. A 
 
 #### Tool transport
 
-The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation contract is separate and remains to be specified.
+The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation behavior is defined separately; exact tool resume operations remain to be specified.
 
 | Tool | Transport and result handling |
 |---|---|
@@ -442,14 +442,16 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 | `/projects` | Open the project overview. Showing the list preserves selection; choosing an entry selects that project. |
 | `/attention` | Open questions, decisions, and recovery actions across projects. |
 | `/register <repository>` | Start registration intake for an explicit repository without assuming the selected project. The same entry handles eligible re-registration. |
+| `/architecture start` | Start the selected project's eligible architecture loop; request project selection if none is selected. An existing unfinished architecture activity is opened rather than duplicated. |
+| `/architecture` | Open the selected project's current architecture activity or latest confirmed breakdown; request selection if needed. If neither exists, show a genuine empty result without starting work. |
 | `/registration` | Open the selected project's existing registration process or record, including a candidate where available. It does not start registration. |
 | `/findings` | Open blockers, non-blocking observations, and review findings for the selected project's selected activity. A selected finding exposes explanation and evidence; no review or state change is initiated. |
 | `/retry` | Reread connection configuration and retry the service connection immediately. It does not start the service, repeat previous submissions, or retry project work. |
 | `/exit` | Close the CLI session. Saved conversations and pending questions remain available. Unsent text triggers a warning before exit. |
 
-The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions.
+The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions. Architecture confirmation and cancellation likewise use explicit actions in its activity view.
 
-The architecture loop and execution each require a separate manual start command. Their command names and request contracts are not yet specified here; the table above remains the defined registration command set. Execution commands for pausing, resuming, and stopping work are also unspecified.
+Architecture start and view commands are defined above. Execution still requires a separate manual start; its command name and execution controls remain unspecified.
 
 ### Questions and answers
 
@@ -835,7 +837,11 @@ Effective tool configuration is hashed and recorded for each assignment/run. Too
 
 ### Entry and responsibility
 
-The architecture loop is a Planning process that starts only through an explicit manual CLI command after project registration has been confirmed. Confirmation of registration does not start it automatically. The loop reads the confirmed registration files and develops the work needed to deliver their outcomes.
+The architecture loop is a Planning process started with `/architecture start` for the selected project after confirmed registration. No selection prompts project selection. `/architecture` opens its current activity or latest confirmed breakdown without starting work. Confirmation of registration never starts this loop automatically.
+
+Start requires no unfinished work on that project: reserved or queued assignments, running agents, work waiting for answers or review, pending saves or external operations, and uncertain stopping or recovery all prevent entry. The CLI explains the blocking activities. A repeated start request opens the existing unfinished architecture activity rather than creating another session.
+
+The service uses the shared project start lock to check eligibility and reserve the project atomically. Only that architecture activity's assignments and operations may start while reserved; execution and re-registration cannot start for the same project. Other projects continue normally. The reservation remains until the loop ends and its runs and pending operations are resolved. The loop reads the exact confirmed registration and develops the work needed for its outcomes.
 
 The architect checks information sufficiency, investigates existing code, establishes project structure and specialist guidance, and produces development milestones and work packets. It designs dependencies and opportunities for parallel work. Execution owns scheduling and subsequent implementation.
 
@@ -845,7 +851,13 @@ The service starts a persistent architecture agent session for the loop. The ses
 
 Persistent context is not the only record of the work. Findings, decisions, questions, answers, project structure, specialist definitions, breakdown versions, and review results must be saved so the loop does not depend on the agent remembering them. The service records activity and clarification through the existing SQL-first flow before presenting updates in the CLI.
 
-The architecture loop requires a persistent conversation rather than registration's fresh conversation for each run. Its tool-session continuation, restart recovery, workspace permissions, and structured response contract remain to be specified. Registration transport and response rules must not silently substitute for this requirement.
+Initiation explicitly selects Claude Code or Codex and the architect's exact model/version, with a separate reviewer selection. Apply the existing exact-model and capability checks. The architect keeps the same session through clarification and review corrections; the reviewer remains independent.
+
+When that session is unavailable, a replacement may continue with the same role and exact model from verified saved records. It preserves completed investigation, decisions, outputs, and review counts. Uncertain completed work pauses the loop with a specific explanation instead of triggering a fresh investigation. Session memory never overrides authoritative records.
+
+Each active architect or reviewer run has a separately configurable 30-minute default. Waiting for Owner answers or confirmation does not consume active-run time. The service records run deadlines and waiting states; restart cannot create extra running time. The persistent session can span multiple bounded active runs.
+
+Registration's fresh-conversation transport does not define persistent-session continuation. The exact tool resume protocol and active/waiting event mapping remain technical contracts to specify; these gaps do not reopen the agreed continuity and recovery behavior.
 
 ### Initial code investigation
 
@@ -890,6 +902,66 @@ Parallel work is a first-class design concern. The architect identifies independ
 
 Packet requirements include necessary setup, access, integration, and basic verification. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](planning-guide/README.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
 
+### Architecture output locations and records
+
+The registered project's GitHub repository holds versioned architecture documents. SQL holds activities, authoritative working and confirmed references, assigned versions and hashes, questions and answers, review and correction counts, and pending operations. The local workspace is an assigned working copy, not the authority.
+
+The output contract supplies exact filenames and paths to agents. Agents cannot invent alternative names, rename files, or create differently named replacements. The runtime rejects unexpected paths and names. An authorized rename must update the contract, manifest, and affected references explicitly.
+
+| Repository path | Required content |
+|---|---|
+| `.maestro/architecture/index.json` | Discovery links to published versions; not an alternative to SQL's authoritative references. |
+| `.maestro/architecture/versions/<version>/manifest.json` | File inventory, record identities and subjects, versions, exact references, hashes, and dependencies. |
+| `.maestro/architecture/versions/<version>/investigation.json` | Code findings, source evidence, code-direction decisions, and reasons. |
+| `.maestro/architecture/versions/<version>/project-structure.json` | Current and intended code locations, ownership, shared components, and specialist-file references. |
+| `.maestro/architecture/versions/<version>/development-milestones/<milestone-id>.json` | One record per development milestone. |
+| `.maestro/architecture/versions/<version>/work-packets/<packet-id>.json` | One record per bounded work packet. |
+| `.maestro/architecture/versions/<version>/reviews/<review-id>.json` | Independent findings and exact reviewed references. |
+| `.maestro/architecture/versions/<version>/confirmation.json` | Owner confirmation of the exact eligible breakdown. |
+
+Version values and record identifiers are assigned by the service under the naming conventions. Filenames use assigned identifiers; record contents, references, and displays pair each identifier with its plain subject. No agent-chosen numbering is permitted.
+
+Specialist files live under `<source-area>/.maestro/`. The fixed role filename is `role-<role-title>.md`, with lowercase words separated by hyphens, such as `role-registration-architect.md`. The architect assigns and records the exact title and path. `context.md` contains starting context and maintained knowledge; `memory.md` is optional. Each context/memory path has one recorded specialist owner; a colliding ownership request must be resolved explicitly rather than overwriting another specialist's file.
+
+The architect maintains the role definition and creates starting context. Specialists may update their assigned context and memory during execution with verified discoveries and source references, without changing role authority, scope, or architectural decisions. Updates are committed and compare the expected current file version before writing. A conflict prevents overwrite and returns the current reference for reconciliation. This is a bounded knowledge-maintenance permission, not general merge or execution authority.
+
+#### Architecture record contract
+
+JSON records use `schema_version: 1`. Common record metadata contains `project_id`, `activity_id`, `id`, `subject`, `version`, `registration_ref`, and `source_commit`. A record reference contains its identity and subject, version, repository-relative path, SHA-256, and exact Git commit where published. Within one output set, links use identity, subject, version, and relative path; their hashes resolve through the manifest inventory. This avoids circular hashes between a milestone and its packets. The publishing commit is supplied by the set's verified publication reference rather than embedded before it exists.
+
+| Record | Required fields beyond common metadata |
+|---|---|
+| Investigation | `findings` with code locations and evidence, `decisions` with reuse/update/replace/retire/missing-work disposition and rationale, and affected outcome references. |
+| Project structure | Current and intended locations, responsibilities, shared-component boundaries, planned moves, and specialist role/context/memory references. |
+| Development milestone | `outcome`, `project_outcome_refs`, `included_scope`, `exclusions`, `work_packet_refs`, `dependencies`, `integration_points`, and `completion_criteria` for the connected result. |
+| Work packet | `purpose`, `project_outcome_refs`, `development_milestone_ref`, `included_scope`, `exclusions`, `permitted_paths`, `starting_context`, `dependencies`, `shared_code_constraints`, `parallel_opportunities`, `completion_criteria`, `verification`, `essential_failure_checks`, and `required_outputs` with exact destinations. |
+| Review | Reviewer assignment/run, exact reviewed references and content hash, outcome, justified findings with affected references, and retained prior coverage where applicable. |
+| Confirmation | Operation/request identity, Owner identity, timestamp, exact expected working reference and reviewed-content hash, accepted limitations, and supporting review references. |
+
+Starting context names the exact source revision, document references, existing-code findings, and specialist role. Packet dependencies identify prerequisites without scheduling them. A milestone's packet completion is necessary but does not by itself prove the connected outcome; its own completion criteria establish that result.
+
+The manifest records every required output's type, path, identity/subject, version, SHA-256, and dependencies, plus the exact registration and input references. Its stage identifies required outputs: foundations require the investigation, structure, and assigned specialist files; breakdown additionally requires milestones and packets; reviewed and confirmed stages add their evidence. Saving foundations is not a declaration that a full breakdown is review-ready. Source-local specialist files include exact commit and hash. The manifest does not hash itself. The service calculates `reviewed_content_hash` from a canonical inventory of the investigation, structure, milestones, packets, specialist inputs, and relevant recorded decisions; reviews and confirmation are excluded from that content hash so recording a review does not invalidate itself. The manifest inventory still records review and confirmation files when present. SQL and the discovery index identify the exact publishing commit and manifest hash.
+
+A published content file is immutable at that version. Content amendments create the next output-set version, retaining stable record identities and incrementing changed record versions only. Review records and the single confirmation receipt may be added to a version after its content is published; those additions update the manifest and publication reference without changing reviewed content. Prior Git commits remain available.
+
+### Current versions and stale-data prevention
+
+SQL stores two separate references: the current working version, which is the latest validated and published work used for continuation and review, and the confirmed version approved by the Owner. Saving work never grants confirmation.
+
+Each assignment records its exact registration, source baseline, input versions, paths, and hashes. Before accepting output or resuming a session, the runtime verifies those dependencies against their authoritative references. Stale results cannot overwrite current work. Missing or mismatched files pause affected work instead of causing guessed filenames or silent recreation.
+
+Changes mark affected dependent records as needing revision and invalidate affected review coverage. Unaffected records and valid coverage carry forward. Comparing relevant input identities and hashes—not merely a change to repository HEAD—determines staleness; publishing the activity's own documents must not invalidate its unchanged source baseline.
+
+A later confirmed registration preserves the prior breakdown as history but marks affected milestones and packets as needing architectural review. Affected work is ineligible for execution until reconciled. The architect carries forward unaffected work and revises only what changed requirements demand. This does not regenerate work or start the architecture loop automatically; its manual start and idle checks still apply.
+
+### Deterministic packet checks and correction
+
+Before independent review, the wrapper checks required fields and formats, identifier/subject references, permitted paths, dependency resolution, assigned input validity, required outputs, and required GitHub commit evidence. It checks observable requirements only; it does not judge whether the architecture will deliver the promised outcome.
+
+The wrapper returns precise errors through the service to the architect, identifying the failed rule and affected output. The architect corrects its output; the wrapper reruns the affected checks and directly related references before review. The wrapper may assign service-owned identities and calculate hashes. It must not guess requirements, rewrite scope, or select replacement dependencies.
+
+Automatic output correction has its own configurable maximum of two attempts per architect assignment. An actual correction attempt consumes the allowance; simply rerunning checks does not. These technical corrections do not consume fidelity review rounds. Returning the same error without a relevant correction pauses early. At the limit, preserve the outputs and show the unresolved error. Recovery, reassignment, or activity restart cannot reset the allowance for the same unresolved work.
+
 ### Independent review and amendments
 
 Agent assignments and review use the same general practices as registration: explicit inputs and authority, deterministic wrapper checks where applicable, independent fidelity judgment, recorded clarification, and architect amendments. This does not import registration-specific package schemas, activation rules, timeouts, or retry settings.
@@ -903,21 +975,50 @@ The independent reviewer checks the investigation, persistent foundations, and b
 - Setup and essential connections are included so the combined result is usable.
 - Project structure, specialist guidance, and architectural quality decisions are consistent with the breakdown.
 
-The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The service reads the positive integer `architecture_loop.maximum_fidelity_reviews` from the shared TOML file; omission uses the stated default, and an invalid value blocks initiation. The activity snapshot fixes that limit. A valid completed independent review consumes one round; clarification, architect amendments, technical failures, and duplicate delivery do not. The first passing review can proceed to confirmation without using the remaining round. Process-specific technical recovery remains to be specified. The provisional execution work-item correction limit does not govern this review.
+The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The service reads the positive integer `architecture_loop.maximum_fidelity_reviews` from the shared TOML file; omission uses the stated default, and an invalid value blocks initiation. The activity snapshot fixes that limit. A valid completed independent review consumes one round; clarification, architect amendments, technical failures, and duplicate delivery do not. The first passing review can proceed to confirmation without using the remaining round. Technical recovery and output correction use the separate allowances below. The provisional execution work-item correction limit does not govern this review.
+
+Review is not a search for improvements. A blocking finding must identify a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Wording preferences, alternative designs, and optional improvements do not trigger rework, another review, or blocked confirmation.
+
+Reviews bind to exact versions and hashes. Changed reviewed content loses automatic approval coverage; follow-up review checks the required correction and affected dependencies within the remaining budget. Unchanged adequately reviewed work stays covered. Broad re-review is justified only by material effects on that coverage, not the existence of an amendment.
 
 ### Confirmation and completion
 
 The CLI presents a concise summary with access to the full breakdown: development milestones and intended outcomes, grouped work packets, coverage of confirmed project outcomes, dependencies, parallel opportunities, and any limitations requiring Owner acceptance.
 
-Owner confirmation approves the exact presented version of the breakdown and completes the architecture loop. Review approval and clarification answers do not substitute for that confirmation. The underlying investigation, structure, and specialist records remain traceable from the breakdown.
+The view also shows the exact version and whether independent review coverage is valid. Confirmation is eligible only for the unchanged published working version with valid coverage and no unresolved material blocker except a limitation explicitly accepted within Owner authority. Review approval and clarification answers do not substitute for confirmation.
+
+The confirmation request carries the expected working reference and content hash. The service compares them before reserving the operation. If they changed, reject the stale request, explain the change, and present the updated version; never confirm it silently. A successful confirmation saves that exact version and completes the loop. The underlying investigation, structure, and specialist records remain traceable.
 
 Completion does not start or schedule execution. A separate manual CLI command starts execution; command syntax and its execution rules remain to be defined.
+
+### Publication, recovery, and cancellation
+
+Architecture operations use the shared publication journal with an operation identity, intended exact bytes, expected prior references, verified Git commit, and SQL application state. The service owns repository writes; agents prepare outputs in permitted working areas and cannot publish arbitrary source changes. Source and assigned inputs remain read-only to the agent; only assigned output and scratch paths are writable.
+
+When specialist documents are created or updated, the service first verifies their permitted source-local paths and expected file versions, commits them, and records the verified references. The architecture manifest then includes those exact references. Intermediate publications remain journaled work; they are not proof that the complete output set is current.
+
+For a content save, publish and verify the required files, manifest, and discovery index before atomically advancing SQL's working reference. For confirmation, first save the accepted Owner request and reserve its exact target in SQL, then publish the receipt, manifest update, and index, verify them, and apply the confirmed reference and completed state in SQL. Content must remain unchanged while confirmation is pending. The prior confirmed reference remains authoritative until application completes.
+
+An interrupted operation is reconciled from GitHub and SQL using the same identity and intended bytes. Complete its remaining recording without creating another version, rerunning completed agent work, or requesting another confirmation when the Owner's decision is already saved. Uncertainty pauses the loop with an explanation. Neither working nor confirmed references advance on an assumption.
+
+Cancellation stops the agents and preserves saved work, history, and any prior confirmed breakdown. It does not confirm unfinished work or start execution. The project stays reserved until stopping is verified and pending external operations are reconciled. A pending accepted confirmation must first be reconciled; a cancellation request cannot erase a recorded confirmation or undo a completed one.
+
+After cancellation has fully resolved, `/architecture start` creates a new activity, carries forward valid saved work, and checks it against current registration and source inputs. Only affected work is revised. The service links the prior activity and assignment accounting. Cancellation/restart cannot reset exhausted review, technical recovery, or correction budgets for the same unresolved work; an additional allowance requires an explicit recorded decision.
+
+| TOML setting | Architecture-loop meaning |
+|---|---|
+| `architecture_loop.architect.run_timeout_seconds` | Positive integer; active architect-run limit, default 1800. |
+| `architecture_loop.fidelity_reviewer.run_timeout_seconds` | Positive integer; active reviewer-run limit, default 1800. |
+| `architecture_loop.recovery.automatic_recovery_attempts` | Nonnegative integer; default two recovery attempts after the initial run, counted per assignment. |
+| `architecture_loop.recovery.maximum_output_corrections` | Nonnegative integer; default two automatic output-correction attempts per architect assignment. |
+
+These settings use the activity's validated definition snapshot and do not alter registration defaults. Recovery follows the same cause-based principles as registration: retry only a recoverable failure, require intervention for permission/configuration problems or unknown causes, and never replace a run whose stopping is uncertain. A timeout pauses after confirmed stopping rather than automatically retrying. Review counts, correction attempts, and technical recovery counts stay distinct. Reserve a correction attempt when its corrective run starts, count it once, and retain that identity through recovery. A launch failure before correction starts consumes no correction attempt; a run failure uses recovery accounting without counting the same correction twice.
 
 ### Architecture-loop interactions
 
 | Starting condition and trigger | Service and agent behavior | Saved record and visible result | Advancement or essential failure |
 |---|---|---|---|
-| An explicit CLI start request targets a project | Check confirmed registration before starting the persistent architect session and reading its files. | Record the loop's source registration and activity; display its progress. | Unconfirmed registration cannot start the loop; explain the reason. Other start-eligibility rules remain unresolved below. |
+| An explicit CLI start request targets a project | Check confirmed registration before starting the persistent architect session and reading its files. | Record the loop's source registration and activity; display its progress. | Unconfirmed registration cannot start the loop; explain the reason. Idle-only eligibility and repeated-start behavior apply as defined above. |
 | The architect investigates and prepares work | Record findings and decisions, establish structure and specialist guidance, and derive bounded packets and milestones. | Saved outputs support continued work and review; CLI progress follows recorded activity. | Unsupported assumptions do not establish readiness; missing authority or information follows clarification. |
 | A linked question receives answers or follow-ups | Save responses and return relevant context to the persistent session. | The CLI shows recorded answers and subsequent activity. | Amend affected work when sufficient information is available; unresolved required information remains visible. |
 | A breakdown is submitted for independent review | Give a separate reviewer the exact sources and outputs; return justified corrections to the architect. | Save the reviewed version, findings, amendments, and review outcome. | Use the architecture-loop review limit; material disagreement at the limit reaches the Owner. |
@@ -927,13 +1028,11 @@ Completion does not start or schedule execution. A separate manual CLI command s
 
 | Area | Remaining contract |
 |---|---|
-| CLI and initiation | Command names, request fields, status/actions, duplicate-start handling, concurrent work eligibility, and the effect of later registration versions on an existing loop. |
-| Persistent sessions | Tool/model selection, session continuation and restart recovery, assignments and response fields, workspace access, timeout, cancellation, and technical retry limits. |
-| Durable outputs | File locations and schemas for investigation and breakdown, publication and version linking, specialist-file naming and memory ownership, and recovery of interrupted writes. Source-local placement of specialist files is established above. |
-| Review and confirmation | Review configuration and counting are defined above. Exact confirmation eligibility, version checks, rejection/amendment behavior, and durable confirmation recovery still need their process contract. |
-| Replanning | How a replan starts, authorizes changes to established foundations, and handles affected packets, specialist guidance, and prior confirmation. |
+| Tool continuation | Exact Codex/Claude session-resume operations, active/waiting event mapping, and architecture-specific structured response envelope. Continuity, replacement, limits, and preserved records are already defined. |
+| Executable validation | JSON Schemas and TOML policy mappings implementing the record fields above; canonical inventory serialization and exact API payload schemas. These are technical contract work, not missing Owner decisions about names, storage, or authority. |
+| General replanning and execution | Replanning entry and work scheduling remain separate design. Changed-registration invalidation, idle-only architecture entry, preserved foundations, and manual execution start are already settled. |
 
-These are incomplete architecture-loop contracts, not permission to assume registration's implementation applies unchanged.
+These remaining technical contracts do not reopen the behavior defined above. Installed capability verification belongs to development.
 
 ## Journeys and interactions
 
