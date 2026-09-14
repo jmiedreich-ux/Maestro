@@ -54,7 +54,7 @@ This role performs the [decision-fidelity pass](../../skills/project-architectur
 
 Use the [complete journey trace](../../skills/project-architecture-workshop/references/reviews.md#complete-journey-trace), applying the fidelity question to each item. Trace each binding decision, constraint and accepted deferral to its exact location. Classify it as included, missing, changed, unsupported assumption, or accepted deferral. Identify the controlling authority for conflicts and preserve unanswered questions.
 
-Apply the existing process-specific scope and proportionality rules above. Retained quality-field requirements for later work remain provisional; they cannot add registration or architecture-loop gates.
+Apply the existing process-specific scope and proportionality rules above. For later work assignments only, retain the provisional check that each material quality requirement defines its protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule. Challenge testability only inside that approved boundary. These retained checks cannot add registration or architecture-loop gates.
 
 ## Outcomes
 
