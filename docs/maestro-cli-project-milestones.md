@@ -6,13 +6,13 @@
 |---|---|
 | Project | Maestro |
 | Declaration | CLI — Command-line interface |
-| Declaration version | 8 |
+| Declaration version | 9 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
 ## Capability and scope
 
-The declaration delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [project overview](maestro-project-overview.md) identifies current-state evidence.
+The declaration delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [Runtime Service declaration](maestro-runtime-service-project-milestones.md) owns service installation, API implementation, server-side storage and request handling, and agent supervision. This declaration owns the terminal client and its interaction with those capabilities. The [project overview](maestro-project-overview.md) identifies current-state evidence.
 
 Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this declaration. Registration-specific intake and package actions are delivered through the [registration declaration](maestro-registration-project-milestones.md).
 
@@ -20,22 +20,22 @@ Verification follows `docs/planning-guide/README.md#verification-expectations`: 
 
 ### Development order and connected acceptance
 
-CLI implementation precedes registration development. An installed CLI and empty service are usable for foundation checks. Full connected acceptance of CLI-PM1 — Connected multi-project CLI workspace and CLI-PM2 — Reliable project questions and answers is completed alongside REG-PM1 — Register and confirm a project through the CLI, using real registration-created projects and questions. Registration development depends on the implemented CLI interfaces, not prior final acceptance of the integrated CLI journeys. A temporary generator is not a delivery prerequisite.
+Runtime foundation, storage, and API implementation support CLI development; CLI implementation precedes registration development. An installed CLI and empty service are usable for foundation checks. Full connected acceptance of CLI-PM1 — Connected multi-project CLI workspace and CLI-PM2 — Reliable project questions and answers is completed alongside REG-PM1 — Register and confirm a project through the CLI, using real registration-created projects and questions. Registration development depends on the implemented CLI interfaces, not prior final acceptance of the integrated CLI journeys. A temporary generator is not a delivery prerequisite.
 
 ## Milestones and order
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | 5 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
-| 2 | CLI-PM2 — Reliable project questions and answers | 4 | `docs/maestro-cli-project-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | 6 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
+| 2 | CLI-PM2 — Reliable project questions and answers | 5 | `docs/maestro-cli-project-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
 
 ## CLI-PM1 — Connected multi-project CLI workspace
 
 **Outcome:** A usable read-only terminal view of real service-held project activity, conversations, findings, and attention.
 
-**Included:** Installed CLI, Linux service connection and necessary setup, HTTP reads, streamed updates, SQL records, project navigation, reading controls, keyboard and size handling, empty/failure states, reconnect, and exit.
+**Included:** CLI installation and connection configuration, HTTP client reads, receiving streamed updates, presentation of saved service records, project navigation, reading controls, keyboard and size handling, empty/failure states, reconnect, and exit.
 
-**Excluded:** Answer submission and actual registration. A read-only workspace is not a completed registration interface.
+**Excluded:** Service installation, server API/SQL implementation, answer submission, and actual registration. A read-only workspace is not a completed registration interface.
 
 ### Architecture and journeys
 
@@ -53,7 +53,7 @@ CLI implementation precedes registration development. An installed CLI and empty
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Running service and readable project/event records | `docs/maestro-architecture.md#runtime-and-prerequisites` | Operational readiness unknown; required service/API/SQL setup is included in this milestone. |
+| Running service and readable project/event records | SVC-PM1 — Operate the persistent Maestro service; SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity | Runtime Service owns server installation, API, SQL, and event delivery. Implemented interfaces support CLI development; final connected evidence is shared, not a prerequisite loop. |
 | Real project and question records | REG-PM1 — Register and confirm a project through the CLI | Registration supplies records for final connected acceptance; foundation development supports an empty service. |
 | Existing component evidence | `docs/maestro-project-overview.md#current-state` | Earlier source observations are not proof of current integrated operation. |
 
@@ -61,7 +61,7 @@ CLI implementation precedes registration development. An installed CLI and empty
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Service and CLI are installed using documented instructions | The Python service runs under `systemd`; boot start and crash restart are demonstrated. `maestro` connects to the existing service without starting it. Required configuration and access are documented. | Commands used, installed revision, service state, connection results, and configuration references without secret values. | None |
+| The CLI is installed and the runtime service is available | CLI instructions install the terminal client and its connection configuration. `maestro` connects to the existing service without starting it. Service account, systemd startup, and crash-restart delivery belong to SVC-PM1 — Operate the persistent Maestro service. | CLI installation and connection results, installed revision, and runtime prerequisite evidence without secret values. | None |
 | Startup succeeds or connection fails | The overview starts with visible “No project selected,” even with one project. Connecting, connected, unavailable, and retry behavior are distinguishable. A failed lookup is not an empty list. | Connected and unavailable journeys, including configuration fallback, unreachable valid address, and successful retry after rereading configuration without reopening the CLI. | None |
 | Multiple projects are present | The overview orders attention-needed, working, then idle projects. Selection opens the correct conversation without changing work. Project names and record associations remain distinct. | At least two separately identified service-held projects, their before/after state, and selection captures. | None |
 | Messages and state change | Actual service/SQL records feed HTTP reads and streamed updates. Messages identify their source; read-only requests create no duplicate status or conversation records. | Correlated API, SQL, and displayed records; service-generated updates for both projects. Hardcoded terminal sample data is insufficient. | None |
@@ -87,7 +87,7 @@ No additional CLI behavior decision is required for these criteria. Registration
 
 **Outcome:** An explicit answer reaches the correct question and process, is saved before acknowledgment, and cannot silently become approval or a duplicate effect.
 
-**Included:** Question rendering, recommendations and alternatives, linked text/choice input, multiline behavior, context validation, SQL recording, routing, receipt, clarification, stale-question handling, explicit retry, and unsent-input handling.
+**Included:** Question rendering, recommendations and alternatives, linked text/choice input, multiline behavior, client context checks, request submission, displaying saved receipts and clarification, stale-question handling, explicit retry, and unsent-input handling. Runtime Service owns server validation, SQL saving, deduplication, and durable delivery; registration owns question meaning and process eligibility.
 
 **Excluded:** Unsolicited agent conversations and actual registration assessment or activation. Generic response transport does not establish agent judgment.
 
@@ -108,7 +108,7 @@ No additional CLI behavior decision is required for these criteria. Registration
 |---|---|---|
 | Connected workspace | CLI-PM1 — Connected multi-project CLI workspace | Workspace implementation precedes answer handling; their final connected acceptance is shared with initial registration integration. |
 | Real question producer and consuming activity | REG-PM1 — Register and confirm a project through the CLI | Registration supplies actual questions and consumes answers for shared connected acceptance. |
-| Question identity, request identity, and durable delivery | `docs/maestro-architecture.md#questions-and-answers` | Defined by the architecture's CLI request/event and answer-identity contracts; implementation is required. |
+| Question identity, request identity, and durable delivery | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity | Runtime Service implements the server contracts; the CLI implements their client interaction. Registration provides process-specific eligibility. Shared evidence verifies the connection. |
 
 ### Acceptance criteria
 
