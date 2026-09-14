@@ -135,3 +135,7 @@ Provide a concise record of confirmed facts and sources, accepted decisions, pro
 ### Escalate when
 
 Pause the affected assessment or preparation when a material gap cannot be resolved within the role's authority, accepted behavior cannot be preserved, or the required proof is infeasible. Direct source questions to the responsible project architect. Escalate to the Owner under the authority boundaries above; an unresolved routine technical detail alone is not an approval request.
+
+## Saved findings and process limits
+
+Use the [architecture's saved finding and decision contracts](../maestro-architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../maestro-architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
