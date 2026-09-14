@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | CLI — Command-line interface |
-| Declaration version | 11 |
+| Declaration version | 12 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -26,7 +26,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | 6 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | 7 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
 | 2 | CLI-PM2 — Reliable project questions and answers | 5 | `docs/maestro-cli-project-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
 
 ## CLI-PM1 — Connected multi-project CLI workspace
@@ -72,6 +72,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 | Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. | None |
 | Commands are invoked | Help, projects, attention, findings, retry, and exit work within this milestone's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. | None |
 | Project activities and registration states are displayed | Opening a project selects its single current activity, offers selection when several are underway, or shows the latest ended activity with Idle. Waiting remains current. Registration labels and attention targeting follow the architecture; unapproved attempts remain accessible. | Real initial registration attempts demonstrate current, waiting, ended, and historical views, with correct input context. The Updating registration label is verified with REG-PM2 — Update a registration without losing approved history and is outside this milestone's initial-registration acceptance. Multiple concurrent activity selection may use a necessary isolated check until another activity type exists; it does not prove execution. | None |
+| The CLI accesses the local service | Read the protected configured Owner credential and send it only to the validated loopback address, without credential redirects. Show setup or authorization failures clearly; offline help and exit remain available. | Connected access and essential credential failure evidence against `docs/maestro-architecture.md#local-owner-identity-and-credentials`, without recording the secret. | None |
 
 ### Definition of done
 
