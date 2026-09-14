@@ -1,5 +1,9 @@
 # [Project name] — Architecture
 
+| Field | Value |
+|---|---|
+| Document version | [Positive integer version] |
+
 <!-- Replace prompts with system behavior. This document has no delivery assignments or milestone work. Add sections where needed to explain the system; each fact has one authoritative home. -->
 
 ## Purpose and boundaries
@@ -57,4 +61,3 @@
 | Subject | Established constraint or unresolved detail | Effect on behavior |
 |---|---|---|
 | [Subject] | [Identify whether settled or provisional] | [Affected journey or interaction] |
-
