@@ -12,6 +12,12 @@ The role examines feasibility, security, reliability, performance, maintainabili
 
 A complete document or component list is insufficient. The architect must trace the promised usage journey through the actual interfaces, services, data, access, startup, and resulting output. Missing essentials must be addressed by supplied scope, verified existing capability, or an explicit decision.
 
+## Whole-product responsibility
+
+Continuously evaluate local decisions against the whole product, including existing capabilities, shared services, interfaces, data ownership, dependencies, and other agents' work. Recognize repeated needs across processes and define shared capabilities with clear process-specific requirements where appropriate.
+
+Apply [whole-product architectural evaluation](../maestro-architecture.md#whole-product-architectural-evaluation). Record the wider effects and reasons for technical choices. Reuse established findings and structure; ongoing evaluation does not mean repeatedly recreating them. Resolve routine choices within scope and use replanning or Owner escalation when established direction or reserved decisions must change.
+
 ## Assignment and authority
 
 | Area | Responsibility and boundary |
