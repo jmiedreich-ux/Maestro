@@ -24,12 +24,14 @@ Follow the [Maestro Planning Guide](docs/planning-guide/README.md). Apply the co
 
 ## Documentation review results
 
-Apply documentation review corrections directly to the authoritative documents. Do not present review results or create standalone review reports unless explicitly requested. Raise only unresolved issues that require an Owner decision. This rule does not remove review records required by Maestro's runtime or registration design.
+Apply corrections directly to authoritative documents. Do not present detailed results or create standalone review reports unless requested. Retain required coverage in existing workshop state, handoff, or runtime records under the [documentation review method](skills/project-architecture-workshop/references/reviews.md#coverage-and-findings). Incomplete coverage is not a completed review and consumes no round. This does not remove runtime review records.
 
 ## Cross-document alignment
 
-Architecture owns software behavior; milestone declarations own delivery outcomes and completion evidence; the Planning Guide owns required project inputs; role files own agent responsibilities and authority; handoffs own discussion status. Keep explanations in their authoritative document and link elsewhere.
+Architecture owns software behavior; milestone declarations own delivery outcomes and completion evidence; the Planning Guide owns required project inputs; role files own authority; handoffs own discussion status. Keep each fact authoritative in one place and link elsewhere.
 
-Final registration documentation alignment uses two independent passes: decision fidelity and cross-document consistency. Trace initial registration, clarification, review, confirmation, cancellation, recovery, and re-registration across the architecture, CLI and registration declarations, guide, and roles. For each journey check input origin, recipient, saved record, visible result, advancement condition, and essential failure behavior. Trace requirements to delivery criteria and criteria back to authorized requirements.
+Use the [documentation review method](skills/project-architecture-workshop/references/reviews.md) for independent inputs, three separate passes, complete journey tracing, coverage, conclusions, and bounded corrections. Existing permissions, role authority, runtime contracts, and review limits remain unchanged.
 
-Apply corrections to authoritative documents without introducing preferred features, stronger acceptance rules, or general Execution policy through registration review. Live software verification belongs to implementation. Separate review reports are not retained unless requested.
+For Maestro, selected-scope coverage includes opening and using the workspace, answering a question, initial registration, registration update, interrupted-registration recovery, and each architecture-loop stage: entry/session continuation, code investigation, project structure and specialist guidance, breakdown/clarification, review/amendment, publication/confirmation, cancellation/recovery, and reconciliation after re-registration. Record exclusions explicitly.
+
+Apply full reviews at the method's major design checkpoints. Targeted correction checks do not substitute for full coverage. Do not introduce preferred features, stronger acceptance requirements, or general Execution policy through documentation review. Live verification belongs to implementation.
