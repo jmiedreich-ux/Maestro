@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 4 |
+| Declaration version | 5 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -40,11 +40,11 @@ Existing-code condition remains as recorded in the [project overview](maestro-pr
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | SVC-PM1 — Operate the persistent Maestro service | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
-| 2 | SVC-PM2 — Preserve project activity and requests | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
-| 3 | SVC-PM3 — Connect the CLI to recorded service activity | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
-| 4 | SVC-PM4 — Run and recover assigned agents | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 3 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
+| 1 | SVC-PM1 — Operate the persistent Maestro service | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
+| 2 | SVC-PM2 — Preserve project activity and requests | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
+| 3 | SVC-PM3 — Connect the CLI to recorded service activity | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
+| 4 | SVC-PM4 — Run and recover assigned agents | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
+| 5 | SVC-PM5 — Apply shared process definitions | 4 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -77,6 +77,7 @@ Existing-code condition remains as recorded in the [project overview](maestro-pr
 | The machine boots or the service crashes | systemd starts or restarts the service as specified. Service operation does not depend on a terminal session. | Basic boot and controlled crash/restart observations with systemd status and startup logs. | None |
 | Startup or configuration fails | The failure is visible and identifies the missing prerequisite. Agent configuration errors disable launch as specified, not silently select other settings. | A necessary configuration/access failure with its actual error and recovery after correction. | None |
 | The operator inspects service health | systemd status and service logs distinguish running, failed, and restarting behavior; a running process is not reported as proof of registration readiness. | Actual service status and startup diagnostics. Connected API readiness is accepted under SVC-PM3 — Connect the CLI to recorded service activity. | None |
+| Owner access is installed | Provision the protected local CLI credential and service digest; agent identities cannot read or use the Owner credential. Follow `docs/maestro-architecture.md#local-owner-identity-and-credentials`. | Actual installation and essential access-denial evidence without exposing secrets. | None |
 
 ### Definition of done
 
@@ -118,6 +119,7 @@ No additional service-lifecycle behavior is proposed. Exact installation packagi
 | A receipt is lost or a request is repeated | Same request/content returns its saved result; conflicting content is rejected. An answer is accepted once and pending delivery survives restart. | Necessary lost-acknowledgment and restart observations using real service records. | None |
 | The service restarts after saving | Accepted conversations, decisions, request results, and pending delivery remain retrievable. Read-only retrieval does not create duplicate records. | Before/after SQL and service responses connected to the CLI. | None |
 | Re-registration competes with a project start | One transaction checks/reserves the project; simultaneous starts cannot slip through. Unknown run state is not idle. Other projects remain available. | Actual service-boundary contention and the REG-PM2 — Update a registration without losing approved history journey; no extra execution command is assumed. | None |
+| Findings and Owner decisions are saved | Preserve stable finding mappings, exact versions, action receipts and allowance consumption through replay and restart. | Shared registration and architecture-loop records show unchanged identities and no duplicate grants. | None |
 
 ### Definition of done
 
@@ -125,7 +127,7 @@ Connected CLI and registration evidence demonstrates durable records, isolated p
 
 ### Unresolved details
 
-Physical SQL tables and storage implementation remain development work. Database backup/restore procedures are still unresolved in the architecture; restart evidence must not be presented as proof of disaster recovery. General delivery-review authority remains provisional.
+Physical SQL tables and storage implementation remain development work. SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. General delivery-review authority remains provisional.
 
 ## SVC-PM3 — Connect the CLI to recorded service activity
 
@@ -159,6 +161,7 @@ Physical SQL tables and storage implementation remain development work. Database
 | Real activity exists | Defined reads return correct identities, data, and cursors; requests dispatch to the proper process and return saved receipts or specified errors. | Actual registration activity and question/answer journey through CLI, API, and SQL. | None |
 | Updates occur during connection or reconnection | Events are sent only after SQL commit; snapshot plus replay loses no recorded updates, and repeated event IDs are ignored. | Basic disconnect/reconnect while real activity changes, with correlated event identities and visible CLI results. | None |
 | A connection becomes quiet or breaks | Heartbeats and loss detection follow the architecture. Client exit does not stop service work or replay submissions. | Defined heartbeat timing and actual CLI exit/reconnection; service continues independently. | None |
+| The CLI presents a credential | Validate the credential, derive the configured Owner identity and return the specified authorization errors; agent results cannot act as Owner requests. | Actual authorized request and essential missing/invalid credential checks. | None |
 
 ### Definition of done
 
@@ -202,6 +205,7 @@ No new API behavior is introduced. Executable API validation and transport handl
 | Agent progress or completion arrives | Progress is recorded before CLI display. A successful tool exit or progress message cannot substitute for validated completion; stale run output cannot update current work. | Correlated supervisor, SQL, and CLI records, including one necessary invalid or late-result case. | None |
 | Stopping or a deadline occurs | Apply the registration-only 30-minute defaults and specified stopping behavior; child termination is confirmed before replacement. Unknown state blocks replacement. | Basic real stop and controlled timeout evidence; a shorter configured duration may exercise timeout behavior. | None |
 | A run or the main service is interrupted | Reconcile the original supervisor/run, preserve the deadline and retry count, and replay saved events once. Recovery follows cause-based limits; manual retry does not reset them. | Connected REG-PM3 — Recover registration without losing decisions or exceeding limits evidence for crash, restart, recovery attention/action, and no duplicate run. | None |
+| A permitted new run follows recovery | Same-run recovery keeps its deadline; a new eligible run receives its own saved duration. A recorded next-run exception is consumed once without resetting attempts. | Correlated run identities, deadlines, exception and counter records under `docs/maestro-architecture.md#run-deadlines-and-duration-exceptions`. | None |
 
 ### Definition of done
 
@@ -247,6 +251,7 @@ Implement the common interfaces before their process integrations. Final accepta
 | A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None |
 | Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None |
 | Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from ARC-PM1 — Establish the project's architectural foundations, ARC-PM2 — Produce a bounded and parallel-ready work breakdown, and ARC-PM3 — Review and confirm the development breakdown. | None |
+| An Owner responds at a process limit | Apply the shared typed decision once to the exact assignment, retain base limits and counts, and expose the saved disposition. A duration exception does not grant an attempt. | Connected registration and architecture actions, including replay, follow `docs/maestro-architecture.md#owner-decisions-at-a-process-limit`. | None |
 
 ### Definition of done
 
