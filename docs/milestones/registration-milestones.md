@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 17 |
+| Declaration version | 18 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -32,7 +32,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 |---|---|---|---|
 | 1 | REG-PM1 — Register and confirm a project through the CLI | 13 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 9 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 13 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 14 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -183,6 +183,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 | A registration agent reaches its configured duration | Apply the 30-minute per-run default separately to the registration architect and reviewer. Request termination, preserve output, and pause after confirmed stopping; timeout alone cannot trigger automatic retry. Other planning and execution roles do not inherit this default. | Configured limit, elapsed time, last progress, confirmed or uncertain stop, and retained output. Basic controlled timeout evidence may use a shorter configured duration. | None |
 | Recovery concerns a re-registration candidate | Preserve the previous active registration until explicit confirmation of the recovered candidate. Failure or cancellation does not restart project work. Duplicate requests still return the existing process. | Active and candidate version records, duplicate-request result, and work-state evidence after recovery. | None |
 | A fidelity-review allowance is exhausted | The linked CLI decision displays counts and offers one extra attempt or remaining paused. Only the credential-identified Owner can apply a grant, once, to the exact assignment; replay and restart preserve it. Timeout duration exceptions remain separate and do not replenish attempts. | Main limit-response journey and essential replay evidence using `docs/architecture.md#owner-decisions-at-a-process-limit` and `docs/architecture.md#run-deadlines-and-duration-exceptions`; shared runtime handling supplies mechanics. | None |
+| A registration agent reaches context capacity | Use shared checkpoint/continuation handling, preserve accepted reports and decisions, and keep capacity transitions separate from failure, correction and review accounting. Retain cumulative time/usage and the remaining active-time budget. | Connected registration continuation uses `docs/architecture.md#checkpoints-and-safe-continuation`; runtime owns mechanics and registration retains its existing eligibility and confirmation rules. | None |
 
 ### Definition of done
 
