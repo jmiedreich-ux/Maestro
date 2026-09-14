@@ -13,15 +13,15 @@
 
 ## Where the discussion paused
 
-The [shared process definitions](../../docs/maestro-architecture.md#shared-process-definitions) describe one TOML file with process-specific initiation, session, saved-output, review, confirmation, and recovery requirements. The runtime implements common handling; configuration selects defined capabilities. Existing registration behavior remains controlling. The file remains `/etc/maestro/agents.toml`; no runtime configuration was installed.
+The architecture-loop agreements are saved in [Architecture](../../docs/maestro-architecture.md#architecture-loop) and the [architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md).
 
-The architect role now explicitly requires continuous whole-product evaluation and recognition of repeated needs across processes. This does not reopen settled work, expand scope, or grant execution authority.
+Settled behavior includes `/architecture start` and `/architecture`, selected-project and idle-only entry, exact tool/model selection, persistent-session replacement from verified records, active-run limits, fixed output names and paths, manifest hashes, separate working/confirmed references, stale-data rejection, targeted review, exact-version confirmation, interrupted-operation recovery, cancellation/restart without budget resets, and later-registration invalidation.
 
-SVC-PM5 — Apply shared process definitions owns the common runtime capability. The new [architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md) covers lasting foundations, bounded packet-first breakdown, and reviewed confirmation. Runtime, CLI, and registration references identify shared dependencies without duplicate delivery ownership.
+Specialist roles use `role-<role-title>.md` beside source, with assigned `context.md` and optional `memory.md`. The architect owns the role and starting context; specialists maintain verified knowledge without changing authority or overwriting a newer file. Wrapper errors return to the architect for bounded technical correction before independent review.
 
-Next: settle the remaining [architecture-loop contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define) and assess the declaration against the Planning Guide. The configurable review field, activity snapshot, and completed-review counting are now defined; do not reopen them as missing. Start eligibility during other project work, persistent-session recovery, output/publication schemas, exact confirmation behavior, and changed-registration/replanning boundaries remain. The draft is not yet a successful registration.
+Next: finish exact adapter continuation/event and structured response contracts and executable schema definitions, then check declaration readiness. Do not ask again about settled storage, names, limits, ownership, or start/confirmation behavior. The remaining [technical contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define) do not require new Owner choices unless an actual scope or authority conflict appears. General replanning and Execution design remain separate.
 
-Live verification stays in implementation. Do not start development breakdown, install configuration, or attempt AI box checks during this documentation work. Routine technical choices remain with the architect; Owner decisions are needed only at the role's authority boundaries.
+No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
 ## Decisions to preserve
 
