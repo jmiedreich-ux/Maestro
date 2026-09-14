@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 4 |
+| Document version | 5 |
 
 ## Purpose
 
@@ -17,7 +17,7 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 
 | Boundary | Description |
 |---|---|
-| Included in the supplied declarations | A Linux-based CLI/service foundation for multiple projects, reliable question responses, project registration, versioned registration updates, and recovery. |
+| Included in the supplied declarations | A Linux-based CLI/service foundation for multiple projects, reliable question responses, project registration, versioned registration updates, recovery, shared process definitions, and the separately started architecture loop. |
 | Broader system boundary | Planning, Execution, and Monitoring are system areas. Detailed execution authority and a complete development engine are not defined by the supplied declarations. |
 | Excluded from initial interface scope | Command center, mobile presentation, unsolicited agent conversations, cross-project draft retention, and execution commands. |
 | Excluded from registration | Project implementation, development-milestone/work-packet breakdown, automatic work startup, general code audits, architecture approval, and execution-rule overrides. |
@@ -27,6 +27,8 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 | Capability or area | Current condition | Evidence level | Evidence or authoritative source | Known missing prerequisites |
 |---|---|---|---|---|
 | Runtime service | Specified; current integrated operation not verified | Reported | `docs/maestro-runtime-service-project-milestones.md` | Implementation of service installation, durable storage, API/event delivery, and supervised agents; shared real registration evidence for connected acceptance. |
+| Shared process handling | Agreed structure; process-specific contracts remain incomplete | Not applicable to implementation status | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` | Defined policy/schema mappings and connected registration/architecture evidence. |
+| Architecture loop | Draft delivery outcomes; not yet registration-ready | Not applicable to implementation status | `docs/maestro-architecture-loop-project-milestones.md` | Remaining entry, persistent-session, output, confirmation, and changed-registration contracts. |
 | CLI interface | Specified; current integrated operation not verified | Reported | `docs/maestro-cli-project-milestones.md` | Implemented runtime interfaces, terminal installation, and real registration integration for final connected acceptance. |
 | Registration and history | Specified; current integrated operation not verified | Reported | `docs/maestro-registration-project-milestones.md` | Implementation and operational evidence for the specified adapters, package validation, publication access, work-state enforcement, and SQL/GitHub consistency. |
 | Existing service components | Source evidence from the recorded revision below; current capability not established by that evidence | Supported by source inspection at the cited revision only | Source observations below | Current source validation and actual operational evidence before claiming dependency readiness. |
@@ -53,6 +55,7 @@ No current service installation, account access, real agent routing, or complete
 | Milestone declaration | SVC — Runtime service | `docs/maestro-runtime-service-project-milestones.md` |
 | Milestone declaration | CLI — Command-line interface | `docs/maestro-cli-project-milestones.md` |
 | Milestone declaration | REG — Project registration | `docs/maestro-registration-project-milestones.md` |
+| Milestone declaration | ARC — Architecture loop | `docs/maestro-architecture-loop-project-milestones.md` |
 
 Registration entry uses `docs/maestro-project-overview.md` within the repository. The [Planning Guide](planning-guide/README.md) governs source format and conventions.
 
