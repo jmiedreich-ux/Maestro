@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | ARC — Architecture loop |
-| Declaration version | 1 |
+| Declaration version | 2 |
 | Status | Draft outcomes; unresolved contracts identified; no implementation completion or registration-readiness claim |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -30,9 +30,9 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 1 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
-| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 1 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
-| 3 | ARC-PM3 — Review and confirm the development breakdown | 1 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
+| 1 | ARC-PM1 — Establish the project's architectural foundations | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
+| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
+| 3 | ARC-PM3 — Review and confirm the development breakdown | 2 | `docs/maestro-architecture-loop-project-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
 ## ARC-PM1 — Establish the project's architectural foundations
 
@@ -48,6 +48,8 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 |---|---|
 | Entry and persistent session | `docs/maestro-architecture.md#entry-and-responsibility`; `docs/maestro-architecture.md#persistent-architect-session` |
 | Code investigation and lasting foundations | `docs/maestro-architecture.md#initial-code-investigation`; `docs/maestro-architecture.md#lasting-project-structure-and-specialist-guidance` |
+| Session limits, cancellation, and replacement | `docs/maestro-architecture.md#publication-recovery-and-cancellation` |
+| Exact document locations and ownership | `docs/maestro-architecture.md#architecture-output-locations-and-records` |
 | Whole-product evaluation and shared output handling | `docs/maestro-architecture.md#whole-product-architectural-evaluation`; `docs/maestro-architecture.md#shared-output-handling-and-process-boundaries` |
 
 ### Dependencies
@@ -62,10 +64,10 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| A manual request targets a project | Only eligible confirmed registration starts the loop. Record its exact input and session; show real progress. Registration confirmation alone starts nothing. | Actual CLI/service/agent journey and essential unconfirmed-input rejection. | None |
+| A manual request targets a project | `/architecture start` requires a selected, registered project with no unfinished work and reserves it atomically. Repeated start opens the existing activity; `/architecture` only views it. Execution/re-registration for that project are blocked while reserved; other projects continue. Registration confirmation alone starts nothing. | Actual CLI/service/agent journey and essential unconfirmed-input rejection. | None |
 | The architect investigates existing source | Findings identify supported reuse, amendment, replacement, retirement, or missing work with reasons and relevant connections. Evaluate effects across the product. | Real repository revision, findings and cited source; distinguish observed code from operational claims. | None |
-| Foundations are created | Saved structure maps current and intended locations. Specialist role and starting-context files reside near their source area and identify responsibility and knowledge gaps. | Actual saved files and repository references; no worker launch or source implementation. | None |
-| Work continues after clarification or interruption | Retain established findings, structure, and specialist records. Continue from verified state or visibly pause when continuation is uncertain; do not silently recreate them. | Basic real continuation and necessary interruption evidence with preserved record identities. | None |
+| Foundations are created | Saved structure maps current and intended locations. Specialist files follow the exact manifest paths under their source area, including `role-<role-title>.md`, `context.md`, and optional `memory.md`. The architect owns the role and starting context; verified specialist knowledge updates cannot alter authority or overwrite another current version. | Actual saved files and repository references; no worker launch or source implementation. | None |
+| Work continues after clarification or interruption | Retain established findings, structure, and specialist records. Keep the same session across answers and corrections; when unavailable, use the same role and exact model in a replacement from verified records or pause on uncertainty. Enforce separate active-run deadlines without charging waiting for the Owner; do not silently recreate foundations. | Basic real continuation and necessary interruption evidence with preserved record identities. | None |
 
 ### Definition of done
 
@@ -75,8 +77,8 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Entry eligibility and persistent-session contract | Starting and resuming cannot be implemented without assuming behavior. | Resolve the architecture's concurrent-work, duplicate-start, model/session, permissions, cancellation, and recovery contracts. |
-| Foundation publication | Source-local records must be durable and traceable. | Define exact output schemas, paths, version links, source write boundaries, and interrupted-write recovery. |
+| Tool continuation contract | Persistent continuity needs exact adapter operations. | Specify tool resume and active/waiting event mapping under the agreed session behavior; idle entry, selections, cancellation, and limits are settled. |
+| Executable validation | Fixed paths and source-local publication are defined in the architecture. | Implement validators and adapter response schemas for those contracts; do not reopen names, ownership, or publication behavior. |
 
 ## ARC-PM2 — Produce a bounded and parallel-ready work breakdown
 
@@ -93,6 +95,8 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Packet-first breakdown and parallelism | `docs/maestro-architecture.md#work-packet-first-breakdown` |
 | Questions and answers | `docs/maestro-architecture.md#information-sufficiency-and-clarification` |
 | Ongoing product coherence | `docs/maestro-architecture.md#whole-product-architectural-evaluation` |
+| Fixed packet and milestone fields | `docs/maestro-architecture.md#architecture-record-contract` |
+| Wrapper validation and bounded corrections | `docs/maestro-architecture.md#deterministic-packet-checks-and-correction` |
 | Saved identities | `docs/maestro-architecture.md#identity-declarations-and-ordering`; `docs/maestro-architecture.md#shared-output-handling-and-process-boundaries` |
 
 ### Dependencies
@@ -111,6 +115,8 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Work can run independently or shares dependencies | Record dependencies, shared-code boundaries, integration points, and justified parallel opportunities without scheduling workers. | A real project's dependency structure and code-area references; no artificial requirement to parallelize inherently dependent work. | None |
 | Information is missing | Routine technical choices are resolved and recorded. Material questions reach the CLI, answers and follow-ups return to the same architect context, and affected work is amended. | Real linked clarification and updated outputs with preserved unrelated decisions. | None |
 | A local design affects shared capabilities | The breakdown incorporates necessary setup, integration, appropriate architectural patterns, and shared code without unsupported readiness claims or unnecessary duplication. | Investigation-to-packet links, recorded tradeoffs, and completion evidence that establishes usable outcomes. | None |
+| Outputs are validated before review | Required fields, paths, identities, dependencies, input versions, and required commits pass deterministic checks. The architect corrects precise errors within its separate allowance; unchanged errors pause early, and checks alone consume no correction or fidelity round. | Actual output correction and recheck, with assigned counts and one essential stale/misnamed-output rejection. | None |
+| Inputs or reviewed records change | Manifest and SQL references prevent stale overwrite. Mark affected dependencies and coverage for revision while retaining valid unaffected work. | Exact versions and hashes before/after a relevant change; no reliance on session memory as authority. | None |
 
 ### Definition of done
 
@@ -120,8 +126,8 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Record contracts | The service needs consistent fields and version relationships to validate and review outputs. | Define packet and milestone schemas, outcome/dependency links, output inventory, and version/publication rules. |
-| Changed foundations or registration | Existing confirmation and work cannot silently acquire a new meaning. | Define the boundary for affected-record invalidation and replanning; do not assume automatic replanning. |
+| Executable record schemas | Required fields, references, names, and version rules are defined. | Implement JSON Schemas and canonical inventory serialization against the architecture record contract. |
+| General replanning | Later changes must respect existing work and authority. | Separate replanning design remains; changed-registration invalidation and manual resumption rules are already defined. |
 
 ## ARC-PM3 — Review and confirm the development breakdown
 
@@ -136,6 +142,8 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Required behavior or journey | Architecture section |
 |---|---|
 | Review and amendments | `docs/maestro-architecture.md#independent-review-and-amendments` |
+| Current versus confirmed data and invalidation | `docs/maestro-architecture.md#current-versions-and-stale-data-prevention` |
+| Publication, cancellation, and restart | `docs/maestro-architecture.md#publication-recovery-and-cancellation` |
 | Exact-version confirmation | `docs/maestro-architecture.md#confirmation-and-completion` |
 | Shared process behavior | `docs/maestro-architecture.md#shared-process-definitions`; `docs/maestro-architecture.md#architecture-loop-interactions` |
 
@@ -152,9 +160,11 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
 | Review begins | A separate reviewer receives the exact confirmed sources, findings, foundations, and breakdown; checks outcome coverage, bounds, dependencies, parallelism, setup, and usable integration. | Real independent assignment, input references, review output, and justified architect amendments. | None |
-| Findings or clarification arrive | Apply the activity's separate review budget, avoid duplicate counting, and route material disagreement at the limit to the Owner. Preferences do not force repeated failure. | Main passing journey and a necessary controlled review-limit/duplicate-delivery case; do not demand every failure combination. | None |
-| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Only explicit eligible Owner confirmation completes that version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
-| The loop completes or is interrupted | Completion does not schedule or start execution. Interruption preserves reviewed versions, decisions, and budgets and does not fabricate confirmation. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
+| Findings or clarification arrive | Apply the separate review budget; one passing review is sufficient. Only outcome-blocking omissions, contradictions, or requirement violations justify rework. Check necessary corrections and affected dependencies without reopening unchanged reviewed work. Route material disagreement at the limit to the Owner. | Main passing journey and a necessary controlled review-limit/duplicate-delivery case; do not demand every failure combination. | None |
+| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
+| The loop completes or is interrupted | Completion does not schedule or start execution. Interruption reconciles the same publication/confirmation operation without a new version, repeated completed agent work, or another Owner confirmation already recorded. Advance SQL references only after verified publication; unknown outcomes pause. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
+| The loop is cancelled or later restarted | Preserve saved work and prior confirmation; retain the project reservation until agents and pending operations resolve. A new activity reuses valid work and carries the same unresolved-work budgets rather than resetting them. | Actual cancellation/restart and linked accounting records, with no automatic execution. | None |
+| A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually. | None |
 
 ### Definition of done
 
@@ -164,8 +174,8 @@ A real registration-to-architecture journey reaches independently reviewed and e
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Confirmation and recovery contract | Exact-version eligibility and partial writes must have deterministic outcomes. | Define confirmation request/receipt fields, rejection/amendment handling, publication reconciliation, and recovery behavior. |
-| Later changes | Prior confirmation cannot silently authorize changed work. | Define how later registration or authorized replanning affects this breakdown's eligibility. |
+| Exact request and response schemas | The confirmation comparison, receipt, publication journal, and recovery behavior are defined. | Specify executable API/agent schemas and tool continuation without changing the agreed process. |
+| General replanning | Prior confirmation cannot silently authorize changed work. | Complete separate replanning design; preserve the already defined invalidation of affected work and retained unaffected coverage. |
 
 ## Partial-registration boundary
 
