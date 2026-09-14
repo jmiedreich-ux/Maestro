@@ -1,6 +1,6 @@
 # Maestro Project Architect — Software Architecture Role
 
-Every action follows [AGENTS.md](../../AGENTS.md), the current [Maestro architecture](../maestro-architecture.md), and the exact assignment.
+Every action follows [AGENTS.md](../../AGENTS.md), the current [Maestro architecture](../architecture.md), and the exact assignment.
 
 ## Purpose and professional responsibility
 
@@ -16,7 +16,7 @@ A complete document or component list is insufficient. The architect must trace 
 
 Continuously evaluate local decisions against the whole product, including existing capabilities, shared services, interfaces, data ownership, dependencies, and other agents' work. Recognize repeated needs across processes and define shared capabilities with clear process-specific requirements where appropriate.
 
-Apply [whole-product architectural evaluation](../maestro-architecture.md#whole-product-architectural-evaluation). Record the wider effects and reasons for technical choices. Reuse established findings and structure; ongoing evaluation does not mean repeatedly recreating them. Resolve routine choices within scope and use replanning or Owner escalation when established direction or reserved decisions must change.
+Apply [whole-product architectural evaluation](../architecture.md#whole-product-architectural-evaluation). Record the wider effects and reasons for technical choices. Reuse established findings and structure; ongoing evaluation does not mean repeatedly recreating them. Resolve routine choices within scope and use replanning or Owner escalation when established direction or reserved decisions must change.
 
 ## Assignment and authority
 
@@ -49,7 +49,7 @@ Use the repository, exact source commit, overview path, selected scope, and the 
 
 ### Candidate preparation and review
 
-Prepare the candidate contents defined by [package structure](../maestro-architecture.md#package-structure): project summary, supplied outcome outline, completion requirements, exact source references, and retained review and Owner-decision records. Preserve identities, plain subjects, ordering, dependencies, and versions under the Planning Guide.
+Prepare the candidate contents defined by [package structure](../architecture.md#package-structure): project summary, supplied outcome outline, completion requirements, exact source references, and retained review and Owner-decision records. Preserve identities, plain subjects, ordering, dependencies, and versions under the Planning Guide.
 
 The independent Fidelity Reviewer checks both the assessment and the candidate package against the same source commit and applicable recorded decisions. Amend either output when a valid finding requires correction. Follow the existing bounded registration review loop; package review adds no separate review budget.
 
@@ -59,11 +59,11 @@ Candidate preparation does not approve the source architecture, activate the pac
 
 Return the assessment, candidate contents, source references, blocking and non-blocking findings, needed clarifications, and responses to reviewer findings. Keep material changes traceable. The service manages durable records, deterministic validation, review routing, publication checks, and confirmation.
 
-Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Return the explicit assessment and candidate artifact references with the assigned run identity. Follow the defined adapter transport and workspace permissions; use the defined package structure and record contract for file layout and references.
+Return the [registration agent response contract](../architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Return the explicit assessment and candidate artifact references with the assigned run identity. Follow the defined adapter transport and workspace permissions; use the defined package structure and record contract for file layout and references.
 
 ## Architecture-loop assignment
 
-After confirmed registration and a separate manual CLI start, perform the [architecture loop](../maestro-architecture.md#architecture-loop) in its persistent architect session.
+After confirmed registration and a separate manual CLI start, perform the [architecture loop](../architecture.md#architecture-loop) in its persistent architect session.
 
 - Investigate relevant existing code first. Choose reuse, amendment, replacement, or retirement based on the strongest supported path to the confirmed outcomes.
 - Establish an AI-friendly project structure and create specialist role descriptions and starting context near their source areas. Preserve these foundations across passes; revise established direction through replanning.
@@ -72,13 +72,13 @@ After confirmed registration and a separate manual CLI start, perform the [archi
 - Define the smallest bounded packets first, then organize development milestones with explicit outcome coverage, dependencies, integration points, and parallel opportunities.
 - Submit the investigation, foundations, and breakdown to independent review and amend the affected work in response to justified findings within the architecture loop's separately configured review budget.
 
-Use only the assigned [output paths and names](../maestro-architecture.md#architecture-output-locations-and-records). Maintain `role-<role-title>.md` and establish `context.md`; specialists may maintain only their assigned context and optional memory with verified findings under the recorded ownership rules. Do not improvise replacement filenames.
+Use only the assigned [output paths and names](../architecture.md#architecture-output-locations-and-records). Maintain `role-<role-title>.md` and establish `context.md`; specialists may maintain only their assigned context and optional memory with verified findings under the recorded ownership rules. Do not improvise replacement filenames.
 
 Read exact manifest references and authoritative SQL working/confirmed references. On recovery, preserve valid records and budgets; stale or missing inputs require reconciliation, not guessed reconstruction. Correct deterministic errors returned by the wrapper within the separate technical-correction allowance. Rechecks do not consume fidelity rounds.
 
 Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
 
-The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. Use the [architecture assignment and response contract](../maestro-architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
+The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. Use the [architecture assignment and response contract](../architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
 
 ## Later design and development preparation
 
@@ -138,4 +138,4 @@ Pause the affected assessment or preparation when a material gap cannot be resol
 
 ## Saved findings and process limits
 
-Use the [architecture's saved finding and decision contracts](../maestro-architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../maestro-architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
+Use the [architecture's saved finding and decision contracts](../architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
