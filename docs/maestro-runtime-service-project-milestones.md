@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 2 |
+| Declaration version | 3 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -44,7 +44,7 @@ Existing-code condition remains as recorded in the [project overview](maestro-pr
 | 2 | SVC-PM2 — Preserve project activity and requests | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
 | 4 | SVC-PM4 — Run and recover assigned agents | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
+| 5 | SVC-PM5 — Apply shared process definitions | 2 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -246,6 +246,7 @@ Implement the common interfaces before their process integrations. Final accepta
 | Configuration is invalid or changes during work | Invalid definitions prevent the affected new process with a clear error. An active process retains its definition, budget, and authority snapshot; read-only views remain available. | One essential invalid-definition case and an edit between activity starts showing preserved versus new snapshots. | None |
 | A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None |
 | Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None |
+| Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from ARC-PM1 — Establish the project's architectural foundations and ARC-PM3 — Review and confirm the development breakdown. | None |
 
 ### Definition of done
 
@@ -255,7 +256,7 @@ Both real processes use the common runtime handling and their own recorded defin
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Architecture-loop process contracts | Full integration cannot be accepted from the high-level definition alone. | Resolve the linked architecture-loop session, output, confirmation, and initiation gaps before affected breakdown. |
+| Architecture-loop adapter contracts | Process behavior, paths, records, and counters are defined; exact tool continuation remains. | Specify resume/event and response contracts before affected breakdown; implement their validators during development. |
 | Executable definition schema and handler mapping | The runtime must validate and execute the documented behavior. | Implement schema validation and handler mappings; this does not require live checks during documentation. |
 
 ## Partial-registration boundary
