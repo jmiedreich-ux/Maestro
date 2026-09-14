@@ -4,9 +4,9 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 
 ## Documentation
 
-- [Project overview](docs/maestro-project-overview.md) — source entry, scope, and current-state evidence.
-- [Architecture](docs/maestro-architecture.md) — system structure and behavior.
-- [CLI project milestones](docs/maestro-cli-project-milestones.md)
-- [Registration project milestones](docs/maestro-registration-project-milestones.md)
+- [Project overview](docs/project-overview.md) — source entry, scope, and current-state evidence.
+- [Architecture](docs/architecture.md) — system structure and behavior.
+- [CLI project milestones](docs/milestones/cli-milestones.md)
+- [Registration project milestones](docs/milestones/registration-milestones.md)
 - [Planning Guide and templates](docs/planning-guide/README.md)
-- [Agent role library](docs/agents/)
+- [Agent role library](docs/agents)
