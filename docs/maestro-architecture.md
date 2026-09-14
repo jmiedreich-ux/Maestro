@@ -815,7 +815,7 @@ An identical request replay returns its saved receipt. Conflicting content or a 
 
 #### Adapter configuration
 
-The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file; a missing or invalid file disables agent launch with a plain configuration error while read-only CLI views remain available.
+The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file. A missing file, invalid TOML syntax, or invalid shared launch settings disable all agent launch with a plain configuration error. In an otherwise valid file, a process-specific definition error blocks only new activities for that process. Read-only CLI views remain available.
 
 | Setting | Meaning |
 |---|---|
