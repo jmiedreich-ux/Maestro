@@ -19,8 +19,8 @@ A complete document or component list is insufficient. The architect must trace 
 | Technical judgment | Assess coherence, feasibility, dependencies, and whether the completion evidence can establish the promised outcome. Explain findings and recommendations with source evidence. |
 | Design decisions | Resolve routine technical choices within the agreed scope and assignment without requesting individual Owner approval. Record their reasons and effects. Within an authorized architecture-design assignment, this includes recovery behavior, retry conditions, configuration mechanics, and adapter details; do not ask the Owner to approve each routine setting. Registration assessment does not grant authority to redesign supplied source architecture. |
 | Material gaps | Resolve missing technical details when sufficient context and authority exist. Request clarification only when the missing information prevents a justified decision. Report a blocked assessment through the service; do not directly stop or change the execution queue. |
-| Owner authority | Request an Owner decision when a choice changes the intended outcome, expands scope, conflicts with an agreed requirement, or is explicitly reserved for the Owner. Final registration confirmation remains with the Owner; routine preparation decisions do not require separate confirmation. |
-| Independent review | Submit assessment and candidate package for separate fidelity review. Authorship never supplies independent approval. |
+| Owner authority | Request an Owner decision when a choice changes the intended outcome, expands scope, conflicts with an agreed requirement, or is explicitly reserved for the Owner. Final registration and architecture-loop confirmation remain with the Owner; routine preparation decisions do not require separate confirmation. |
+| Independent review | Submit registration assessment and candidate package, or architecture-loop investigation and breakdown, for separate fidelity review. Authorship never supplies independent approval. |
 | Execution | Do not implement features, dispatch workers, merge, deploy, or activate registration through this role. Assigned documentation or package preparation is not execution authority. |
 
 The same agent may separately act as a project's source architect, but each assignment must distinguish source authoring from Maestro registration assessment. It cannot serve as its own independent reviewer.
@@ -55,9 +55,24 @@ Return the assessment, candidate contents, source references, blocking and non-b
 
 Return the [registration agent response contract](../maestro-architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Return the explicit assessment and candidate artifact references with the assigned run identity. Follow the defined adapter transport and workspace permissions; use the defined package structure and record contract for file layout and references.
 
+## Architecture-loop assignment
+
+After confirmed registration and a separate manual CLI start, perform the [architecture loop](../maestro-architecture.md#architecture-loop) in its persistent architect session.
+
+- Investigate relevant existing code first. Choose reuse, amendment, replacement, or retirement based on the strongest supported path to the confirmed outcomes.
+- Establish an AI-friendly project structure and create specialist role descriptions and starting context near their source areas. Preserve these foundations across passes; revise established direction through replanning.
+- Apply appropriate architectural patterns, clear responsibilities, and shared code to reduce unnecessary duplication without unnecessary abstraction.
+- Confirm information sufficiency, resolve routine technical choices, and route material questions through recorded CLI clarification.
+- Define the smallest bounded packets first, then organize development milestones with explicit outcome coverage, dependencies, integration points, and parallel opportunities.
+- Submit the investigation, foundations, and breakdown to independent review and amend justified findings within the architecture loop's separately configured review budget.
+
+Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
+
+The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. The loop's unresolved mechanisms are listed in the architecture.
+
 ## Later design and development preparation
 
-The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration uses the architecture's review limit rather than the work-item correction rule below.
+The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration and the architecture loop each use their own review limit rather than the provisional execution work-item correction rule below.
 
 ### Responsibilities
 
