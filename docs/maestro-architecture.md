@@ -365,7 +365,7 @@ A project activity is a particular registration attempt or other unit of ongoing
 
 Opening a project shows its single current activity, including an activity waiting for an answer. If several activities are underway, the CLI shows them for explicit selection rather than guessing. If none is underway, the project is labeled Idle and opens its most recently ended activity. Earlier activities remain available; the selected activity name and state stay visible. Navigation never starts, stops, or changes project work.
 
-Switching activities clears unsent text without saving, transferring it, or showing a warning. Input then accepts commands only. Opening an eligible question links the input to that exact question. Opening an attention item first selects its project and activity, then links the question. Opening a finding does not change its state.
+Switching activities clears unsent text without saving, transferring it, or showing a warning. Input then accepts commands only. Opening an eligible question links the input to that exact question. Opening an attention item first selects its project and activity, then follows the question or activity-action rules under [attention](#attention). Opening a finding does not change its state.
 
 Activity-specific commands use the selected activity. If none is selected, the CLI requests selection. `/registration` opens the ongoing registration attempt, or the latest registration record if no attempt is underway. It follows the same activity-switching input rules. Actions on historical activities must still meet the current eligibility rules.
 
@@ -383,9 +383,11 @@ An empty service is a supported startup condition. Registration supplies the fir
 
 ### Attention
 
-The attention view lists outstanding questions and decisions across projects, identifying the project, requesting agent or process, and response needed. Selecting an entry opens the corresponding project, activity, and question with the input linked to it.
+The attention view lists outstanding questions, decisions, and recovery actions across projects. Each entry identifies the project, activity, requesting agent or process, and response or action needed.
 
-A notice identifies the other project and the response needed. It does not change focus or interrupt input. Selecting the notice uses the same attention-navigation behavior, including the project-switch rule.
+A question entry opens that exact question with answer-linked input. An activity-action entry opens the exact activity, failure explanation, and available action, such as Retry activity or Retry publication. It does not create a question or link ordinary conversation input to an answer; that input remains commands-only. Any intervention text belongs to the explicit action form. Viewing the entry does not perform the action.
+
+A notice identifies the other project and the response or action needed. It does not change focus or interrupt input. Selecting the notice uses the same attention-navigation behavior, including the project-switch rule.
 
 Opening a question does not resolve it. It remains outstanding until the process resolves it.
 
@@ -397,7 +399,7 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 |---|---|
 | `/help` | List implemented commands and plain explanations. `/help <command>` shows syntax, required inputs, an example, and required project context. Contextually unavailable commands explain why. Help works without the service and changes no project state. |
 | `/projects` | Open the project overview. Showing the list preserves selection; choosing an entry selects that project. |
-| `/attention` | Open questions and decisions across projects. |
+| `/attention` | Open questions, decisions, and recovery actions across projects. |
 | `/register <repository>` | Start registration intake for an explicit repository without assuming the selected project. The same entry handles eligible re-registration. |
 | `/registration` | Open the selected project's existing registration process or record, including a candidate where available. It does not start registration. |
 | `/findings` | Open blockers, non-blocking observations, and review findings for the selected project's selected activity. A selected finding exposes explanation and evidence; no review or state change is initiated. |
@@ -585,7 +587,9 @@ The project's own GitHub repository holds registration records under `.maestro/r
 | `index.json` | Discovery index with project identity, current confirmed package reference, and references to previous confirmations. It is not a substitute for an exact package reference. |
 | `versions/<registration-version>/candidates/<candidate-id>/manifest.json` | Immutable candidate identity, source and decision versions, and inventory of its record files and hashes. |
 | `summary.json` within the candidate | Project purpose, selected scope, exclusions, priorities, and overall assessment. |
-| `milestones/<record-key>.json` within the candidate | One supplied project milestone per file, preserving qualified identity, plain subject, order, version, purpose, scope, dependencies, and completion references. |
+| `declarations/<record-key>.json` within the candidate | Declaration designation, plain subject, version, and ordered milestone references. |
+| `conventions.json` within the candidate | The project's Owner-authorized declaration designations, record types, and naming prefixes with their decision references. |
+| `milestones/<record-key>.json` within the candidate | One supplied project milestone per file, preserving qualified identity, plain subject, version, purpose, scope, dependencies, and completion references. Delivery order belongs to its declaration. |
 | `requirements/<record-key>.json` within the candidate | Project or milestone completion requirements, expected journeys, interaction results, evidence, and accepted exceptions. |
 | `assessments/<record-key>.json` within the candidate | Architect assessment, findings, affected records, source evidence, and corrections. |
 | `reviews/<record-key>.json` within the candidate | Independent review outcome, exact reviewed content reference, findings, and review-round accounting. |
@@ -601,17 +605,19 @@ All package files declare `schema_version: 1`. Each record file contains `record
 | Record type | Required data |
 |---|---|
 | Summary | `project_id`, `purpose`, `scope` with included and excluded outcomes, `priorities`, `assessment_outcome` (ready, clarification_required, or blocked), and references to project requirements. This outcome is not activation. |
-| Milestone | `declaration_id`, `milestone_id`, `delivery_order`, `purpose`, `included`, `excluded`, `dependencies`, `requirement_refs`, and `source_refs`. Each dependency identifies its subject, required outcome, and existing/included/missing state with supporting evidence. |
+| Declaration | `designation`, `milestone_refs` in delivery order, and `source_refs`. Its `record_version` is the declaration version. |
+| Naming conventions | `declaration_designations`, `record_types`, `prefixes`, and `decision_refs`. Each entry pairs its code with a plain subject and preserves the Owner-authorized convention; registration does not invent additional prefixes. |
+| Milestone | `declaration_id`, `milestone_id`, `purpose`, `included`, `excluded`, `dependencies`, `requirement_refs`, and `source_refs`. Each dependency identifies its subject, required outcome, and existing/included/missing state with supporting evidence. |
 | Requirement | `applies_to`, `expected_result`, `conditions`, `pass_boundary`, `verification`, `accepted_exception`, `source_refs`, and `journey`. Journey entries identify the interaction, expected result, and essential failure behavior; noninteractive requirements use an empty journey. |
 | Assessment | `assignment_id`, `run_id`, `source_commit`, `decision_version`, `summary`, and `findings`, using the registration response contract's finding structure. |
 | Review | `assignment_id`, `run_id`, `reviewer_identity`, `review_round`, `review_limit`, `reviewed_content_hash`, `reviewed_assessment_ref`, `outcome`, and `findings`. The service records identity and accounting; the reviewer cannot assign its own limits. |
 | Decision | `question`, ordered `answers`, `resolution`, `authority`, `affected_refs`, and `supersedes_ref`. Answers include their saved identity, author, text, and time. A decision without a question uses null; superseded decisions remain available. |
 
-References contain `record_id`, `subject`, `record_version`, and a package-relative `path`. External references also name the repository, exact commit, and source locator. Milestone dependencies preserve qualified declaration and milestone identities; delivery order is independent of identity. Facts are defined in their owning record and linked elsewhere.
+References contain `record_id`, `subject`, `record_version`, and a package-relative `path`. External references also name the repository, exact commit, and source locator. Milestone dependencies preserve qualified declaration and milestone identities. A milestone's `declaration_id` identifies membership only; the package manifest fixes the declaration record version. Declaration records own delivery order; an ordering-only change increments the declaration version without changing the versions of unchanged milestones. The convention record preserves the naming list used by this package. Reviews identify the exact declaration and milestone versions through these records. Facts are defined in their owning record and linked elsewhere.
 
 The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`. Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
 
-To calculate `content_hash`, the service sorts summary, milestone, requirement, assessment, and decision files by path. Each inventory entry contains `path`, a tab, the file hash, and a newline. Review files are excluded so the reviewed content's hash does not depend on the review itself. The manifest's SHA-256 identifies the complete candidate, including its reviews. Hashes identify exact saved bytes, so formatting changes also create a different candidate.
+To calculate `content_hash`, the service sorts summary, declaration, naming-convention, milestone, requirement, assessment, and decision files by path. Each inventory entry contains `path`, a tab, the file hash, and a newline. Review files are excluded so the reviewed content's hash does not depend on the review itself. The manifest's SHA-256 identifies the complete candidate, including its reviews. Hashes identify exact saved bytes, so formatting changes also create a different candidate.
 
 Python checks required fields and types, unique identities and paths, hashes, references, source/decision consistency, and review coverage before publication. Absolute paths, parent traversal, duplicate record identities, and references to nonexistent records are rejected. Agent-written hashes and readiness claims are checked independently.
 
@@ -686,7 +692,7 @@ Confirmation is a separate explicit action displaying the project and exact cand
 
 Successful confirmation makes the candidate the active registration version. Previously approved versions remain retrievable. Confirmed content cannot change silently, and activation does not start development.
 
-Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation follows [agent stopping rules](#cancellation) when a run is active; only confirmed termination ends the attempt. When no run is active, cancellation ends the attempt directly. Saved history is preserved. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
+Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation follows [agent stopping rules](#cancellation) when a run is active; only confirmed termination ends the attempt. When no run or external operation is pending, cancellation ends the attempt directly. A pending confirmation rejects cancellation under [confirmation and activation](#confirmation-and-activation). Cancellation accepted during candidate publication prevents further registration advancement; the service reconciles any in-flight write and retains published artifacts before ending the attempt and releasing its reservation. Saved history is preserved. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
 
 Neither confirmation nor cancellation is preselected for submission. Deliberate focus on the relevant action is required before Enter activates it.
 
@@ -802,7 +808,7 @@ The following journeys connect the behavior defined in the sections above. Each 
 | Inspect commands | `/help` or command-specific help | Use the [command definitions](#commands). | Available syntax and context guidance, also offline; no state change. | Unimplemented commands are excluded; context limitations are explained. |
 | Select a project | Project control or `/projects`, followed by selection | Apply [project targeting](#projects-and-targeting). | Correct conversation and visible selected project; unsent text clears on a switch. | Missing, ambiguous, or conflicting targets require resolution. |
 | Read history and findings | Load earlier, New messages, `/findings`, or expand/close details | Use [conversation behavior](#layout-and-conversation). | Recorded content, stable context, and correct reading position; viewing changes no finding state. | Failed retrieval is distinct from [empty results](#empty-results). Activity selection follows [project activity rules](#project-activities-and-registration-labels). |
-| Open attention | `/attention` or another-project notice | Follow [attention routing](#attention). | Selected question opens in its project; a notice alone does not pull focus. | Disconnection blocks service retrieval; no items is shown only after successful lookup. |
+| Open attention | `/attention` or another-project notice | Follow [attention routing](#attention). | The selected question or activity action opens in its project; a notice alone does not pull focus or perform an action. | Disconnection blocks service retrieval; no items is shown only after successful lookup. |
 | Reconnect | `/retry` after connection loss | Refresh saved state and missed updates under [connection rules](#startup-and-connection-states). | Current information restored without replaying earlier submissions. | Stale-marked conversation remains until connection succeeds. |
 | Exit | `/exit` | Close the CLI session. | Service activity and saved records remain; a new launch selects no project. | Unsent text triggers the defined exit warning. |
 | Use terminal controls | Focus keys, resize, or paste | Apply [keyboard and terminal behavior](#keyboard-and-terminal-behavior). | Focused control activation, readable context, and paste without automatic submission. | An undersized terminal requests enlargement without stopping service work. |
