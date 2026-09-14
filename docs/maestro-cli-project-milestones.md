@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | CLI — Command-line interface |
-| Declaration version | 7 |
+| Declaration version | 8 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -26,7 +26,7 @@ CLI implementation precedes registration development. An installed CLI and empty
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | 4 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
+| 1 | CLI-PM1 — Connected multi-project CLI workspace | 5 | `docs/maestro-cli-project-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
 | 2 | CLI-PM2 — Reliable project questions and answers | 4 | `docs/maestro-cli-project-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
 
 ## CLI-PM1 — Connected multi-project CLI workspace
@@ -66,7 +66,7 @@ CLI implementation precedes registration development. An installed CLI and empty
 | Multiple projects are present | The overview orders attention-needed, working, then idle projects. Selection opens the correct conversation without changing work. Project names and record associations remain distinct. | At least two separately identified service-held projects, their before/after state, and selection captures. | None |
 | Messages and state change | Actual service/SQL records feed HTTP reads and streamed updates. Messages identify their source; read-only requests create no duplicate status or conversation records. | Correlated API, SQL, and displayed records; service-generated updates for both projects. Hardcoded terminal sample data is insufficient. | None |
 | Earlier content or findings are opened | Recent history and Load earlier messages work while current activity or waiting state and pending questions remain accessible. Details within the same activity expand inline, preserve the selected project and question linked to input, and restore reading position when closed. Viewing does not acknowledge or resolve a finding. At the bottom, messages follow; above it, New messages appears without pulling the reading position. | Captures of each state and unchanged finding/process state after viewing. | None |
-| Another project needs attention | The notice names the project and required response without switching focus. The attention list covers all projects; selecting an entry opens its project and question. | Notice while another project is selected, followed by explicit navigation to the correct record. | None |
+| Another project needs attention | The notice names the project and required response or action without switching focus. The attention list covers all projects. A question entry opens its exact project/activity/question with answer-linked input; a recovery entry opens its project/activity, failure explanation, and available action with commands-only conversation input. Viewing never performs the action. | Notice while another project is selected, followed by explicit navigation to the correct record. Recovery-action routing uses REG-PM3 — Recover registration without losing decisions or exceeding limits for connected evidence and is outside this milestone's initial-registration acceptance. | None |
 | A successful lookup contains no results | Correct empty messages appear for projects, attention, and findings. Retrieval failure and missing context remain distinct. Registration-specific empty actions are completed with registration integration. | Actual empty-query and failed-query observations, with current context identified. | None |
 | The connection drops during use | Visible content remains marked disconnected and potentially stale. Service actions are unavailable; local help, retry, and exit remain. Automatic reconnect follows the documented delay schedule; explicit retry attempts immediately. Reconnect retrieves recorded changes without replaying earlier submissions. | Disconnect/reconnect record and uninterrupted independent service activity. | None |
 | Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. | None |
