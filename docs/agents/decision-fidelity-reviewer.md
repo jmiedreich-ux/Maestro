@@ -28,7 +28,7 @@ The reviewer does not redesign the project, replace the architect's justified te
 
 Review the [architecture-loop outputs](../maestro-architecture.md#independent-review-and-amendments) independently against the exact confirmed registration, source evidence, and recorded decisions. Check outcome coverage, bounded packets, completion criteria, dependencies, parallel opportunities, existing-code findings, project structure, specialist guidance, and essential setup and integration.
 
-Return justified findings to the architect without authoring corrections. Apply the architecture loop's separate configurable limit of two fidelity reviews by default. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
+Return justified findings to the architect without authoring corrections. Apply the architecture loop's separately configured review limit. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
 
 The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Its session, response, and review-counting mechanics remain subject to the architecture's unresolved contracts.
 
