@@ -13,6 +13,10 @@
 
 ## Where the discussion paused
 
+The documentation-review procedure is now defined in the [shared review method](../../skills/project-architecture-workshop/references/reviews.md), with record fields in [workshop state](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record). [AGENTS.md](../../AGENTS.md#cross-document-alignment) defines Maestro's journey scope; the [reviewer role](../../docs/agents/decision-fidelity-reviewer.md#inputs-and-independence) applies the method within unchanged authority. It separates fidelity, completeness and consistency, requires independent inputs and per-journey evidence, and distinguishes full coverage from targeted corrections. Existing review limits and the no-standalone-report rule remain in effect.
+
+Method validation is pending fresh completeness and consistency passes on the frozen source set. Their findings are not supplied to one another or seeded from the third-party report. The validation outcome will be recorded here after both return.
+
 The reusable [Project Architecture Workshop skill](../../skills/project-architecture-workshop/SKILL.md) is packaged with a generalized Planning Guide, templates, durable workshop state and bounded independent-review instructions. It is intended for new or existing projects, not reproduction of Maestro's design. [Installation instructions](../../skills/project-architecture-workshop/INSTALL.md) cover Codex and Claude Code. The package is committed, not installed into the owner's machines. No general Execution design was added by creating the skill.
 
 Shared agent performance and context management are now defined in [Architecture](../../docs/architecture.md#agent-performance-and-context-management) and covered by the runtime, CLI, registration and architecture-loop declarations. Defaults warn at 75% context, hand off at 85%, and resume below 70%. Every runtime uses the same capacity classification; Qwen is not penalized for context exhaustion. Persistent sessions retain occupancy across runs. Capacity continuation preserves verified work and remaining active-time budget without consuming failure/correction/review allowances. Adapter capability verification remains implementation work; this does not select Qwen for registration or change exact model choices.
@@ -27,9 +31,9 @@ Specialist roles use `role-<role-title>.md` beside source, with assigned `contex
 
 Session continuation, active/waiting mapping, assignment/response and API shapes, saved-record schemas, policy bindings, and canonical hashing are now defined. The schema bundle is `docs/schemas/architecture-loop.schema.json`. Replanning occurs only after confirmed re-registration and a manual architecture-loop start; there is no independent trigger or separate replanning-design task.
 
-Independent decision-fidelity and consistency rechecks passed after contract corrections; the architecture-loop sources are sufficient for registration assessment. No further Owner decision was identified.
+Earlier targeted rechecks did not establish full architectural completeness. Documentation readiness must be assessed using the recorded coverage required by the updated review method.
 
-Next: use the current architecture and declarations as registration-assessment source. Actual registration confirmation remains separate. Implementing validators, checking installed tool releases, and proving the connected journey belong to development. Do not reopen these technical contracts as undefined merely because implementation evidence does not yet exist.
+Next: disposition the documentation gaps identified by the independent third-party review before proceeding to registration assessment or Execution design. This task updates review instructions only; it does not resolve the underlying architectural gaps. Live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
