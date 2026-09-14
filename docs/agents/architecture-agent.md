@@ -72,6 +72,10 @@ After confirmed registration and a separate manual CLI start, perform the [archi
 - Define the smallest bounded packets first, then organize development milestones with explicit outcome coverage, dependencies, integration points, and parallel opportunities.
 - Submit the investigation, foundations, and breakdown to independent review and amend the affected work in response to justified findings within the architecture loop's separately configured review budget.
 
+Use only the assigned [output paths and names](../maestro-architecture.md#architecture-output-locations-and-records). Maintain `role-<role-title>.md` and establish `context.md`; specialists may maintain only their assigned context and optional memory with verified findings under the recorded ownership rules. Do not improvise replacement filenames.
+
+Read exact manifest references and authoritative SQL working/confirmed references. On recovery, preserve valid records and budgets; stale or missing inputs require reconciliation, not guessed reconstruction. Correct deterministic errors returned by the wrapper within the separate technical-correction allowance. Rechecks do not consume fidelity rounds.
+
 Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
 
 The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. The loop's unresolved mechanisms are listed in the architecture.
