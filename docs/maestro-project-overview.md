@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 6 |
+| Document version | 7 |
 
 ## Purpose
 
@@ -27,8 +27,8 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 | Capability or area | Current condition | Evidence level | Evidence or authoritative source | Known missing prerequisites |
 |---|---|---|---|---|
 | Runtime service | Specified; current integrated operation not verified | Reported | `docs/maestro-runtime-service-project-milestones.md` | Implementation of service installation, durable storage, API/event delivery, and supervised agents; shared real registration evidence for connected acceptance. |
-| Shared process handling | Agreed structure; process-specific contracts remain incomplete | Not applicable to implementation status | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` | Defined policy/schema mappings and connected registration/architecture evidence. |
-| Architecture loop | Draft delivery outcomes; not yet registration-ready | Not applicable to implementation status | `docs/maestro-architecture-loop-project-milestones.md` | Exact tool continuation/event and response schemas; executable validators and connected operational evidence. Entry, stored records, confirmation, and changed-registration behavior are defined. |
+| Shared process handling | Defined shared structure and architecture-loop contracts; implementation unverified | Not applicable to implementation status | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` | Defined policy/schema mappings and connected registration/architecture evidence. |
+| Architecture loop | Defined delivery outcomes and technical contracts; actual registration not performed | Not applicable to implementation status | `docs/maestro-architecture-loop-project-milestones.md` | Implement and verify the specified tool protocols, schema/semantic validation, and connected journey. Documentation sufficiency does not establish operational readiness. |
 | CLI interface | Specified; current integrated operation not verified | Reported | `docs/maestro-cli-project-milestones.md` | Implemented runtime interfaces, terminal installation, and real registration integration for final connected acceptance. |
 | Registration and history | Specified; current integrated operation not verified | Reported | `docs/maestro-registration-project-milestones.md` | Implementation and operational evidence for the specified adapters, package validation, publication access, work-state enforcement, and SQL/GitHub consistency. |
 | Existing service components | Source evidence from the recorded revision below; current capability not established by that evidence | Supported by source inspection at the cited revision only | Source observations below | Current source validation and actual operational evidence before claiming dependency readiness. |
