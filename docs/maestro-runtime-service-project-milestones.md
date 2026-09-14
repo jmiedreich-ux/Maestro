@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 1 |
+| Declaration version | 2 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -14,7 +14,7 @@
 
 This declaration delivers the continuously running Python service on the Linux AI box. It owns installation and service configuration, durable project/activity/request records, the local API and event delivery, and the mechanics of supervising assigned agents.
 
-The [CLI declaration](maestro-cli-project-milestones.md) owns terminal installation, presentation, navigation, input, and connection behavior. The [registration declaration](maestro-registration-project-milestones.md) owns registration intake, architectural assessment and fidelity decisions, package records and publication, confirmation, and re-registration. Those features use this service; they do not deliver a second service or adapter implementation.
+The [CLI declaration](maestro-cli-project-milestones.md) owns terminal installation, presentation, navigation, input, and connection behavior. The [registration declaration](maestro-registration-project-milestones.md) owns registration intake, architectural assessment and fidelity decisions, package records and publication, confirmation, and re-registration. The [architecture-loop declaration](maestro-architecture-loop-project-milestones.md) owns its persistent-session integration, investigation, structure, breakdown, and confirmation. These processes use the shared runtime mechanisms; they do not deliver duplicate service implementations.
 
 | Delivery owner | Included responsibility |
 |---|---|
@@ -22,7 +22,7 @@ The [CLI declaration](maestro-cli-project-milestones.md) owns terminal installat
 | CLI | Terminal controls, displayed states, commands, question forms, attention navigation, and sending requests to the service. |
 | Registration | Source and scope interpretation, required assessment/review content, registration eligibility and review budget, package schemas and GitHub publication, activation, registration-specific action validation, and use of runtime reservations/recovery. |
 
-Generic service storage persists the records defined by registration; registration owns their meaning and required fields. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. General software Execution policy, a full development scheduler, command center, mobile UI, and development breakdown are excluded.
+Generic service storage persists process-defined records; each process owns their meaning and required fields. SVC-PM5 — Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. General software Execution policy, a full development scheduler, command center, mobile UI, and development breakdown are excluded.
 
 ### Development order and connected acceptance
 
@@ -44,6 +44,7 @@ Existing-code condition remains as recorded in the [project overview](maestro-pr
 | 2 | SVC-PM2 — Preserve project activity and requests | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
 | 4 | SVC-PM4 — Run and recover assigned agents | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
+| 5 | SVC-PM5 — Apply shared process definitions | 1 | `docs/maestro-runtime-service-project-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -209,6 +210,53 @@ Real registration agent assignments use the service adapters and return usable v
 ### Unresolved details
 
 Installed capability and isolation checks are development verification. If a tool cannot meet the specified exact-model or stopping contract, report the concrete limitation rather than silently weaken it. General software Execution policy remains outside this outcome.
+
+## SVC-PM5 — Apply shared process definitions
+
+**Outcome:** Registration and the architecture loop use one validated TOML file to direct common runtime behavior while preserving their different process rules.
+
+**Included:** Process-definition validation and snapshots; shared initiation, output, review, confirmation, and recovery dispatch; supported policy/schema/destination references; process-specific integration.
+
+**Excluded:** New execution policy, arbitrary scripted workflows, process-specific architectural judgment, and separate copies of registration or architecture-loop record schemas.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Configuration drives supported runtime capabilities | `docs/maestro-architecture.md#shared-process-definitions` |
+| Correct output validation, storage, and process boundaries | `docs/maestro-architecture.md#shared-output-handling-and-process-boundaries` |
+| Registration integration | `docs/maestro-architecture.md#registration` |
+| Architecture-loop integration | `docs/maestro-architecture.md#architecture-loop` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Records, transport, and supervised agents | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Shared implementation foundation; new process dispatch is delivered here. |
+| Registration policies and package meaning | REG-PM1 — Register and confirm a project through the CLI; REG-PM3 — Recover registration without losing decisions or exceeding limits | Registration supplies its handlers, schemas, and connected evidence. |
+| Persistent-session and breakdown use | ARC-PM1 — Establish the project's architectural foundations; ARC-PM3 — Review and confirm the development breakdown | Architecture loop owns its session continuation and process-specific outputs; shared handlers are delivered here. |
+
+Implement the common interfaces before their process integrations. Final acceptance uses those integrations together; prior final acceptance of a dependent process is not an implementation prerequisite.
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
+|---|---|---|---|
+| A configured process starts | Its validated sections select the correct prerequisites, role/session rules, outputs, review, confirmation, and recovery handlers. Registration and architecture retain their different behavior. | Real registration and architecture-loop activities, effective definitions and correlated runtime records. | None |
+| Configuration is invalid or changes during work | Invalid definitions prevent the affected new process with a clear error. An active process retains its definition, budget, and authority snapshot; read-only views remain available. | One essential invalid-definition case and an edit between activity starts showing preserved versus new snapshots. | None |
+| A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None |
+| Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None |
+
+### Definition of done
+
+Both real processes use the common runtime handling and their own recorded definitions. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the declaration's common requirements; live verification belongs to development.
+
+### Unresolved details
+
+| Missing detail | Effect on the outcome | Clarification needed |
+|---|---|---|
+| Architecture-loop process contracts | Full integration cannot be accepted from the high-level definition alone. | Resolve the linked architecture-loop session, output, confirmation, and initiation gaps before affected breakdown. |
+| Executable definition schema and handler mapping | The runtime must validate and execute the documented behavior. | Implement schema validation and handler mappings; this does not require live checks during documentation. |
 
 ## Partial-registration boundary
 
