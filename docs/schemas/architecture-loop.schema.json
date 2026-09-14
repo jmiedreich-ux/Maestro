@@ -3276,6 +3276,6 @@
   },
   "$ref": "#/$defs/agentResponse",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Normative document, assignment, response, process-definition and API shapes. Semantic and state validation are defined in maestro-architecture.md.",
+  "description": "Normative document, assignment, response, process-definition and API shapes. Semantic and state validation are defined in architecture.md.",
   "title": "Maestro architecture-loop contracts"
 }
