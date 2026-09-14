@@ -8,7 +8,7 @@ This document specifies how the system should work; it does not claim that the s
 
 The initial interface is the Maestro CLI. The command center within the Reporting and Command Interface is outside the initial scope. Command-center support uses the same service operations, registration process, and record sources. Mobile presentation is undecided; neither a mobile terminal nor a separate interface is specified.
 
-Read by subject: [runtime and agents](#runtime-and-prerequisites), [connections and data](#connections-and-data), [CLI](#cli-workspace), [registration](#registration), [journeys](#journeys-and-interactions), and [unresolved details](#constraints-and-unresolved-details).
+Read by subject: [runtime and agents](#runtime-and-prerequisites), [connections and data](#connections-and-data), [CLI](#cli-workspace), [registration](#registration), [architecture loop](#architecture-loop), [journeys](#journeys-and-interactions), and [unresolved details](#constraints-and-unresolved-details).
 
 ### Functional areas
 
@@ -20,7 +20,7 @@ The three functional areas are established. Their detailed responsibilities and 
 | Execution | Assign approved work to agents, manage implementation and checks, obtain reviews, and carry out authorized corrections and merges. |
 | Monitoring | Report activity, progress, failures, resource use, pending decisions, and action history. |
 
-Registration is the entry process for Planning. The registration behavior is described separately below.
+Registration is the entry process for Planning. After registration confirmation, the separately started [architecture loop](#architecture-loop) investigates the code and prepares development milestones and work packets.
 
 ## Components and responsibilities
 
@@ -126,7 +126,7 @@ Automatic model substitution is disabled in the effective tool configuration. A 
 
 #### Tool transport
 
-The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each run uses a fresh tool conversation. Saved session identifiers are diagnostic references, not permission to resume another project's conversation.
+The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation contract is separate and remains to be specified.
 
 | Tool | Transport and result handling |
 |---|---|
@@ -408,7 +408,7 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 
 The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions.
 
-Execution commands for starting, pausing, resuming, and stopping work are not specified.
+The architecture loop and execution each require a separate manual start command. Their command names and request contracts are not yet specified here; the table above remains the defined registration command set. Execution commands for pausing, resuming, and stopping work are also unspecified.
 
 ### Questions and answers
 
@@ -492,7 +492,7 @@ The [Maestro Planning Guide](planning-guide/README.md) specifies three Markdown 
 
 Inputs must be clear enough to organize work without inventing requirements. They need not specify every implementation detail or include a complete code audit.
 
-Project milestones describe meaningful outcomes, releases, or component boundaries. The subsequent breakdown process produces development milestones linked to those outcomes, without assuming a one-to-one relationship or redefining the project scope. Registration retains the supplied outcome structure.
+Project milestones describe meaningful outcomes, releases, or component boundaries. The [architecture loop](#architecture-loop) produces development milestones linked to those outcomes, without assuming a one-to-one relationship or redefining the project scope. Registration retains the supplied outcome structure.
 
 ### Intake and scope
 
@@ -790,6 +790,110 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file; a
 Effective configuration is hashed and recorded for each assignment/run. Changes affect new runs after validation, never a running agent. Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
 
 
+## Architecture loop
+
+### Entry and responsibility
+
+The architecture loop is a Planning process that starts only through an explicit manual CLI command after project registration has been confirmed. Confirmation of registration does not start it automatically. The loop reads the confirmed registration files and develops the work needed to deliver their outcomes.
+
+The architect checks information sufficiency, investigates existing code, establishes project structure and specialist guidance, and produces development milestones and work packets. It designs dependencies and opportunities for parallel work. Execution owns scheduling and subsequent implementation.
+
+### Persistent architect session
+
+The service starts a persistent architecture agent session for the loop. The session retains context while reading registration files, investigating code, handling answers, creating the breakdown, and responding to review findings. The independent reviewer uses a separate session and does not share authorship.
+
+Persistent context is not the only record of the work. Findings, decisions, questions, answers, project structure, specialist definitions, breakdown versions, and review results must be saved so the loop does not depend on the agent remembering them. The service records activity and clarification through the existing SQL-first flow before presenting updates in the CLI.
+
+The architecture loop requires a persistent conversation rather than registration's fresh conversation for each run. Its tool-session continuation, restart recovery, workspace permissions, and structured response contract remain to be specified. Registration transport and response rules must not silently substitute for this requirement.
+
+### Initial code investigation
+
+The architect investigates relevant existing source code when the loop starts, using the confirmed outcomes to bound the investigation. It examines responsibilities, interfaces, dependencies, setup, and actual connections before defining the work.
+
+| Finding | Required result |
+|---|---|
+| Existing code supports the outcome | Identify the code, supporting evidence, and any integration or verification still needed. |
+| Existing code needs changes | Explain what must change and why; carry the changes into the breakdown. |
+| Replacement or retirement is the stronger path | Record the reasoning, affected dependencies, and work needed to preserve the required outcome. |
+| A capability or prerequisite is missing | Include the necessary work or raise clarification when the decision is outside the architect's authority. |
+
+Reuse is not presumed preferable to replacement. The architect chooses the strongest path to the intended outcome based on the investigation. Source inspection establishes what the code supports; it does not by itself prove operation. Actual code changes, moves, and retirement are execution work.
+
+### Lasting project structure and specialist guidance
+
+The architect creates an AI-friendly project structure that makes feature locations, shared code, responsibilities, and boundaries clear to other agents. For existing source, the structure identifies both current locations and intended changes so a proposed layout is not mistaken for code already moved.
+
+The architect also creates specialist agent definitions for the code areas that need that expertise. Each definition contains the role description, responsibility boundary, and starting context with established findings and relevant source references. Role files and any maintained memory files belong within the source tree, close to the feature or code area they cover. Creating a specialist definition does not dispatch a worker.
+
+Specialists build knowledge through subsequent work. Starting context distinguishes established facts from gaps; specialist status does not imply knowledge that has not yet been acquired. Useful discoveries can update maintained context without recreating the role or project structure.
+
+Code-direction findings, the project structure, and specialist definitions are persistent project records. Subsequent passes use them instead of generating replacements from scratch. Replanning governs changes to established structure and direction; reasons and affected records remain traceable. Memory updates preserve relevant knowledge rather than silently changing architectural decisions.
+
+The architect owns code best practices and architectural consistency. It applies established patterns where they fit, defines clear responsibilities, and keeps unnecessary duplication low through appropriate shared code. These decisions are carried into the structure, specialist guidance, and packet requirements. Shared abstractions must serve a concrete need without unnecessary complexity.
+
+### Information sufficiency and clarification
+
+Before declaring the breakdown ready, the architect confirms that the information can support the promised outcomes. Routine technical choices within the agreed scope remain the architect's responsibility.
+
+Questions affecting intended outcomes, scope, conflicting requirements, or Owner-reserved decisions go through the service. The service saves the questions, presents them through the CLI, records answers and follow-ups, and returns the relevant information to the persistent architect session. The architect amends the affected records, packets, and milestones. Missing information is not replaced by an unsupported assumption.
+
+This follows registration's linked clarification pattern. Answers remain associated with their project, activity, and question; a clarification answer is not confirmation of the breakdown.
+
+### Work-packet-first breakdown
+
+The architect designs the smallest bounded work packets first, then organizes them into development milestones. Each packet has a clear scope, expected result, and completion criteria. Smallest bounded means a meaningful contribution that can be implemented and assessed sensibly; arbitrary fragmentation does not improve the breakdown.
+
+Development milestones may differ from project milestones. Their relationships must still show how all confirmed project outcomes will be delivered. Grouping work differently does not change the approved scope.
+
+Parallel work is a first-class design concern. The architect identifies independent contributions, shared-code boundaries, integration points, and explicit dependencies so execution can use parallelism effectively. The breakdown describes what may run independently and what must precede other work; it does not assign start times, reserve execution slots, or schedule workers.
+
+Packet requirements include necessary setup, access, integration, and basic verification. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](planning-guide/README.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
+
+### Independent review and amendments
+
+Agent assignments and review use the same general practices as registration: explicit inputs and authority, deterministic wrapper checks where applicable, independent fidelity judgment, recorded clarification, and architect amendments. This does not import registration-specific package schemas, activation rules, timeouts, or retry settings.
+
+The independent reviewer checks the investigation, persistent foundations, and breakdown against the confirmed registration and recorded decisions:
+
+- Every confirmed outcome has development-milestone and work-packet coverage.
+- Each packet has bounded scope, an expected result, and clear completion criteria.
+- Dependencies, integration points, and opportunities for parallel work are explicit.
+- Existing-code decisions have supporting findings and are reflected in the work.
+- Setup and essential connections are included so the combined result is usable.
+- Project structure, specialist guidance, and architectural quality decisions are consistent with the breakdown.
+
+The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The exact configuration field, counting rules, and recovery behavior remain to be specified for this loop. The provisional execution work-item correction limit does not govern this review.
+
+### Confirmation and completion
+
+The CLI presents a concise summary with access to the full breakdown: development milestones and intended outcomes, grouped work packets, coverage of confirmed project outcomes, dependencies, parallel opportunities, and any limitations requiring Owner acceptance.
+
+Owner confirmation approves the exact presented version of the breakdown and completes the architecture loop. Review approval and clarification answers do not substitute for that confirmation. The underlying investigation, structure, and specialist records remain traceable from the breakdown.
+
+Completion does not start or schedule execution. A separate manual CLI command starts execution; command syntax and its execution rules remain to be defined.
+
+### Architecture-loop interactions
+
+| Starting condition and trigger | Service and agent behavior | Saved record and visible result | Advancement or essential failure |
+|---|---|---|---|
+| An explicit CLI start request targets a project | Check confirmed registration before starting the persistent architect session and reading its files. | Record the loop's source registration and activity; display its progress. | Unconfirmed registration cannot start the loop; explain the reason. Other start-eligibility rules remain unresolved below. |
+| The architect investigates and prepares work | Record findings and decisions, establish structure and specialist guidance, and derive bounded packets and milestones. | Saved outputs support continued work and review; CLI progress follows recorded activity. | Unsupported assumptions do not establish readiness; missing authority or information follows clarification. |
+| A linked question receives answers or follow-ups | Save responses and return relevant context to the persistent session. | The CLI shows recorded answers and subsequent activity. | Amend affected work when sufficient information is available; unresolved required information remains visible. |
+| A breakdown is submitted for independent review | Give a separate reviewer the exact sources and outputs; return justified corrections to the architect. | Save the reviewed version, findings, amendments, and review outcome. | Use the architecture-loop review limit; material disagreement at the limit reaches the Owner. |
+| The reviewed breakdown is presented for confirmation | Show the summary and full version for an explicit Owner decision. | Save confirmation of that exact version and show loop completion. | No automatic execution; unresolved material findings cannot be hidden as approval. |
+
+### Architecture-loop details still to define
+
+| Area | Remaining contract |
+|---|---|
+| CLI and initiation | Command names, request fields, status/actions, duplicate-start handling, concurrent work eligibility, and the effect of later registration versions on an existing loop. |
+| Persistent sessions | Tool/model selection, session continuation and restart recovery, assignments and response fields, workspace access, timeout, cancellation, and technical retry limits. |
+| Durable outputs | File locations and schemas for investigation and breakdown, publication and version linking, specialist-file naming and memory ownership, and recovery of interrupted writes. Source-local placement of specialist files is established above. |
+| Review and confirmation | Configuration and counting mechanics for the separate two-review default; exact confirmation eligibility, version checks, rejection/amendment behavior, and durable confirmation recovery. |
+| Replanning | How a replan starts, authorizes changes to established foundations, and handles affected packets, specialist guidance, and prior confirmation. |
+
+These are incomplete architecture-loop contracts, not permission to assume registration's implementation applies unchanged.
+
 ## Journeys and interactions
 
 The following journeys connect the behavior defined in the sections above. Each row identifies the interaction, result, and essential failure behavior; linked sections own the detailed rules. These scenarios define expected behavior, not a requirement for a separate test per row.
@@ -884,6 +988,7 @@ The following architectural mechanisms remain unresolved:
 | Persistence | Physical SQL schema, broader runtime recovery internals, and database backup/restore procedures. Package publication and activation consistency are defined above. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
+| Architecture loop | Established behavior and remaining initiation, session, output, review, confirmation, and replanning contracts are listed under [architecture-loop details still to define](#architecture-loop-details-still-to-define). |
 | Execution policy | Implementation-review authority, coding correction limits, merge authority, and development completion policy remain provisional and require separate Execution design. Registration controls do not settle them. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
