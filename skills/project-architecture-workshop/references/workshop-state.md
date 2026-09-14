@@ -10,7 +10,7 @@ Use the repository's existing equivalent state file, otherwise `docs/planning/wo
 - Open questions: subject, exact missing decision, affected outcome/source, and who can resolve it. Mark resolved or superseded; do not leave stale open duplicates.
 - Inspections: source revision, inspected paths, evidence level, relevant findings, and canonical evidence location. Do not claim inspection of files that were not read.
 - Review coverage: pass type, independent reviewer/session identity or unavailable, exact document hashes/revision, covered subjects, result, correction round, and unresolved canonical finding references.
-- Save state: last verified documentation revision, pending paths and expected base, and publication status. Exclude the state file itself from self-referential content hashes.
+- Save state: authorized delivery level, verified local paths and content hashes or documentation commit, pending paths and expected base, and separate remote publication status. Local-only completion does not require a remote revision. Exclude the state file itself from self-referential content hashes.
 
 Use arrays for multiple items, null for unknown values, positive versions, and relative repository paths. Add records only for real work. The template's empty arrays are not evidence of completed discovery or reviews. Keep secrets and raw transcripts out.
 
@@ -27,4 +27,3 @@ When context is pressured, save the active topic, confirmed decisions, unresolve
 ## Configurable review bound
 
 `review_policy.maximum_rounds_per_pass` defaults to 2 for each reviewed subject/content set. A first passing round is sufficient. A material correction can use one targeted recheck. The budget continues across resumed sessions for the same unresolved work. Repository or explicit owner policy can change it; record the change, never silently reset it.
-
