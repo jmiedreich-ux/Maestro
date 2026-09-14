@@ -265,6 +265,73 @@ The service records and displays the plan as an assignment-linked intermediate o
 
 This behavior concerns execution work packets. A registration architect returns its assessment and candidate under the registration response contract; registration does not acquire an implementation-plan or development-work stage.
 
+## Agent performance and context management
+
+Performance records and context management are shared runtime functions for every agent route, including Qwen and persistent architect sessions. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
+
+### Performance records
+
+The service records facts in SQL before display. Each record carries a schema version, stable event identity, UTC observation time, project, activity, assignment, run, session, role, tool, and exact model identity. Service observations and provider measurements remain distinguishable from agent-reported progress.
+
+| Measurement | Meaning |
+|---|---|
+| Time | Active elapsed run time, waiting time, and total assignment elapsed time, in seconds. Active time includes provider backoff and tools, not only model generation. Waiting reasons distinguish Owner input, review, and service-managed continuation. |
+| Result | Validated completion, blocked, failed, or cancelled, with a recorded cause. A capacity transition is not an assignment's terminal result. |
+| Rework | Technical recovery, output correction, and fidelity-review counts use their existing accounting records, not inferred message counts. |
+| Tokens | Input and output tokens separately, with cached input and reasoning tokens when reported. Preserve provider definitions: subset counters are not added again to totals. |
+| Cost | Provider-reported charge and currency when available. A calculated estimate records its rate source, effective date, currency, and covered token categories. Missing charges are unknown, including subscription-based and local runs; no invented zero cost. |
+| Context | Effective capacity, latest occupied tokens and percentage, observation time, measurement quality, and highest observed usage per context segment and logical session. |
+
+Usage events identify their provider request or tool event, counter scope, and whether values are deltas or cumulative snapshots. Deduplicate by run and source event identity; cumulative readings replace the previous reading for that scope rather than being summed. Session totals spanning several runs contribute only verified increments. Counter resets start a new recorded scope. Missing intervals make totals partial; estimates and partial coverage remain labeled.
+
+Durations use monotonic elapsed measurements while running and saved state transitions across restarts. Do not double-count overlapping run intervals as assignment wall time. Preserve uncertainty when an interval cannot be reconstructed. Store unavailable numeric fields as null with a reason, never zero.
+
+The service retains time and usage across capacity continuations. It records capacity-event counts separately from failures, corrections, and reviews. No single agent score or automatic model ranking is defined. Capacity stops do not lower quality or success measures; time and resource consumption remain visible. Source insufficiency, permissions, provider faults, and invalid output retain distinct causes.
+
+### Context readings and thresholds
+
+Context occupancy is not cumulative token consumption. The effective context limit is the usable limit of the exact model and its configured runtime session, which may be lower than the model's advertised maximum. Record the limit's source and configuration identity. A model name alone is insufficient evidence.
+
+Each reading contains `context_segment_id`, nullable positive integer `limit_tokens`, nullable nonnegative integer `used_tokens`, nullable numeric `used_percent`, `quality` (`reported`, `estimated`, or `unavailable`), `observed_at`, and a source or unavailability reason. Percentage is occupied tokens divided by effective limit times 100, only when the values describe the same context scope. Do not clamp a reported over-limit value. Track the peak observed percentage and token occupancy with the limit that applied.
+
+Read context at session attachment, before each service-controlled model turn, after returned turns, and whenever the adapter reports a change. During active work, request a supported read-only sample at most every 10 seconds; this never sends a model prompt or scrapes a provider UI. Mark a reading stale after 30 seconds without an update while running. A stale low reading cannot establish that the next input fits.
+
+An adapter may estimate occupancy only with a suitable tokenizer and visibility of the actual context, including instructions, tool material, and retained history. Partial visible conversation alone cannot establish free capacity. Without reliable measurements, show unknown and retain checkpoints at safe boundaries. A reported context-limit error still invokes capacity handling.
+
+The shared `context_management` section in `/etc/maestro/agents.toml` has these defaults, snapshotted with the activity:
+
+| Setting | Default and effect |
+|---|---|
+| `warning_percent` | 75: save a warning and prepare a continuation checkpoint at the next safe boundary. |
+| `handoff_percent` | 85: checkpoint and compact or replace context before further substantive work. |
+| `resume_below_percent` | 70: target maximum occupancy after compaction or reconstruction, leaving space for continued work. |
+| `sample_interval_seconds` | 10: minimum interval between supported active read requests. |
+| `stale_after_seconds` | 30: flag aging active readings. |
+
+Thresholds must satisfy 0 < resume < warning < handoff < 100; intervals are positive and staleness is no shorter than sampling. Invalid settings prevent new affected activities. Adapter-specific lower thresholds may be configured; the effective policy is recorded. Before a service-controlled turn, include the proposed input plus reserved output and checkpoint space in the fit check. The adapter supplies its supported output reservation and measurement basis. If that full budget cannot fit, act before the percentage threshold. Do not submit a predictably oversized request.
+
+### Checkpoints and safe continuation
+
+The service owns a versioned SQL checkpoint linked to the assignment and context segment. It records exact source/registration/decision versions, verified output references and hashes, completed and remaining work, unresolved questions, pending external operations, current workspace references, and unchanged attempt counts. An agent's summary is supporting context, not proof of completed work. Checkpoints contain no secrets and never replace project artifacts.
+
+At a service-controlled safe boundary, save that checkpoint before an intentional compaction or replacement. For autonomous tool turns, use supported interruption/checkpoint controls; when unavailable, preserve already verified records and apply the existing supervised stop procedure. Never rely on a nearly full model having enough space to generate a fresh summary. Reconcile pending writes and confirm child termination before launching replacement work. Unknown effects pause continuation.
+
+Use supported native compaction when it preserves the exact conversation identity and authoritative input bindings. Otherwise create a linked replacement session with the same role, tool, and exact model. Supply a fresh immutable assignment referencing the verified checkpoint and only relevant authoritative material. Preserve the logical session lineage while assigning a new context segment after compaction or replacement. A new process or run alone does not reset context occupancy. Reviewer context remains independent from architect context.
+
+Record capacity handling as a service event with reason `context_capacity` and disposition `checkpointing`, `continuing`, or `paused`. These are supervisor metadata, not new agent success responses or process completion states. Existing process views use running during checkpoint work and paused when continuation is unsafe, with a plain reason. Capacity classification requires adapter evidence or the service's fit/threshold check; agent prose alone cannot bypass failure accounting.
+
+Resume automatically only after verified checkpoint recovery, safe stopping where needed, unchanged source eligibility, and adequate capacity. Prefer a fresh reported or supported estimated reading below the resume threshold. If the runtime cannot report post-reset occupancy, a verified empty-context reset plus a supported token-budget check of the complete reconstructed input is sufficient, labeled estimated. If neither is available, pause for a technical remedy instead of repeatedly restarting.
+
+A capacity continuation consumes no technical-retry, correction, or fidelity-review allowance and does not repeat accepted work. It also cannot replenish time: continuations within the same uninterrupted assignment work phase share the original remaining active-time budget, including checkpoint/compaction work. A new process receives only that remainder, not a fresh full timeout. This is a specific exception to the ordinary new-retry-run timer rule. Time exhaustion still follows timeout handling.
+
+If one compaction or replacement does not restore adequate room, pause with the specific oversized input or unsupported capability. Do not repeat the same ineffective transition. Further capacity transitions are allowed after real progress consumes available space; they are not quality failures. Failure to save a checkpoint or launch a continuation is recorded separately and follows existing cause-based recovery without relabeling the original capacity event as an agent failure.
+
+### Visibility and delivery boundary
+
+Existing activity details show active and waiting time, input/output tokens, latest context used/limit/percentage with timestamp and quality, and capacity-continuation status. Service-owned runtime details carry these records alongside process data; they do not alter architecture or registration artifact schemas. SQL-backed activity updates carry changes through existing API/event delivery. Unknown and stale measurements are explicit. A capacity percentage is not a work-completion percentage.
+
+Runtime implementation owns persistence, adapter measurement normalization, thresholds, checkpoint validation, and safe continuation. CLI implementation owns displaying those recorded facts. Registration and the architecture loop use this common handling without separate accounting implementations. Persistent-session integration must demonstrate that context and totals survive successive runs and that verified findings, decisions, and pending answers survive continuation.
+
 ## Connections and data
 
 ### System connections
@@ -816,7 +883,7 @@ After the automatic limit is exhausted, the activity pauses with a plain failure
 
 Each explicit manual retry permits one additional run, preserves failure history and review counts, and does not reset the automatic retry budget. Failure pauses the activity again. This activity action is distinct from the connection-only `/retry` command and cannot bypass unresolved original-run status. The [activity retry request](#activity-retry-request) records the intervention and launch reservation.
 
-A tool or API may retry internally within the same run, but these retries do not extend its duration or consume Maestro's launch-recovery allowance. Their count and reasons are recorded separately when available. Only launching an automatic replacement consumes a Maestro recovery attempt; checking supervisor state and replaying events do not. The supervisor enforces the deadline even when the tool does not report its internal retry count.
+A tool or API may retry internally within the same run, but these retries do not extend its duration or consume Maestro's launch-recovery allowance. Their count and reasons are recorded separately when available. Only launching an automatic failure-recovery replacement consumes a Maestro recovery attempt; capacity continuations follow [context management](#checkpoints-and-safe-continuation) without consuming that allowance; checking supervisor state and replaying events do not. The supervisor enforces the deadline even when the tool does not report its internal retry count.
 
 #### Activity retry request
 
@@ -1076,7 +1143,7 @@ After the saved request receipt, the CLI refreshes the authoritative activity vi
 
 ### Run deadlines and duration exceptions
 
-Recovering supervision of the same run preserves its original deadline. Starting a new permitted retry or replacement creates a new run identity and a full active-run allowance from the activity's saved duration, 30 minutes by default for the configured planning roles. Waiting for the Owner consumes no active-run time. Internal provider retries and mechanical allocation exchanges stay within their run's deadline. None of these operations reset assignment-level attempt counters.
+Recovering supervision of the same run preserves its original deadline. Except for capacity continuations, which retain the remaining work-phase budget under [context management](#checkpoints-and-safe-continuation), starting a new permitted retry or replacement creates a new run identity and a full active-run allowance from the activity's saved duration, 30 minutes by default for the configured planning roles. Waiting for the Owner consumes no active-run time. Internal provider retries and mechanical allocation exchanges stay within their run's deadline. None of these operations reset assignment-level attempt counters.
 
 After timeout, stopping must be confirmed and investigation or intervention must justify another run. A duration change for the current activity requires a separate pending Owner decision with target `run_duration`, assignment, proposed positive `duration_seconds`, and reason. Its choices are `set_next_run_duration` with the proposed positive duration or `remain_paused` with null duration. The same credential, version, replay, and transaction checks apply.
 
