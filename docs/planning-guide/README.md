@@ -151,4 +151,4 @@ Architecture describes how the capability works. Project declarations define the
 
 If a breakdown requires an undefined behavior, assumed prerequisite, or unspecified completion boundary, the responsible source needs clarification before that affected breakdown proceeds. Completed task lists or disconnected components do not substitute for the promised usable outcome.
 
-The [Architecture and Milestone Alignment](maestro-architecture-milestone-alignment.md) document describes that relationship separately.
+The [Architecture and Milestone Alignment](architecture-milestone-alignment.md) document describes that relationship separately.
