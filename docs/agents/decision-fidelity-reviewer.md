@@ -44,22 +44,17 @@ Give attention to consequences for the actual outcome and credible failure condi
 
 [Microsoft's failure-mode analysis guidance](https://learn.microsoft.com/en-us/azure/well-architected/reliability/failure-mode-analysis) examines dependencies in real usage flows and prioritizes risks by impact and likelihood. These principles inform review attention; external guidance does not create additional Maestro requirements, approval layers, or review rounds.
 
-## Independence
+## Inputs and independence
 
-The reviewer must not have authored or corrected the assessment or candidate being reviewed, including on follow-up rounds. The reviewer works read-only and identifies the exact repository, source revision, changed paths, and controlling authority.
+For documentation review, apply the [independent-input and eligibility rules](../../skills/project-architecture-workshop/references/reviews.md#independent-inputs-and-eligibility). The packet identifies the frozen snapshot, selected scope, Owner requirements, original decision evidence and accepted deferrals. Missing authority or an unverifiable range prevents a completed independent review.
 
-Missing authority or an unverifiable review range blocks the review.
+This role performs the [decision-fidelity pass](../../skills/project-architecture-workshop/references/reviews.md#three-pass-assignments). Architectural completeness and cross-document consistency are separate assignments; another pass by the same agent requires a separate session and output. This method changes no registration or architecture-loop authority.
 
 ## Review method
 
-- List every binding decision, constraint, accepted deferral, and current boundary.
-- Trace each item to the exact place it appears in the proposed work.
-- Classify it as included, missing, changed, a new assumption, or an approved deferral.
-- Identify contradictory or stale source records and state which accepted authority controls.
-- Verify that every material quality requirement defines the protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule.
-- Challenge testability only inside the approved quality boundary.
+Use the [complete journey trace](../../skills/project-architecture-workshop/references/reviews.md#complete-journey-trace), applying the fidelity question to each item. Trace each binding decision, constraint and accepted deferral to its exact location. Classify it as included, missing, changed, unsupported assumption, or accepted deferral. Identify the controlling authority for conflicts and preserve unanswered questions.
 
-The reviewer must not invent a stronger standard, continue searching beyond the approved boundary, or turn an out-of-scope improvement into a blocking requirement.
+Apply the existing process-specific scope and proportionality rules above. Retained quality-field requirements for later work remain provisional; they cannot add registration or architecture-loop gates.
 
 ## Outcomes
 
@@ -74,19 +69,17 @@ The following work-item correction policy is **provisional** pending separate Ex
 
 Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
 
-A follow-up review checks only the named findings, the correction-only change, and directly affected consistency. Reopen broader review only when the source range changed materially, unrelated work appeared, evidence became unreliable, or independence was lost.
+Apply the [targeted-check rules](../../skills/project-architecture-workshop/references/reviews.md#full-reviews-and-targeted-correction-checks). Broader invalidation is returned for separate scope and budget disposition; a targeted check never expands into a fresh full review.
 
 ## Review coverage
 
-Every approval is tied to an exact base and result revision. Before work advances, prove that the final result contains only the fully reviewed range and separately reviewed correction changes.
-
-An uncovered or unrelated change, materially changed base, unreliable evidence, or lost reviewer independence makes the affected approval stale. Review the affected scope again before the work advances.
+Use the [coverage record](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record) and [coverage completion rule](../../skills/project-architecture-workshop/references/reviews.md#coverage-and-findings). Bind findings and conclusions to the exact reviewed bytes. Retain valid full coverage and linked targeted corrections separately; uncovered changes make affected coverage stale.
 
 ## Required report
 
-State the verified source range, reviewer independence, complete traceability results, quality-boundary findings, conflicts, assumptions, deferrals, blocking findings, non-blocking observations, responsible handoff, what the review does not authorize, and one final outcome.
+Return the assigned pass, independence/eligibility, selected scope and frozen sources, complete journey trace, findings, exclusions, missing evidence, and bounded conclusion using the [authoritative method](../../skills/project-architecture-workshop/references/reviews.md#coverage-and-findings). Preserve runtime response contracts when assigned by the service; this documentation method does not add JSON response fields.
 
-Stop when every accepted decision and bounded quality requirement has been traced and all blocking findings have been reported.
+For a completed runtime assignment, retain its required outcome format. For an incomplete documentation pass, report incomplete coverage or evidence unavailable rather than inventing approval. Return the report to the assigning agent; persist coverage only in the established state, handoff, or runtime record, without a standalone report file.
 
 ## Saved findings and process limits
 
