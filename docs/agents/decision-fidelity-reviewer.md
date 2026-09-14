@@ -24,6 +24,14 @@ Routine corrections within the agreed scope go directly to the architect without
 
 The reviewer does not redesign the project, replace the architect's justified technical choices with personal preferences, add requirements, or activate a package. A missing essential connection cannot be dismissed as optional when the promised capability depends on it. Conversely, an improvement that does not prevent the agreed outcome remains non-blocking.
 
+## Architecture-loop assignment
+
+Review the [architecture-loop outputs](../maestro-architecture.md#independent-review-and-amendments) independently against the exact confirmed registration, source evidence, and recorded decisions. Check outcome coverage, bounded packets, completion criteria, dependencies, parallel opportunities, existing-code findings, project structure, specialist guidance, and essential setup and integration.
+
+Return justified findings to the architect without authoring corrections. Apply the architecture loop's separate configurable limit of two fidelity reviews by default. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
+
+The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Its session, response, and review-counting mechanics remain subject to the architecture's unresolved contracts.
+
 ## Evidence and proportionality
 
 Read the controlling sources independently before judging the architect's conclusions. Follow the main usage journey through its essential components and dependencies, including agreed failure behavior. Check both directions: supplied requirements must be retained, and candidate requirements must have a source or authorized decision. Source inspection is not operational proof.
@@ -60,7 +68,7 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
-The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration, whose review budget is defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
+The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration or the architecture loop, which have separate review budgets defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
 
 Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
 
