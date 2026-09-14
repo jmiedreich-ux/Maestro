@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 14 |
+| Declaration version | 15 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -14,7 +14,7 @@
 
 The declaration delivers project registration through the CLI: source intake, bounded assessment and independent review, recorded decisions, versioned GitHub packages, explicit activation, re-registration, and technical recovery. Current-state evidence belongs in the [project overview](maestro-project-overview.md).
 
-The CLI foundation implementation precedes registration. Final connected CLI acceptance is completed with initial registration integration, using its real projects and questions. Registration-specific access, agent connections, validation, and publication remain included integration responsibilities rather than assumed capabilities. Command center, project implementation, automatic development start, development breakdown, full code audits, and execution-rule overrides are excluded.
+Implemented runtime interfaces and CLI foundation precede registration integration. Final connected CLI acceptance is completed with initial registration, using its real projects and questions; final runtime recovery evidence is shared with registration recovery. The [Runtime Service declaration](maestro-runtime-service-project-milestones.md) owns service installation, storage/request mechanisms, API transport, start reservations, adapters, and agent supervision. Registration owns process-specific eligibility, role assignments and response semantics, review policy, package schema/publication/activation, and their actual use of those runtime capabilities. Implemented dependencies are required; their final shared acceptance is not a prerequisite to starting registration development. Command center, project implementation, automatic development start, development breakdown, full code audits, and execution-rule overrides are excluded.
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
@@ -28,9 +28,9 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 11 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
-| 2 | REG-PM2 — Update a registration without losing approved history | 8 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 10 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 12 | `docs/maestro-registration-project-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 2 | REG-PM2 — Update a registration without losing approved history | 9 | `docs/maestro-registration-project-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 11 | `docs/maestro-registration-project-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -63,7 +63,8 @@ Completion evidence for each milestone identifies the implementation revision, r
 |---|---|---|
 | CLI foundation | CLI-PM2 — Reliable project questions and answers, following CLI-PM1 — Connected multi-project CLI workspace | Implemented workspace and answer interfaces precede development; final connected acceptance is shared here. Prior final acceptance of those integrated CLI journeys is not a prerequisite. |
 | Project sources | `docs/planning-guide/README.md` | Markdown source structure and package record contracts are specified. Executable validators are included implementation work. |
-| Agent and GitHub access | `docs/maestro-architecture.md#agent-delegation` | Current operational setup unverified. Real agent routing, review separation, repository read access, and publication access are necessary integration work. |
+| Runtime records, API, and agents | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Runtime Service implements shared storage, request delivery, tool setup, routing mechanics, and supervision. Registration supplies real architect/reviewer assignments and verifies their use. Final shared acceptance follows integration. |
+| Registration repository access and publication | `docs/maestro-architecture.md#agent-delegation`; `docs/maestro-architecture.md#publication-and-sql-consistency` | Current operation unverified. Registration owns source access, package publication credentials and journal, wrapper publication checks, and SQL/GitHub activation consistency; generic SQL persistence is supplied by Runtime Service. |
 | Package storage and activation | `docs/maestro-architecture.md#package-structure` | Package records, locations, publication, and activation are specified in the architecture. Executable schemas and connected persistence are included implementation work. |
 
 ### Acceptance criteria
@@ -94,7 +95,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Installed adapter verification | Transport and lifecycle contracts are defined, but the installed integrations have not been proven. | Verify both tool routes against `docs/maestro-architecture.md#tool-transport`, including actual model identity, required permissions, source isolation, structured response, and stopping. Unsupported configurations must explain the failure before assessment. |
+| Connected adapter use | Runtime Service owns adapter implementation and installed capability verification. | Use SVC-PM4 — Run and recover assigned agents for actual registration role assignments, validate assessment/candidate response meaning, and demonstrate distinct reviewer use. Shared evidence must include actual model identity, permissions, source isolation, and failure reporting before assessment. |
 | Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
 | Planning-review configuration implementation | The configured limit must survive changes and recovery. | Implement `registration.maximum_fidelity_reviews` under the architecture's review-limit contract, snapshotting the limit at initiation and counting accepted completed reviews once. |
 | Output and persistence implementation | Defined package contracts need executable validation and durable publication. | Implement `docs/maestro-architecture.md#package-record-contract` and `docs/maestro-architecture.md#publication-and-sql-consistency`; validate the actual connected journey before completion. |
@@ -121,7 +122,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
 | Initial registration | REG-PM1 — Register and confirm a project through the CLI | Required preceding outcome. |
-| Real project-work state and new-start prevention | `docs/maestro-architecture.md#re-registration` | Actual connection is not operationally verified; bounded enforcement is included here. No full execution engine is assumed. |
+| Real project-work state and new-start prevention | SVC-PM2 — Preserve project activity and requests | Runtime Service supplies atomic state/reservation mechanisms. Registration owns idle eligibility and reservation lifetime and verifies the connected boundary. No full execution engine is assumed. |
 
 ### Acceptance criteria
 
@@ -141,14 +142,14 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Work-state enforcement implementation | The defined idle check requires actual activity and run state. | Implement the atomic project start lock and registration reservation under `docs/maestro-architecture.md#re-registration`; include pending, waiting, and uncertain work. |
+| Work-state enforcement implementation | The defined idle check requires actual activity and run state. | Use the atomic project start lock supplied by SVC-PM2 — Preserve project activity and requests. Implement registration eligibility and reservation lifetime under `docs/maestro-architecture.md#re-registration`, including pending, waiting, and uncertain work. |
 | Candidate and active-version implementation | Published receipts and SQL activation must reconcile without replacing prior approval early. | Implement `docs/maestro-architecture.md#confirmation-and-activation`, including pending confirmation and conflicts. |
 
 ## REG-PM3 — Recover registration without losing decisions or exceeding limits
 
 **Outcome:** Interrupted registration resumes from verified work or pauses visibly without losing decisions, duplicating effects, or exceeding its budgets.
 
-**Included:** Verified checkpoints, wrapper checks, interrupted publication, service/agent recovery, separate technical retry limits, and initial/re-registration continuity.
+**Included:** Registration integration with Runtime Service checkpoints, agent recovery and technical limits; registration publication wrapper checks and interrupted-publication reconciliation; preserved decisions, review budgets, and initial/re-registration continuity. Generic supervisor and retry mechanisms are delivered by Runtime Service.
 
 **Excluded:** Unlimited retries, forced approval, and unrelated execution recovery.
 
@@ -166,7 +167,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
 | Registration journeys | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Required connected predecessors. |
-| Durable checkpoints and remote evidence | `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Run identity, supervision, and event replay are defined in `docs/maestro-architecture.md#process-supervision-and-interruption-recovery`; publication reconciliation is defined in `docs/maestro-architecture.md#publication-recovery`. The automatic agent recovery default is two attempts per assignment. |
+| Durable checkpoints and remote evidence | SVC-PM4 — Run and recover assigned agents; `docs/maestro-architecture.md#technical-recovery` | CLI request identity is defined in `docs/maestro-architecture.md#answer-identity-and-uncertain-delivery`. Run identity, supervision, and event replay are defined in `docs/maestro-architecture.md#process-supervision-and-interruption-recovery`; publication reconciliation is defined in `docs/maestro-architecture.md#publication-recovery`. The automatic agent recovery default is two attempts per assignment. |
 
 ### Acceptance criteria
 
@@ -189,7 +190,7 @@ Both registration journeys remain valid after recovery. Completion evidence and 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Publication recovery implementation | External writes must be reconciled independently from agent execution. | Implement the publication operation journal, exact-byte reconciliation, idempotent activation, and targeted Retry publication action under `docs/maestro-architecture.md#publication-recovery`. |
-| Installed recovery verification | Configuration and retry requests are specified but not operationally verified. | Verify `docs/maestro-architecture.md#adapter-configuration` and `docs/maestro-architecture.md#activity-retry-request` with actual service state, preserving counts across restart and rejecting stale or duplicate launches. |
+| Connected recovery verification | Runtime recovery is supplied by SVC-PM4 — Run and recover assigned agents; registration must preserve its own process state. | Verify registration decisions, review budgets, candidates, active versions, and explicit retry actions across runtime recovery. Registration owns publication reconciliation and activation; runtime owns generic launch limits and supervisor recovery. |
 
 ## Partial-registration boundary
 
