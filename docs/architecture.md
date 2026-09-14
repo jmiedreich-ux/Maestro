@@ -389,7 +389,7 @@ The local API uses UTF-8 JSON under `/api/v1`. These are interface contracts for
 
 Read responses contain `data` and `event_cursor`, which identifies the corresponding position in the event stream. List responses also contain `next_cursor` for the next page, or null when no pages remain. Project summaries contain identity, plain name, registration status, activity state, and attention count. Activity records identify their project; question and finding records identify both their project and activity. Names and coded subjects remain plainly worded even when internal IDs have no readable meaning.
 
-A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, `registration.cancel`, `registration.retry`, the shared `owner.decision` operation defined below, and the `architecture.start`, `architecture.confirm`, `architecture.cancel`, and `architecture.retry` operations defined under [architecture API operations](#architecture-api-operations). The retry payload and eligibility rules are defined under [activity retry request](#activity-retry-request). Initial intake supplies repository and overview path; saved intake questions collect missing scope and the explicit architect tool and exact model/version selection required by [tool and model selection](#tool-and-model-selection). Selection must be recorded before architect launch. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
+A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, `registration.cancel`, `registration.retry`, the shared `owner.decision` operation defined below, and the `architecture.start`, `architecture.confirm`, `architecture.cancel`, and `architecture.retry` operations defined under [architecture API operations](#architecture-api-operations). The retry payload and eligibility rules are defined under [activity retry request](#activity-retry-request). Initial intake supplies repository and overview path, with optional `source_ref` and `publication_branch` under [source and publication selection](#source-and-publication-selection); saved intake questions collect missing scope and the explicit architect tool and exact model/version selection required by [tool and model selection](#tool-and-model-selection). Selection must be recorded before architect launch. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
 
 Receipts contain request identity, status, and any created project/activity identities. Status is accepted, completed, or rejected; accepted means durably recorded, not completed activity. Errors contain `code`, plain `message`, and affected fields. Invalid input returns 400, missing or invalid Owner credentials 401, unavailable access 403, missing records 404, stale context or conflicting request content 409, and unavailable service 503. No error is rendered as an empty result.
 
@@ -621,7 +621,7 @@ Project milestones describe meaningful outcomes, releases, or component boundari
 
 ### Intake and scope
 
-Registration initiation includes [architect tool and model selection](#tool-and-model-selection) before agent launch. The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity, checks read access and that the repository matches the intended project, and reports missing access.
+Registration initiation includes [architect tool and model selection](#tool-and-model-selection) before agent launch. The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity and applies [source and publication selection](#source-and-publication-selection) before reading project sources.
 
 Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
 
@@ -629,9 +629,34 @@ To register a portion, the service reads guide-compatible source and displays mi
 
 The Maestro architect checks whether outside dependencies exist or need work. Missing essentials become findings for a decision. For example, a publishing outcome dependent on authentication must identify authentication as existing, included, or missing essential work. Partial registration covers only its recorded boundary.
 
+### Source and publication selection
+
+Registration records which repository revision is assessed and where its outputs may be published. These are separate choices; the source branch need not be the publication branch.
+
+| Intake field | Selection and default |
+|---|---|
+| `source_ref` | Optional string: a full `refs/heads/...` branch, `refs/tags/...` tag, or full 40-character commit SHA. Short or ambiguous refs are rejected. On initial registration, omission selects the repository's current default branch. On re-registration, omission reuses the active registration's saved selector and resolves it again. |
+| `publication_branch` | An existing branch name without the `refs/heads/` prefix. Use an explicit authorized caller selection or the active registration's retained authorization. If neither exists, a saved intake question collects the Owner's choice before assessment; the repository default branch may be suggested but is not authorization. Maestro's own repository remains fixed to `master`. |
+
+The verified caller supplies these fields in `registration.start.payload` or answers the linked intake question. The service rejects a destination that conflicts with an applicable project publication rule; changing that rule follows existing authority. A writable branch or an agent's recommendation is not Owner authorization. Existing authorization is reused without asking for it again.
+
+Before reading the overview or launching an agent, the service validates the repository and selector, resolves the selected branch/tag to its commit, and verifies that commit and the overview are readable. A commit selector is verified directly. It checks that the publication branch exists and that service access and repository protections permit the required direct writes. Missing access, an empty repository, an unresolved ref or an incompatible branch rule prevents assessment with a specific intake error. No branch is created, protection bypassed or alternate target silently selected.
+
+The service saves the normalized `source_ref`, resolved `source_commit`, `publication_branch`, resolution time and selection provenance in SQL before source use. Provenance identifies the verified caller request/answer or inherited authorization, and distinguishes an applied default from an explicit Owner choice. The CLI shows the repository, selector, exact commit, destination and whether each choice was supplied, inherited or defaulted. These appear in existing intake/scope and final confirmation views; they add no separate approval gate.
+
+A service-built Decision record preserves this selection and its authority in the candidate. The manifest carries `source_ref`, `publication_branch` and `selection_decision_ref` alongside its existing `source_commit`; the decision reference uses the package reference format. The service checks that manifest values match that decision and SQL. Because the decision is included in reviewed content, changing a selection cannot silently reuse approval of different inputs.
+
+Assignments read source at the saved commit, never a moving branch or the commit that later publishes the package. Each publication operation copies the saved repository and branch into its journal and checks current access and expected branch head before writing. Recovery uses those saved selections; it does not resolve the source again or change the destination after a lost acknowledgment.
+
+For a symbolic source ref, the service checks for relevant input changes before confirmation under [source consistency](#source-consistency); a deleted or unreadable ref makes that check unresolved. A commit selector remains intentionally pinned. Including updated source resolves and saves a new explicit selector/commit choice; changing the destination records new authorization. Either change creates a new candidate with affected review coverage and the same remaining budgets. Pending external writes must be reconciled before changing their target. Completed historical packages are never redirected or rewritten.
+
+Re-registration displays inherited choices and permits authorized amendments during intake. It resolves the chosen selector for the new attempt; a missing inherited branch/ref is an error, not permission to fall back. The previous active registration keeps its selections until replacement confirmation succeeds.
+
+The architecture loop obtains its source baseline from the SQL-confirmed registration manifest's `source_commit` and its publication destination from that manifest's `source_repository` and `publication_branch`. It verifies the referenced manifest and decision before binding the activity and assignments. Registration package commits and later specialist/output commits do not advance the code baseline; separately published inputs retain their own exact references. A different baseline or destination requires confirmed re-registration and a manual architecture start. Unavailable or unverifiable saved inputs pause affected work without substitution.
+
 ### Source consistency
 
-Review uses an exact Git commit shared by the Maestro architect and Fidelity Reviewer. Relevant input changes are shown before confirmation.
+Review uses the exact Git commit fixed by [source and publication selection](#source-and-publication-selection), shared by the Maestro architect and Fidelity Reviewer. Relevant input changes are shown before confirmation.
 
 | Explicit source choice | Effect |
 |---|---|
@@ -740,7 +765,7 @@ All package files declare `schema_version: 1`. Each record file contains `record
 
 References contain `record_id`, `subject`, `record_version`, and a package-relative `path`. External references also name the repository, exact commit, and source locator. Milestone dependencies preserve qualified declaration and milestone identities. A milestone's `declaration_id` identifies membership only; the package manifest fixes the declaration record version. Declaration records own delivery order; an ordering-only change increments the declaration version without changing the versions of unchanged milestones. The convention record preserves the naming list used by this package. Reviews identify the exact declaration and milestone versions through these records. Facts are defined in their owning record and linked elsewhere.
 
-The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`. Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
+The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`, plus the selection fields defined under [source and publication selection](#source-and-publication-selection). Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
 
 To calculate `content_hash`, the service sorts summary, declaration, naming-convention, milestone, requirement, assessment, and decision files by path. Each inventory entry contains `path`, a tab, the file hash, and a newline. Review files are excluded so the reviewed content's hash does not depend on the review itself. The manifest's SHA-256 identifies the complete candidate, including its reviews. Hashes identify exact saved bytes, so formatting changes also create a different candidate.
 
@@ -755,7 +780,7 @@ SQL stores live activity, requests, budgets, and the reference to the active ver
 #### Candidate publication
 
 1. Validate and freeze the candidate in service-owned storage. Save its manifest hash, file inventory, intended repository/branch/path, and a unique publication operation in SQL before network writes.
-2. Publish the complete candidate in one Git commit on the project's authorized branch. Maestro's own repository uses `master`. Never publish a partial folder as a usable package.
+2. Publish the complete candidate in one Git commit on the branch recorded under [source and publication selection](#source-and-publication-selection). Never publish a partial folder as a usable package.
 3. Verify the remote commit, all expected file bytes and hashes, permitted paths, and unchanged frozen content using wrapper checks.
 4. Save the verified commit and package reference in SQL, then emit the recorded publication result.
 
@@ -923,7 +948,7 @@ The architecture loop is a Planning process started with `/architecture start` f
 
 Start requires no unfinished work on that project: reserved or queued assignments, running agents, work waiting for answers or review, pending saves or external operations, and uncertain stopping or recovery all prevent entry. The CLI explains the blocking activities. A repeated start request opens the existing unfinished architecture activity rather than creating another session.
 
-The service uses the shared project start lock to check eligibility and reserve the project atomically. Only that architecture activity's assignments and operations may start while reserved; execution and re-registration cannot start for the same project. Other projects continue normally. The reservation remains until the loop ends and its runs and pending operations are resolved. The loop reads the exact confirmed registration and develops the work needed for its outcomes.
+The service uses the shared project start lock to check eligibility and reserve the project atomically. Only that architecture activity's assignments and operations may start while reserved; execution and re-registration cannot start for the same project. Other projects continue normally. The reservation remains until the loop ends and its runs and pending operations are resolved. The loop reads the exact confirmed registration and develops the work needed for its outcomes. Its code baseline and publication destination follow [source and publication selection](#source-and-publication-selection).
 
 The architect checks information sufficiency, investigates existing code, establishes project structure and specialist guidance, and produces development milestones and work packets. It designs dependencies and opportunities for parallel work. Execution owns scheduling and subsequent implementation.
 
@@ -1206,7 +1231,7 @@ Completion does not start or schedule execution. A separate manual CLI command s
 
 ### Publication, recovery, and cancellation
 
-Architecture operations use the shared publication journal with an operation identity, intended exact bytes, expected prior references, verified Git commit, and SQL application state. The service owns repository writes; agents prepare outputs in permitted working areas and cannot publish arbitrary source changes. Source and assigned inputs remain read-only to the agent; only assigned output and scratch paths are writable.
+Architecture operations inherit the confirmed registration's destination under [source and publication selection](#source-and-publication-selection). They use the shared publication journal with an operation identity, intended exact bytes, expected prior references, verified Git commit, and SQL application state. The service owns repository writes; agents prepare outputs in permitted working areas and cannot publish arbitrary source changes. Source and assigned inputs remain read-only to the agent; only assigned output and scratch paths are writable.
 
 Foundation preparation is staged when new specialist files are needed. An initial architect assignment returns the assigned role/context artifacts. The service verifies their permitted source-local paths and expected file versions, commits them, and records the verified references. A follow-up immutable assignment supplies those published references to the same architect session before it creates `project-structure.json` and dependent records. The architecture manifest then includes those exact references. Neither agent nor schema is expected to predict a future Git commit. Intermediate publications remain journaled work; they are not proof that the complete output set is current.
 
