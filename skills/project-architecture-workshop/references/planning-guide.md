@@ -24,7 +24,7 @@ The overview lists the architecture and every included declaration. Each milesto
 
 Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/architecture.md#service-startup`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
 
-One fact has one authoritative location. Other documents reference it rather than maintaining copies. Reviews use the same exact repository commit, so references identify a consistent source version. Missing references or contradictory sources are flagged for clarification, not silently resolved.
+One fact has one authoritative location. Other documents reference it rather than maintaining copies. Reviews use the same exact source revision plus document content hashes for unpublished drafts, or the same published commit when available. Freeze the reviewed snapshot so both passes assess identical bytes. Missing references or contradictory sources are flagged for clarification, not silently resolved.
 
 ## Project overview
 
@@ -97,7 +97,9 @@ Each declaration stores an ordered list of its milestone references. Inserting a
 
 An identifier remains stable when an item moves in delivery order or its title or content changes. Retired identifiers are not reused. Non-milestone record types retain their sequential per-type, per-project numbering. Random assignment and unexplained assignment gaps are prohibited.
 
-One naming-convention list supports Owner-authorized additions of declaration designations, record types, and prefixes. Versions are separate from identities and ordering: changed records receive their next version, and previous versions remain available. An ordering change updates the declaration version, not unchanged milestone versions. Reviews identify the exact item and declaration versions reviewed; review rounds remain separate from document versions.
+Maintain one project-specific convention list in the existing authoritative location, or under `Project conventions` in the installed planning guide. List each declaration designation, plain subject, and declaration path, plus allowed record types and prefixes. For a new project with no reserved naming authority, initial descriptive designations are routine architecture-document organization authorized by the workshop request; record them as architect choices. Never alter existing identifiers to fit a new scheme. Later additions follow the established authority, with Owner-authorized expansion when required; do not stop for each sequential item under an existing designation.
+
+Versions are separate from identities and ordering: changed records receive their next version, and previous versions remain available. An ordering change updates the declaration version, not unchanged milestone versions. Reviews identify the exact item and declaration versions reviewed; review rounds remain separate from document versions.
 
 Relationships are explicit references rather than encoded hierarchies. Each work packet has its own identity and a link to its development milestone. Moving it does not require a new identifier. Replans record reasons and affected records.
 
@@ -150,6 +152,4 @@ Adequate information is not repeatedly rejected over preferences. The workshop d
 Architecture describes how the capability works. Project declarations define the usable delivery outcomes and evidence. Development milestones make manageable contributions linked to both.
 
 If a breakdown requires an undefined behavior, assumed prerequisite, or unspecified completion boundary, the responsible source needs clarification before that affected breakdown proceeds. Completed task lists or disconnected components do not substitute for the promised usable outcome.
-
-
 
