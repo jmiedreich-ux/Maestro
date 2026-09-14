@@ -87,3 +87,7 @@ An uncovered or unrelated change, materially changed base, unreliable evidence, 
 State the verified source range, reviewer independence, complete traceability results, quality-boundary findings, conflicts, assumptions, deferrals, blocking findings, non-blocking observations, responsible handoff, what the review does not authorize, and one final outcome.
 
 Stop when every accepted decision and bounded quality requirement has been traced and all blocking findings have been reported.
+
+## Saved findings and process limits
+
+Use the [architecture's saved finding and decision contracts](../maestro-architecture.md#saved-findings-and-architecture-decisions). Preserve stable finding identities across corrections and cite the exact saved container and version. The service owns mapping and publication. Agents cannot grant their own extra attempts or duration exceptions; the [linked Owner decision](../maestro-architecture.md#owner-decisions-at-a-process-limit) applies those actions. Operational grants alone do not require another fidelity review.
