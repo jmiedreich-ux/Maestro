@@ -13,9 +13,15 @@
 
 ## Where the discussion paused
 
+Source and publication selection is now specified in [Architecture](../../docs/architecture.md#source-and-publication-selection), with delivery evidence in the [registration declaration](../../docs/milestones/registration-milestones.md). The architecture owns the rule; the declaration references it. This is a documentation correction, not implemented registration behavior.
+
+Initial intake pins a resolved source commit and records an authorized publication branch. Re-registration resolves its selected source again; recovery retains saved selections; the architecture loop inherits the confirmed baseline and destination. Existing master-only policy, confirmation authority and review budgets remain unchanged. See [the correction record](#source-selection-correction) for scope and verification.
+
+Next: define the service's GitHub publication credential configuration. Reviewer-selection intake, SQL engine/deployment, process configuration/resource bindings, registration-reference conversion and specialist format alignment remain open. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
+
 The documentation-review procedure is now defined in the [shared review method](../../skills/project-architecture-workshop/references/reviews.md), with record fields in [workshop state](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record). [AGENTS.md](../../AGENTS.md#cross-document-alignment) defines Maestro's journey scope; the [reviewer role](../../docs/agents/decision-fidelity-reviewer.md#inputs-and-independence) applies the method within unchanged authority. It separates fidelity, completeness and consistency, requires independent inputs and per-journey evidence, and distinguishes full coverage from targeted corrections. Existing review limits and the no-standalone-report rule remain in effect.
 
-Blind full completeness and consistency passes, followed by one targeted selection-evidence correction check, surfaced the six requested benchmark subjects. The first full passes missed reviewer-input collection; the method and coverage fields were strengthened, and the targeted check found it independently. [Coverage, limits and disposition](#review-method-validation) are retained below. Existing review bounds were preserved; underlying architectural gaps remain open.
+Blind full completeness and consistency passes, followed by one targeted selection-evidence correction check, surfaced the six requested benchmark subjects. The first full passes missed reviewer-input collection; the method and coverage fields were strengthened, and the targeted check found it independently. [Coverage, limits and disposition](#review-method-validation) are retained below. Existing review bounds were preserved. The source/destination disposition is updated by the later correction above; other gaps remain open.
 
 The reusable [Project Architecture Workshop skill](../../skills/project-architecture-workshop/SKILL.md) is packaged with a generalized Planning Guide, templates, durable workshop state and bounded independent-review instructions. It is intended for new or existing projects, not reproduction of Maestro's design. [Installation instructions](../../skills/project-architecture-workshop/INSTALL.md) cover Codex and Claude Code. The package is committed, not installed into the owner's machines. No general Execution design was added by creating the skill.
 
@@ -33,9 +39,28 @@ Session continuation, active/waiting mapping, assignment/response and API shapes
 
 Earlier targeted rechecks did not establish full architectural completeness. Documentation readiness must be assessed using the recorded coverage required by the updated review method.
 
-Next: disposition the documentation gaps identified by the independent third-party review before proceeding to registration assessment or Execution design. This task updates review instructions only; it does not resolve the underlying architectural gaps. Live implementation evidence remains separate.
+The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Source selection correction
+
+The current Owner instruction authorized defining source commit and publication branch selection. The correction is specified in `docs/architecture.md#source-and-publication-selection`; affected intake, manifest, publication and architecture-entry sections reference it. The registration declaration's initial, update and recovery outcomes contain corresponding acceptance evidence. No runtime code or schema was changed.
+
+CONSISTENCY-SOURCE — Source and destination correction check links to CONSISTENCY-1 — Pre-execution documentation consistency. Reviewer `/root/source_target_consistency` used a separate context, authored/corrected none of the reviewed files, and received only the named correction and controlling requirements under the targeted-check exception. This consumed consistency round two of two under `pre-execution documentation method validation`. The earlier completeness budget also remains two of two; no budget was restarted.
+
+The reviewer compared baseline `f259ea929b249f62bde3660a15c8d8d4d3d07bf1` with corrected commit `d1d121269e149be4abdd770f2a11126eff1974c7`. Repository instructions and the shared review method were read at the corrected revision. Architecture was read by the exact headings below; milestone reads included declaration identity/order plus the relevant architecture-reference and acceptance sections. Unresolved-detail conclusions, handoff and prior review outputs were not supplied. Separate host session ID and packet hash were not recorded; exact commits and selected headings identify the examined sources.
+
+| Journey | Supporting locations and targeted coverage |
+|---|---|
+| Initial registration | Architecture **CLI request and event contract**, **Intake and scope**, **Source and publication selection**, **Source consistency**, **Package record contract**, **Candidate publication**; registration declaration **REG-PM1 — Register and confirm a project through the CLI**, **Architecture and journeys/Acceptance criteria**. Input source, caller/default selection, authority, SQL/Decision/manifest binding, visible CLI values, assignment/publication use and invalid-ref/access/destination behavior agree. |
+| Registration update | The selection/source headings plus **Re-registration**; declaration **REG-PM2 — Update a registration without losing approved history**, **Architecture and journeys/Acceptance criteria**. Idle-only entry, inherited or amended selection, resolution for the new attempt, unchanged authority, candidate/active-history separation, visible choices and rejection without fallback agree. |
+| Interrupted publication | **Source and publication selection**, **Candidate publication**, **Publication recovery**; declaration **REG-PM3 — Recover registration without losing decisions or exceeding limits**, **Architecture and journeys/Acceptance criteria**. Saved inputs/target, service authority, journal ownership, remote/SQL result and lost-acknowledgment/conflict behavior agree; recovery does not re-resolve source or substitute a target. |
+| Architecture entry/continuation/publication | **Source and publication selection**, **Entry and responsibility**, **Architecture API operations**, **Persistent-session adapter contract**, **Current versions and stale-data prevention**, **Publication, recovery, and cancellation**. Entry prerequisites, confirmed source/destination origin, authority, session/assignment/journal binding, output-reference separation, completion boundaries and stale/unavailable-input recovery agree. |
+
+All architecture headings above are in `docs/architecture.md`; declaration headings are in `docs/milestones/registration-milestones.md`. Declaration and affected milestone version changes were checked. Coverage is complete for this targeted assignment, with no findings: no gaps were found within its recorded consistency coverage. The source/destination omission is addressed in documentation; this does not establish overall readiness.
+
+The reviewer did not assess service credential configuration, SQL engine choice, reviewer selection intake, registration-reference shape, TOML/resource bindings, broader guide/role/schema consistency, other journeys or live operation. General storage mechanics and failure cases unrelated to the selected source/target were outside this check. No fresh completeness or decision-fidelity pass was performed. No standalone report was created.
 
 ## Review-method validation
 
