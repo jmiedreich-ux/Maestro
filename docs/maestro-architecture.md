@@ -63,7 +63,7 @@ The general unattended loop remains **provisional**: Planning supplies approved 
 | Checks and independent review pass | Complete the work, merge where already authorized, and release dependent work. |
 | A worker crashes or stalls | Recover or reassign within the authorized retry limit. |
 | Review identifies an implementation defect | Request a bounded correction. |
-| A dependency or work breakdown is flawed | Return the issue to Planning; automatic revision requires explicit delegated authority. |
+| A dependency or work breakdown is flawed | Report the affected work. Replanning requires confirmed re-registration followed by a manual architecture-loop start; reporting a problem grants no automatic revision authority. |
 | Scope, architecture, or an Owner-reserved requirement changes | Pause affected work and request a decision. Unrelated approved work may continue. |
 | Time, cost, or retry limits are reached | Stop affected work and report the reason. |
 
@@ -167,7 +167,7 @@ Automatic model substitution is disabled in the effective tool configuration. A 
 
 #### Tool transport
 
-The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation behavior is defined separately; exact tool resume operations remain to be specified.
+The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation and event contract is defined under [persistent-session adapter contract](#persistent-session-adapter-contract).
 
 | Tool | Transport and result handling |
 |---|---|
@@ -300,14 +300,15 @@ The local API uses UTF-8 JSON under `/api/v1`. These are interface contracts for
 | Project conversation | GET `/projects/{project_id}/conversation?before={cursor}&limit=50` | Chronological messages, activity references, and an older-page cursor; omission of before returns the latest page. |
 | Project activities | GET `/projects/{project_id}/activities` | Activity identities, names, states, and start/end times. |
 | Activity detail | GET `/activities/{activity_id}` | Current state, questions, findings, and available actions. |
+| Architecture view | GET `/projects/{project_id}/architecture` | Existing architecture activity or latest confirmed breakdown; absence is explicit and starts nothing. |
 | Registration view | GET `/projects/{project_id}/registration` | Existing attempt or approved record; absence is explicit and starts nothing. |
-| Submit an operation | POST `/requests` | Durable receipt for registration intake, an answer, or an explicit registration action. |
+| Submit an operation | POST `/requests` | Durable receipt for registration/architecture initiation, an answer, or an explicit process action. |
 | Reconcile an uncertain submission | GET `/requests/{request_id}` | Saved status and result, or explicit not-found. |
 | Live updates | GET `/events` | Server-Sent Events with durable cursor IDs. |
 
 Read responses contain `data` and `event_cursor`, which identifies the corresponding position in the event stream. List responses also contain `next_cursor` for the next page, or null when no pages remain. Project summaries contain identity, plain name, registration status, activity state, and attention count. Activity records identify their project; question and finding records identify both their project and activity. Names and coded subjects remain plainly worded even when internal IDs have no readable meaning.
 
-A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, `registration.cancel`, and `registration.retry`. The retry payload and eligibility rules are defined under [activity retry request](#activity-retry-request). Initial intake supplies repository and overview path; saved intake questions collect missing scope and the explicit architect tool and exact model/version selection required by [tool and model selection](#tool-and-model-selection). Selection must be recorded before architect launch. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
+A submission contains `request_id`, `operation`, `project_id`, `activity_id`, `question_id`, `expected_version`, and `payload`. Context fields may be null only when inapplicable, such as initial repository intake. The service validates the required context for each operation. Operation names are `registration.start`, `question.answer`, `registration.confirm`, `registration.cancel`, `registration.retry`, and the `architecture.start`, `architecture.confirm`, `architecture.cancel`, and `architecture.retry` operations defined under [architecture API operations](#architecture-api-operations). The retry payload and eligibility rules are defined under [activity retry request](#activity-retry-request). Initial intake supplies repository and overview path; saved intake questions collect missing scope and the explicit architect tool and exact model/version selection required by [tool and model selection](#tool-and-model-selection). Selection must be recorded before architect launch. Answer payloads contain text and an optional choice reference. Registration actions identify the exact candidate or attempt and its version.
 
 Receipts contain request identity, status, and any created project/activity identities. Status is accepted, completed, or rejected; accepted means durably recorded, not completed activity. Errors contain `code`, plain `message`, and affected fields. Invalid input returns 400, unavailable access 403, missing records 404, stale context or conflicting request content 409, and unavailable service 503. No error is rendered as an empty result.
 
@@ -857,7 +858,88 @@ When that session is unavailable, a replacement may continue with the same role 
 
 Each active architect or reviewer run has a separately configurable 30-minute default. Waiting for Owner answers or confirmation does not consume active-run time. The service records run deadlines and waiting states; restart cannot create extra running time. The persistent session can span multiple bounded active runs.
 
-Registration's fresh-conversation transport does not define persistent-session continuation. The exact tool resume protocol and active/waiting event mapping remain technical contracts to specify; these gaps do not reopen the agreed continuity and recovery behavior.
+#### Persistent-session adapter contract
+
+One service session identity binds the project, activity, role, selected tool/model, source baseline, tool conversation ID, and tool-state location. Only one active run may use it. A reviewer receives a different session and read-only copies of exact reviewed inputs; it never resumes the architect's conversation.
+
+The workspace root contains `<project-id>/<activity-id>/sessions/<session-id>/`. Each session has a stable `source/` working directory, immutable `input/<assignment-id>/` snapshots, retained tool state, and `runs/<run-id>/output/` plus scratch. The service fixes tool state to that session's configured profile/location; a profile shared across project conversations is not used for lookup. Each run grants write access only to its own output/scratch and tool-required session storage. Prior outputs and supplied inputs remain read-only; session storage is untrusted conversation history, never an authoritative output. The supervisor retains its existing spool and control-group tracking.
+
+| Tool | First run and subsequent runs |
+|---|---|
+| Codex | Start App Server over stdio and perform `initialize` then `initialized`. First use `thread/start` and record the returned thread ID; subsequent processes use `thread/resume` with that exact ID. Submit `turn/start` with the thread ID, selected model, fixed working directory, current assignment-file instruction, and response `outputSchema`. Record its turn ID. |
+| Claude Code | First invoke print mode with a service-assigned UUID through `--session-id`. Later invoke print mode with `--resume <exact-session-id>`. Every invocation supplies the explicit model, `--output-format stream-json`, `--verbose`, `--json-schema`, and the current assignment-file instruction. Record and verify session metadata. Never use latest-session lookup or `--continue`. |
+
+These selected operations follow [Codex App Server](https://learn.chatgpt.com/docs/app-server), [Claude programmatic operation](https://code.claude.com/docs/en/headless), and the [Claude CLI reference](https://code.claude.com/docs/en/cli-reference). Installed-release capability checks remain required; documentation does not prove a route works on the AI box. The adapters preserve the existing exact-model and permission checks on every run.
+
+For Codex, correlated `turn/started` and item/delta events record activity; only a matching successful `turn/completed` allows final response validation. An interrupted or failed turn is not completion. For Claude, `system/init` identifies the session/model; assistant and streaming events are progress. Only a terminal successful `result` containing `structured_output`, followed by process completion, allows validation. Inner tool messages, partial JSON, or an agent saying it is done cannot complete the assignment.
+
+Each active run receives a newly saved immutable assignment file. The prompt explicitly identifies that file and the authoritative input references; resumed historical instructions do not replace it. Answers are saved and delivered only in the next assignment, not injected into an active turn. Context compaction cannot change authoritative records.
+
+The runtime starts the deadline when it reserves and launches the active run, covering startup and retries. Mechanical allocation exchanges remain within that same active-run deadline; they cannot create unlimited fresh turns. It stops/releases the run after collecting terminal output, draining the spool, and verifying child termination. The Codex process may end between turns while its disk-backed thread persists; the next process resumes that exact thread. A saved clarification response plus confirmed stopping enters `waiting_for_answers`. Waiting for review or confirmation likewise has no running architect. Silence, a quiet stream, or provider backoff never counts as waiting for the Owner and never suspends a deadline.
+
+| Accepted result or event | Service state and next action |
+|---|---|
+| New eligible activity | `preparing`, then `running` after launch reservation. |
+| Terminal response | `validating`; schema, context, output, and stale-data checks run before advancement. |
+| Valid partial or completed outputs | `publishing`; only verified publication updates the working reference. |
+| Clarification | Save specific linked questions and partial verified work, stop the run, then `waiting_for_answers`. Resume when required answers for the next step are available. |
+| Ready breakdown | Stop the architect, then `waiting_for_review`; launch the independent assignment within the saved budget. |
+| Valid review coverage and eligible working version | `waiting_for_confirmation`; only the explicit Owner action advances. |
+| Error or uncertain process/publication state | `paused`, with reason and eligible recovery action. |
+| Cancellation | `cancelling` until processes and writes reconcile, then `cancelled`. |
+| Applied confirmation | `completed`; execution remains unstarted. |
+
+Recovery first checks the original supervisor, spool, and SQL launch record. It does not resubmit an uncertain turn or start a second process against the same session. After confirmed stopping, resume a usable conversation with the same tool/model. If the conversation is unusable, record a replacement session linked to the prior one and reconstruct only from verified assignments, decisions, manifests, and saved answers. A validated response already recorded is not generated again. Unknown completion pauses rather than guessing. Session replacement and run retries preserve assignment accounting and deadlines under the existing recovery rules.
+
+#### Architecture assignment and response contract
+
+[Architecture-loop JSON Schema](schemas/architecture-loop.schema.json) defines the exact version-1 shapes. Its `assignment` and `agentResponse` definitions are separate from registration's contract. All declared properties are required unless explicitly nullable; unknown properties are rejected. Output references use paths relative to the assigned output root. The service validates full schemas itself even when a provider needs an equivalent bundled response schema with local references expanded.
+
+Assignments contain fixed identities, the selected role/tool/model, source and registration references, recorded decisions and answers, current manifest/input references, required output paths and schemas, writable paths, remaining allowances, definition hash, and deadline. They identify the task as investigation, breakdown, amendment, or independent review. Service-owned IDs, subjects, versions, and paths are supplied in `required_outputs` before output creation. If more records are needed, the agent returns `allocation_required` with `allocations`: unique local keys, proposed subjects, record types, and a source area for specialist records. The service validates these against scope, reserves stable sequential IDs and permitted paths, and returns `allocation_bindings` in the next assignment. Replaying the same allocation keys returns the same bindings. This mechanical exchange is not an Owner question, correction attempt, or fidelity review, and cannot extend an exhausted assignment deadline.
+
+The agent returns the assigned identities, session, source and decision version, input manifest, a plain summary, findings/questions, output artifact references, and one result: `completed`, `clarification_required`, `allocation_required`, or `technical_failure`. Reviewer results also identify `reviewed_set` and `review_outcome`. Progress remains a separate event stream.
+
+| Semantic validation | Required behavior |
+|---|---|
+| Completed architect | Required task outputs exist at assigned paths; `reviewed_set` and `review_outcome` are null. Completion of an assignment does not approve the loop. |
+| Completed reviewer | Exact assigned set and coverage are identified. APPROVE has no blocking finding or unresolved required question; REQUEST_CHANGES contains a justified blocking finding. |
+| Clarification | At least one specific question; no review approval. Verified partial outputs may be saved. |
+| Allocation required | Nonempty allocation requests, no review outcome or failure; other result types have an empty allocations array. Allocate only within assigned scope and return the bindings automatically. |
+| Technical failure | Failure code/message present; no review approval or completed-work claim. |
+| All other results | `failure` is null. Identity, source, input manifest, role, and allowed outputs match the assignment. |
+| Duplicate response | Canonically equal already-accepted content returns its saved receipt; conflicting or stale output cannot overwrite current records. |
+
+Use the common finding/question meanings already defined for registration, with the exact architecture schema fields. Empty optional lists remain arrays; an inapplicable scalar/object is null only where the schema allows it. Technical errors go through bounded correction/recovery, not a substantive fidelity rejection. Review counts change only for accepted completed reviews.
+
+### Architecture API operations
+
+The existing `/api/v1` request envelope, error statuses, SQL-first events, and request reconciliation apply. The schema's `request`, `receipt`, and `view` definitions supply exact architecture payloads and results.
+
+| Interface | Required action and result |
+|---|---|
+| GET `/projects/{project_id}/architecture` | Return the current activity or latest confirmed breakdown and authoritative working/confirmed references; `data: null` means none exists. Reading starts nothing. |
+| `architecture.start` | Require project and exact active registration reference, architect selection, and separate reviewer selection. Activity, question, and expected-version fields are null for this request. Check/reserve idle state atomically and return the created activity. An existing unfinished architecture activity is returned without changing its inputs or selections. |
+| `architecture.confirm` | Require activity, expected activity version, and exact expected working reference plus explicitly accepted limitation references. Apply the existing version comparison and publication journal. |
+| `architecture.cancel` | Require activity, expected activity version, and a plain reason. Record the cancellation request, then stop/reconcile before reporting it complete. |
+| `architecture.retry` | Require activity and expected activity version. Payload targets `agent` with assignment ID or `publication` with operation ID; the other ID is null. Require recorded intervention text and current retry eligibility. It does not replenish automatic budgets. |
+
+The start form collects any missing exact selections before submission using the existing explicit form interaction. A historical registration reference cannot start new work. Conflicting source/selection data on a different start request for an existing activity returns that activity with its actual recorded inputs; it never silently reconfigures it. Same request ID with different content returns 409.
+
+`expected_version` on architecture actions is the activity's positive integer revision, incremented for accepted state/action changes. Questions still use the existing `question.answer` operation and question version. Confirmation separately compares the full working reference and content hash. Receipt status describes the submitted operation, not approval of all project work.
+
+The activity view exposes state, current references, review count/limit and coverage validity, blocking reasons, and eligible actions. Detailed questions/findings remain in the existing activity detail and conversation endpoints. During pending publication/confirmation, source-changing actions cannot advance. Stale context returns 409 with current references for refresh; malformed payloads, access failures, missing records, and unavailable service use the existing error map. Request replay and SSE refresh never start duplicate runs.
+
+Manual retry uses the registration principle of one intervention-backed additional run after confirmed stopping, preserving automatic recovery and correction accounting. It cannot bypass an exhausted output-correction or fidelity allowance; additional allowance requires an explicit recorded Owner decision. The action is unavailable when its conditions are unmet.
+
+### Architecture schema and process-definition binding
+
+The JSON Schema bundle is the authoritative field/type contract; prose defines semantic checks and process transitions. Required record names and paths remain those under [architecture output locations and records](#architecture-output-locations-and-records). Validate metadata equality across a set, unique identities and paths, valid dependency links, no prerequisite cycles, and exact inventory hashes. Specialist records must match assigned source-local paths and ownership; JSON path validation alone is insufficient. Markdown role/context files retain the established headings and content responsibilities rather than pretending to be JSON.
+
+For `reviewed_content_hash`, build an object containing `registration_ref`, `source_commit`, `decision_version`, sorted `decision_refs` and `input_refs`, and the manifest inventory excluding review and confirmation entries. Sort inventory by repository-relative path and then identity; sort dependency/reference arrays by path, identity, and version. Include specialist commit references; set same-publication inventory commits to null. Serialize with [RFC 8785 JSON Canonicalization](https://www.rfc-editor.org/rfc/rfc8785) and hash its UTF-8 bytes with SHA-256. Individual file hashes cover the exact saved bytes. Reject duplicate JSON keys, invalid Unicode, and unsupported schema versions rather than normalize away a mismatch.
+
+The `processDefinition` schema validates the effective `architecture_loop` TOML table after the documented optional numeric defaults have been applied. Its supported policy names bind to the handlers specified above; they are not arbitrary code. Required section policies are `confirmed_registration_idle_project`, `persistent_exact_session`, `versioned_architecture_set`, `bounded_independent_fidelity`, `exact_reviewed_working_version`, and `reconcile_preserved_work`. Shared tool settings stay outside this process table. The effective table and schema version are hashed and snapshotted before initiation.
+
+
 
 ### Initial code investigation
 
@@ -944,6 +1026,14 @@ The manifest records every required output's type, path, identity/subject, versi
 
 A published content file is immutable at that version. Content amendments create the next output-set version, retaining stable record identities and incrementing changed record versions only. Review records and the single confirmation receipt may be added to a version after its content is published; those additions update the manifest and publication reference without changing reviewed content. Prior Git commits remain available.
 
+### Replanning after re-registration
+
+Replanning can occur only after re-registration has been confirmed. It has no independent command, automatic trigger, or separately delegated entry. Re-registration first requires no unfinished project work under its existing idle-only rule.
+
+A subsequent manual `/architecture start` reconciles the existing breakdown with that newer confirmed registration. Preserve valid investigations, project structure, specialist guidance, milestones, and packets; revise only affected records and dependent work. Review and exact-version confirmation use this architecture loop's existing rules. Execution still requires its separate manual start.
+
+Routine clarification, necessary corrections within the current registration, session recovery, and a restart after cancellation continue the same agreed work; they cannot be used to change established scope or direction without re-registration. If a completed breakdown is already based on the current registration and no cancelled work needs continuation, another start returns that breakdown rather than creating an independent replan. Proposed changes requiring replanning remain recorded issues until re-registration is confirmed.
+
 ### Current versions and stale-data prevention
 
 SQL stores two separate references: the current working version, which is the latest validated and published work used for continuation and review, and the confirmed version approved by the Owner. Saving work never grants confirmation.
@@ -1026,15 +1116,11 @@ These settings use the activity's validated definition snapshot and do not alter
 | A breakdown is submitted for independent review | Give a separate reviewer the exact sources and outputs; return justified corrections to the architect. | Save the reviewed version, findings, amendments, and review outcome. | Use the architecture-loop review limit; material disagreement at the limit reaches the Owner. |
 | The reviewed breakdown is presented for confirmation | Show the summary and full version for an explicit Owner decision. | Save confirmation of that exact version and show loop completion. | No automatic execution; unresolved material findings cannot be hidden as approval. |
 
-### Architecture-loop details still to define
+### Architecture-loop implementation boundary
 
-| Area | Remaining contract |
-|---|---|
-| Tool continuation | Exact Codex/Claude session-resume operations, active/waiting event mapping, and architecture-specific structured response envelope. Continuity, replacement, limits, and preserved records are already defined. |
-| Executable validation | JSON Schemas and TOML policy mappings implementing the record fields above; canonical inventory serialization and exact API payload schemas. These are technical contract work, not missing Owner decisions about names, storage, or authority. |
-| General replanning and execution | Replanning entry and work scheduling remain separate design. Changed-registration invalidation, idle-only architecture entry, preserved foundations, and manual execution start are already settled. |
+Session operations, state transitions, assignments, responses, API payloads, saved-record schemas, and replanning entry are defined above. Implementing those contracts and verifying installed tool support belong to development; no separate replanning-design prerequisite remains.
 
-These remaining technical contracts do not reopen the behavior defined above. Installed capability verification belongs to development.
+General Execution scheduling, implementation review, and merge authority remain outside this loop. A documentation readiness check does not confirm a live registration or establish implementation completion.
 
 ## Journeys and interactions
 
@@ -1130,7 +1216,7 @@ The following architectural mechanisms remain unresolved:
 | Persistence | Physical SQL schema, broader runtime recovery internals, and database backup/restore procedures. Package publication and activation consistency are defined above. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
-| Architecture loop | Entry, storage, review, confirmation, and recovery behavior are defined above. Exact tool continuation/event and response schemas, executable validators, and separate general replanning design remain under [architecture-loop details still to define](#architecture-loop-details-still-to-define). |
+| Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
 | Execution policy | Implementation-review authority, coding correction limits, merge authority, and development completion policy remain provisional and require separate Execution design. Registration controls do not settle them. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
