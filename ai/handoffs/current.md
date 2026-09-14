@@ -3,10 +3,10 @@
 ## Start here
 
 - [Repository working rules](../../AGENTS.md) and [additional agent instructions](../../CLAUDE.md).
-- [Project overview](../../docs/maestro-project-overview.md) — authoritative source entry and current-state evidence.
-- [Architecture](../../docs/maestro-architecture.md) — system behavior and remaining mechanisms.
-- [Runtime Service declaration](../../docs/maestro-runtime-service-project-milestones.md), [CLI declaration](../../docs/maestro-cli-project-milestones.md), and [registration declaration](../../docs/maestro-registration-project-milestones.md).
-- [Architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md).
+- [Project overview](../../docs/project-overview.md) — authoritative source entry and current-state evidence.
+- [Architecture](../../docs/architecture.md) — system behavior and remaining mechanisms.
+- [Runtime Service declaration](../../docs/milestones/runtime-service-milestones.md), [CLI declaration](../../docs/milestones/cli-milestones.md), and [registration declaration](../../docs/milestones/registration-milestones.md).
+- [Architecture-loop declaration](../../docs/milestones/architecture-loop-milestones.md).
 - [Planning Guide and templates](../../docs/planning-guide/README.md).
 - [Maestro Project Architect — Software Architecture Role](../../docs/agents/architecture-agent.md).
 - [Independent Fidelity Reviewer](../../docs/agents/decision-fidelity-reviewer.md).
@@ -15,7 +15,7 @@
 
 The pre-execution gap closures define stable saved finding references, the fixed architecture `decisions.json` snapshot, typed Owner decisions for one extra review/correction attempt, per-run deadlines with separate next-run duration exceptions, and the local Owner credential boundary. Architecture, schema, and affected delivery criteria are aligned. SQL backup and restore are explicitly out of scope; the contradictory backup procedure is removed. Ordinary restart and recorded-operation recovery remain included.
 
-The architecture-loop agreements are saved in [Architecture](../../docs/maestro-architecture.md#architecture-loop) and the [architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md).
+The architecture-loop agreements are saved in [Architecture](../../docs/architecture.md#architecture-loop) and the [architecture-loop declaration](../../docs/milestones/architecture-loop-milestones.md).
 
 Settled behavior includes `/architecture start` and `/architecture`, selected-project and idle-only entry, exact tool/model selection, persistent-session replacement from verified records, active-run limits, fixed output names and paths, manifest hashes, separate working/confirmed references, stale-data rejection, targeted review, exact-version confirmation, interrupted-operation recovery, cancellation/restart without budget resets, and later-registration invalidation.
 
@@ -34,7 +34,7 @@ No implementation, runtime configuration installation, or live AI box verificati
 - The architect is a software architecture role responsible for technical coherence and usable connected outcomes. It both assesses sources and prepares the candidate package.
 - Routine technical choices within scope do not need Owner approval. Changed outcomes, expanded scope, conflicts with agreed requirements, reserved decisions, and final registration confirmation retain their agreed authority boundaries.
 - The independent reviewer checks both assessment and candidate fidelity. Routine corrections go to the architect; justified material disagreement at the review limit reaches the Owner. No extra review loop was added.
-- Role inputs and the [structured registration response](../../docs/maestro-architecture.md#registration-agent-response-contract) are already defined. Do not reopen them as unanswered questions.
+- Role inputs and the [structured registration response](../../docs/architecture.md#registration-agent-response-contract) are already defined. Do not reopen them as unanswered questions.
 - The adapter runs an agent tool; the service owns validation, durable records, budgets, question routing, and registration state. One adapter may run different roles in separate independent runs.
 - For later execution work packets, the agent returns its implementation plan after reading the packet and then continues. Maestro records and displays it. No plan-review, approval, or pause gate is included now; such a gate is only a possible future addition.
 - CLI implementation precedes registration development. Final connected CLI acceptance uses real initial registration integration. Re-registration display evidence belongs to REG-PM2 — Update a registration without losing approved history.
