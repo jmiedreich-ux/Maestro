@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+The pre-execution gap closures define stable saved finding references, the fixed architecture `decisions.json` snapshot, typed Owner decisions for one extra review/correction attempt, per-run deadlines with separate next-run duration exceptions, and the local Owner credential boundary. Architecture, schema, and affected delivery criteria are aligned. SQL backup and restore are explicitly out of scope; the contradictory backup procedure is removed. Ordinary restart and recorded-operation recovery remain included.
+
 The architecture-loop agreements are saved in [Architecture](../../docs/maestro-architecture.md#architecture-loop) and the [architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md).
 
 Settled behavior includes `/architecture start` and `/architecture`, selected-project and idle-only entry, exact tool/model selection, persistent-session replacement from verified records, active-run limits, fixed output names and paths, manifest hashes, separate working/confirmed references, stale-data rejection, targeted review, exact-version confirmation, interrupted-operation recovery, cancellation/restart without budget resets, and later-registration invalidation.
