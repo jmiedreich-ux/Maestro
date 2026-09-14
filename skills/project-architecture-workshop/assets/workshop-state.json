@@ -15,7 +15,9 @@
     "authorization_source": null,
     "last_verified_document_revision": null,
     "status": "not_started",
-    "pending_paths": []
+    "pending_paths": [],
+    "delivery_level": null,
+    "verified_local_files": []
   },
   "current_topic": null,
   "covered_topics": [],
@@ -28,4 +30,3 @@
   },
   "reviews": []
 }
-
