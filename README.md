@@ -10,4 +10,3 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 - [Registration project milestones](docs/maestro-registration-project-milestones.md)
 - [Planning Guide and templates](docs/planning-guide/README.md)
 - [Agent role library](docs/agents/)
-- [Information review](docs/maestro-information-review.md) — consolidated reference material.
