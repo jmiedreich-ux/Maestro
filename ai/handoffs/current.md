@@ -12,15 +12,13 @@
 
 ## Where the discussion paused
 
-The shared adapter behavior is documented in [Model Execution Adapters](../../docs/maestro-architecture.md#model-execution-adapters). The first integration remains the Maestro Project Architect performing registration, followed by an independent Fidelity Reviewer.
+The [architecture loop](../../docs/maestro-architecture.md#architecture-loop) is now documented. It starts manually after confirmed registration, maintains a persistent architect session, investigates existing code, establishes lasting project structure and source-local specialist guidance, and creates the smallest bounded packets before organizing development milestones. It designs parallel work but does not schedule it. Independent review has a separate configurable default of two reviews. Owner confirmation completes the loop; execution requires a separate manual CLI start.
 
-Claude Code or Codex can run either role, with separate exact model/version selections. The architect selection is explicit at registration initiation; no particular model version has been chosen. Workspaces, assignment snapshots, clarification follow-ups, progress, completion, cancellation, recovery, and retention behavior are agreed.
+Next: assess whether the architecture-loop description has sufficient detail to prepare its project milestone declaration and pass registration. Start with [the remaining architecture-loop contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define); recording the agreed behavior does not establish registration readiness. Do not start development breakdown or execution.
 
-The adapter contracts now specify Codex App Server over stdio, Claude Code print-mode streaming, explicit assessment artifacts, separate assignment/run identities, protected inputs, process supervision, internal retry accounting, technical configuration, and the durable Retry activity request. Official documentation supports the selected tool interfaces; installed compatibility and connected behavior remain unverified.
+The Runtime Service, CLI, and registration declarations remain the existing delivery sources. No architecture-loop declaration has been created in this update. Earlier registration and adapter contracts remain authoritative; architecture-loop persistence must not inherit registration's fresh-conversation rule.
 
-Package records and locations, exact candidate references, publication operations, confirmation receipts, and SQL activation/recovery are now defined in the architecture. Idle-only enforcement and the per-attempt planning-review configuration are now defined. Cross-document alignment is complete, with corrections applied and independently rechecked. The Runtime Service declaration now gives service installation, durable records, API/event delivery, and agent supervision their own delivery outcomes. CLI owns the terminal; registration owns its process and package behavior. Runtime interfaces and CLI are implemented before registration integration; shared final acceptance uses real registration journeys. The Runtime Service ownership changes have passed independent decision-fidelity and cross-document consistency reviews. Next: discuss these Runtime Service outcomes before designing development milestones and work packets. Live adapter verification is deferred to implementation and is not required for the current architecture documentation work. Continue documenting and committing the design without attempting AI box checks at this stage.
-
-Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
+Live adapter verification remains deferred to implementation. Continue documentation without attempting AI box checks. Resolve routine technical details within the architect's authority; seek Owner decisions only at the stated authority boundaries.
 
 ## Decisions to preserve
 
