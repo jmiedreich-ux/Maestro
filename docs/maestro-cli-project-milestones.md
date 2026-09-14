@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | CLI — Command-line interface |
-| Declaration version | 9 |
+| Declaration version | 10 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/maestro-architecture.md` |
 
@@ -14,7 +14,7 @@
 
 The declaration delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [Runtime Service declaration](maestro-runtime-service-project-milestones.md) owns service installation, API implementation, server-side storage and request handling, and agent supervision. This declaration owns the terminal client and its interaction with those capabilities. The [project overview](maestro-project-overview.md) identifies current-state evidence.
 
-Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this declaration. Registration-specific intake and package actions are delivered through the [registration declaration](maestro-registration-project-milestones.md).
+Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this declaration. Registration-specific intake and package actions are delivered through the [registration declaration](maestro-registration-project-milestones.md). Architecture-loop entry, progress, review, and confirmation actions are delivered through the [architecture-loop declaration](maestro-architecture-loop-project-milestones.md), using this terminal foundation. Its unresolved command contracts do not change the defined registration commands.
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
