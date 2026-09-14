@@ -78,7 +78,7 @@ Read exact manifest references and authoritative SQL working/confirmed reference
 
 Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
 
-The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. The loop's unresolved mechanisms are listed in the architecture.
+The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. Use the [architecture assignment and response contract](../maestro-architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
 
 ## Later design and development preparation
 
