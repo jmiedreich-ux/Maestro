@@ -77,9 +77,11 @@
     },
     "trace_item": {
       "category": null,
+      "subject": null,
       "status": null,
       "locations": [],
-      "explanation": null
+      "explanation": null,
+      "subitems": []
     },
     "location": {
       "path": null,
@@ -98,6 +100,12 @@
       "minimum_correction": null,
       "disposition": null,
       "canonical_ref": null
+    },
+    "trace_subitem": {
+      "subject": null,
+      "status": null,
+      "locations": [],
+      "explanation": null
     }
   }
 }
