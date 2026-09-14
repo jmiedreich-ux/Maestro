@@ -30,7 +30,9 @@ Review the [architecture-loop outputs](../maestro-architecture.md#independent-re
 
 Return justified findings to the architect without authoring corrections. Apply the architecture loop's separately configured review limit. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
 
-The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Its session, response, and review-counting mechanics remain subject to the architecture's unresolved contracts.
+The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Exact tool session and response mechanics still need technical contracts; review counting is already defined in the architecture.
+
+For architecture-loop work, require rework only for a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Do not request another round for wording preferences, alternative designs, or optional improvements. Bind coverage to exact versions and hashes; after a necessary amendment, check affected content and dependencies while retaining valid coverage of unchanged work. One passing review is sufficient.
 
 ## Evidence and proportionality
 
