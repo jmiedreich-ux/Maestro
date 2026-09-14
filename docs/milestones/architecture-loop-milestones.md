@@ -32,7 +32,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 |---|---|---|---|
 | 1 | ARC-PM1 — Establish the project's architectural foundations | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
 | 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
-| 3 | ARC-PM3 — Review and confirm the development breakdown | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
+| 3 | ARC-PM3 — Review and confirm the development breakdown | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
 ## ARC-PM1 — Establish the project's architectural foundations
 
@@ -172,7 +172,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | The loop completes or is interrupted | Completion does not schedule or start execution. Interruption reconciles the same publication/confirmation operation without a new version, repeated completed agent work, or another Owner confirmation already recorded. Advance SQL references only after verified publication; unknown outcomes pause. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
 | The loop is cancelled or later restarted | Preserve saved work and prior confirmation; retain the project reservation until agents and pending operations resolve. A new activity reuses valid work and carries the same unresolved-work budgets rather than resetting them. | Actual cancellation/restart and linked accounting records, with no automatic execution. | None |
 | A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually after that re-registration is confirmed; a same-registration completed breakdown is viewed rather than replanned. | None |
-| An allowance is exhausted or a run times out | The linked Owner decision applies one extra attempt or a separate next-run duration exception with unchanged base limits and counts. Same-run recovery retains its deadline; a new eligible run has its own duration. Operational receipts alone do not invalidate architectural review. | Connected limit-response and recovery evidence follows `docs/architecture.md#owner-decisions-at-a-process-limit` and `docs/architecture.md#run-deadlines-and-duration-exceptions`; unauthorized or replayed actions cannot add grants. | None |
+| An allowance is exhausted or a run times out | The linked Owner decision applies one extra attempt or a separate next-run duration exception with unchanged base limits and counts. Same-run recovery retains its deadline; capacity-only continuation retains remaining active time, while an eligible failure-recovery run follows the configured duration rule. Operational receipts alone do not invalidate architectural review. | Connected limit-response and recovery evidence follows `docs/architecture.md#owner-decisions-at-a-process-limit` and `docs/architecture.md#run-deadlines-and-duration-exceptions`; unauthorized or replayed actions cannot add grants. | None |
 
 ### Definition of done
 
