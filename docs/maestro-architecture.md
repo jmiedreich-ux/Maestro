@@ -87,6 +87,47 @@ Registration runs agents to assess sources, prepare and amend candidates, and in
 
 Implementation-review authority, coding correction limits, merge authority, and development-milestone completion policy remain provisional for separate Execution design. Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
 
+### Shared process definitions
+
+The runtime uses one service-owned TOML file, `/etc/maestro/agents.toml`, for shared settings and process definitions. Registration and the architecture loop use separate sections in that file. The file describes how each process uses runtime capabilities; it is not limited to numeric settings.
+
+The runtime implements common initiation, agent-session handling, output validation and saving, review accounting, confirmation, and recovery. Each process supplies its requirements for those capabilities. Process-specific judgment and record meaning remain in the relevant handler, schema, and agent instructions. A section name does not supply behavior that has not been implemented.
+
+| Process section | Declared requirements | Runtime responsibility |
+|---|---|---|
+| `initiation` | Supported entry operation, prerequisites, and start restrictions. | Validate the request and enforce the declared prerequisites before creating work. |
+| `agent_session` | Role references, tool/model selection rules, session mode, and applicable limits. | Launch or continue the correct isolated session and retain its identity. |
+| `saved_outputs` | Required output types, format/schema references, destination rules, and version policy. | Check outputs and their identities, save through the supported destination handler, and record verified references. |
+| `review` | Independent reviewer role, review limit, and supported amendment policy. | Route exact outputs, count completed reviews, and enforce the process's limit. |
+| `confirmation` | The versioned result being confirmed, required authority, eligibility checks, and completion action. | Verify the exact result and record confirmation without unauthorized advancement. |
+| `recovery` | Supported recovery policy, retry limits, and stopping conditions. | Reconcile saved state and apply only the allowed recovery action. |
+
+Sections sit under `registration` and `architecture_loop`, for example `registration.saved_outputs` and `architecture_loop.saved_outputs`. Shared tool paths, credential references, and workspace settings retain the fields under [adapter configuration](#adapter-configuration). The registration review limit remains `registration.maximum_fidelity_reviews`; the registration review section uses that value rather than maintaining a second copy. The architecture-loop limit is `architecture_loop.maximum_fidelity_reviews`.
+
+Each definition identifies its schema version. Section fields select supported policies, schemas, and destination handlers; they do not contain shell commands or arbitrary executable instructions. Required sections depend on the process contract. Unknown fields, unsupported policies, invalid types, conflicting settings, or missing required sections produce a plain configuration error before that process starts. Read-only views remain available. Omitted optional values use only documented defaults; registration-specific defaults do not automatically apply to other processes.
+
+The service validates and saves the effective process definition and its hash with each new activity. That snapshot governs the activity through answers, reviews, confirmation, and recovery. Editing the file changes future activities, not in-progress authority, outputs, or budgets. Tool availability and credential checks still apply to each launch as specified by the adapter contract; the snapshot does not preserve revoked access. Per-run evidence includes the activity's definition hash and the effective tool configuration hash.
+
+### Shared output handling and process boundaries
+
+A saved-output definition identifies the required record type, schema and format, supported location rule, and version policy. It may refer to a named output set rather than duplicating a detailed record schema inside TOML. Schema validation establishes structure; the relevant process validator checks meaning and references. Independent review checks fidelity.
+
+The common handler verifies project/activity identity, allowed destination, required outputs, schema validity, and version references before reporting the output set saved. SQL records the operation and its result; repository writes use verified publication and recovery handling. A partial external write cannot be presented as a completed output set. Existing accepted versions remain available.
+
+For registration, the output set is the [registration package](#package-structure), with its existing publication, hashing, review, confirmation, and activation rules. Configuration references that contract; it does not replace its schemas, relocate records arbitrarily, or bypass eligibility. The same handlers accept architecture-loop output definitions once their record schemas and publication rules are specified.
+
+Architecture-loop outputs include the investigation, code-direction decisions, project structure, specialist definitions and starting context, development milestones, work packets, and their review and confirmation references. Specialist roles and any maintained memory remain close to the relevant source. A location rule such as source-local placement requires a resolved permitted path; a descriptive label alone is not a valid destination. Their exact schemas and source-local publication mechanics remain under [architecture-loop details still to define](#architecture-loop-details-still-to-define).
+
+A shared handler does not make all process rules interchangeable. Registration retains fresh agent conversations and its package activation rules; the architecture loop requires a persistent architect session and confirms a breakdown. Both stop at their defined completion boundary. Execution remains a separate manual start and its policies are not supplied by these definitions.
+
+### Whole-product architectural evaluation
+
+Architectural evaluation continues throughout investigation, breakdown, clarification, and amendments. Each local decision is checked against the whole product: existing capabilities, shared services, interfaces, data ownership, dependencies, and other agents' work.
+
+The architect identifies repeated needs and selects shared runtime capabilities with process-specific definitions where that reduces duplication and preserves clear boundaries. It evaluates the effects of reuse, replacement, and new abstractions across the product rather than optimizing one feature in isolation. Shared configuration is used only where the runtime has a defined behavior to apply.
+
+Findings and reasons are saved with the affected decisions. Routine technical choices within scope remain the architect's responsibility. Changes to established direction follow replanning; changed outcomes, scope, or reserved decisions require the appropriate Owner decision. Continuous evaluation does not recreate settled foundations, reopen decisions over preference, or grant scheduling and execution authority.
+
 ### Model Execution Adapters
 
 A Model Execution Adapter is a Python module inside the runtime service that runs a particular agent tool. The assigned role defines responsibilities and authority; the adapter supplies the mechanics of running that role. The same adapter can support architect and reviewer assignments through separate agent runs, preserving reviewer independence.
@@ -787,7 +828,7 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file; a
 | `tools.<tool>.settings_profile` | Reference to service-managed tool settings and permitted operations. |
 | `tools.<tool>.allowed_model_ids` | Full provider identifiers allowed for explicit role selection; not default model choices. |
 
-Effective configuration is hashed and recorded for each assignment/run. Changes affect new runs after validation, never a running agent. Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
+Effective tool configuration is hashed and recorded for each assignment/run. Tool-setting changes affect new runs after validation, never a running agent. Process behavior is fixed by the activity snapshot under [shared process definitions](#shared-process-definitions). Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
 
 
 ## Architecture loop
@@ -829,7 +870,7 @@ Specialists build knowledge through subsequent work. Starting context distinguis
 
 Code-direction findings, the project structure, and specialist definitions are persistent project records. Subsequent passes use them instead of generating replacements from scratch. Replanning governs changes to established structure and direction; reasons and affected records remain traceable. Memory updates preserve relevant knowledge rather than silently changing architectural decisions.
 
-The architect owns code best practices and architectural consistency. It applies established patterns where they fit, defines clear responsibilities, and keeps unnecessary duplication low through appropriate shared code. These decisions are carried into the structure, specialist guidance, and packet requirements. Shared abstractions must serve a concrete need without unnecessary complexity.
+The architect applies [whole-product architectural evaluation](#whole-product-architectural-evaluation) throughout this work and owns code best practices and architectural consistency. It applies established patterns where they fit, defines clear responsibilities, and keeps unnecessary duplication low through appropriate shared code. These decisions are carried into the structure, specialist guidance, and packet requirements. Shared abstractions must serve a concrete need without unnecessary complexity.
 
 ### Information sufficiency and clarification
 
@@ -862,7 +903,7 @@ The independent reviewer checks the investigation, persistent foundations, and b
 - Setup and essential connections are included so the combined result is usable.
 - Project structure, specialist guidance, and architectural quality decisions are consistent with the breakdown.
 
-The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The exact configuration field, counting rules, and recovery behavior remain to be specified for this loop. The provisional execution work-item correction limit does not govern this review.
+The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The service reads the positive integer `architecture_loop.maximum_fidelity_reviews` from the shared TOML file; omission uses the stated default, and an invalid value blocks initiation. The activity snapshot fixes that limit. A valid completed independent review consumes one round; clarification, architect amendments, technical failures, and duplicate delivery do not. The first passing review can proceed to confirmation without using the remaining round. Process-specific technical recovery remains to be specified. The provisional execution work-item correction limit does not govern this review.
 
 ### Confirmation and completion
 
@@ -889,7 +930,7 @@ Completion does not start or schedule execution. A separate manual CLI command s
 | CLI and initiation | Command names, request fields, status/actions, duplicate-start handling, concurrent work eligibility, and the effect of later registration versions on an existing loop. |
 | Persistent sessions | Tool/model selection, session continuation and restart recovery, assignments and response fields, workspace access, timeout, cancellation, and technical retry limits. |
 | Durable outputs | File locations and schemas for investigation and breakdown, publication and version linking, specialist-file naming and memory ownership, and recovery of interrupted writes. Source-local placement of specialist files is established above. |
-| Review and confirmation | Configuration and counting mechanics for the separate two-review default; exact confirmation eligibility, version checks, rejection/amendment behavior, and durable confirmation recovery. |
+| Review and confirmation | Review configuration and counting are defined above. Exact confirmation eligibility, version checks, rejection/amendment behavior, and durable confirmation recovery still need their process contract. |
 | Replanning | How a replan starts, authorizes changes to established foundations, and handles affected packets, specialist guidance, and prior confirmation. |
 
 These are incomplete architecture-loop contracts, not permission to assume registration's implementation applies unchanged.
