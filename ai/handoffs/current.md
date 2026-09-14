@@ -19,7 +19,9 @@ Settled behavior includes `/architecture start` and `/architecture`, selected-pr
 
 Specialist roles use `role-<role-title>.md` beside source, with assigned `context.md` and optional `memory.md`. The architect owns the role and starting context; specialists maintain verified knowledge without changing authority or overwriting a newer file. Wrapper errors return to the architect for bounded technical correction before independent review.
 
-Next: finish exact adapter continuation/event and structured response contracts and executable schema definitions, then check declaration readiness. Do not ask again about settled storage, names, limits, ownership, or start/confirmation behavior. The remaining [technical contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define) do not require new Owner choices unless an actual scope or authority conflict appears. General replanning and Execution design remain separate.
+Session continuation, active/waiting mapping, assignment/response and API shapes, saved-record schemas, policy bindings, and canonical hashing are now defined. The schema bundle is `docs/schemas/architecture-loop.schema.json`. Replanning occurs only after confirmed re-registration and a manual architecture-loop start; there is no independent trigger or separate replanning-design task.
+
+Next: use the current architecture and declarations as registration-assessment source. Actual registration confirmation remains separate. Implementing validators, checking installed tool releases, and proving the connected journey belong to development. Do not reopen these technical contracts as undefined merely because implementation evidence does not yet exist.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
