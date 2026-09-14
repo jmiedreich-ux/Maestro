@@ -7,13 +7,15 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 7 |
+| Document version | 8 |
 
 ## Purpose
 
 Maestro coordinates project development through Planning, Execution, and Monitoring. A persistent service connects project information, assigned agent activity, and an operator interface so declared outcomes can be delivered and assessed through their actual usage journeys.
 
 ## Overall scope
+
+SQL backup and restore are out of scope; ordinary service restart and recorded-operation recovery remain included.
 
 | Boundary | Description |
 |---|---|
