@@ -151,6 +151,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
+| Later registration update | REG-PM2 — Update a registration without losing approved history | Supplies the real update for shared changed-registration/invalidation evidence. Implemented interfaces support integration; prior final acceptance of that shared evidence is not a prerequisite to development. |
 | Saved breakdown | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | Required preceding output. |
 | Common review/output/confirmation handling | SVC-PM5 — Apply shared process definitions | Runtime mechanics; architecture-specific eligibility and confirmation records are delivered here. |
 | Independent reviewer | `docs/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
