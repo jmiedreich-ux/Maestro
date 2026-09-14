@@ -6,19 +6,22 @@
 - [Project overview](../../docs/maestro-project-overview.md) — authoritative source entry and current-state evidence.
 - [Architecture](../../docs/maestro-architecture.md) — system behavior and remaining mechanisms.
 - [Runtime Service declaration](../../docs/maestro-runtime-service-project-milestones.md), [CLI declaration](../../docs/maestro-cli-project-milestones.md), and [registration declaration](../../docs/maestro-registration-project-milestones.md).
+- [Architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md).
 - [Planning Guide and templates](../../docs/planning-guide/README.md).
 - [Maestro Project Architect — Software Architecture Role](../../docs/agents/architecture-agent.md).
 - [Independent Fidelity Reviewer](../../docs/agents/decision-fidelity-reviewer.md).
 
 ## Where the discussion paused
 
-The [architecture loop](../../docs/maestro-architecture.md#architecture-loop) is now documented. It starts manually after confirmed registration, maintains a persistent architect session, investigates existing code, establishes lasting project structure and source-local specialist guidance, and creates the smallest bounded packets before organizing development milestones. It designs parallel work but does not schedule it. Independent review has a separate configurable default of two reviews. Owner confirmation completes the loop; execution requires a separate manual CLI start.
+The [shared process definitions](../../docs/maestro-architecture.md#shared-process-definitions) describe one TOML file with process-specific initiation, session, saved-output, review, confirmation, and recovery requirements. The runtime implements common handling; configuration selects defined capabilities. Existing registration behavior remains controlling. The file remains `/etc/maestro/agents.toml`; no runtime configuration was installed.
 
-Next: assess whether the architecture-loop description has sufficient detail to prepare its project milestone declaration and pass registration. Start with [the remaining architecture-loop contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define); recording the agreed behavior does not establish registration readiness. Do not start development breakdown or execution.
+The architect role now explicitly requires continuous whole-product evaluation and recognition of repeated needs across processes. This does not reopen settled work, expand scope, or grant execution authority.
 
-The Runtime Service, CLI, and registration declarations remain the existing delivery sources. No architecture-loop declaration has been created in this update. Earlier registration and adapter contracts remain authoritative; architecture-loop persistence must not inherit registration's fresh-conversation rule.
+SVC-PM5 — Apply shared process definitions owns the common runtime capability. The new [architecture-loop declaration](../../docs/maestro-architecture-loop-project-milestones.md) covers lasting foundations, bounded packet-first breakdown, and reviewed confirmation. Runtime, CLI, and registration references identify shared dependencies without duplicate delivery ownership.
 
-Live adapter verification remains deferred to implementation. Continue documentation without attempting AI box checks. Resolve routine technical details within the architect's authority; seek Owner decisions only at the stated authority boundaries.
+Next: settle the remaining [architecture-loop contracts](../../docs/maestro-architecture.md#architecture-loop-details-still-to-define) and assess the declaration against the Planning Guide. The configurable review field, activity snapshot, and completed-review counting are now defined; do not reopen them as missing. Start eligibility during other project work, persistent-session recovery, output/publication schemas, exact confirmation behavior, and changed-registration/replanning boundaries remain. The draft is not yet a successful registration.
+
+Live verification stays in implementation. Do not start development breakdown, install configuration, or attempt AI box checks during this documentation work. Routine technical choices remain with the architect; Owner decisions are needed only at the role's authority boundaries.
 
 ## Decisions to preserve
 
