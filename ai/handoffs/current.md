@@ -5,7 +5,7 @@
 - [Repository working rules](../../AGENTS.md) and [additional agent instructions](../../CLAUDE.md).
 - [Project overview](../../docs/maestro-project-overview.md) — authoritative source entry and current-state evidence.
 - [Architecture](../../docs/maestro-architecture.md) — system behavior and remaining mechanisms.
-- [CLI declaration](../../docs/maestro-cli-project-milestones.md) and [registration declaration](../../docs/maestro-registration-project-milestones.md).
+- [Runtime Service declaration](../../docs/maestro-runtime-service-project-milestones.md), [CLI declaration](../../docs/maestro-cli-project-milestones.md), and [registration declaration](../../docs/maestro-registration-project-milestones.md).
 - [Planning Guide and templates](../../docs/planning-guide/README.md).
 - [Maestro Project Architect — Software Architecture Role](../../docs/agents/architecture-agent.md).
 - [Independent Fidelity Reviewer](../../docs/agents/decision-fidelity-reviewer.md).
@@ -18,7 +18,7 @@ Claude Code or Codex can run either role, with separate exact model/version sele
 
 The adapter contracts now specify Codex App Server over stdio, Claude Code print-mode streaming, explicit assessment artifacts, separate assignment/run identities, protected inputs, process supervision, internal retry accounting, technical configuration, and the durable Retry activity request. Official documentation supports the selected tool interfaces; installed compatibility and connected behavior remain unverified.
 
-Package records and locations, exact candidate references, publication operations, confirmation receipts, and SQL activation/recovery are now defined in the architecture. Idle-only enforcement and the per-attempt planning-review configuration are now defined. Cross-document alignment is complete, with corrections applied and independently rechecked. Next: design how confirmed project milestones become development milestones and work packets, preserving the registration/Execution boundary. Live adapter verification is deferred to implementation and is not required for the current architecture documentation work. Continue documenting and committing the design without attempting AI box checks at this stage.
+Package records and locations, exact candidate references, publication operations, confirmation receipts, and SQL activation/recovery are now defined in the architecture. Idle-only enforcement and the per-attempt planning-review configuration are now defined. Cross-document alignment is complete, with corrections applied and independently rechecked. The Runtime Service declaration now gives service installation, durable records, API/event delivery, and agent supervision their own delivery outcomes. CLI owns the terminal; registration owns its process and package behavior. Runtime interfaces and CLI are implemented before registration integration; shared final acceptance uses real registration journeys. Next: review these Runtime Service outcomes before designing development milestones and work packets. Live adapter verification is deferred to implementation and is not required for the current architecture documentation work. Continue documenting and committing the design without attempting AI box checks at this stage.
 
 Resolve routine technical details as the software architect and document their reasons; seek Owner input only at the role's stated authority boundaries.
 
