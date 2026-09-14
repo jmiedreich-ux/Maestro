@@ -202,6 +202,46 @@
       ],
       "type": "object"
     },
+    "allowance": {
+      "additionalProperties": false,
+      "properties": {
+        "assignment_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "base_limit": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "granted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "remaining": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "target": {
+          "enum": [
+            "fidelity_review",
+            "output_correction"
+          ]
+        },
+        "used": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "target",
+        "assignment_id",
+        "base_limit",
+        "granted",
+        "used",
+        "remaining"
+      ],
+      "type": "object"
+    },
     "artifact": {
       "additionalProperties": false,
       "properties": {
@@ -442,14 +482,39 @@
       ],
       "type": "object"
     },
+    "carryForward": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "record_ref": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "validated_registration_ref": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "validated_source_commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_ref",
+        "validated_registration_ref",
+        "validated_source_commit",
+        "reason"
+      ],
+      "type": "object"
+    },
     "confirmPayload": {
       "additionalProperties": false,
       "properties": {
         "accepted_limitations": {
           "items": {
-            "$ref": "#/$defs/localRef"
+            "$ref": "#/$defs/findingRef"
           },
-          "minItems": 0,
           "type": "array"
         },
         "expected_working_ref": {
@@ -467,9 +532,8 @@
       "properties": {
         "accepted_limitations": {
           "items": {
-            "$ref": "#/$defs/localRef"
+            "$ref": "#/$defs/findingRef"
           },
-          "minItems": 0,
           "type": "array"
         },
         "activity_id": {
@@ -590,6 +654,148 @@
         "pass_boundary",
         "verification",
         "accepted_exception"
+      ],
+      "type": "object"
+    },
+    "decision": {
+      "additionalProperties": false,
+      "properties": {
+        "affected_items": {
+          "items": {
+            "$ref": "#/$defs/localRef"
+          },
+          "type": "array"
+        },
+        "answer": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "authority": {
+          "additionalProperties": false,
+          "properties": {
+            "identity": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "owner",
+                "architect"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "identity"
+          ],
+          "type": "object"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_finding_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/findingRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_question_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "subject",
+        "version",
+        "source_question_id",
+        "source_finding_ref",
+        "answer",
+        "authority",
+        "affected_items",
+        "rationale"
+      ],
+      "type": "object"
+    },
+    "decisions": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "decision_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/decision"
+          },
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "registration_ref": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "source_commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "activity_id",
+        "id",
+        "subject",
+        "version",
+        "registration_ref",
+        "source_commit",
+        "decision_version",
+        "decisions"
       ],
       "type": "object"
     },
@@ -822,6 +1028,33 @@
       ],
       "type": "object"
     },
+    "findingRef": {
+      "additionalProperties": false,
+      "properties": {
+        "container": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "subject",
+        "version",
+        "container"
+      ],
+      "type": "object"
+    },
     "index": {
       "additionalProperties": false,
       "properties": {
@@ -909,7 +1142,8 @@
             "confirmation",
             "specialist_role",
             "specialist_context",
-            "specialist_memory"
+            "specialist_memory",
+            "decisions"
           ]
         },
         "sha256": {
@@ -1009,9 +1243,8 @@
         },
         "findings": {
           "items": {
-            "$ref": "#/$defs/finding"
+            "$ref": "#/$defs/savedFinding"
           },
-          "minItems": 0,
           "type": "array"
         },
         "id": {
@@ -1091,12 +1324,14 @@
           "minLength": 1,
           "type": "string"
         },
-        "decision_refs": {
+        "carried_forward": {
           "items": {
-            "$ref": "#/$defs/publishedRef"
+            "$ref": "#/$defs/carryForward"
           },
-          "minItems": 0,
           "type": "array"
+        },
+        "decision_ref": {
+          "$ref": "#/$defs/localRef"
         },
         "decision_version": {
           "minLength": 1,
@@ -1153,12 +1388,6 @@
         "version": {
           "minimum": 1,
           "type": "integer"
-        },
-        "carried_forward": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/carryForward"
-          }
         }
       },
       "required": [
@@ -1172,11 +1401,11 @@
         "source_commit",
         "stage",
         "decision_version",
-        "decision_refs",
         "input_refs",
         "reviewed_content_hash",
         "inventory",
-        "carried_forward"
+        "carried_forward",
+        "decision_ref"
       ],
       "type": "object"
     },
@@ -1212,6 +1441,208 @@
         "label",
         "tradeoff",
         "recommendation_reason"
+      ],
+      "type": "object"
+    },
+    "ownerDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "assignment_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "choice": {
+          "anyOf": [
+            {
+              "enum": [
+                "grant_one",
+                "remain_paused",
+                "set_next_run_duration"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "owner_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "question_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "applied",
+            "left_paused"
+          ]
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "target": {
+          "enum": [
+            "fidelity_review",
+            "output_correction",
+            "run_duration"
+          ]
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "subject",
+        "version",
+        "project_id",
+        "activity_id",
+        "question_id",
+        "assignment_id",
+        "target",
+        "reason",
+        "state",
+        "request_id",
+        "owner_id",
+        "choice",
+        "duration_seconds"
+      ],
+      "type": "object"
+    },
+    "ownerDecisionPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "assignment_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "choice": {
+          "enum": [
+            "grant_one",
+            "remain_paused",
+            "set_next_run_duration"
+          ]
+        },
+        "decision_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_decision_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "target": {
+          "enum": [
+            "fidelity_review",
+            "output_correction",
+            "run_duration"
+          ]
+        }
+      },
+      "required": [
+        "decision_id",
+        "choice",
+        "target",
+        "assignment_id",
+        "expected_decision_version",
+        "duration_seconds"
+      ],
+      "type": "object"
+    },
+    "packetDeliverable": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$",
+          "type": "string"
+        },
+        "schema_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject",
+        "path",
+        "format",
+        "schema_ref"
       ],
       "type": "object"
     },
@@ -1801,6 +2232,47 @@
             "payload"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "activity_id": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "expected_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "operation": {
+              "const": "owner.decision"
+            },
+            "payload": {
+              "$ref": "#/$defs/ownerDecisionPayload"
+            },
+            "project_id": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "question_id": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "request_id": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "request_id",
+            "project_id",
+            "activity_id",
+            "question_id",
+            "expected_version",
+            "operation",
+            "payload"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -1903,9 +2375,8 @@
         },
         "findings": {
           "items": {
-            "$ref": "#/$defs/finding"
+            "$ref": "#/$defs/savedFinding"
           },
-          "minItems": 0,
           "type": "array"
         },
         "id": {
@@ -1982,6 +2453,79 @@
         "outcome",
         "findings",
         "retained_coverage"
+      ],
+      "type": "object"
+    },
+    "savedFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "affected_items": {
+          "items": {
+            "$ref": "#/$defs/localRef"
+          },
+          "minItems": 0,
+          "type": "array"
+        },
+        "explanation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "impact": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "missing_information": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requested_correction": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "blocking",
+            "non_blocking"
+          ]
+        },
+        "source_refs": {
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "type": "array"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "subject",
+        "severity",
+        "explanation",
+        "impact",
+        "requested_correction",
+        "source_refs",
+        "missing_information",
+        "affected_items",
+        "id",
+        "version"
       ],
       "type": "object"
     },
@@ -2130,13 +2674,20 @@
                   "minimum": 1,
                   "type": "integer"
                 },
+                "allowances": {
+                  "items": {
+                    "$ref": "#/$defs/allowance"
+                  },
+                  "type": "array"
+                },
                 "available_actions": {
                   "items": {
                     "enum": [
                       "confirm",
                       "cancel",
                       "retry_agent",
-                      "retry_publication"
+                      "retry_publication",
+                      "respond_to_owner_decision"
                     ]
                   },
                   "minItems": 0,
@@ -2190,6 +2741,12 @@
                       "type": "null"
                     }
                   ]
+                },
+                "owner_decisions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/ownerDecision"
+                  }
                 }
               },
               "required": [
@@ -2204,7 +2761,9 @@
                 "review_count",
                 "review_limit",
                 "available_actions",
-                "blocking_reasons"
+                "blocking_reasons",
+                "allowances",
+                "owner_decisions"
               ],
               "type": "object"
             },
@@ -2311,11 +2870,11 @@
           "$ref": "#/$defs/publishedRef"
         },
         "required_outputs": {
-          "type": "array",
           "items": {
             "$ref": "#/$defs/packetDeliverable"
           },
-          "minItems": 1
+          "minItems": 1,
+          "type": "array"
         },
         "schema_version": {
           "const": 1
@@ -2344,9 +2903,8 @@
             },
             "finding_refs": {
               "items": {
-                "$ref": "#/$defs/localRef"
+                "$ref": "#/$defs/findingRef"
               },
-              "minItems": 0,
               "type": "array"
             },
             "source_commit": {
@@ -2407,68 +2965,6 @@
         "required_outputs"
       ],
       "type": "object"
-    },
-    "packetDeliverable": {
-      "type": "object",
-      "properties": {
-        "subject": {
-          "type": "string",
-          "minLength": 1
-        },
-        "path": {
-          "minLength": 1,
-          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$",
-          "type": "string"
-        },
-        "format": {
-          "type": "string",
-          "minLength": 1
-        },
-        "schema_ref": {
-          "anyOf": [
-            {
-              "type": "string",
-              "minLength": 1
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "subject",
-        "path",
-        "format",
-        "schema_ref"
-      ],
-      "additionalProperties": false
-    },
-    "carryForward": {
-      "type": "object",
-      "properties": {
-        "record_ref": {
-          "$ref": "#/$defs/publishedRef"
-        },
-        "validated_registration_ref": {
-          "$ref": "#/$defs/publishedRef"
-        },
-        "validated_source_commit": {
-          "pattern": "^[a-f0-9]{40}$",
-          "type": "string"
-        },
-        "reason": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "record_ref",
-        "validated_registration_ref",
-        "validated_source_commit",
-        "reason"
-      ],
-      "additionalProperties": false
     }
   },
   "$ref": "#/$defs/agentResponse",
