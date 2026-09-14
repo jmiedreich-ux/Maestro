@@ -450,6 +450,26 @@
           },
           "minItems": 0,
           "type": "array"
+        },
+        "finding_bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "local_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "finding": {
+                "$ref": "#/$defs/findingRef"
+              }
+            },
+            "required": [
+              "local_key",
+              "finding"
+            ]
+          }
         }
       },
       "required": [
@@ -478,7 +498,8 @@
         "deadline_at",
         "definition_sha256",
         "selection",
-        "allocation_bindings"
+        "allocation_bindings",
+        "finding_bindings"
       ],
       "type": "object"
     },
@@ -1608,7 +1629,86 @@
         "expected_decision_version",
         "duration_seconds"
       ],
-      "type": "object"
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "target": {
+                "enum": [
+                  "fidelity_review",
+                  "output_correction"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "choice": {
+                "enum": [
+                  "grant_one",
+                  "remain_paused"
+                ]
+              },
+              "duration_seconds": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target": {
+                "const": "run_duration"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "choice": {
+                "enum": [
+                  "set_next_run_duration",
+                  "remain_paused"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "choice": {
+                "const": "set_next_run_duration"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "duration_seconds": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "choice": {
+                "const": "remain_paused"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "duration_seconds": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "packetDeliverable": {
       "additionalProperties": false,
@@ -2963,6 +3063,213 @@
         "verification",
         "essential_failure_checks",
         "required_outputs"
+      ],
+      "type": "object"
+    },
+    "preparedInvestigation": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "decisions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code_paths": {
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$",
+                  "type": "string"
+                },
+                "minItems": 0,
+                "type": "array"
+              },
+              "disposition": {
+                "enum": [
+                  "reuse",
+                  "update",
+                  "replace",
+                  "retire",
+                  "missing"
+                ]
+              },
+              "evidence": {
+                "items": {
+                  "$ref": "#/$defs/evidence"
+                },
+                "minItems": 0,
+                "type": "array"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "outcome_refs": {
+                "items": {
+                  "$ref": "#/$defs/publishedRef"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "rationale": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "subject": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "subject",
+              "disposition",
+              "rationale",
+              "code_paths",
+              "evidence",
+              "outcome_refs"
+            ],
+            "type": "object"
+          },
+          "minItems": 0,
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/finding"
+          },
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "registration_ref": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "source_commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "activity_id",
+        "id",
+        "subject",
+        "version",
+        "registration_ref",
+        "source_commit",
+        "findings",
+        "decisions"
+      ],
+      "type": "object"
+    },
+    "preparedReview": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/finding"
+          },
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "APPROVE",
+            "REQUEST_CHANGES"
+          ]
+        },
+        "project_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "registration_ref": {
+          "$ref": "#/$defs/publishedRef"
+        },
+        "retained_coverage": {
+          "items": {
+            "$ref": "#/$defs/publishedRef"
+          },
+          "minItems": 0,
+          "type": "array"
+        },
+        "reviewed_refs": {
+          "items": {
+            "$ref": "#/$defs/publishedRef"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "reviewed_set": {
+          "$ref": "#/$defs/setRef"
+        },
+        "reviewer_assignment_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reviewer_run_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "source_commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "activity_id",
+        "id",
+        "subject",
+        "version",
+        "registration_ref",
+        "source_commit",
+        "reviewer_assignment_id",
+        "reviewer_run_id",
+        "reviewed_set",
+        "reviewed_refs",
+        "outcome",
+        "findings",
+        "retained_coverage"
       ],
       "type": "object"
     }
