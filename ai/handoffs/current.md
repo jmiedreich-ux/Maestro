@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+**Execution design is paused.** The Owner requested a check of previous information before proceeding. See [pause before Execution design](#pause-before-execution-design) for the checked coverage and outstanding qualifications.
+
 The remaining smaller third-party review items were checked and corrected where applicable. See [consistency cleanup](#consistency-cleanup). GitHub App credential verification remains deferred; this cleanup is not a full readiness review.
 
 Registration's effective configuration and publication retry binding are now specified. See [registration configuration correction](#registration-configuration-correction).
@@ -52,6 +54,29 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Pause before Execution design
+
+Execution design is paused at the Owner's request. The proposed execution command, eligibility, dispatch and completion discussion has not been adopted as new architecture.
+
+An author self-check used frozen master commit `46849407227a2d025a2bd4882d16f619a14ebae2` and the available conversation decisions. This is a decision/status reconciliation, not a full independent completeness review. Earlier assistant replies absent from the supplied history cannot be reconstructed as decision evidence.
+
+| Checked subject | Supporting location and result |
+|---|---|
+| Functional boundaries and runtime | Architecture — Purpose and boundaries, Functional areas, Runtime and prerequisites: Planning/Execution/Monitoring, persistent Python Linux service and initial CLI scope retained. |
+| CLI and data | Architecture — CLI connection configuration, Questions and answers, Save and delivery sequence, SQLite storage: localhost fallback, explicit linked answers, SQL-before-acknowledgment and service-owned writes retained. |
+| Registration | Architecture — Intake and scope, Source and publication selection, Purpose and dependency checks, Review limits and decisions: both role selections, pinned source/authorized destination, connected-outcome checks and bounded reviews retained. |
+| Registration update and recovery | Architecture — Re-registration, Publication recovery, Technical recovery: idle-only updates, prior-version preservation, reconciled writes, distinct counters and no automatic budget reset retained. |
+| Architecture loop | Architecture — Entry and responsibility, Initial code investigation, Lasting project structure and specialist guidance, Work-packet-first breakdown: source investigation, persistent guidance, smallest bounded packets and designed parallelism retained; scheduling remains Execution. |
+| Confirmation and replanning | Architecture — Confirmation and completion, Replanning after re-registration: exact-version confirmation stops the loop; confirmed re-registration and manual architecture start are required for replanning. |
+| Installed contracts | Architecture — Installed validation schemas, Registration process-definition binding; both JSON schema files: installed bundle references and configuration-only registration schema distinction retained. Both JSON files parse and all 97 internal references resolve. This is not full schema validation. |
+| Authority and completion evidence | Planning Guide — Verification expectations, Relationship to development breakdown; Project Architect — Assignment and authority; Reviewer — Inputs and independence; four declarations — Unresolved details: basic real verification, routine architect authority and unfinished delivery-review policy remain explicit. |
+
+Architecture heading references from the four declarations, Planning Guide and two architecture/reviewer role files resolve. Specialist template headings match the architecture. Current source observations remain historical evidence; runtime operation is not established.
+
+Outstanding qualifications: GitHub App/service credential verification is deferred to the local machine; complete registration output schemas and executable validators are implementation work; installed tool compatibility, isolation, startup and recovery need operational evidence. General delivery-review authority must be defined before affected development breakdown. Recent corrections have author self-checks, not completed independent correction review. Existing consumed review budgets remain unchanged.
+
+No additional decision change was identified in this recorded coverage. Full requirement-by-requirement fidelity across unavailable earlier replies, all schema field semantics, workshop package contents, source code and live provider capabilities were not assessed. This check does not declare registration readiness or that no gaps remain.
 
 ## Consistency cleanup
 
