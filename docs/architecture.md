@@ -731,6 +731,34 @@ A declared usable capability requires evidence of the same journey through the a
 
 Detailed development criteria belong to the subsequent breakdown process and remain traceable to project criteria without weakening them. Material ambiguity encountered there requires clarification.
 
+### Registration process-definition binding
+
+The service validates the effective `registration` table in `/etc/maestro/agents.toml` using `processDefinition` in [Registration process configuration](schemas/registration-process.schema.json). Installation supplies this configuration-only bundle as `registration-process@1` at `schemas/registration-process/1/schema.json` inside the Maestro installation folder. The registration handler selects this fixed validator before creating an activity; its reference and hashes follow [installed validation schemas](#installed-validation-schemas).
+
+All sections and fixed fields below are required. Only the four numeric settings may be omitted: the review limit, both role durations, and automatic recovery limit. Apply their documented defaults before validation; do not create an omitted section. Reject unknown fields, wrong types, unsupported policy values and legacy keys before starting registration. Booleans are not integers. Shared tool, workspace and storage settings remain outside this table.
+
+| Field within `registration` | Accepted value and behavior |
+|---|---|
+| `schema_version` | `1`; version of this configuration contract. |
+| `maximum_fidelity_reviews` | Positive integer; default and accounting under [review limits and decisions](#review-limits-and-decisions). |
+| `architect.run_timeout_seconds`, `fidelity_reviewer.run_timeout_seconds` | Positive integers; defaults under [adapter configuration](#adapter-configuration). |
+| `initiation.policy` | `registration_intake_or_idle_update`; apply [intake and scope](#intake-and-scope), including source and both role selections, and the idle reservation rules for [re-registration](#re-registration). Duplicate requests return the existing activity. |
+| `initiation.start_operation` | `registration.start`; the existing CLI request operation. |
+| `agent_session.policy` | `fixed_assignment_followups`; apply [assignment delivery and clarification](#assignment-delivery-and-clarification). Each run reads a fixed assignment; follow-ups receive saved context, not an assumed persistent session. |
+| `agent_session.architect_role`, `agent_session.reviewer_role` | `project_architect` and `fidelity_reviewer`; existing role responsibilities and independent workspaces apply. These are roles, not tool/model defaults. |
+| `saved_outputs.policy` | `versioned_registration_package`; validate and publish under [package structure](#package-structure) and [publication and SQL consistency](#publication-and-sql-consistency). |
+| `saved_outputs.contract` | `registration_package_v1`; binds the handler to [package record contract](#package-record-contract) and [registration agent response contract](#registration-agent-response-contract). |
+| `saved_outputs.root` | `.maestro/registrations`; in the registered project's repository, using its saved authorized destination. |
+| `review.policy` | `bounded_independent_fidelity`; apply [assessment and independent review](#assessment-and-independent-review), using this table's single review limit. No mandatory second review after a pass. |
+| `confirmation.policy` | `explicit_exact_candidate_activation`; apply [confirmation and activation](#confirmation-and-activation), preserving exact candidate, Owner authority and publication-before-activation checks. |
+| `confirmation.on_complete` | `stop`; confirmation starts neither the architecture loop nor execution. |
+| `recovery.policy` | `reconcile_preserved_registration`; apply [technical recovery](#technical-recovery), [publication recovery](#publication-recovery) and the existing manual retry actions. |
+| `recovery.automatic_recovery_attempts` | Nonnegative integer; default under [adapter configuration](#adapter-configuration). Agent assignments and publication operations use the same configured maximum with separate counters; neither consumes the other's allowance. |
+
+These names select implemented registration handlers; configuration cannot replace their semantic checks or grant additional authority. The `registration_package_v1` output contract is a handler contract, not a claim that a complete output JSON Schema bundle exists. The supplied registration-process schema validates configuration only. Required record and response validation remains mandatory in the handler; a missing validator blocks the affected process rather than accepting unchecked output.
+
+Save the effective table, its hash and validator reference with the activity under [shared process definitions](#shared-process-definitions). Clarifications, candidate amendments, manual retries and restarts retain that snapshot and consumed counts. Registration has no separate automatic output-correction allowance: response-format failures use technical recovery, while substantive amendments follow the existing fidelity-review rules. Architecture-loop correction settings cannot be copied into registration.
+
 ### Review limits and decisions
 
 The service reads `registration.maximum_fidelity_reviews` from `/etc/maestro/agents.toml`. The setting is a positive integer and defaults to **2** when omitted. An invalid value prevents a new registration with a plain configuration error.
@@ -834,7 +862,7 @@ The SQL publication record retains operation type, exact target bytes/hashes, ex
 | Content or index conflicts with the saved operation | Pause with the exact conflict; neither adopt different bytes nor overwrite them. |
 | GitHub cannot be queried | Keep the outcome unconfirmed and preserve the prior SQL active pointer. An unreachable service is not evidence that the write failed. |
 
-One request cannot create multiple confirmations or activation events. The service resolves pending operations before accepting another write for that project. Publication recovery uses the configured automatic recovery limit, with a separate counter for each operation. It does not consume agent-launch retries or fidelity reviews, and a failed push does not rerun the architect. Reaching the limit pauses publication and preserves its evidence. Investigation and retry continue that operation without starting a new registration.
+One request cannot create multiple confirmations or activation events. The service resolves pending operations before accepting another write for that project. Publication recovery uses `registration.recovery.automatic_recovery_attempts` under [registration process-definition binding](#registration-process-definition-binding), with a separate counter for each operation. The initial write is not an automatic recovery attempt; reserve and count each automatic replacement write once before dispatch. Queries, matching-content reuse and SQL-only replay do not consume another write attempt. An uncertain GitHub outcome must be reconciled before another write; exhausting the write allowance does not prevent read-only reconciliation. It does not consume agent-launch retries or fidelity reviews, and a failed push does not rerun the architect. Reaching the limit pauses publication and preserves its evidence. Investigation and retry continue that operation without starting a new registration.
 
 The discovery index is for navigation. Runtime work and downstream assignments use the SQL-confirmed exact package reference. A GitHub receipt awaiting SQL recovery cannot independently start work. Repository history alone cannot reconstruct unknown SQL conversation, budget, or pending-action state; database recovery must preserve those records.
 
