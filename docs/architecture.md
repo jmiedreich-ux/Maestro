@@ -196,7 +196,7 @@ Each adapter targets an explicitly recorded, capability-checked tool release. Co
 
 #### Agent workspaces
 
-Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<registration-attempt-id>/` beneath it. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
+Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<activity-id>/` beneath it. The registration attempt ID is the registration activity ID, not a second identity. Existing references to `<registration-attempt-id>` mean this same value; the registration version and individual run IDs remain separate. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
 
 The fidelity reviewer has a separate workspace containing the exact source, architect assessment, and candidate under review. These files are read-only; the reviewer writes to its own output directory and cannot amend the architect's files. Both roles use a Linux mount namespace that makes source, assignment, and prior-artifact paths read-only. Only assigned output and scratch paths are writable. The agent runs without privileges to change mounts, escape its process group, or access another run's workspace. Folder names and instructions alone do not enforce these boundaries.
 
@@ -281,7 +281,7 @@ This behavior concerns execution work packets. A registration architect returns 
 
 ## Agent performance and context management
 
-Performance records and context management are shared runtime functions for every agent route, including Qwen and persistent architect sessions. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
+Performance records and context management apply to every supported agent route, including persistent architect sessions. Qwen is a future adapter route, not a selectable tool in the current registration or architecture-loop contracts. When that route is added, the same capacity handling applies; context exhaustion is not an agent-performance failure. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
 
 ### Performance records
 
@@ -309,6 +309,8 @@ Context occupancy is not cumulative token consumption. The effective context lim
 Each reading contains `context_segment_id`, nullable positive integer `limit_tokens`, nullable nonnegative integer `used_tokens`, nullable numeric `used_percent`, `quality` (`reported`, `estimated`, or `unavailable`), `observed_at`, and a source or unavailability reason. Percentage is occupied tokens divided by effective limit times 100, only when the values describe the same context scope. Do not clamp a reported over-limit value. Track the peak observed percentage and token occupancy with the limit that applied.
 
 Read context at session attachment, before each service-controlled model turn, after returned turns, and whenever the adapter reports a change. During active work, request a supported read-only sample at most every 10 seconds; this never sends a model prompt or scrapes a provider UI. Mark a reading stale after 30 seconds without an update while running. A stale low reading cannot establish that the next input fits.
+
+The sampling interval is a request cadence, not a guarantee of fresh measurements. An adapter that receives occupancy only with message or turn events cannot supply a new reading between those events. Retain the actual observation time; polling or replay must not make an old reading fresh. A long autonomous turn may cross a threshold before the service observes it. Threshold handling occurs at the next supported observation and safe control boundary; it cannot guarantee prevention of context exhaustion. Unsupported sampling remains explicit, and an observed capacity error follows capacity handling without a performance penalty or consumed failure allowance.
 
 An adapter may estimate occupancy only with a suitable tokenizer and visibility of the actual context, including instructions, tool material, and retained history. Partial visible conversation alone cannot establish free capacity. Without reliable measurements, show unknown and retain checkpoints at safe boundaries. A reported context-limit error still invokes capacity handling.
 
