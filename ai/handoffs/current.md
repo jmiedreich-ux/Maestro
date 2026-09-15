@@ -13,11 +13,15 @@
 
 ## Where the discussion paused
 
+The registration-reference mismatch is corrected in [candidate publication](../../docs/architecture.md#candidate-publication) and the shared `registrationRef` definition in [the schema](../../docs/schemas/architecture-loop.schema.json). Registration produces the six-field package reference; architecture consumes it unchanged. All fourteen registration-reference schema properties now use that definition; generic file references remain separate.
+
+Other recent agreements still need incorporation into their authoritative sections: collect both architect and reviewer tool/model choices at registration intake; retain SQLite with service-owned writes; use consistently nested registration/architecture-loop TOML sections with separate budgets; align the specialist template with the required role headings. These are agreed directions, not unanswered Owner choices. GitHub App credential verification is deferred until the local machine is available; the reported local secret file's location and service binding remain unverified.
+
 Source and publication selection is now specified in [Architecture](../../docs/architecture.md#source-and-publication-selection), with delivery evidence in the [registration declaration](../../docs/milestones/registration-milestones.md). The architecture owns the rule; the declaration references it. This is a documentation correction, not implemented registration behavior.
 
 Initial intake pins a resolved source commit and records an authorized publication branch. Re-registration resolves its selected source again; recovery retains saved selections; the architecture loop inherits the confirmed baseline and destination. Existing master-only policy, confirmation authority and review budgets remain unchanged. See [the correction record](#source-selection-correction) for scope and verification.
 
-Next: define the service's GitHub publication credential configuration. Reviewer-selection intake, SQL engine/deployment, process configuration/resource bindings, registration-reference conversion and specialist format alignment remain open. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
+Next: incorporate the agreed intake, SQLite, configuration-layout and specialist-format decisions. Installed resource bindings and remaining technical detail still need definition; GitHub App/local-secret verification waits for the local machine. The registration-reference conversion issue is superseded by the shared-reference correction. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
 
 The documentation-review procedure is now defined in the [shared review method](../../skills/project-architecture-workshop/references/reviews.md), with record fields in [workshop state](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record). [AGENTS.md](../../AGENTS.md#cross-document-alignment) defines Maestro's journey scope; the [reviewer role](../../docs/agents/decision-fidelity-reviewer.md#inputs-and-independence) applies the method within unchanged authority. It separates fidelity, completeness and consistency, requires independent inputs and per-journey evidence, and distinguishes full coverage from targeted corrections. Existing review limits and the no-standalone-report rule remain in effect.
 
@@ -42,6 +46,12 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Shared registration reference correction
+
+At commit `b57fcd2cfc5b9a1508e813f9f226e5bbbdd0f95a`, `docs/architecture.md` **Candidate publication** names the shared registration reference and its publication-versus-source meaning; **Architecture record contract** distinguishes generic file references. `docs/schemas/architecture-loop.schema.json` defines `registrationRef` once and uses it in all fourteen `registration_ref` and `validated_registration_ref` properties, including start, assignments, saved/prepared records, views and carry-forward checks. The existing `publishedRef` definition is unchanged. The earlier frozen review's reference-conversion finding is addressed in these documents, not left as a current unanswered decision.
+
+Verification was an author self-check: JSON parsing, resolution of all 96 internal schema references, inspection of all fourteen consumers and unchanged generic reference shape, and five focused checks for the new shape, old generic shape, missing repository, unsafe manifest path and invalid manifest hash. These were temporary contract examples, not repository fixtures or operational evidence. A full JSON Schema validator was unavailable; full schema validation was not run. Saved GitHub bytes were checked. No independent correction review was claimed or extra review round started; the existing limits remain unchanged. Independent review of this correction remains pending under those limits. No standalone report was created.
 
 ## Source selection correction
 
