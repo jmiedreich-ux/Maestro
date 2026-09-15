@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+Registration's effective configuration and publication retry binding are now specified. See [registration configuration correction](#registration-configuration-correction).
+
 The schema installation decision is documented and the architecture-loop configuration schema now selects `architecture-loop@1` — Architecture-loop validation bundle, version 1. See [schema installation correction](#schema-installation-correction). This is an installation contract, not an installation performed on the AI box.
 
 The registration-reference mismatch is corrected in [candidate publication](../../docs/architecture.md#candidate-publication) and the shared `registrationRef` definition in [the schema](../../docs/schemas/architecture-loop.schema.json). Registration produces the six-field package reference; architecture consumes it unchanged. All fourteen registration-reference schema properties now use that definition; generic file references remain separate.
@@ -23,7 +25,7 @@ Source and publication selection is now specified in [Architecture](../../docs/a
 
 Initial intake pins a resolved source commit and records an authorized publication branch. Re-registration resolves its selected source again; recovery retains saved selections; the architecture loop inherits the confirmed baseline and destination. Existing master-only policy, confirmation authority and review budgets remain unchanged. See [the correction record](#source-selection-correction) for scope and verification.
 
-Installed schema resolution is defined in [installed validation schemas](../../docs/architecture.md#installed-validation-schemas). Next: complete the registration process-definition and publication-operation recovery-limit bindings; GitHub App/local-secret verification waits for the local machine. The registration-reference conversion issue is superseded by the shared-reference correction. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
+Installed schema resolution is defined in [installed validation schemas](../../docs/architecture.md#installed-validation-schemas). Registration process-definition and publication-operation recovery-limit bindings are now documented; installation and runtime verification remain development work; GitHub App/local-secret verification waits for the local machine. The registration-reference conversion issue is superseded by the shared-reference correction. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
 
 The documentation-review procedure is now defined in the [shared review method](../../skills/project-architecture-workshop/references/reviews.md), with record fields in [workshop state](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record). [AGENTS.md](../../AGENTS.md#cross-document-alignment) defines Maestro's journey scope; the [reviewer role](../../docs/agents/decision-fidelity-reviewer.md#inputs-and-independence) applies the method within unchanged authority. It separates fidelity, completeness and consistency, requires independent inputs and per-journey evidence, and distinguishes full coverage from targeted corrections. Existing review limits and the no-standalone-report rule remain in effect.
 
@@ -49,6 +51,16 @@ The review-method validation below is historical evidence for its frozen snapsho
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
+## Registration configuration correction
+
+[Registration process-definition binding](../../docs/architecture.md#registration-process-definition-binding) defines the effective table, required sections, default application and policy-to-handler mapping. [Registration process configuration schema](../../docs/schemas/registration-process.schema.json) validates that table and is installed as its own configuration-only bundle. Output record and agent-response checks retain their existing contracts; no complete output-schema bundle or implemented validator is claimed.
+
+[Publication recovery](../../docs/architecture.md#publication-recovery) now names the configured maximum, separate per-operation counters and write-attempt accounting. [Registration milestones](../../docs/milestones/registration-milestones.md) and [runtime service milestones](../../docs/milestones/runtime-service-milestones.md) link the implementation evidence to these rules. Tool/model choices stay at intake, role authority is unchanged, registration does not acquire architecture-loop output-correction allowances, and confirmation stops.
+
+Author self-check coverage: current architecture sections for intake, assignments, review limits, response validation, publication, recovery and installed schemas; the new configuration schema; affected declaration rows and this handoff. Traced configuration → defaults → handler selection → saved activity → recovery, including invalid settings and separate retry counters. Eight focused checks exercised the schema's used keywords against valid and invalid tables (required sections, policy values, integer limits, output root, role fields and forbidden correction setting). JSON parsed and the internal definition reference resolved. These used a limited evaluator, not a full JSON Schema validator, which was unavailable. No independent pass or additional review round was started. Live installation, output-validator implementation, full schema validation and broad documentation completeness were not assessed.
+
+This correction resolves the recorded configuration binding subjects, not overall registration readiness. GitHub App credential location and service binding still await the local machine. Historical findings below refer to their frozen snapshots.
+
 ## Schema installation correction
 
 [Architecture — Installed validation schemas](../../docs/architecture.md#installed-validation-schemas) owns bundle location, exact selection, activity snapshot and recovery behavior. The [architecture-loop schema](../../docs/schemas/architecture-loop.schema.json) replaces the repository-path constant with the installed bundle reference. [Runtime service milestones](../../docs/milestones/runtime-service-milestones.md) require installation and recovery evidence. Project application schemas remain separate.
@@ -66,7 +78,7 @@ Authoritative changes:
 
 Verification is an author self-check, not an independent review. Coverage: the changed architecture sections and intake journey, affected declaration outcomes and versions, template headings and retained guidance, obsolete registration keys, and remote source revisions before writing. The architecture-loop schema was inspected; its existing nested process settings and role-file handling require no shape change for these corrections. No full implementation, installed configuration, database durability test, adapter capability test or broader completeness review was performed. No additional review round was started; completeness and consistency remain at two of two under the existing method-validation subject. Independent review of these corrections remains pending within existing authority and limits.
 
-The GitHub App secret location and service credential binding remain deferred until the local machine is available. Installed schema-resource resolution is superseded by the later correction below. Full registration process-definition binding and publication-operation recovery-limit binding remain unresolved. These edits do not establish readiness for execution or close those gaps. Historical coverage below applies to its recorded snapshots.
+The GitHub App secret location and service credential binding remain deferred until the local machine is available. Installed schema-resource resolution is superseded by the later correction below. Registration process-definition and publication-operation recovery-limit bindings are superseded by the later configuration correction. These edits do not establish readiness for execution or close those gaps. Historical coverage below applies to its recorded snapshots.
 
 
 ## Shared registration reference correction
