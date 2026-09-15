@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+The remaining smaller third-party review items were checked and corrected where applicable. See [consistency cleanup](#consistency-cleanup). GitHub App credential verification remains deferred; this cleanup is not a full readiness review.
+
 Registration's effective configuration and publication retry binding are now specified. See [registration configuration correction](#registration-configuration-correction).
 
 The schema installation decision is documented and the architecture-loop configuration schema now selects `architecture-loop@1` — Architecture-loop validation bundle, version 1. See [schema installation correction](#schema-installation-correction). This is an installation contract, not an installation performed on the AI box.
@@ -33,7 +35,7 @@ Blind full completeness and consistency passes, followed by one targeted selecti
 
 The reusable [Project Architecture Workshop skill](../../skills/project-architecture-workshop/SKILL.md) is packaged with a generalized Planning Guide, templates, durable workshop state and bounded independent-review instructions. It is intended for new or existing projects, not reproduction of Maestro's design. [Installation instructions](../../skills/project-architecture-workshop/INSTALL.md) cover Codex and Claude Code. The package is committed, not installed into the owner's machines. No general Execution design was added by creating the skill.
 
-Shared agent performance and context management are now defined in [Architecture](../../docs/architecture.md#agent-performance-and-context-management) and covered by the runtime, CLI, registration and architecture-loop declarations. Defaults warn at 75% context, hand off at 85%, and resume below 70%. Every runtime uses the same capacity classification; Qwen is not penalized for context exhaustion. Persistent sessions retain occupancy across runs. Capacity continuation preserves verified work and remaining active-time budget without consuming failure/correction/review allowances. Adapter capability verification remains implementation work; this does not select Qwen for registration or change exact model choices.
+Shared agent performance and context management are now defined in [Architecture](../../docs/architecture.md#agent-performance-and-context-management) and covered by the runtime, CLI, registration and architecture-loop declarations. Defaults warn at 75% context, hand off at 85%, and resume below 70%. Every supported runtime uses the same capacity classification; a future Qwen adapter must apply it without penalizing context exhaustion. Persistent sessions retain occupancy across runs. Capacity continuation preserves verified work and remaining active-time budget without consuming failure/correction/review allowances. Adapter capability verification remains implementation work; this does not select Qwen for registration or change exact model choices.
 
 The pre-execution gap closures define stable saved finding references, the fixed architecture `decisions.json` snapshot, typed Owner decisions for one extra review/correction attempt, per-run deadlines with separate next-run duration exceptions, and the local Owner credential boundary. These contracts remain recorded; the validation below identifies unresolved cross-document gaps. SQL backup and restore are explicitly out of scope; the contradictory backup procedure is removed. Ordinary restart and recorded-operation recovery remain included.
 
@@ -50,6 +52,17 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Consistency cleanup
+
+- [Agent performance and context management](../../docs/architecture.md#agent-performance-and-context-management) marks Qwen as future adapter support while retaining the shared no-penalty capacity rule.
+- [Agent workspaces](../../docs/architecture.md#agent-workspaces) uses the registration activity ID for the attempt directory and explains the older placeholder as the same identity.
+- [Context readings and thresholds](../../docs/architecture.md#context-readings-and-thresholds) distinguishes sampling cadence from fresh observations, preserves observation timestamps and explains long-turn visibility limits. [Runtime service milestones](../../docs/milestones/runtime-service-milestones.md) require evidence of those limits.
+- Development Manager, Developer, Integration, Quality Assurance and Common Coding files now carry a provisional marker linked to [the existing role authority boundary](../../docs/agents/README.md#roles). Their retained rules were not rewritten or granted new authority.
+- The [Planning Guide](../../docs/planning-guide/README.md) example now points to the existing runtime prerequisites heading.
+- GitHub repository metadata confirms the canonical name is `jmiedreich-ux/Maestro`; the existing spelling is correct. GitHub also resolves [the overview's baseline commit](https://github.com/jmiedreich-ux/Maestro/commit/8d1448473c7f95fa830fac9e49d36b8cdb7cf17d). The [overview](../../docs/project-overview.md#source-observations) now links directly to that commit; historical source observations remain tied to it, not asserted as current operation.
+
+Author self-check: examined current revisions of the linked files and all five affected role files; checked changed headings, links, role-content preservation, identity wording, context behavior and declaration versions. Repository name and baseline existence were verified through GitHub. No adapter was run and historical code behavior was not re-audited. No independent pass, new review round, standalone report or full completeness claim was made. Existing review limits remain unchanged; broader readiness and installed credentials remain outside this check.
 
 ## Registration configuration correction
 
