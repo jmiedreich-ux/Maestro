@@ -17,3 +17,5 @@ Each overlay defines:
 Use the [Specialist Agent Overlay Template](specialist-overlay-template.md) for new roles.
 
 The current examples cover [Content Platform](content-platform-agent.md), [Theme Studio](theme-studio-agent.md), [Screens](screens-agent.md), and [Display Runtime](display-runtime-agent.md). They are examples, not authority for a joined project.
+
+Generated source-local role files use the format defined in [Architecture schema and process-definition binding](../../architecture.md#architecture-schema-and-process-definition-binding). The template below this folder implements that format; its overlay guidance is not a second role format. Example overlays remain illustrative, not alternative generated-file contracts.
