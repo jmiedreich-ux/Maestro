@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 6 |
+| Declaration version | 7 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -41,10 +41,10 @@ Existing-code condition remains as recorded in the [project overview](../project
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
 | 1 | SVC-PM1 — Operate the persistent Maestro service | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
-| 2 | SVC-PM2 — Preserve project activity and requests | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
+| 2 | SVC-PM2 — Preserve project activity and requests | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
 | 4 | SVC-PM4 — Run and recover assigned agents | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
+| 5 | SVC-PM5 — Apply shared process definitions | 5 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -91,7 +91,7 @@ No additional service-lifecycle behavior is proposed. Exact installation packagi
 
 **Outcome:** Project records and accepted requests survive service restarts, retain their identities, and cannot be applied twice or to the wrong project.
 
-**Included:** Physical SQL storage, project/activity identities, conversations, questions and results, transactional request acceptance, pending delivery, event records, and atomic project start reservations.
+**Included:** SQLite storage under [SQLite storage](../architecture.md#sqlite-storage), project/activity identities, conversations, questions and results, transactional request acceptance, pending delivery, event records, and atomic project start reservations.
 
 **Excluded:** Registration-specific schema meaning, source assessment, GitHub package publication, and general Execution scheduling.
 
@@ -128,7 +128,7 @@ Connected CLI and registration evidence demonstrates durable records, isolated p
 
 ### Unresolved details
 
-Physical SQL tables and storage implementation remain development work. SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. General delivery-review authority remains provisional.
+SQLite tables and storage implementation remain development work. Delivery evidence must show the configured local database, service-owned writes, committed records surviving service restart, and competing project-start requests producing only one reservation under [SQLite storage](../architecture.md#sqlite-storage). SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. General delivery-review authority remains provisional.
 
 ## SVC-PM3 — Connect the CLI to recorded service activity
 
@@ -257,7 +257,7 @@ Implement the common interfaces before their process integrations. Final accepta
 
 ### Definition of done
 
-Both real processes use the common runtime handling and their own recorded definitions. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the declaration's common requirements; live verification belongs to development.
+Both real processes use the common runtime handling and their own recorded definitions. Evidence checks the matching process-relative settings layout under [shared process definitions](../architecture.md#shared-process-definitions), rejection of legacy registration keys, and separate process budgets without reset. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the declaration's common requirements; live verification belongs to development.
 
 ### Unresolved details
 
