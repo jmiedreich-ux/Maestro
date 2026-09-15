@@ -1,5 +1,7 @@
 # Maestro Developer
 
+**Status: Provisional execution guidance.** Apply the authority boundary in [Agent roles](README.md#roles); this file does not establish approved Execution policy.
+
 Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md) and the [Common Coding Agent Instructions](coding-agent-sop.md).
 
 ## Purpose
