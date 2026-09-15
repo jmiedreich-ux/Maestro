@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 8 |
+| Document version | 9 |
 
 ## Purpose
 
@@ -38,7 +38,7 @@ SQL backup and restore are out of scope; ordinary service restart and recorded-o
 
 ### Source observations
 
-The following previously recorded inspection is tied to source commit `8d1448473c7f95fa830fac9e49d36b8cdb7cf17d`. It does not establish the current source state or operation of the AI box.
+The following previously recorded inspection is tied to [the recorded source commit](https://github.com/jmiedreich-ux/Maestro/commit/8d1448473c7f95fa830fac9e49d36b8cdb7cf17d). It does not establish the current source state or operation of the AI box.
 
 | Existing material | Evidence and limitation |
 |---|---|
