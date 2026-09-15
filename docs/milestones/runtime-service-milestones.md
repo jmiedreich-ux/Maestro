@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 9 |
+| Declaration version | 10 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -43,7 +43,7 @@ Existing-code condition remains as recorded in the [project overview](../project
 | 1 | SVC-PM1 — Operate the persistent Maestro service | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
 | 2 | SVC-PM2 — Preserve project activity and requests | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
-| 4 | SVC-PM4 — Run and recover assigned agents | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
+| 4 | SVC-PM4 — Run and recover assigned agents | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
 | 5 | SVC-PM5 — Apply shared process definitions | 7 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
@@ -207,7 +207,7 @@ No new API behavior is introduced. Executable API validation and transport handl
 | Stopping or a deadline occurs | Apply the registration-only 30-minute defaults and specified stopping behavior; child termination is confirmed before replacement. Unknown state blocks replacement. | Basic real stop and controlled timeout evidence; a shorter configured duration may exercise timeout behavior. | None |
 | A run or the main service is interrupted | Reconcile the original supervisor/run, preserve the deadline and retry count, and replay saved events once. Recovery follows cause-based limits; manual retry does not reset them. | Connected REG-PM3 — Recover registration without losing decisions or exceeding limits evidence for crash, restart, recovery attention/action, and no duplicate run. | None |
 | A permitted new run follows recovery | Same-run recovery keeps its deadline; a new eligible run receives its own saved duration. A recorded next-run exception is consumed once without resetting attempts. | Correlated run identities, deadlines, exception and counter records under `docs/architecture.md#run-deadlines-and-duration-exceptions`. | None |
-| Context fills during an agent assignment | Apply configured thresholds, save a verified checkpoint, compact or safely replace context, and continue the same work without charging failure/correction/review allowances. Preserve remaining active-time budget, totals and source bindings. Unsafe or ineffective continuation pauses visibly. | One supported real capacity-continuation journey and essential inability-to-resume evidence; share persistent-session evidence with ARC-PM1 — Establish the project's architectural foundations. Provider-specific support is verified during implementation, not assumed. | None |
+| Context fills during an agent assignment | Apply configured thresholds, save a verified checkpoint, compact or safely replace context, and continue the same work without charging failure/correction/review allowances. Preserve remaining active-time budget, totals and source bindings. Unsafe or ineffective continuation pauses visibly. | One supported real capacity-continuation journey and essential inability-to-resume evidence; share persistent-session evidence with ARC-PM1 — Establish the project's architectural foundations. Record the adapter's actual observation and control boundaries under [context readings and thresholds](../architecture.md#context-readings-and-thresholds), including stale readings during a long turn. Threshold enforcement does not promise mid-turn visibility or prevention of every capacity error. Provider-specific support is verified during implementation, not assumed. | None |
 
 ### Definition of done
 
