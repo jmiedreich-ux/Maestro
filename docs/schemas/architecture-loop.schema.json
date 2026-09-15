@@ -392,7 +392,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "remaining_corrections": {
           "minimum": 0,
@@ -514,7 +514,7 @@
           "$ref": "#/$defs/publishedRef"
         },
         "validated_registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "validated_source_commit": {
           "pattern": "^[a-f0-9]{40}$",
@@ -585,7 +585,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "request_id": {
           "minLength": 1,
@@ -788,7 +788,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "schema_version": {
           "const": 1
@@ -885,7 +885,7 @@
           "type": "array"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "schema_version": {
           "const": 1
@@ -1277,7 +1277,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "schema_version": {
           "const": 1
@@ -1381,7 +1381,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "reviewed_content_hash": {
           "pattern": "^[a-f0-9]{64}$",
@@ -1973,7 +1973,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "schema_version": {
           "const": 1
@@ -2494,7 +2494,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "retained_coverage": {
           "items": {
@@ -2738,7 +2738,7 @@
           "$ref": "#/$defs/selection"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "reviewer": {
           "$ref": "#/$defs/selection"
@@ -2816,7 +2816,7 @@
                   "type": "string"
                 },
                 "registration_ref": {
-                  "$ref": "#/$defs/publishedRef"
+                  "$ref": "#/$defs/registrationRef"
                 },
                 "review_count": {
                   "minimum": 0,
@@ -2967,7 +2967,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "required_outputs": {
           "items": {
@@ -3151,7 +3151,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "schema_version": {
           "const": 1
@@ -3211,7 +3211,7 @@
           "type": "string"
         },
         "registration_ref": {
-          "$ref": "#/$defs/publishedRef"
+          "$ref": "#/$defs/registrationRef"
         },
         "retained_coverage": {
           "items": {
@@ -3272,6 +3272,48 @@
         "retained_coverage"
       ],
       "type": "object"
+    },
+    "registrationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[^/\\s]+/[^/\\s]+$",
+          "description": "GitHub owner/repository containing the published registration candidate."
+        },
+        "commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string",
+          "description": "Exact commit publishing the candidate manifest; not its assessed source commit."
+        },
+        "registration_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_path": {
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string",
+          "description": "SHA-256 of the exact candidate manifest bytes at repository, commit and manifest_path."
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "registration_version",
+        "candidate_id",
+        "manifest_path",
+        "manifest_sha256"
+      ]
     }
   },
   "$ref": "#/$defs/agentResponse",
