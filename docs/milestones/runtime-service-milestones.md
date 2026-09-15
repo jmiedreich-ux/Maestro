@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | SVC — Runtime service |
-| Declaration version | 7 |
+| Declaration version | 8 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -40,11 +40,11 @@ Existing-code condition remains as recorded in the [project overview](../project
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | SVC-PM1 — Operate the persistent Maestro service | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
+| 1 | SVC-PM1 — Operate the persistent Maestro service | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
 | 2 | SVC-PM2 — Preserve project activity and requests | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
 | 3 | SVC-PM3 — Connect the CLI to recorded service activity | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
 | 4 | SVC-PM4 — Run and recover assigned agents | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 5 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
+| 5 | SVC-PM5 — Apply shared process definitions | 6 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
 
 ## SVC-PM1 — Operate the persistent Maestro service
 
@@ -73,7 +73,7 @@ Existing-code condition remains as recorded in the [project overview](../project
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Installation instructions are followed | Service software, account, configuration locations, and required filesystem permissions are installed without hidden setup steps. | Installed revision, documented steps, actual account and access checks without secret values. | None |
+| Installation instructions are followed | Service software, account, configuration locations, required filesystem permissions, and the schema bundles specified by [installed validation schemas](../architecture.md#installed-validation-schemas) are installed without hidden setup steps. | Installed revision, documented steps, actual account and access checks without secret values. | None |
 | The machine boots or the service crashes | systemd starts or restarts the service as specified. Service operation does not depend on a terminal session. | Basic boot and controlled crash/restart observations with systemd status and startup logs. | None |
 | Startup or configuration fails | The failure is visible and identifies the missing prerequisite. Agent configuration errors disable launch as specified, not silently select other settings. | A necessary configuration/access failure with its actual error and recovery after correction. | None |
 | The operator inspects service health | systemd status and service logs distinguish running, failed, and restarting behavior; a running process is not reported as proof of registration readiness. | Actual service status and startup diagnostics. Connected API readiness is accepted under SVC-PM3 — Connect the CLI to recorded service activity. | None |
@@ -230,6 +230,7 @@ Installed capability and isolation checks are development verification. If a too
 | Required behavior or journey | Architecture section |
 |---|---|
 | Configuration drives supported runtime capabilities | `docs/architecture.md#shared-process-definitions` |
+| Installed schema selection and recovery | `docs/architecture.md#installed-validation-schemas` |
 | Correct output validation, storage, and process boundaries | `docs/architecture.md#shared-output-handling-and-process-boundaries` |
 | Registration integration | `docs/architecture.md#registration` |
 | Architecture-loop integration | `docs/architecture.md#architecture-loop` |
@@ -250,6 +251,7 @@ Implement the common interfaces before their process integrations. Final accepta
 |---|---|---|---|
 | A configured process starts | Its validated sections select the correct prerequisites, role/session rules, outputs, review, confirmation, and recovery handlers. Registration and architecture retain their different behavior. | Real registration and architecture-loop activities, effective definitions and correlated runtime records. | None |
 | Configuration is invalid or changes during work | Invalid definitions prevent the affected new process with a clear error. An active process retains its definition, budget, and authority snapshot; read-only views remain available. | One essential invalid-definition case and an edit between activity starts showing preserved versus new snapshots. | None |
+| An activity starts or resumes after installation changes | Resolve the exact installed schema bundle under `docs/architecture.md#installed-validation-schemas`; preserve the saved version and hashes during recovery. | Installed bundle location, activity snapshot, and one missing or changed bundle rejection without substitution or lost work. | None |
 | A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None |
 | Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None |
 | Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from ARC-PM1 — Establish the project's architectural foundations, ARC-PM2 — Produce a bounded and parallel-ready work breakdown, and ARC-PM3 — Review and confirm the development breakdown. | None |
