@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+The schema installation decision is documented and the architecture-loop configuration schema now selects `architecture-loop@1` — Architecture-loop validation bundle, version 1. See [schema installation correction](#schema-installation-correction). This is an installation contract, not an installation performed on the AI box.
+
 The registration-reference mismatch is corrected in [candidate publication](../../docs/architecture.md#candidate-publication) and the shared `registrationRef` definition in [the schema](../../docs/schemas/architecture-loop.schema.json). Registration produces the six-field package reference; architecture consumes it unchanged. All fourteen registration-reference schema properties now use that definition; generic file references remain separate.
 
 The four recent agreements are incorporated: both role selections are collected at registration intake; SQLite has service-owned writes; process settings use a matching nested layout with separate budgets; and the specialist template uses the required role headings. See [the agreement incorporation record](#agreed-foundation-corrections). GitHub App credential verification is deferred until the local machine is available; the reported local secret file's location and service binding remain unverified.
@@ -21,7 +23,7 @@ Source and publication selection is now specified in [Architecture](../../docs/a
 
 Initial intake pins a resolved source commit and records an authorized publication branch. Re-registration resolves its selected source again; recovery retains saved selections; the architecture loop inherits the confirmed baseline and destination. Existing master-only policy, confirmation authority and review budgets remain unchanged. See [the correction record](#source-selection-correction) for scope and verification.
 
-Next: define installed resource bindings and remaining technical detail; GitHub App/local-secret verification waits for the local machine. The registration-reference conversion issue is superseded by the shared-reference correction. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
+Installed schema resolution is defined in [installed validation schemas](../../docs/architecture.md#installed-validation-schemas). Next: complete the registration process-definition and publication-operation recovery-limit bindings; GitHub App/local-secret verification waits for the local machine. The registration-reference conversion issue is superseded by the shared-reference correction. The historical validation below describes earlier frozen snapshots; its source/destination omission is superseded by this correction, not by a blanket readiness claim.
 
 The documentation-review procedure is now defined in the [shared review method](../../skills/project-architecture-workshop/references/reviews.md), with record fields in [workshop state](../../skills/project-architecture-workshop/references/workshop-state.md#review-coverage-record). [AGENTS.md](../../AGENTS.md#cross-document-alignment) defines Maestro's journey scope; the [reviewer role](../../docs/agents/decision-fidelity-reviewer.md#inputs-and-independence) applies the method within unchanged authority. It separates fidelity, completeness and consistency, requires independent inputs and per-journey evidence, and distinguishes full coverage from targeted corrections. Existing review limits and the no-standalone-report rule remain in effect.
 
@@ -47,6 +49,12 @@ The review-method validation below is historical evidence for its frozen snapsho
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
+## Schema installation correction
+
+[Architecture — Installed validation schemas](../../docs/architecture.md#installed-validation-schemas) owns bundle location, exact selection, activity snapshot and recovery behavior. The [architecture-loop schema](../../docs/schemas/architecture-loop.schema.json) replaces the repository-path constant with the installed bundle reference. [Runtime service milestones](../../docs/milestones/runtime-service-milestones.md) require installation and recovery evidence. Project application schemas remain separate.
+
+Author self-check only: examined the current source revisions of those three files and this handoff; traced installation → configured selection → activity snapshot → recovery and missing/changed-bundle failure. Checked the schema edit changes only the configuration constant, JSON parsing and internal references, and the affected declaration versions and architecture links. No independent review round was started; existing review limits remain unchanged. No installation, runtime validation, full schema-validator test or operational recovery test was performed. Broader documentation completeness was not assessed. Historical findings below retain their original snapshot scope; the installed-locator finding is resolved by this contract, not evidence of implementation.
+
 ## Agreed foundation corrections
 
 Authoritative changes:
@@ -58,7 +66,7 @@ Authoritative changes:
 
 Verification is an author self-check, not an independent review. Coverage: the changed architecture sections and intake journey, affected declaration outcomes and versions, template headings and retained guidance, obsolete registration keys, and remote source revisions before writing. The architecture-loop schema was inspected; its existing nested process settings and role-file handling require no shape change for these corrections. No full implementation, installed configuration, database durability test, adapter capability test or broader completeness review was performed. No additional review round was started; completeness and consistency remain at two of two under the existing method-validation subject. Independent review of these corrections remains pending within existing authority and limits.
 
-The GitHub App secret location and service credential binding remain deferred until the local machine is available. Installed schema-resource resolution, full registration process-definition binding and publication-operation recovery-limit binding remain distinct unresolved details. These edits do not establish readiness for execution or close those gaps. Historical coverage below applies to its recorded snapshots.
+The GitHub App secret location and service credential binding remain deferred until the local machine is available. Installed schema-resource resolution is superseded by the later correction below. Full registration process-definition binding and publication-operation recovery-limit binding remain unresolved. These edits do not establish readiness for execution or close those gaps. Historical coverage below applies to its recorded snapshots.
 
 
 ## Shared registration reference correction
