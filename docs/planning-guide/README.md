@@ -22,7 +22,7 @@ Registration requires the repository and the repository-relative path to the pro
 
 The overview lists the architecture and every included declaration. Each milestone identifies the specific architecture sections that explain its behavior and journeys. Dependency references include the qualified milestone reference and plain subject.
 
-Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/architecture.md#service-startup`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
+Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/architecture.md#runtime-and-prerequisites`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
 
 One fact has one authoritative location. Other documents reference it rather than maintaining copies. Reviews use the same exact repository commit, so references identify a consistent source version. Missing references or contradictory sources are flagged for clarification, not silently resolved.
 
