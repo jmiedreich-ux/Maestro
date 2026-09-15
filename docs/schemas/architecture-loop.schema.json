@@ -1875,7 +1875,7 @@
               "const": ".maestro/architecture"
             },
             "schema": {
-              "const": "docs/schemas/architecture-loop.schema.json"
+              "const": "architecture-loop@1"
             }
           },
           "required": [
