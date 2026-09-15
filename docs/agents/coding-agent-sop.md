@@ -1,5 +1,7 @@
 # Common Coding Agent Instructions
 
+**Status: Provisional execution guidance.** Apply the authority boundary in [Agent roles](README.md#roles); this file does not establish approved Execution policy.
+
 Every implementation agent follows the repository-wide rules in [AGENTS.md](../../AGENTS.md), the joined project's engineering policy, and the exact approved work assignment.
 
 ## Before changing files
