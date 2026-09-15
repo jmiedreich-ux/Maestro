@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 19 |
+| Declaration version | 20 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,7 +30,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 14 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 15 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 10 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 15 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
@@ -88,7 +88,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 | The Owner confirms through the CLI | Only explicit confirmation makes the exact unchanged, eligible candidate active. Changed or ineligible candidates require renewed inspection before confirmation. That version is available in the project's GitHub repository; confirmation does not launch development. The confirmed contents cannot silently change afterward. Publish and verify the confirmation receipt before SQL activation; pending confirmation retains the prior active version and prevents competing changes. | Owner confirmation tied to the candidate, authoritative GitHub commit and package location, active-version record, and evidence that no development was started. Required wrapper checks verify repository, branch, allowed files, remote commit existence, and agreement with the reported commit before publication is counted as successful. | None |
 | Registration is cancelled or action acknowledgment is lost | Explicit cancellation ends the attempt after its agent runs and external operations are resolved, with saved history retained. Pending confirmation rejects competing cancellation. Cancellation during candidate publication prevents advancement while the write is reconciled. Confirmation/cancellation are deliberate view actions, not ordinary text submission. An uncertain result shows Outcome not confirmed; reconnect queries the saved outcome and explicit retry cannot duplicate effects. | Main cancellation path and a necessary lost-acknowledgment case using the actual service. | None |
 
-Agent integration acceptance also follows [adapter behavior](../architecture.md#model-execution-adapters): explicit architect tool/model selection at initiation, separate reviewer selection and workspace, immutable assignment inputs, linked clarification follow-ups, SQL-recorded progress, and validated output before advancement. Unsupported or unverifiable model selection prevents launch. The architect returns an explicit assessment artifact and candidate; the reviewer receives exact staged copies. Every result includes assignment and run identities. Tool-reported model evidence, effective permissions, and immutable inputs must be checked rather than inferred from agent prose. Cancellation displays Stopping until confirmed or Stop unconfirmed when uncertain; completion during pending cancellation cannot advance registration.
+Agent integration acceptance also follows [adapter behavior](../architecture.md#model-execution-adapters): both role selections collected before architect launch under [tool and model selection](../architecture.md#tool-and-model-selection), separate reviewer workspace, immutable assignment inputs, linked clarification follow-ups, SQL-recorded progress, and validated output before advancement. Evidence includes saved intake choices for both roles before architect launch, including a missing reviewer choice collected through an intake question. Unsupported or unverifiable model selection prevents launch. The architect returns an explicit assessment artifact and candidate; the reviewer receives exact staged copies. Every result includes assignment and run identities. Tool-reported model evidence, effective permissions, and immutable inputs must be checked rather than inferred from agent prose. Cancellation displays Stopping until confirmed or Stop unconfirmed when uncertain; completion during pending cancellation cannot advance registration.
 
 ### Definition of done
 
