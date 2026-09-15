@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 20 |
+| Declaration version | 21 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,9 +30,9 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 15 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 16 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
 | 2 | REG-PM2 — Update a registration without losing approved history | 10 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 15 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
+| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 16 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
 
@@ -102,7 +102,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 |---|---|---|
 | Connected adapter use | Runtime Service owns adapter implementation and installed capability verification. | Use SVC-PM4 — Run and recover assigned agents for actual registration role assignments, validate assessment/candidate response meaning, and demonstrate distinct reviewer use. Shared evidence must include actual model identity, permissions, source isolation, and failure reporting before assessment. |
 | Delivery-review contract | Completion review cannot rely on an unnamed reviewer or assumed authority. | Define required implementation-review roles, evidence, and acceptance authority before affected breakdown. |
-| Planning-review configuration implementation | The configured limit must survive changes and recovery. | Implement `registration.maximum_fidelity_reviews` under the architecture's review-limit contract, snapshotting the limit at initiation and counting accepted completed reviews once. |
+| Planning-review configuration implementation | The configured limit must survive changes and recovery. | Implement [registration process-definition binding](../architecture.md#registration-process-definition-binding), including effective defaults, installed configuration validation, saved activity snapshots and the existing review accounting. Verify missing required sections and unsupported policies prevent initiation without changing active work. |
 | Output and persistence implementation | Defined package contracts need executable validation and durable publication. | Implement `docs/architecture.md#package-record-contract` and `docs/architecture.md#publication-and-sql-consistency`; validate the actual connected journey before completion. |
 
 ## REG-PM2 — Update a registration without losing approved history
@@ -191,7 +191,7 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 ### Definition of done
 
-Basic controlled interruptions of actual agent, publication, and service operations establish recovery from the last verified step and preserved review budgets. Retained reports, decisions, versions, and remote commits are checked directly. Necessary simulated conditions identify their reason and limitation; no exhaustive failure-combination suite is required.
+Basic controlled interruptions of actual agent, publication, and service operations establish recovery from the last verified step and preserved review budgets. Evidence under [registration process-definition binding](../architecture.md#registration-process-definition-binding) shows separate agent and publication counters, no allowance reset on configuration edits, and reconciliation without a duplicate write. Retained reports, decisions, versions, and remote commits are checked directly. Necessary simulated conditions identify their reason and limitation; no exhaustive failure-combination suite is required.
 
 Both registration journeys remain valid after recovery. Completion evidence and delivery reviews meet the common completion requirements above. Successful publication checks are already required by REG-PM1 — Register and confirm a project through the CLI; this outcome adds interruption and recovery evidence. Retry functions alone do not establish completion.
 
