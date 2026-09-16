@@ -705,3 +705,77 @@ The authoritative rule is [packet and integration-change review limits](../../do
 ### Validation and remaining design
 
 This correction was checked against the recorded September 16 Owner agreement and the current delivery sequence. Active statements that packet and integration-change review limits were unresolved were removed. Detailed result records, milestone reviewer model selection, correction-supplement activation, cross-milestone source delivery, exceptional FIFO queue resolution and other implementation mechanics remain separate technical design.
+
+## Execution technical architecture completion checkpoint
+
+This checkpoint supersedes the active-status assertions in earlier handoff sections that general Execution review authority, completion records, isolated-environment mechanics, reviewer routing, correction supplements, cross-milestone source delivery, exceptional FIFO handling or result contracts were still provisional. Those passages remain historical records of their snapshots.
+
+The authoritative Execution contracts are now in [Execution](../../docs/architecture.md#execution), with aligned role, overview and milestone-declaration text. They define exact route/model configuration and deadlines; the shared request/state/record contract; deterministic coder-route matching; service-owned worktrees and credentialed Git operations; strict FIFO integration; branch mechanics; independent packet, integration-change and milestone review; typed Owner grants and manual retry; bounded milestone-gap assignments and correction supplements; versioned Quality Assurance plans, isolated environments and retained evidence artifacts; cross-milestone dependency delivery and invalidation; pause/stop settlement; and distinct successful-completion and stopped-closure records.
+
+Routine technical choices remain architectural decisions. The settled Owner boundaries, review defaults and no-silent-substitution rules are unchanged. Executable `execution@1` schemas and handlers, physical SQL tables, installed tools/systemd/environments, operational evidence and an Execution milestone declaration remain implementation or later delivery work. SQL backup and restore remain out of scope.
+
+When snapshot `148678a717061074ab8dfc8ebe8e0ecaa8574d6c` was frozen, none of the three fresh passes had completed. Decision fidelity later approved it. Architectural completeness and cross-document consistency requested the changes recorded below. Corrections were published through snapshot `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`; each original reviewer then completed a targeted correction check, and all three final conclusions are `APPROVE`.
+
+### Journey coverage
+
+All full passes used the same ten end-to-end journeys: start/configuration/model selection; persistent Development Manager planning and coder dispatch; packet review and correction limit; strict FIFO integration and Integration Manager change review; correction-supplement activation; cross-milestone dependency delivery; isolated milestone Quality Assurance; milestone outcome review and promotion; pause/resume/graceful stop/re-registration/restart recovery; and milestone/Execution completion publication. Each journey covered starting conditions, inputs and recipients, configuration and selections, credentials and authority, storage and transactions, interfaces and state, results/completion evidence, and failure/recovery.
+
+### Review coverage records
+
+#### Decision fidelity
+
+- id: `execution-fidelity-v1`
+- subject: Execution technical architecture and aligned roles/declarations
+- pass_type: `decision_fidelity`
+- mode: fresh full review, followed by targeted changed-scope fidelity check
+- scope_budget_round: one full pass at the frozen snapshot; one targeted delta check; no runtime product review budget consumed
+- reviewer: `/root/execution_fidelity_v1`
+- snapshot: full review `148678a717061074ab8dfc8ebe8e0ecaa8574d6c`; targeted delta through `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`
+- sources: `AGENTS.md`, `skills/project-architecture-workshop/references/reviews.md`, `docs/architecture.md`, `docs/project-overview.md`, the seven selected Execution/architecture review role files, and the Runtime Service, Registration and Architecture Loop milestone declarations
+- journeys: all ten listed above
+- not_assessed: executable schemas/handlers, physical SQL design, installed or live behavior, SQL backup/restore, an Execution milestone declaration, and unrelated files
+- findings: none in the full pass; none in the correction delta
+- result: full `APPROVE`; targeted delta `APPROVE`
+- coverage_complete: true; original full coverage retained across the corrected delta
+- round_consumed: one full documentation-review pass; targeted check did not create another full pass
+- correction_refs: none required for fidelity; delta commits were checked for regression
+
+#### Architectural completeness
+
+- id: `execution-completeness-v1`
+- subject: implementable completeness of the ten Execution journeys
+- pass_type: `architectural_completeness`
+- mode: fresh full review, followed by targeted correction check
+- scope_budget_round: one full pass at the frozen snapshot; one targeted check of the twelve findings
+- reviewer: `/root/execution_completeness_v1`
+- snapshot: full review `148678a717061074ab8dfc8ebe8e0ecaa8574d6c`; corrected snapshot `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`
+- sources: the same frozen governance and twelve selected architecture/role/overview/declaration sources
+- journeys: all ten listed above
+- not_assessed: executable `execution@1`, source behavior, physical SQL tables, installed services/tools/credentials/environments, live evidence, SQL backup/restore, an Execution milestone declaration, and unrelated files
+- findings: `EC-001` run deadlines; `EC-002` review-limit Owner actions; `EC-003` manual retry grants; `EC-004` worktrees/Git/reviewer isolation; `EC-005` coder route eligibility; `EC-006` milestone-gap architect assignment; `EC-007` confirmed QA inputs; `EC-008` QA artifact durability; `EC-009` dependency invalidation; `EC-010` repository credential authority; `EC-011` supplement self-hash; `EC-012` pause/stop and stopped-record shape
+- result: initial `REQUEST_CHANGES`; every finding `RESOLVED`; amended conclusion `APPROVE`
+- coverage_complete: true for the full pass and targeted correction scope
+- round_consumed: one full documentation-review pass; targeted check did not create another full pass
+- correction_refs: `bcaf72c4cd15ae46b476f35e2acf15c2331da638`, `f51544dbf165cabb2ef2a846ac372457322d7e20`, the aligned role/declaration commits, and final corrected snapshot `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`
+
+#### Cross-document consistency
+
+- id: `execution-consistency-v1`
+- subject: names, authority, operations, configuration, records, links and scope across the selected documents and handoff checkpoint
+- pass_type: `cross_document_consistency`
+- mode: fresh full review, followed by targeted correction check
+- scope_budget_round: one full pass at the frozen snapshot; one targeted check of four findings
+- reviewer: `/root/execution_consistency_v1`
+- snapshot: full review `148678a717061074ab8dfc8ebe8e0ecaa8574d6c`; corrected snapshot `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`
+- sources: the same frozen governance and twelve selected sources; current handoff conclusions were excluded from fresh inputs and this checkpoint's historical wording was supplied separately
+- journeys: all ten listed above
+- not_assessed: completeness and fidelity as separate verdicts, executable or live behavior, unrelated files, and earlier handoff review conclusions
+- findings: `XDC-001` stale unfinished Execution-interface statement; `XDC-002` conflicting Owner-decision operation registry; `XDC-003` stale Registration milestone prerequisite; `XDC-004` present-tense pending-review wording in the proposed handoff
+- result: initial `REQUEST_CHANGES`; every finding `RESOLVED`; amended conclusion `APPROVE`
+- coverage_complete: true for the full pass and targeted correction scope
+- round_consumed: one full documentation-review pass; targeted check did not create another full pass
+- correction_refs: command/operation/Owner-decision corrections in `bcaf72c4cd15ae46b476f35e2acf15c2331da638`; Registration declaration and aligned role corrections through `6ec49bc24e3bfb38824f8bf00ca2c1e921a7d968`; this time-anchored checkpoint wording
+
+### Publication state
+
+The architecture and aligned documents are ready as technical design, not as implemented capability. Continue from the current `master` documents. Do not reopen the settled Execution decisions unless new evidence, changed scope or a reserved Owner decision requires it.
