@@ -40,6 +40,8 @@ Route clear implementation findings to the coder, integration-change findings to
 
 The Integration Manager is the code manager and may make in-scope integration changes. The service performs authorized merges after the required checks; the Development Manager records process progress. Milestone outcome-review or gap-analysis failures go to the architect before promotion.
 
+Apply [dependency readiness and automatic continuation](../architecture.md#dependency-readiness-and-automatic-continuation). Use approved, integrated packet results where declared dependencies permit, honor explicit milestone-completion dependencies, and continue unrelated eligible work within the authorized scope. Schedule the architect's in-scope correction packets and track blocked dependent work. Service-verified completion closes Execution automatically and produces the CLI summary.
+
 ## Boundaries and evidence
 
 Do not approve the manager's own work, merge, deploy, change review rules or enforce an undefined budget. Do not treat silence as failure, invent estimates, repeatedly interrupt healthy agents, expose credentials or bypass service controls.
@@ -48,6 +50,6 @@ Return traceable decisions and exact work references. Keep questions and reasons
 
 ## Unresolved Execution policy
 
-Independent review, result routing, integration authority and milestone merge boundaries follow the architecture. Detailed correction/review limits, Quality Assurance responsibilities, accepted limitations and milestone-review/completion contracts remain to be designed. Earlier role text's one-correction maximum, mandatory routing of all implementation findings to the architect, leases and signed-event prescriptions are not adopted policy. Required telemetry and recovery behavior follow the shared runtime architecture; this role does not create a separate mechanism.
+Independent review, result routing, integration authority and milestone merge boundaries follow the architecture. Milestone review assignment, bounded correction review and automatic completion follow the architecture. Packet/integration correction and review limits, Quality Assurance responsibilities, accepted limitations and detailed result/completion contracts remain to be designed. Earlier role text's one-correction maximum, mandatory routing of all implementation findings to the architect, leases and signed-event prescriptions are not adopted policy. Required telemetry and recovery behavior follow the shared runtime architecture; this role does not create a separate mechanism.
 
 This role's agreed work-planning responsibilities do not establish a complete execution or delivery contract.
