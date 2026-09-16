@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 10 |
+| Document version | 11 |
 
 ## Purpose
 
@@ -20,11 +20,11 @@ SQL backup and restore are out of scope; ordinary service restart and recorded-o
 | Boundary | Description |
 |---|---|
 | Included in the supplied declarations | A Linux-based CLI/service foundation for multiple projects, reliable question responses, project registration, versioned registration updates, recovery, shared process definitions, and the separately started architecture loop. |
-| Broader system boundary | Planning, Execution, and Monitoring are system areas. Detailed execution authority and a complete development engine are not defined by the supplied declarations. |
+| Broader system boundary | Planning, Execution, and Monitoring are system areas. Execution authority and technical contracts are defined in the architecture; the executable development engine and operational evidence are not yet delivered by the supplied milestone declarations. |
 | Excluded from initial interface scope | Command center, mobile presentation, unsolicited agent conversations, cross-project draft retention, and execution commands. |
 | Excluded from registration | Project implementation, development-milestone/work-packet breakdown, automatic work startup, general code audits, architecture approval, and execution-rule overrides. |
 
-Execution initiation and work planning are being defined in [Execution architecture](architecture.md#execution). They are not yet a delivery declaration and do not expand the initial CLI/service declarations or establish implemented operation.
+Execution initiation, work planning, review, integration, isolated Quality Assurance, recovery and completion are defined in [Execution architecture](architecture.md#execution). They are not yet a delivery declaration and do not expand the initial CLI/service declarations or establish implemented operation.
 
 ## Current state
 
@@ -36,7 +36,7 @@ Execution initiation and work planning are being defined in [Execution architect
 | CLI interface | Specified; current integrated operation not verified | Reported | `docs/milestones/cli-milestones.md` | Implemented runtime interfaces, terminal installation, and real registration integration for final connected acceptance. |
 | Registration and history | Specified; current integrated operation not verified | Reported | `docs/milestones/registration-milestones.md` | Implementation and operational evidence for the specified adapters, package validation, publication access, work-state enforcement, and SQL/GitHub consistency. |
 | Existing service components | Source evidence from the recorded revision below; current capability not established by that evidence | Supported by source inspection at the cited revision only | Source observations below | Current source validation and actual operational evidence before claiming dependency readiness. |
-| Architecture and source documents | Supplied design material, not operational evidence | Not applicable to implementation status | Authoritative source list below | Unresolved mechanisms are identified in the architecture and declarations. |
+| Architecture and source documents | Supplied design material, not operational evidence | Not applicable to implementation status | Authoritative source list below | Implementation boundaries and unverified operational mechanisms are identified in the architecture and declarations. |
 
 ### Source observations
 
@@ -68,6 +68,6 @@ Registration entry uses `docs/project-overview.md` within the repository. The [P
 | Missing or conflicting information | Affected source or capability | Clarification needed |
 |---|---|---|
 | Current implementation and operational evidence | Dependencies across the supplied declarations | Establish the actual condition before claiming existing capability. |
-| Delivery authority and implementation details | Registration delivery | General Execution policy remains provisional. Executable schemas, physical SQL tables, and installed integration checks implement the defined architecture; live verification is deferred to development. |
+| Execution implementation and operational evidence | Broader delivery engine | The architecture defines Execution authority and contracts. Implement `execution@1`, API handlers, physical SQL tables, Git journals, agent adapters, isolated-environment supervision and installed integration checks; verify the connected journey during development. |
 
 No narrower registration portion is selected by this overview. A registration request supplies its chosen boundary using the declaration references.
