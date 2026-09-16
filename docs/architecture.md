@@ -1402,8 +1402,8 @@ The delivery sequence is:
 2. Independent review approves its exact revision.
 3. The packet enters the project's FIFO integration queue.
 4. The Integration Manager integrates it into the milestone branch, with independent review of any integration code changes.
-5. Once the milestone's work is complete, its assembled branch receives an outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.
-6. Only a passing milestone review and gap analysis make that branch eligible to merge into product `master`.
+5. Once the milestone's work is complete, its assembled branch receives milestone Quality Assurance and an independent outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.
+6. Only completed required Quality Assurance with no failed or unverified required path, together with a passing milestone review and gap analysis, makes that branch eligible to merge into product `master`.
 
 Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The review assignment, limits and correction handling follow [milestone outcome review](#milestone-outcome-review). Reviewer model selection and the machine-readable result contract remain to be defined.
 
@@ -1426,6 +1426,16 @@ A corrected milestone receives a targeted check of the named corrections and the
 The service configuration sets the maximum completed milestone review rounds, defaulting to two: the initial review and, if required, one correction review. One passing round is sufficient. The service saves the effective limit and consumed count for the milestone; replacement reviewers, new sessions, renamed work and corrections do not reset them. Invalid or interrupted review output is not a completed round or approval; technical recovery does not grant additional completed reviews. The configuration key and result schema remain to be specified.
 
 After the configured limit, unresolved blocking findings keep the milestone unmerged and reach the Owner through the CLI with the architect's recommendation. No automatic extra review or merge is permitted. This milestone limit does not define packet or integration review budgets.
+
+### Milestone Quality Assurance and test data
+
+Quality Assurance runs against the assembled milestone, not against individual work packets or Integration Manager changes. Coders verify their own changes, and independent reviewers assess packet changes, Integration Manager changes, and the whole-milestone outcome and gap analysis. Quality Assurance separately exercises the assembled product's user journeys, connected behavior, and failure cases. Its findings use the existing correction path, followed by the affected checks; it does not create another approval loop.
+
+Quality Assurance may start the product and required supporting services in an isolated test environment when that is needed to exercise the actual behavior. The architecture loop defines each milestone's required data sources, preparation and setup, expected results, and the actual capability paths that must be exercised. If a required data source or setup tool does not exist, creating it is planned work with an explicit dependency. Quality Assurance must not improvise missing setup capability.
+
+Quality Assurance prepares or uses the required data and records its origin, how it entered the system, the actual result path, expected and actual results, and known limitations. Test data may supply inputs, but it must not replace the capability being verified. For example, directly inserting an expected result cannot prove the service or user journey that should create it. Mocks or generated data may assist development, but they cannot establish milestone completion for a bypassed product path.
+
+Every bypassed required step remains `UNTESTED`; it cannot support a pass or milestone completion. If required verification is unavailable, the result is neither a defect nor a pass. The milestone remains unmerged, the CLI shows the specific blocker, and unrelated eligible work may continue. Once the prerequisite is available, Quality Assurance runs the affected verification.
 
 ### Dependency readiness and automatic continuation
 
