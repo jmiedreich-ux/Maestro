@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+The follow-up agreements on Owner-selected work disposition, normal-lifecycle completion, specialist review and configured backup agents are saved. See [architectural-support checkpoint](#architectural-support-checkpoint). Earlier unresolved notes on those subjects are superseded by this checkpoint; general Execution lifecycle and delivery policy remain unfinished.
+
 Execution design resumed after the earlier check and is now paused for a short break. The agreed initiation, Development Manager work planning and architectural-support discussion is saved below. See [Execution design checkpoint](#execution-design-checkpoint). The earlier [pre-Execution check](#pause-before-execution-design) remains historical coverage.
 
 The remaining smaller third-party review items were checked and corrected where applicable. See [consistency cleanup](#consistency-cleanup). GitHub App credential verification remains deferred; this cleanup is not a full readiness review.
@@ -55,6 +57,34 @@ The review-method validation below is historical evidence for its frozen snapsho
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
 
+## Architectural-support checkpoint
+
+The Owner approved writing the subsequent agreements and delegated routine configuration, record, validation and handoff mechanics. Architecture owns the behavior; the Development Manager, Project Architect and Fidelity Reviewer roles reference it. Existing milestone declarations and runtime JSON schemas are unchanged because they do not yet declare these Execution capabilities delivered.
+
+| Agreement | Defining location in Architecture |
+|---|---|
+| Architect recommends; Owner selects one of four dispositions through a linked CLI decision | Work disposition before re-registration |
+| No new packets; already-started work completes its natural lifecycle, including permitted reviews, corrections and recovery | Work disposition before re-registration |
+| No extra retry question or special transition failure policy | Work disposition before re-registration |
+| Manager tracks results; service ends execution only when work and operations are settled; explicit re-registration remains required | Work disposition before re-registration |
+| Existing role applicability or new source-local role/context; exact versions supplement the unchanged confirmed breakdown | Support validation and publication |
+| New roles receive independent fidelity review; unchanged existing contents do not need repeat review | Support validation and publication |
+| Two configurable completed reviews per support assignment, separate accounting, first pass sufficient, unresolved material issues reach Owner | Support validation and publication |
+| Separate configured architect/reviewer tools and exact model versions; primary and backup for each | Architectural-support configuration and fallback |
+| Prelaunch availability fallback; recovery and confirmed stopping before an active-run replacement | Architectural-support configuration and fallback |
+| No switch merely for an unsatisfactory result; unusable routes pause affected work | Architectural-support configuration and fallback |
+| Linked replacement session receives exact inputs and verified progress, retains remaining allowances and reviewer independence | Architectural-support configuration and fallback |
+
+Routine technical choices are recorded explicitly: the shared TOML section, required role durations, separate recovery accounting with default two attempts, service-assigned support identities and publication paths, fixed support/review/activation records, exact-version bindings, and durable disposition receipts. These choices implement the delegated mechanics; they do not establish general coding review, correction, merge or completion rules. Configured backup routing here applies to the two architectural-support roles, not a silent expansion of registration or coder routing.
+
+### Validation
+
+Author self-check only. Examined the available conversation from the prior checkpoint through this write request and current master versions of the architecture, three affected agent-role files, repository instructions and handoff. Decision fidelity is traced above. Consistency coverage follows disposition → saved start restriction → normal work lifecycle → idle closure; support request → configured route → result → independent review → verified publication → role binding; and primary failure → stopping/recovery → backup inputs/counters. Checked new heading links, obsolete unresolved statements and isolation from provisional implementation correction rules.
+
+Publication records do not embed their own unknown commit: same-publication references use paths/hashes and the journal supplies the verified commit. The service activates no unreviewed new role and changes no confirmed manifest. Distinct backup sessions cannot reuse author history as independent review. No review-budget reset or additional independent round was claimed.
+
+Runtime implementations, complete executable Execution schemas, live model availability, storage durability and overall Execution readiness were not tested. The normal lifecycle and detailed stop implementation still depend on the remaining Execution design. This checkpoint is not a declaration of full completeness; no standalone review report was created.
+
 ## Execution design checkpoint
 
 The Owner authorized writing the agreed discussion and validating it on master before a short break. [Execution](../../docs/architecture.md#execution) owns behavior; the [Development Manager](../../docs/agents/maestro-development-manager.md) and [Project Architect](../../docs/agents/architecture-agent.md#execution-architectural-support) describe their responsibilities. The role index and overview point to those boundaries. Existing milestone declarations and machine-readable contracts were not expanded to imply complete Execution delivery.
@@ -84,9 +114,9 @@ The earlier assistant proposals for service-only work selection and specific Sta
 
 ### Resume here
 
-Stay with the current architectural-attention/re-registration subject before moving to another Execution topic. The unresolved question is who authorizes the work disposition and the transition out of execution. Also define how the execution activity ends to become idle, how failed running work is treated, and how reviewed/versioned specialist additions become usable without altering a confirmed manifest silently.
+The Owner chooses work disposition through the CLI. Finish-current-work follows the normal packet lifecycle, with no special retry branch. Specialist validation/review/publication and configured primary/backup behavior are now defined in the later [architectural-support checkpoint](#architectural-support-checkpoint).
 
-Remaining technical contracts include Execution request/result/event shapes, coder registry location and fields, Qwen transport, and architectural-support model/session selection, permissions, publication, review and limits. Later result review, Integration, Quality Assurance, corrections, merge authority and completion are not settled by the work-planning decisions. No implementation or live verification occurred. GitHub App/service credentials remain deferred to the local machine.
+Next discussion concerns broader Execution behavior: implementation-result handling, review, corrections, Integration, Quality Assurance, merge authority and completion. Those decisions must also supply the normal lifecycle used when finishing current work. General Execution request/result/event contracts, coder registry and Qwen transport remain to be defined. GitHub App/service credentials remain deferred to the local machine.
 
 ### Validation coverage and limits
 
