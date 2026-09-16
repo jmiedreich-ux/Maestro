@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+Independent packet review, persistent Integration Manager authority, FIFO integration and development-milestone branching/promotion are now documented. See [integration and milestone delivery checkpoint](#integration-and-milestone-delivery-checkpoint). Earlier statements that all merge or implementation-review authority is undecided are superseded within this agreed scope. Current documentation changes still go directly to master.
+
 The follow-up agreements on Owner-selected work disposition, normal-lifecycle completion, specialist review and configured backup agents are saved. See [architectural-support checkpoint](#architectural-support-checkpoint). Earlier unresolved notes on those subjects are superseded by this checkpoint; general Execution lifecycle and delivery policy remain unfinished.
 
 Execution design resumed after the earlier check and is now paused for a short break. The agreed initiation, Development Manager work planning and architectural-support discussion is saved below. See [Execution design checkpoint](#execution-design-checkpoint). The earlier [pre-Execution check](#pause-before-execution-design) remains historical coverage.
@@ -56,6 +58,40 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Integration and milestone delivery checkpoint
+
+The Owner clarified the final sequence after an intervening misunderstanding: coder finishes → independent review cycle → approval → Integration Manager. The temporary suggestion to omit independent review was explicitly corrected and is not adopted.
+
+### Decisions and coverage
+
+| Agreed subject | Authoritative architecture section |
+|---|---|
+| Coder reads packet and returns plan without another approval gate; validated final result goes through service to Development Manager | Coder preparation and submitted results |
+| Independent read-only review against exact work, architecture and evidence; author cannot review own implementation | Independent implementation review |
+| Concrete defects block; preferences do not; findings route through service and Development Manager | Independent implementation review |
+| Role-based queues and saved state belong to service, not conversation memory | Integration management and queue |
+| Development Manager manages process; persistent Integration Manager manages product code and may make needed in-scope integration changes | Integration management and queue |
+| Independent review of integration changes and affected behavior; retain unchanged coverage; no automatic repeat review when no code changes | Integration management and queue |
+| One FIFO integration queue and one active integration assignment per project, retained through reviews/corrections | Integration management and queue |
+| Development milestone branch from product baseline; packet branches from and merged into their milestone branch | Milestone branches and product integration |
+| Whole-milestone outcome review and gap analysis before master promotion | Milestone branches and product integration |
+| Service checks exact approved revision, current destination and authorization, performs merge; no extra Owner approval for passing milestone | Authorized integration merges |
+| Failed milestone checks require architectural determination or re-registration/replanning | Milestone branches and product integration |
+
+The existing Integration Agent file is retained as `docs/agents/integration-agent.md` with role title Integration Manager; no duplicate role is created. The independent reviewer, Development Manager, Project Architect and common coding instructions now agree with this flow. The specialists folder remains untouched and excluded from assignment choices for this work. The role index links to the updated responsibilities.
+
+AGENTS.md distinguishes the explicitly approved future Execution branching model from current direct-to-master documentation work. No branch, pull request, code implementation, merge operation on product code, new milestone declaration or runtime schema was created.
+
+### Validation and remaining design
+
+Author self-check, not independent review. Sources: the current master versions of AGENTS.md, CLAUDE.md, architecture, role index, Integration Agent, Independent Implementation Reviewer, Development Manager, Project Architect, common coding instructions and this handoff; decision evidence: the available conversation from coder handoff through the Owner's milestone-branch agreement.
+
+The table traces fidelity to authoritative sections. Consistency checks traced coder → independent review → FIFO Integration → review of changed integration code → milestone branch → milestone outcome review/gap analysis → authorized master merge; also checked failed-review routing, changed-target reconciliation, unchanged-code review retention and separation from registration publication. Role links and architecture headings were checked. No new independent review round or budget reset was claimed. Saved remote contents are verified after writing.
+
+Remaining decisions include implementation correction/review limits and exceptions, Integration Manager model/session details, blocked-queue resolution, exact branch naming/lifecycle and merge strategy, milestone outcome-review role/model/limits, Quality Assurance and detailed completion/recovery records. The old fixed one-correction and automatic-escalation assumptions are not adopted. The earlier support-review and fallback rules do not determine implementation review budgets.
+
+Executable protocols, code, live model operation and full product readiness were not tested or established. This is a bounded evolving-design checkpoint, not a complete Execution specification or a full independent fidelity verdict. Next discussion should continue with the unfinished milestone outcome-review and gap-analysis responsibility before assuming it is assigned to an existing role.
 
 ## Architectural-support checkpoint
 
@@ -116,7 +152,7 @@ The earlier assistant proposals for service-only work selection and specific Sta
 
 The Owner chooses work disposition through the CLI. Finish-current-work follows the normal packet lifecycle, with no special retry branch. Specialist validation/review/publication and configured primary/backup behavior are now defined in the later [architectural-support checkpoint](#architectural-support-checkpoint).
 
-Next discussion concerns broader Execution behavior: implementation-result handling, review, corrections, Integration, Quality Assurance, merge authority and completion. Those decisions must also supply the normal lifecycle used when finishing current work. General Execution request/result/event contracts, coder registry and Qwen transport remain to be defined. GitHub App/service credentials remain deferred to the local machine.
+The later integration checkpoint now defines implementation-result routing, independent review, Integration Manager authority and merge boundaries. Remaining correction/review limits, Quality Assurance and detailed completion rules must finish the normal lifecycle used when finishing current work. General Execution request/result/event contracts, coder registry and Qwen transport remain to be defined. GitHub App/service credentials remain deferred to the local machine.
 
 ### Validation coverage and limits
 
