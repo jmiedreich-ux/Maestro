@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 12 |
+| Document version | 13 |
 
 ## Purpose
 
@@ -27,6 +27,8 @@ SQL backup and restore are out of scope; ordinary service restart and recorded-o
 Execution behavior is defined in [Execution architecture](architecture.md#execution), with delivery outcomes in the [Execution declaration](milestones/execution-milestones.md). That declaration owns Execution-specific CLI actions and monitoring over the initial CLI/service foundations. It does not establish implemented operation or start Execution.
 
 ## Current state
+
+The whole-system architecture assessment covers Planning, Execution and Monitoring across service startup, registration, architecture preparation, delivery, lifecycle recovery and the shared CLI. Its independent coverage, corrections and bounded conclusions are retained in [the current handoff](../ai/handoffs/current.md). Architecture assessment and project milestone declarations do not establish implementation completion or authorize starting software Execution.
 
 | Capability or area | Current condition | Evidence level | Evidence or authoritative source | Known missing prerequisites |
 |---|---|---|---|---|

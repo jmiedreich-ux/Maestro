@@ -14,6 +14,10 @@
 
 ## Where the discussion paused
 
+The connected review of Planning, Execution and Monitoring is complete within its recorded 27-journey scope. Seven distinct issues were corrected; independent decision-fidelity, architectural-completeness and cross-document-consistency correction checks all passed. See [Whole-system architecture review checkpoint](#whole-system-architecture-review-checkpoint) and the retained full and targeted coverage records. No unresolved material architectural question was identified in that coverage. Implementation and installed operation remain unverified.
+
+The next planning step is the development-milestone and bounded work-packet breakdown for the selected delivery scope. No registration or software Execution was started. The earlier checkpoint summaries below remain historical; the whole-system checkpoint governs current documentation status.
+
 The missing Execution project milestone declaration is recorded in [Execution](../../docs/milestones/execution-milestones.md), with its source entry and current-state boundary in the project overview. See [Execution delivery milestone checkpoint](#execution-delivery-milestone-checkpoint). Earlier statements that an Execution delivery declaration is absent are historical; implementation remains unverified.
 
 Milestone review assignment, correction routing and limits, dependency readiness, automatic continuation and automatic completion are now recorded. See [milestone review and execution completion checkpoint](#milestone-review-and-execution-completion-checkpoint). Earlier unresolved statements on these specific decisions are superseded; remaining technical contracts are identified there.
@@ -1035,3 +1039,734 @@ The final review conclusion for each pass is no gaps found within its recorded c
 Full historical conversation fidelity, unrelated registration/architecture internals, source audit, installed tools/accounts/configuration, executable validation, physical SQL implementation and live runtime behavior were not assessed. Foundation processes were examined only for relevant setup, selections, authority, producer/consumer contracts, confirmation and recovery transitions. Command center/mobile, unsolicited conversation, configurable hooks, SQL backup/restore and unauthorized production testing remain excluded. There is no operational readiness or successful registration claim.
 
 The declaration and its prerequisite alignment have completed the required independent documentation reviews. Delivery remains directly to master under repository policy. The next planning step is selecting the registration scope and producing its later development breakdown through the established process; these have not been started. This documentation does not start implementation or Execution.
+
+
+## Whole-system decision-fidelity full coverage
+
+- Review `whole-fidelity-1` — Whole-system decision fidelity; subject: Maestro Planning, Execution and Monitoring, all 27 scoped journeys. `pass_type=decision_fidelity`; `mode=full`; `parent_review_id=null`.
+- Budget `whole-system-8853d8df-decision-fidelity`; round 1 of at most 2, with any second round targeted only. Reviewer `/root/whole_fidelity`, separate independent session, no reviewed-document authorship/correction and no prohibited prior-review/drafting exposure.
+- Frozen repository `jmiedreich-ux/Maestro`, master `8853d8df5aa1a809de449449177bf0492f5efa17`; packet `/workspace/scratch/a62eef195a35/whole-review`. All 34 manifest-listed sources actually read; all bytes matched their recorded hashes. Both supplied schemas examined in full. Manifest SHA-256 `3b6453e378df4445fa29f53abedadd74c6e7a8e397091567d6cc0ec21ac9ec0b`; filtered `RECORDED-DECISIONS.md` SHA-256 `5b0d21989eab996d7ba4fb635aa7ab9a892ecfe43ebca6fc2867e9b0f3cf0b87`; `REVIEW-SCOPE.md` SHA-256 `b7016018a7bd14df65500dd549589f14406d50b7f528717953cfe78a282b5b0c`. Shared immutable manifest map supplies individual examined-source hashes.
+- Original filtering locator: `ai/handoffs/current.md` at that commit, Decisions to preserve; Execution design checkpoint/Decisions preserved; Integration and milestone delivery checkpoint agreed table/sequence; Architectural-support checkpoint agreement table/technical choices; Milestone review and execution completion agreed bullet list; milestone QA/test-data behavioral paragraphs; packet/integration review-limit behavioral paragraphs. Author alignment, readiness/review conclusions, findings and superseded status passages were excluded.
+- Available evidence: complete frozen architecture, overview, all five declarations, guides/templates, shared roles and specialist template, both supplied schemas, recorded decision extracts and current-user authority in scope. Original historical transcripts unavailable; no claim of full original-conversation verification. Other review packets, drafting directories, original handoff beyond retained extracts, four unrelated example specialists, current source code, installed tools, external version research, live operation and deployment excluded. External URLs not used as evidence.
+- Deferrals examined: executable handlers/validators, physical SQL tables, registration output schemas, `execution@1`, architecture packet/QA schema extensions and installed verification remain delivery work; no operational readiness conclusion.
+
+### Exact-location index
+
+All A references identify exact headings in `docs/architecture.md`; each grouped heading was examined.
+
+| Ref | Headings |
+|---|---|
+| A01 | Purpose and boundaries; Functional areas; Components and responsibilities; Runtime and prerequisites |
+| A02 | Installed validation schemas; Shared process definitions; Shared output handling and process boundaries |
+| A03 | Tool and model selection; Tool transport; Agent workspaces; Assignment delivery and clarification |
+| A04 | Assignment and run identity; Process supervision and interruption recovery; Progress reporting; Completion handling; Cancellation; Unresponsive runs |
+| A05 | Performance records; Context readings and thresholds; Checkpoints and safe continuation; Visibility and delivery boundary |
+| A06 | System connections; CLI connection configuration; Local Owner identity and credentials |
+| A07 | CLI request and event contract; SQLite storage; Record ownership; Save and delivery sequence |
+| A08 | Layout and conversation; Startup and connection states; Projects and targeting; Project activities and registration labels |
+| A09 | Attention; Commands; Questions and answers; Answer identity and uncertain delivery; Empty results; Keyboard and terminal behavior |
+| A10 | Purpose and authority; Source format and inputs; Intake and scope; Source and publication selection; Source consistency |
+| A11 | Assessment and independent review; Purpose and dependency checks; Registration process-definition binding; Review limits and decisions |
+| A12 | Package structure; Package record contract; Candidate publication; Confirmation and activation; Publication recovery |
+| A13 | Re-registration; Comparison, activation, and cancellation; Registration agent response contract; Technical recovery; Activity retry request; Adapter configuration |
+| A14 | Entry and responsibility; Persistent architect session; Persistent-session adapter contract; Architecture assignment and response contract; Architecture API operations |
+| A15 | Architecture schema and process-definition binding; Initial code investigation; Lasting project structure and specialist guidance; Whole-product architectural evaluation |
+| A16 | Information sufficiency and clarification; Work-packet-first breakdown; Architecture output locations and records; Architecture record contract |
+| A17 | Saved findings and architecture decisions; Owner decisions at a process limit; Run deadlines and duration exceptions |
+| A18 | Replanning after re-registration; Current versions and stale-data prevention; Deterministic packet checks and correction; Independent review and amendments |
+| A19 | Confirmation and completion; Publication, recovery, and cancellation; Architecture-loop interactions; Architecture-loop implementation boundary |
+| A20 | Execution initiation; Execution process definition and configuration; Execution API, state and record contract |
+| A21 | Development Manager preparation and continuity; Work planning and coder selection; Planning results and questions |
+| A22 | Returned implementation plan; Coder preparation and submitted results; Execution workspaces and repository writes |
+| A23 | Independent implementation review; Packet and integration-change review limits |
+| A24 | Integration management and queue; Milestone branches and product integration; Authorized integration merges |
+| A25 | Milestone outcome review; Milestone-gap architectural assignment; Correction-supplement activation |
+| A26 | Milestone Quality Assurance and test data; Isolated Quality Assurance environment |
+| A27 | Dependency readiness and automatic continuation |
+| A28 | Pause and graceful-stop settlement; Execution completion and recovery |
+| A29 | Specialist assignment and architectural support; Architectural-support configuration and fallback; Support validation and publication |
+| A30 | Work disposition before re-registration; Internal hooks |
+| A31 | Open and use the workspace; Answer a project question; Register a project or selected portion; Update a registration; Recover an interrupted registration; Constraints and unresolved details |
+
+| Ref | Exact supporting locations |
+|---|---|
+| D0 | Packet `REVIEW-SCOPE.md`, current authority/evidence limits |
+| D1–D7 | Packet `RECORDED-DECISIONS.md`: respectively Decisions to preserve; Recorded Execution design decisions/Decisions preserved; Integration and milestone delivery checkpoint; Recorded support decisions; Recorded milestone review and completion decisions; Milestone Quality Assurance and test-data checkpoint; Packet and integration-change review-limit checkpoint |
+| M1 | `docs/milestones/runtime-service-milestones.md`, all five milestone sections, scope, dependencies, acceptance and completion |
+| M2 | `docs/milestones/cli-milestones.md`, both milestone sections and development-order/connected-acceptance scope |
+| M3 | `docs/milestones/registration-milestones.md`, all three milestone sections and common completion requirements |
+| M4 | `docs/milestones/architecture-loop-milestones.md`, all three milestone sections and implementation/schema boundaries |
+| M5 | `docs/milestones/execution-milestones.md`, all five milestone sections and shared connected-acceptance requirements |
+| G1 | `docs/planning-guide/README.md`: Required sources; Entry document and source references; Naming, ordering, and versions; Verification expectations; Partial registration; Relationship to development breakdown |
+| G2 | `docs/planning-guide/architecture-milestone-alignment.md`: Responsibilities; Connection between documents; Sufficient information for breakdown; Completion |
+| G3 | `docs/planning-guide/templates/project-overview.md`, `architecture.md`, `milestone-declaration.md`: all required sections/tables |
+| R1 | `docs/agents/README.md#Authority order`; `docs/agents/architecture-agent.md`, all assignment/authority sections |
+| R2 | `docs/agents/coding-agent-sop.md`: Before changing files; Result and handoff; Corrections. `docs/agents/maestro-developer.md`: Responsibilities; Handoff |
+| R3 | `docs/agents/decision-fidelity-reviewer.md`, all process assignments, independence, proportionality and limits |
+| R4 | `docs/agents/independent-review-agent.md`: Purpose and independence; Review stages; Outcomes and report; Corrections and review limits |
+| R5 | `docs/agents/maestro-development-manager.md` and `docs/agents/integration-agent.md`, all sections |
+| R6 | `docs/agents/qa-agent.md`, all sections |
+| R7 | `docs/agents/specialists/README.md`; `specialist-overlay-template.md`: Responsibility; Authority; Source area; Inputs and outputs |
+| S1 | `docs/schemas/registration-process.schema.json#/$defs/processDefinition`, all fields/policies/required arrays |
+| S2 | `docs/schemas/architecture-loop.schema.json#/$defs`: processDefinition, selection, startPayload, assignment, agentResponse, allocation, requiredOutput, request, receipt, view, activityState |
+| S3 | Same schema: registrationRef, publishedRef, localRef, setRef, artifact, manifest, inventoryEntry, carryForward, index |
+| S4 | Same schema: investigation, preparedInvestigation, projectStructure, specialist, developmentMilestone, workPacket, packetDeliverable, criterion |
+| S5 | Same schema: finding, savedFinding, findingRef, evidence, question, option, decision, decisions, review, preparedReview, confirmation, confirmPayload, allowance, ownerDecision, ownerDecisionPayload, retryPayload, failure |
+| O1 | `docs/project-overview.md`: Overall scope; Current state; Source observations; Authoritative sources; Unresolved information. `README.md#Documentation` |
+
+### Separate selection chains
+
+Each cell traces that specific step. Defined means represented without a found fidelity departure, not implemented operation.
+
+| Selection | Input source | Choosing actor | Collection point | Saved value | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Service/database/workspace/schema | Operator TOML/bundles A02/A07/A13 | Operator; architecture fixes SQLite/policies | Installation M1 | Definition/bundle/config hashes A02 | Sections/paths/bundles A02/A07 | Startup/handlers A01/A02 |
+| CLI address/credential file | TOML/defaults/token A06 | Operator/documented fallback | Startup/retry A06/A09 | Effective address; actor A06/A07 | Loopback/digest A06 | HTTP/SSE A07 |
+| Project/activity/question | Saved overview/attention A08/A09 | Owner | Explicit selector/question A08/A09 | Request context A07 | Target/staleness A08/A09 | Navigation/answer A09 |
+| Registration repository/overview/scope | Caller/guide A10/G1 | Owner | Intake/questions A10 | SQL/Summary/Decision A12 | Access/refs/dependencies A10/A11 | Architect/package A03/A11 |
+| Registration source ref | Supplied/default/inherited A10 | Caller/documented default | Start payload/intake A10 | Selector/commit/provenance A10/A12 | Syntax/object/change A10 | Assignment/confirmation A03/A12 |
+| Publication branch | Explicit/retained authorization A10 | Owner | Payload/intake question A10 | SQL/Decision/manifest A10/A12 | Branch/rule/access A10 | Publication A12/A19 |
+| Repository profile | Operator bindings A13 | Operator unique binding | Match before first read A10 | SQL/profile/config/provenance A10 | Unique match/allowlists/access A10/A13 | All service Git A12/A19/A20 |
+| Registration architect tool/model | Allowed models A03/A13 | Owner | Intake before architect launch A03 | Separate SQL selection A03 | Exact identity/capability A03 | Architect A03/A11 |
+| Registration reviewer tool/model | Separate allowed choice A03/A13 | Owner | Separate intake before architect launch A03 | Separate reviewer selection A03 | Independent exact route A03 | Review A11 |
+| Architecture architect tool/model | Allowed choices A03/A14 | Owner | Start form/S2 startPayload.architect | Session/assignment A14/S2 | Exact route/persistence A14 | Investigation/continuation A14–A16 |
+| Architecture reviewer tool/model | Separate choice A14 | Owner | Start form/S2 startPayload.reviewer | Separate selection/session A14/S2 | Independence/exact route A14 | Review A18 |
+| Architecture baseline/destination | Confirmed manifest A10 | Inherited Owner choice | Start binding A10/A14 | registrationRef/source/set S2/S3 | SQL-confirmed refs/hashes A10/A14 | Investigation/publication A15/A19 |
+| Architecture output IDs/paths | Rules/allocation request A16/S2 | Service IDs; architect area | Assignment/allocation A14 | Bindings/inventory S2/S3 | Scope/path/ownership A15/A16 | Preparation/publisher A17/A19 |
+| Development Manager route | Permitted registry A20 | Owner | Execution start A20 | Activity/session/config A20 | Access/current-input preflight A20 | First manager launch A21 |
+| Execution baseline/branch bases | Confirmed baseline/master A20 | Inherited source; service target | Start/lazy branch A20/A24 | Baseline/master/branch heads A20 | Refs/object/access/head A20/A24 | Worktree/merge A22/A24 |
+| Coder route/model | Registry/packet/capacity A20/A21 | Development Manager | Planning result A21 | Exact route/model/reason A20/A21 | Capabilities/location/context/concurrency A20 | Reserved launch A22 |
+| Specialist assignment | Confirmed/activated roles A16/A29 | Manager/support architect | Planning/support request A21/A29 | Packet/role/context bindings A20/A29 | Applicability/scope/hash/review A29 | Coder inputs A22 |
+| Integration/reviewer/QA/gap routes | Primary/backup config A20 | Operator; service fallback | Snapshot/preflight A20 | Route/session evidence A20 | Distinct/exact/independent/stopped A20 | Role assignment A23–A26 |
+| Support architect route | architectural_support.architect A29 | Operator/service | Support preflight A29 | Config/route/switch A29 | Exact model/permission/stop A29 | Bounded architect A29 |
+| Support reviewer route | Separate fidelity_reviewer A29 | Operator/service | Review preflight A29 | Evidence/count A29 | Independence/exact inputs A29 | Role/context review A29 |
+| QA environment/data/artifacts | Exact QA plan A16/A26 | Architect plan; service run | Plan publication/setup A16/A26 | Plan/environment/lineage/artifact A26 | Scripts/hashes/access/actual path/reset A26 | QA/completion A26/A28 |
+| Limits/retry/disposition | Snapshot/recommendation A17/A20/A30 | Defaults/Owner | Typed decision/retry A17 | Receipt/grant/consumption A17 | Actor/version/target/allowance A17 | Review/retry/settlement A23/A25/A28/A30 |
+| Context thresholds/measurements | Shared config/adapter A05 | Operator/adapter facts | Snapshot/read boundary A05 | Scope/time/quality/segment A05 | Threshold/freshness/fit/lineage A05 | Display/checkpoint/continuation A05 |
+
+### All-journey coverage
+
+S = starting conditions; I = inputs/recipients; C = configuration/selections; A = credentials/authority; T = storage/transactions; X = interfaces/state including producer/schema/consumer; R = results/completion; F = failure/recovery. D = defined/preserved; D* = defined with explicit implementation deferral; D+F1 = controlling rule preserved with the non-blocking role conflict below. Selection references incorporate their six-step rows above.
+
+| Journey | Eight statuses and locations | Fidelity evidence/explanation |
+|---|---|---|
+| 1 Service installation/configuration/credentials/startup | S:D A01/M1; I:D A06/A13; C:D A02/A07/A13; A:D A06; T:D A07; X:D* A02/S1/S2; R:D M1; F:D A02/A06/A07 | D0/D1/O1: continuous Linux service, CLI independence, protected identity, SQLite; installed verification deferred. |
+| 2 CLI workspace/selection/history/reconnect | S:D A06/A08; I:D A07/A08; C:D A06/A08; A:D A06; T:D A07/A09; X:D A07/A08; R:D A08/M2; F:D A06/A08/A09 | D0/D1: selection does not start work; durable history; reconnect does not replay mutations. |
+| 3 Cross-project attention/questions/typed actions | S:D A08/A09/A17; I:D A09/A17; C:D A09/A17; A:D A06/A17; T:D A07/A09/A17; X:D* A07/S5/A20; R:D A09/A17; F:D A09/A17 | D0/D2/D4/D7: no focus theft; answers cannot grant approvals; existing notifications preserved. |
+| 4 Registration intake/source/publication/profile/roles | S:D A10; I:D A03/A10; C:D A03/A10/A13; A:D A06/A10; T:D A07/A10; X:D* A11/S1/A12; R:D A10/M3; F:D A03/A10 | D1: separate role selections before launch; no silent source/destination/credential substitution. |
+| 5 Registration assessment/candidate/review | S:D A10/A11; I:D A03/A11/R1/R3; C:D A03/A11; A:D A10/R1/R3; T:D A07/A12; X:D* A13/A12; R:D A11/M3; F:D A11/A13 | D1: architect assesses and prepares; independent review checks both in one bounded budget. |
+| 6 Registration publication/confirmation/cancellation | S:D A11/A12; I:D A07/A12; C:D A10/A12; A:D A06/A12; T:D A07/A12; X:D* A12/S3; R:D A12/A13; F:D A12/A13 | D1: verified publication/exact explicit confirmation; no work start or duplicated confirmation. |
+| 7 Re-registration/comparison/history/work exclusion | S:D A13; I:D A10/A13; C:D A10/A13; A:D A06/A13; T:D A07/A13; X:D* A12/A13/S3; R:D A13/M3; F:D A12/A13 | D2/D4: idle reservation, prior active history and explicit comparison preserved. |
+| 8 Interrupted registration/reconciliation/recovery | S:D A04/A13; I:D A04/A12/A13; C:D A11/A13; A:D A06/A13/A17; T:D A07/A12; X:D* A04/A12/A13; R:D A13/M3; F:D A04/A12/A13 | D1: unknown stopping/write blocks replay; distinct recovery/publication/review budgets. |
+| 9 Architecture entry/roles/persistent continuation | S:D A14; I:D A14/S2; C:D A14/S2; A:D A06/A14; T:D A07/A14; X:D A14/S2; R:D A14/M4; F:D A04/A05/A14 | D1/D2: separate manual start, independent reviewer, exact saved session bindings. |
+| 10 Investigation/whole-product assessment | S:D A14/A15; I:D A15/R1; C:D A10/A14; A:D A15/R1; T:D A17/A19; X:D A15/S4/S5; R:D A15/M4; F:D A16/A18 | D1/G1: evidence grounds code direction; no full audit or unsupported operation claim. |
+| 11 Structure/specialists/context/knowledge ownership | S:D A15; I:D A15/R7; C:D A14/A16; A:D A16/R1/R7; T:D A16/A19; X:D A15/S3/S4/R7; R:D A16/M4; F:D A16/A18 | D2/D4: source-local roles, single context owner, version checks. |
+| 12 Breakdown/dependencies/QA plans/clarification | S:D A15/A16; I:D A16/R1; C:D A16/S2; A:D A16/R1; T:D A16/A17/A19; X:D* A16/A19/S4; R:D M4/G2; F:D A16/A18 | D2/D6: packets first, explicit parallel/setup/QA inputs; schema extension assigned transparently. |
+| 13 Architecture checks/review/amendments/limits | S:D A18; I:D A14/A18/R3; C:D A17/A18/S2; A:D A17/R1/R3; T:D A07/A17; X:D A18/S5; R:D A18/M4; F:D A17/A18 | D1: distinct correction/fidelity counts; preferences add no gate; typed Owner grants. |
+| 14 Architecture publication/confirmation/completion | S:D A18/A19; I:D A14/A19; C:D A10/A16; A:D A06/A19; T:D A07/A19; X:D A19/S3/S5; R:D A19/M4; F:D A19 | D1/D2: exact reviewed version, journaled publication, no automatic Execution. |
+| 15 Architecture cancellation/interruption/recovery | S:D A14/A19; I:D A14/S2; C:D A05/A19; A:D A06/A17/A19; T:D A07/A19; X:D A14/A19/S2/S5; R:D A19/M4; F:D A04/A05/A19 | D1: stop/write reconciliation before release; restart preserves work/budgets. |
+| 16 Reconciliation after re-registration | S:D A13/A18; I:D A14/A18; C:D A10/A14; A:D A18/R1; T:D A07/A18/A19; X:D A18/S3; R:D A18/M4; F:D A18/A19 | D2/D4: confirmed re-registration/manual start only; unaffected work carries forward. |
+| 17 Execution initiation/baseline/configuration/manager | S:D A20; I:D A20/A21/R5; C:D A20/A21; A:D A06/A20; T:D A07/A20; X:D* A20; R:D A21/M5; F:D A20/A28 | D2: explicit start, manager first; agent chooses, service validates/reserves. |
+| 18 Coder route/specialist/plan/published result | S:D A21/A22; I:D+F1 A22/R2; C:D A20/A21/A29; A:D A22/R2; T:D A20/A22; X:D* A20/A22; R:D+F1 A22/R2; F:D A22/A28 | D1/D2/D3: Qwen primary/direct justified cloud, plan without approval; stale role handoff correction. |
+| 19 Independent packet review/corrections/limits | S:D A22/A23; I:D A23/R4/R5; C:D A20/A23; A:D A23/R4; T:D A20/A23; X:D* A20/A23; R:D A23/M5; F:D A17/A23 | D3/D7: non-author read-only review before Integration; targeted correction/two-round default. |
+| 20 FIFO integration/change review/branch delivery | S:D A23/A24; I:D A24/R5; C:D A20/A24; A:D A22/A24; T:D A20/A24; X:D* A20/A24; R:D A24/M5; F:D A23/A24/A28 | D3/D7: persistent code manager, one FIFO head, review integration changes, service merges. |
+| 21 Missing-specialist support/activation | S:D A29; I:D A29/R1/R3/R5; C:D A29; A:D A29/R1/R3; T:D A20/A29; X:D* A29/R7; R:D A29/M5; F:D A29 | D2/D4: unchanged role applicability only; new role/context review; exact activation/fallback. |
+| 22 Milestone findings/correction supplements | S:D A25/A26; I:D A25/R1; C:D A20/A25; A:D A25/R1; T:D A20/A25; X:D* A20/A25; R:D A25/M5; F:D A25/A30 | D5/D6: architect determines defect/bounded missing work/re-registration; counts unchanged. |
+| 23 Cross-milestone import/invalidation/reconciliation | S:D A24/A27; I:D A27/R5; C:D A16/A27; A:D A24/A27; T:D A20/A27; X:D* A20/A27; R:D A27/M5; F:D A27/A30 | D5: integrated approved packet may satisfy declared dependency; completed-milestone bounds explicit. |
+| 24 Isolated milestone QA/actual paths/artifacts/cleanup | S:D A25/A26; I:D A16/A26/R6; C:D A20/A26; A:D A26/R6; T:D A20/A26; X:D* A16/A19/A26; R:D A26/M5; F:D A26 | D6: milestone QA; input data cannot replace capability; missing/bypassed path UNTESTED/unmerged. |
+| 25 Milestone review/promotion/continuation/closure | S:D A25/A26/A28; I:D A25/R4; C:D A20/A25; A:D A24/A25; T:D A20/A28; X:D* A20/A28; R:D A24/A27/A28/M5; F:D A25/A27/A28 | D3/D5: fresh independent reviewer; no extra approval for passing merge/automatic successful close. |
+| 26 Pause/resume/stop/disposition/retry/stopped closure | S:D A20/A28/A30; I:D A17/A20/A30; C:D A17/A20/A28; A:D A06/A17/A30; T:D A07/A20/A28; X:D* A20/A28; R:D A28/A30/M5; F:D A04/A05/A28 | D2/D4: four dispositions including deliberate finish-current; no false completion/automatic re-registration. |
+| 27 Monitoring/progress/health/resources/history/evidence | S:D A01/A05/A08; I:D A04/A05/A07; C:D A05/A06/A20; A:D A06/A26; T:D A05/A07/A26; X:D* A05/A07/A20; R:D A05/A09/M1/M2/M5; F:D A04/A05/A26/A28 | D0/D1: cross-cutting service/CLI progress, attention, history/resources; no extra app/dashboard or invented percentage. |
+
+### Finding and disposition
+
+`F1 — Preserve coder result routing in the Maestro Developer role`: non-blocking; correction pending. `docs/agents/maestro-developer.md#Responsibilities` directs a result for Integration; `#Handoff` says to return it to Integration. This omits the service/Development Manager handoff and independent review before Integration preserved in D3, A22/A23 and common coding instructions. Its provisional-policy disclaimer is stale relative to defined Execution authority. Minimum correction: reference the common coding service/manager/independent-review handoff and update/remove the disclaimer. No workflow change or extra gate. Non-blocking because higher-priority architecture/common instructions and authority order resolve the route.
+
+`result=pass` with this non-blocking correction; `coverage_complete=true`; `round_consumed=true`; `correction_refs=[]`; `invalidated_by=null`. No additional indispensable journey identified. No other decision-fidelity gaps found within recorded coverage. Original historical fidelity beyond supplied extracts and implementation/operation remain unverified. This retention append is bookkeeping, not another review round.
+
+
+## Whole-system cross-document consistency full coverage
+
+This retains the completed full review, not a new review or a correction of authoritative architecture. The separate targeted correction record must link to it and preserve its original findings.
+
+| Field | Value |
+|---|---|
+| id / subject | WHOLE-CONSISTENCY-1 — Planning, Execution and Monitoring consistency |
+| pass_type / mode / parent_review_id | cross_document_consistency / full / null |
+| scope | All 27 journeys and all eight categories in the frozen whole-review packet; full initial CLI-based system |
+| budget_key / round | whole-system-planning-execution-monitoring-8853d8d-consistency / 1 |
+| maximum | One full pass and one targeted correction check; runtime budgets untouched |
+| reviewer | /root/whole_consistency, separate independent agent context; no reviewed-source authorship or correction; no prohibited-input exposure |
+| snapshot | jmiedreich-ux/Maestro at 8853d8df5aa1a809de449449177bf0492f5efa17; supplied filtered packet |
+| manifest SHA-256 | 3b6453e378df4445fa29f53abedadd74c6e7a8e397091567d6cc0ec21ac9ec0b |
+| source examination | All 34 manifest-listed files actually read; all supplied schema definitions examined; calculated hashes all matched manifest. Shared exact per-file hashes are retained with this handoff by the parent. |
+| result / coverage_complete / round_consumed | material_changes_required / true / true |
+| correction_refs / invalidated_by at full-review completion | Empty; no corrected snapshot had been assessed |
+
+### Original full-review findings
+
+- C1 — Support configuration snapshot origin (blocking): docs/architecture.md, Execution process definition and configuration fixes routes/models/timeouts/limits at Execution start; Architectural-support configuration and fallback instead snapshots configuration at support creation. Later file edits could produce different settings. Minimum correction: explicitly derive support configuration from the parent Execution snapshot, retaining separate assignment counters, or define an authorized exception. Pending architect disposition in the original full review.
+- C2 — Registered outcome reference conversion (blocking): Package record contract produces package-relative {record_id,subject,record_version,path}; architecture schema developmentMilestone.project_outcome_refs, workPacket.project_outcome_refs and investigation.decisions[].outcome_refs require repository-relative publishedRef {id,subject,version,path,sha256,commit}. Package-level registrationRef has an explicit mapping, individual outcomes do not. Minimum correction: service-owned verified inventory conversion, record_id→id, record_version→version, candidate-root path prefix, exact file hash and package publication commit, with mismatch rejection. This is outside the explicit packet/QA schema deferral. Pending architect disposition in the original full review.
+- C3 — Stale Developer handoff (non-blocking): docs/agents/maestro-developer.md, Responsibilities and Handoff direct results to Integration, while architecture Coder preparation and submitted results and coding-agent-sop Result and handoff require service→Development Manager→independent review first. Provisional status/authority order prevent legitimate bypass. Minimum correction: align the handoff and obsolete provisional-policy wording. Pending architect disposition in the original full review.
+
+### Exact location index used by the full review
+
+A0–A29 refer to docs/architecture.md and only the listed exact headings. Other aliases identify compared representations.
+
+| Alias | Path and headings or schema definitions |
+|---|---|
+| A0 | Purpose and boundaries; Functional areas; Components and responsibilities; Runtime and prerequisites; Automated coordination |
+| A1 | Installed validation schemas; Shared process definitions; Shared output handling and process boundaries; Adapter configuration |
+| A2 | Model Execution Adapters; Tool and model selection; Tool transport; Agent workspaces; Assignment delivery and clarification; Assignment and run identity |
+| A3 | Process supervision and interruption recovery; Progress reporting; Completion handling; Cancellation; Unresponsive runs |
+| A4 | Performance records; Context readings and thresholds; Checkpoints and safe continuation; Visibility and delivery boundary |
+| A5 | System connections; CLI connection configuration; Local Owner identity and credentials; CLI request and event contract |
+| A6 | SQLite storage; Record ownership; Save and delivery sequence; Identity, declarations, and ordering |
+| A7 | Layout and conversation; Startup and connection states; Projects and targeting; Project activities and registration labels; Commands; Empty results; Keyboard and terminal behavior |
+| A8 | Attention; Questions and answers; Answer identity and uncertain delivery |
+| A9 | Purpose and authority; Source format and inputs; Intake and scope; Source and publication selection; Source consistency |
+| A10 | Assessment and independent review; Purpose and dependency checks; Registration process-definition binding; Review limits and decisions |
+| A11 | Package structure; Package record contract; Registration agent response contract |
+| A12 | Publication and SQL consistency; Candidate publication; Confirmation and activation; Publication recovery; Agent delegation |
+| A13 | Re-registration; Comparison, activation, and cancellation; Technical recovery; Activity retry request |
+| A14 | Entry and responsibility; Persistent architect session; Persistent-session adapter contract; Architecture assignment and response contract; Architecture API operations |
+| A15 | Initial code investigation; Whole-product architectural evaluation; Lasting project structure and specialist guidance; Information sufficiency and clarification |
+| A16 | Work-packet-first breakdown; Architecture output locations and records; Architecture record contract; Architecture schema and process-definition binding; Saved findings and architecture decisions |
+| A17 | Deterministic packet checks and correction; Independent review and amendments; Owner decisions at a process limit; Run deadlines and duration exceptions |
+| A18 | Confirmation and completion; Publication, recovery, and cancellation; Architecture-loop interactions; Architecture-loop implementation boundary |
+| A19 | Replanning after re-registration; Current versions and stale-data prevention |
+| A20 | Execution initiation; Execution process definition and configuration; Execution API, state and record contract |
+| A21 | Development Manager preparation and continuity; Work planning and coder selection; Planning results and questions |
+| A22 | Returned implementation plan; Coder preparation and submitted results; Execution workspaces and repository writes; Independent implementation review; Packet and integration-change review limits |
+| A23 | Integration management and queue; Milestone branches and product integration; Authorized integration merges |
+| A24 | Milestone outcome review; Milestone-gap architectural assignment; Correction-supplement activation |
+| A25 | Milestone Quality Assurance and test data; Isolated Quality Assurance environment |
+| A26 | Dependency readiness and automatic continuation |
+| A27 | Pause and graceful-stop settlement; Execution completion and recovery; Work disposition before re-registration |
+| A28 | Specialist assignment and architectural support; Architectural-support configuration and fallback; Support validation and publication |
+| A29 | Internal hooks; Constraints and unresolved details; all five Journeys and interactions journeys |
+| O | docs/project-overview.md: Project identity, Overall scope, Current state, Source observations, Authoritative sources, Unresolved information |
+| P | docs/planning-guide/README.md: Required sources, Entry document and source references, Architecture, Milestone declarations, Naming ordering and versions, Partial registration, Verification expectations, Relationship to development breakdown |
+| T | docs/planning-guide/templates/project-overview.md, architecture.md, milestone-declaration.md: all headings/tables; docs/planning-guide/architecture-milestone-alignment.md: Responsibilities, Connection between documents, Sufficient information for breakdown, Completion |
+| SVC | docs/milestones/runtime-service-milestones.md: SVC-PM1 — Operate the persistent Maestro service; SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents; SVC-PM5 — Apply shared process definitions |
+| CLI | docs/milestones/cli-milestones.md: CLI-PM1 — Connected multi-project CLI workspace; CLI-PM2 — Reliable project questions and answers |
+| REG | docs/milestones/registration-milestones.md: REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history; REG-PM3 — Recover registration without losing decisions or exceeding limits |
+| ARC | docs/milestones/architecture-loop-milestones.md: ARC-PM1 — Establish the project's architectural foundations; ARC-PM2 — Produce a bounded and parallel-ready work breakdown; ARC-PM3 — Review and confirm the development breakdown |
+| EXE | docs/milestones/execution-milestones.md: EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies; EXE-PM3 — Resolve architectural gaps within authorized scope; EXE-PM4 — Verify milestones and publish completed Execution; EXE-PM5 — Pause, stop and recover Execution |
+| RA | docs/agents/architecture-agent.md: Assignment and authority, Registration responsibilities, Architecture-loop assignment, Execution architectural support, Execution findings and milestone gaps, Saved findings and process limits |
+| RF | docs/agents/decision-fidelity-reviewer.md: Registration assignment/authority, Architecture-loop assignment, Execution architectural-support assignment, Inputs and independence, Correction review, Saved findings and process limits |
+| RD | docs/agents/maestro-development-manager.md: Initiation and inputs, Work planning, Persistent context, Architectural attention, Review and integration flow, Execution contract boundary |
+| RC | docs/agents/coding-agent-sop.md: Before changing files, Implementation, Result and handoff, Corrections; docs/agents/maestro-developer.md: Responsibilities, Handoff, Stop conditions |
+| RI | docs/agents/independent-review-agent.md: Purpose and independence, Review stages, Outcomes and report, Corrections and review limits |
+| RM | docs/agents/integration-agent.md: Purpose and authority, Inputs and continuity, Review and evidence, Merge handoff, Boundaries |
+| RQ | docs/agents/qa-agent.md: Responsibilities, Test-data boundary, Findings and unavailable verification, Boundaries |
+| RS | docs/agents/README.md: Authority order, Roles, Contract standard; docs/agents/specialists/README.md; docs/agents/specialists/specialist-overlay-template.md: Responsibility, Authority, Source area, Inputs and outputs |
+| JR | docs/schemas/registration-process.schema.json#/$defs/processDefinition: entire object, sections, constants, numeric constraints and required fields |
+| JA1 | docs/schemas/architecture-loop.schema.json#/$defs/: processDefinition, selection, startPayload, request, receipt, view, activityState, retryPayload, confirmPayload, ownerDecision, ownerDecisionPayload, allowance |
+| JA2 | Same schema $defs: assignment, allocation, requiredOutput, agentResponse, artifact, failure, question, option, finding, savedFinding, findingRef |
+| JA3 | Same schema $defs: registrationRef, publishedRef, localRef, setRef, carryForward, inventoryEntry, manifest, index, confirmation |
+| JA4 | Same schema $defs: preparedInvestigation, investigation, decision, decisions, projectStructure, specialist, developmentMilestone, workPacket, criterion, packetDeliverable, preparedReview, review, evidence |
+
+Every declaration examination included identity/order, capability boundary, development/acceptance dependencies, and each milestone's architecture references, dependencies, acceptance criteria, definition of done and unresolved details. Governance actually read: AGENTS.md, CLAUDE.md, REVIEW-SCOPE.md, README.md, RECORDED-DECISIONS.md, and skills/project-architecture-workshop/SKILL.md plus references/reviews.md, planning-guide.md and workshop-state.md.
+
+### Six-step selections from the full review
+
+Each cell is an individually examined step, not inferred solely from launch validation. Location aliases apply to the entire named chain.
+
+| Selection/location | Input source | Chooser | Collection | Saved value | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Service/storage/workspace A0/A1/A6/SVC | Installed TOML | Operator | Installation | Effective settings and activity/config hashes | SQLite/local absolute paths and shared settings | Startup/storage/workspaces |
+| CLI endpoint A5/A7/CLI | CLI TOML/default | Operator | Startup or /retry | Effective session address | Loopback URL restrictions | HTTP/SSE |
+| Owner credential A5/SVC/CLI | Generated secret | Installer/operator | Protected token and service digest | owner.id/digest, protected token | Credential and OS isolation | All CLI reads/actions |
+| Repository/overview A9/P/T/REG | Explicit intake | Verified caller | Form/request | Project/activity/path | Normalization/access/source/path | Overview-guided reads |
+| Scope A9–A11/REG | Whole plan, outcomes or written boundary | Owner/caller | Saved intake and displayed confirmation | Scope/decision | Essential outcomes/dependencies | Architect/candidate |
+| Source A9/A12/A14/A20 | Full ref/SHA, default or inherited selector | Caller/documented default | Payload/intake answer | source_ref, source_commit, provenance/time | Resolve, verify, relevant-change check | Assignments/downstream baseline |
+| Publication A9/A12/A18/A28 | Explicit or retained authorization | Owner | Payload/intake question | publication_branch, Decision/journal | Existing branch, rule, access/protection | Service publication |
+| Repository profile A1/A9/A20 | repository_bindings/repositories | Operator; service unique match | Intake before read | Profile/binding/hash/provenance | Exact binding/access/allowlists | Service Git |
+| Registration architect A2/A9/REG | Explicit tool/exact model | Caller | Intake before architect launch | Separate architect SQL selection | Exact ID, capability/auth and observed identity | Architect run |
+| Registration reviewer A2/A10/RF/REG | Independent explicit tool/model | Caller | Separate intake before architect launch | Separate reviewer SQL selection | Exact ID, capability/auth, independence | Reviewer run |
+| Architecture architect A14/ARC/RA/JA1 | Explicit tool/model | Caller | Start form | startPayload.architect, activity/session | Schema/preflight/runtime identity | Persistent architect |
+| Architecture reviewer A14/A17/ARC/RF/JA1 | Separate explicit tool/model | Caller | Start form | startPayload.reviewer, activity/session | Schema/preflight/independence | Reviewer |
+| Architecture source/destination A9/A14/A18/JA3 | Confirmed manifest/Decision | Prior confirmed Owner selection | Entry binding | registration_ref/source_commit/destination | Manifest/hash/Decision/current registration | Investigation/publication |
+| Record IDs/output paths A16/JA2–JA4 | Conventions/allocation request | Service IDs; architect subject/area | Allocation response/bindings | required_outputs/bindings/manifest | Scope/IDs/paths/collisions | Output/publication |
+| Specialist paths A16/A28/RS | Confirmed structure | Architect; service enforces | Foundation/support allocation | Exact refs and owner | Headings/path/hash/version/ownership | Coder assignment |
+| Execution baseline A20/A23/EXE | Confirmed breakdown/registration | Originating Owner choice | Start derivation | Baseline and distinct master-start head | Source equality/object/current-input | Milestone branch |
+| Manager route A20/A21/RD/EXE | Installed named routes | Owner | Execution start form | Route/model/config snapshot | Route/model/access | Persistent manager |
+| Coder route A20–A22/RD/RC/EXE | Snapshotted registry/packet | Development Manager | Planning request | Route/model/reason | Capability/location/context/concurrency/current state | Coder |
+| Packet specialist A22/A28/RD/RS | Confirmed or activated support binding | Development Manager | Assignment request | Role/context/packet refs | Applicability/authority/hashes/current binding | Coder |
+| Integration/review/QA/gap routes A20/A23–A25/RI/RM/RQ | Separate installed primary/backup | Operator; service cause-based route | Activity snapshot/launch | Route/run evidence | Exact IDs, independence/access, no verdict-seeking fallback | Assigned role |
+| Support architect A20/A28 | architectural_support.architect | Operator/service primary-backup | Support creation | Config/hash/route; C1 origin conflict | Pair/model/access | Support author |
+| Support reviewer A20/A28/RF | Separate fidelity_reviewer config | Operator/service eligible route | Support creation | Reviewer config/hash/route; C1 origin conflict | Independence/model/access | Support review |
+| QA plan/environment/data/secrets/network A16/A20/A25/ARC/EXE/RQ | Confirmed plan/installed roots | Architect; operator provisions | Breakdown and QA setup | Plan/hash/environment/data/config | Confirmed scripts/arrays, non-production boundaries | QA and artifacts |
+| Grants/duration/disposition A17/A27/JA1/EXE | Typed saved decision/recommendation | Verified Owner | Linked explicit action | Receipt/grant/consumption/restriction | Exact target/version/choice/authority/allowance | Retry/review/settlement |
+
+Literal comparisons: registration and architecture share architect.run_timeout_seconds, fidelity_reviewer.run_timeout_seconds, recovery.automatic_recovery_attempts and maximum_fidelity_reviews hierarchy; respective defaults 1800 seconds, 1800 seconds, 2, 2. Architecture additionally uses recovery.maximum_output_corrections=2. Schemas validate effective definitions after numeric defaults; sections/policy constants agree. Registration saved_outputs.contract=registration_package_v1 is deliberately different from architecture saved_outputs.schema=architecture-loop@1. Installed bundles use installation-relative schemas/registration-process/1/schema.json and schemas/architecture-loop/1/schema.json; planned Execution schemas/execution/1/schema.json is distinct from repository source. Registration schema is configuration-only, Execution schemas/handlers are explicitly delivery work.
+
+Shared defaults checked: SQLite /var/lib/maestro/maestro.sqlite3, workspace /var/lib/maestro/workspaces, CLI http://localhost:8787; connection/request 5/15 seconds, heartbeat/disconnect 15/45 seconds, reconnect 1,2,4,8,16,30 seconds. Context warning/handoff/resume thresholds 75/85/70 percent; sample/stale 10/30 seconds with supported-observation limits. Execution packet/integration/milestone review each defaults2, automatic recovery2, manual retry1, parallel QA environments1, artifact retention90 days after closure. Role durations are required, not inherited. Support reviews2/recovery2 remain separate; C1 concerns origin. Explicit prepared-to-saved findings conversion and within-set/published references align; C2 concerns registered individual outcomes. Specialist required headings and role-<role-title>.md/context.md/optional memory.md agree. Guide/declaration identity/version/order rules agree. Explicitly deferred execution_requirements, qa_plan_ref and QA-plan allocation/inventory schema delivery is acknowledged consistently in O/A18/ARC/EXE, not a finding.
+
+### All 27 journeys and eight categories
+
+S=starting conditions; I=inputs/recipients; C=configuration/selections; A=credentials/authority; T=storage/transactions; X=interfaces/state; R=results/completion; F=failure/recovery. D=defined and compared; M=missing consistent contract with stated finding. No category omitted.
+
+| Journey | S | I | C | A | T | X | R | F | Compared representations and explanation |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 Service installation/configuration/credentials/startup | D A0 | D A1 | D A1/A5 | D A5 | D A6 | D A1/A5 | D A0 | D A1/A3 | O/SVC/CLI/JR/JA1: installation owns access/bundles/account; installed evidence deferred. |
+| 2 CLI workspace/selection/history/reconnect | D A5/A7 | D A7 | D A5/A7 | D A5 | D A6 | D A5/A7 | D A7 | D A5/A7 | CLI/SVC: selected versus working project, cursors/pagination/non-replay agree. |
+| 3 Attention/questions/answers/Owner actions | D A8/A17 | D A8/A17 | D A17 | D A5/A17 | D A6/A8 | D A5/A17 | D A8/A17 | D A8/A17 | CLI/REG/ARC/EXE/JA1: receipt/resolution/grant authority distinct; versions/counts retained. |
+| 4 Intake/source/publication/profile/separate roles | D A9 | D A9 | D A2/A9 | D A5/A9 | D A6/A9 | D A9/A11 | D A9 | D A9 | P/T/REG/JR: collection points and default-source versus authorized-destination agree. |
+| 5 Assessment/candidate/independent review | D A9/A10 | D A2/A10 | D A2/A10 | D A9/A10 | D A6/A11 | D A11 | D A10 | D A13/A17 | REG/RA/RF/P/JR: one budget for assessment/candidate; source correction authority retained. |
+| 6 Registration publication/confirmation/cancellation | D A10/A12 | D A11/A12 | D A9/A12 | D A5/A12 | D A6/A12 | D A11/A12 | D A12/A13 | D A12/A13 | REG/RA/RF/JA3: exact package transfer; remote verification before activation; pending-confirmation exclusion. |
+| 7 Registration update/comparison/history/exclusion | D A13 | D A9/A13 | D A9/A13 | D A5/A13 | D A6/A13 | D A11/A13 | D A13 | D A12/A13 | REG/SVC/P: idle reservation, inherited selections and prior active binding agree. |
+| 8 Interrupted registration/publication/recovery | D A3/A13 | D A13 | D A1/A10/A13 | D A5/A17 | D A6/A12 | D A3/A11/A13 | D A12/A13 | D A3/A12/A13 | REG/SVC/JR: separate agent/publication counts; reconciliation queries do not consume writes. |
+| 9 Architecture entry/selections/session | D A14 | D A14 | D A9/A14 | D A5/A14 | D A6/A14 | D A14/JA1/JA2 | D A14 | D A3/A4/A14 | ARC/RA/RF/JA3: explicit selections/session/package binding agree. |
+| 10 Code investigation/whole-product assessment | D A14/A15 | D A15 | D A14 | D A15/RA | D A16 | M A11/A16/JA4 C2 | D A15/A16 | D A15/A17 | ARC/RA/RF: outcome-reference mapping missing; evidence/disposition otherwise aligned. |
+| 11 Structure/specialist/context/knowledge | D A15 | D A15/A16 | D A16 | D A16/RS | D A16/A18 | D A16/JA4 | D A15/A16 | D A16/A19 | ARC/RA/RS: headings/path/one-owner/version-conflict rules agree. |
+| 12 Packets/milestones/dependencies/QA/clarification | D A15/A16 | D A15/A16 | D A16 | D A15/RA | D A16 | M A11/JA4 C2 | D A16/A18 | D A17/A19 | ARC/EXE/P/T: outcome conversion missing; packet/QA schema additions explicitly assigned implementation. |
+| 13 Checks/review/amendments/process limits | D A17 | D A17 | D A1/A17 | D A17/RA/RF | D A6/A16 | D A17/JA1/JA2 | D A17 | D A17 | ARC/SVC/JA1/JA4: finding conversion, coverage and separate allowances agree. |
+| 14 Architecture publication/confirmation/completion | D A17/A18 | D A18 | D A9/A18 | D A5/A18 | D A6/A18 | D A18/JA3 | D A18 | D A18 | ARC/RA/RF: exact working reference, staged specialist/index publication; no automatic Execution. |
+| 15 Architecture cancellation/interruption/recovery | D A14/A18 | D A18 | D A1/A18 | D A5/A18 | D A6/A18 | D A14/A18/JA1 | D A18 | D A3/A4/A18 | ARC/SVC: reconcile confirmation, preserve outputs and unresolved-work budgets. |
+| 16 Reconciliation after re-registration | D A13/A19 | D A19 | D A9/A19 | D A19 | D A6/A19 | D A19/JA3 | D A19 | D A19 | REG/ARC/RA: manual entry/carry-forward/invalidation agree; C2 affects newly converted outcomes. |
+| 17 Execution initiation/baseline/config/manager | D A20 | D A20/A21 | D A20 | D A5/A20 | D A6/A20 | D A20 | D A20/A21 | D A20/A27 | EXE/RD/O: confirmed baseline distinct from master observation; C1 concerns support snapshot. |
+| 18 Coder/specialist/plan/published result | D A20/A21 | D A21/A22 | D A20/A28 | D A22/RC | D A20/A22 | D A22 | D A22 | D A22/A27 | EXE/RD/RC/RS: no plan gate, exact service publication; C3 non-blocking stale handoff. |
+| 19 Packet review/corrections/limit decisions | D A22 | D A22 | D A20 | D A22/RI | D A20 | D A22/A17 | D A22 | D A17/A22 | EXE/RD/RI/RC: exact independent review, bounded correction and recommendation agree. |
+| 20 FIFO integration/change review/branches | D A22/A23 | D A23 | D A20/A23 | D A23/RM | D A20/A23 | D A23 | D A23 | D A23/A27 | EXE/RD/RM/RI: one head/no skip/exact branch patterns/non-fast-forward/current-target checks agree. |
+| 21 Missing-specialist support/activation | D A28 | D A28 | M A20/A28 C1 | D A28/RA/RF | D A20/A28 | D A28 | D A28 | D A28 | EXE/RD/RA/RF/RS: snapshot origin conflicts; support/review/activation files and bindings agree. |
+| 22 Milestone determinations/supplements | D A24 | D A24 | D A20 | D A24/RA | D A20/A24 | D A24 | D A24 | D A24/A27 | EXE/RA/RD/RI: bounded gap session/activation/immutability/unchanged review budget agree. |
+| 23 Dependency import/invalidation/reconciliation | D A26 | D A26 | D A16/A23/A26 | D A23/A26 | D A20/A26 | D A26 | D A26 | D A26 | EXE/RD/RM/RA: closure/FIFO/promotion dependency/transitive quarantine/replacement evidence agree. |
+| 24 Isolated QA/actual paths/artifacts/cleanup | D A25 | D A16/A25 | D A20/A25 | D A25/RQ | D A20/A25 | D A25 | D A25 | D A25 | ARC/EXE/RQ: plan→supervision→actual path→hashed evidence; missing setup planned, bypass UNTESTED. |
+| 25 Milestone review/promotion/continuation/closure | D A24/A26 | D A24/A25 | D A20 | D A23/A24 | D A20/A27 | D A24/A27 | D A26/A27 | D A24/A27 | EXE/RM/RI/RQ/RD: QA/review gates, exact merge/publication precede completion; no additional approval. |
+| 26 Pause/resume/stop/disposition/retry/stopped closure | D A20/A27 | D A17/A27 | D A20/A27 | D A5/A17/A27 | D A6/A20/A27 | D A20/A27 | D A27 | D A3/A4/A27 | EXE/REG/ARC/RD: settlement membership, grant, held FIFO, stopped/completed distinction and manual starts agree. |
+| 27 Monitoring/health/resources/history/evidence | D A0/A5 | D A3/A4/A8 | D A4/A5/A20 | D A5/A25 | D A6/A20/A25 | D A4/A5 | D A4/A7/A27 | D A3/A4/A25/A27 | O/SVC/CLI/REG/ARC/EXE: SQL-first observations, unknown/stale usage, context≠progress, evidence retention agree. |
+
+### Evidence limits and original conclusion
+
+All supplied sources were available and actually examined; listing availability alone was not treated as review. RECORDED-DECISIONS.md contains filtered historical decisions, not original full conversation transcripts; original-conversation fidelity is not established. REVIEW-SCOPE.md filtering retained only named decision sections and excluded prior findings/readiness/review conclusions. Four unrelated illustrative specialist files were omitted and not treated as selectable roles. No sibling packet, drafting directory, original handoff, other reviewer output, current implementation source, live installation, external version research or deployment was examined. Executable Execution/package validators, physical SQL tables, installed adapters and expressly assigned architecture schema additions remain implementation work. Command center, mobile, unsolicited conversation, cross-project drafts, SQL backup/restore and automatically authorized production QA remain excluded. Monitoring creates no new app/agent/dashboard.
+
+Original conclusion: material consistency work was C1 — Support configuration snapshot origin and C2 — Registered outcome reference conversion, plus non-blocking C3 — Stale Developer handoff. Full coverage was complete and consumed round1; one targeted correction check remained. No implementation or operation was established. This retained record preserves that original conclusion, with later correction disposition stored separately.
+
+
+## Whole-system architecture review checkpoint
+
+The Owner requested review of Planning, Execution and Monitoring together and authorized it with “Ok do it,” then “Continue.” Documentation delivery remains directly to master under AGENTS.md; no implementation, live registration or Execution was started. Baseline: `8853d8df5aa1a809de449449177bf0492f5efa17` in `jmiedreich-ux/Maestro`.
+
+### Evidence and independent review accounting
+
+The frozen full packet contained all five declarations, architecture, overview, applicable roles, guide/templates, both supplied schemas and repository/workshop rules. Each completed pass independently read and hash-verified all 34 files. The full-packet manifest SHA-256 is `3b6453e378df4445fa29f53abedadd74c6e7a8e397091567d6cc0ec21ac9ec0b`. Its 27 journey scope and separate eight-category/six-step selection traces are retained in each full coverage record in this handoff. This whole-system subject is distinct from the earlier bounded Execution-declaration review; its original two-round maximum is one full pass plus at most one targeted check per pass. No earlier subject's exhausted budget was reset.
+
+Only recorded decision extracts were supplied from this handoff: Decisions to preserve; Execution design checkpoint/Decisions preserved; Integration and milestone delivery agreed sequence/table; Architectural-support agreement table and technical choices; milestone review/completion agreed bullets; QA/test-data behavioral paragraphs; and packet/integration review-limit behavioral paragraphs. Original historical transcripts were unavailable. Prior review findings, readiness conclusions, author alignment assertions, superseded status narratives and all other handoff material were excluded from fresh inputs. Four unrelated example specialist overlays were excluded because assignment policy excludes them. The actual extracted-decision and scope hashes are listed below; filtering did not hide requirements or implementation deferrals.
+
+The initial completeness attempt by `/root/whole_completeness` was interrupted before a full coverage record because the drafting architect sent proposed corrections before the pass completed. It is recorded as incomplete, prohibited-input exposure=true, coverage_complete=false, round_consumed=false; its partial observations are not independent review evidence. Replacement `/root/whole_completeness_fresh` received only the original frozen packet in a separate context, completed all coverage, and independently reported its four findings. The other two full reviewers had no prohibited-input exposure. Reviewers did not author or correct architectural source documents; appending their own already-completed coverage is bookkeeping only.
+
+### Full snapshot content hashes
+
+| Packet path | SHA-256 |
+|---|---|
+| `AGENTS.md` | `aa21abb1739a22142c827e6a87dd7704cbcdcf1964a67346319479dea15fb418` |
+| `CLAUDE.md` | `d9815eb34819dc8f72d63965d1602e63541e338a3eca9515372197344976352f` |
+| `README.md` | `38bfec24245bfd69c859617a1f16a70a320a32a872376fe0f80b82ca2fdfaf9f` |
+| `RECORDED-DECISIONS.md` | `5b0d21989eab996d7ba4fb635aa7ab9a892ecfe43ebca6fc2867e9b0f3cf0b87` |
+| `REVIEW-SCOPE.md` | `b7016018a7bd14df65500dd549589f14406d50b7f528717953cfe78a282b5b0c` |
+| `docs/agents/README.md` | `f6720efcee9cfc0356749027e7a3ec617a95ec2e1952384b5d7debb6c72b5597` |
+| `docs/agents/architecture-agent.md` | `414a34662c1bf91ec4fad7e26639e3b92cc1db684ce5ab12ecf72a8443ea8600` |
+| `docs/agents/coding-agent-sop.md` | `3a6df86cdd8b5d9d0626feb32b393d0bac309be45d38962ad8ade811f94e42f2` |
+| `docs/agents/decision-fidelity-reviewer.md` | `04189e93fbde6073c7154d7b3b6ad652e928e73ac634dbed91f61434afd52d3c` |
+| `docs/agents/independent-review-agent.md` | `3c1c728635d23ee3e3a3a3a47c490cd8847e1bd33142ff68d06694435e91f10c` |
+| `docs/agents/integration-agent.md` | `93f910daa252a2477bfd63760a3698ffebcab5448736b60d33c48d8ec2e1b62e` |
+| `docs/agents/maestro-developer.md` | `e8eb6d462123023c249098df0f8a8c91a3b6a655cf940edee8cf9d78d6823905` |
+| `docs/agents/maestro-development-manager.md` | `4715f05545a0594e3f7f0c05664d9aa5ff070b7b0e55e3bdd0042ef36af807e7` |
+| `docs/agents/qa-agent.md` | `76a63e754b05e75eef2dc9c22ed5652228fae74690412b80010486225d77b0e0` |
+| `docs/agents/specialists/README.md` | `b62d4790e202ef0f65fa995e16af4f443682147082bc7f019642d26695820a73` |
+| `docs/agents/specialists/specialist-overlay-template.md` | `859615c554756ddb3a82ec9cbf5de929425d331f6d90de9ff934f1c4df9af71a` |
+| `docs/architecture.md` | `d5424d855e577746e3069ddb10f5a82b56cf9194a461b5339ec3aa45fab01090` |
+| `docs/milestones/architecture-loop-milestones.md` | `f6cfe14f0f043e973378a49d8f20db9d17949fc7f0ad4cc69a63cc7c51d94d74` |
+| `docs/milestones/cli-milestones.md` | `a4443270f35c85914ba8337fd21f79a906b5554ddb20a5430e514b6c15b27ed3` |
+| `docs/milestones/execution-milestones.md` | `1a159637542b65c1f279418bce08a827d91819862d933a18eaca5a640a6bf25f` |
+| `docs/milestones/registration-milestones.md` | `a58460130a2fee7b34877b75e7f8e9a30a95347c65d35a3c386734c3c00748d1` |
+| `docs/milestones/runtime-service-milestones.md` | `c87b71032928b9c67d31de3935f1bdc391efc8b0da6f126662f87427cb01d481` |
+| `docs/planning-guide/README.md` | `02d16bba0693b046665c3e78baa082fa52c3713617aed80c04723cedb28aa323` |
+| `docs/planning-guide/architecture-milestone-alignment.md` | `d15ea9556a7ffa03bc332740222086a74b989118939dafa7fdb987ab806f9d2b` |
+| `docs/planning-guide/templates/architecture.md` | `473fd0cf3ba6161b58410873b06c15d815997b922e52227bb2c61a63c75af8fd` |
+| `docs/planning-guide/templates/milestone-declaration.md` | `8a01abd3f88fdc7598a695836dbcbff349470539f2a50f6b77d338b08516cff7` |
+| `docs/planning-guide/templates/project-overview.md` | `4b32f8b6b30f4b025b4db971a48ba33b8c1852bdfec0e12ebc45a1d9dd601d04` |
+| `docs/project-overview.md` | `3dc554f060ac851f2e9dc3bed1430ab40815e5ab7d918e724c36767a24bdce88` |
+| `docs/schemas/architecture-loop.schema.json` | `886338556db97afbca3df93f66d0c79d3e4db853875b6222ca8417ae9bc85221` |
+| `docs/schemas/registration-process.schema.json` | `3f57f041656c241c6448b0e017b372fc076b1956192556f087356331167ba5c3` |
+| `skills/project-architecture-workshop/SKILL.md` | `6dd591f717e26907b54860f464e1c7d3fdc64c4c4a9b181cce5c31011cf79d52` |
+| `skills/project-architecture-workshop/references/planning-guide.md` | `8a0188ba3d6d5943da968c5e08655503297fb18592da921d67c0ef1902eabb51` |
+| `skills/project-architecture-workshop/references/reviews.md` | `0f79b20d1f199dba38f9dbd4be82e4e21e4a8187be45114afd1c1bc3a8d223b4` |
+| `skills/project-architecture-workshop/references/workshop-state.md` | `06d1acba14f17384d2951b44d6df6cc317ae5a47c5ab27221dd64f28b01ea6fb` |
+
+### Corrections and technical authority
+
+Seven distinct findings were accepted as in-scope corrections. The architect resolved runtime mechanics within existing authority; no Owner outcome, automatic initial startup, review independence, production permission or default review/retry limit was changed.
+
+| Finding and impact | Canonical correction and delivery ownership |
+|---|---|
+| Stale Developer direct-Integration handoff; non-blocking because controlling SOP already requires review | Developer role now links service → Development Manager → independent review → Integration and current Execution authority. Reported by both fidelity and consistency. |
+| Conflicting support configuration snapshot times; blocking | Architecture / Architectural-support configuration and fallback derives support values from parent Execution startup snapshot, preserving assignment counters; Execution gap-resolution declaration carries evidence. |
+| Registered outcome reference conversion absent; blocking | Architecture / Architecture record contract defines identity/version rename, candidate path rooting, verified hash and package publication commit, SQL mapping and rejection. Architecture foundations outcome owns delivery. |
+| Planning/packet/integration architectural attention and limit recommendations lacked assignment; blocking | Architecture / Execution architectural determinations defines trigger, reused configured route, exact inputs, named response, bounded authority, validation/SQL routing/recovery and settlement. Architect role and Execution gap-resolution outcome align. |
+| QA project environment/secret references lacked input and binding chain; blocking | Architecture / Project Quality Assurance bindings defines operator TOML and credential provisioning, service catalog transport, architect selection, snapshot/hash, confirmation, QA consumption/revocation and recovery. Architecture breakdown and Execution QA outcomes share real producer/consumer evidence. |
+| Completed-milestone dependency delivery absent; blocking | Architecture / Dependency readiness and automatic continuation defines completed provider head/closure, completion evidence, FIFO import or verified containment, and readiness; includes postponed early delivery. Execution integration outcome owns evidence. |
+| Support review exhaustion lacked typed Owner target; blocking | Architecture / Owner decisions at a process limit and Support validation and publication define exact support target, same-assignment recommendation, grant consumption and continued blocker. Execution gap-resolution outcome owns delivery. |
+
+The corrected packet retains the same evidence/filtering/exclusions. Manifest SHA-256: `5e2913f26069ef851d138137560ce5acf2bbf437b2f9f0a19cb601bfced63d80`; correction-scope SHA-256: `f0e379e21df3ccc6c79f26c2dd9f95c27ed14628be170fe7449cd26e2e41bf9d`. Full coverage remains valid for unchanged meanings; changed coverage is linked only through the targeted records below.
+
+| Changed source | Corrected SHA-256 |
+|---|---|
+| `docs/agents/architecture-agent.md` | `31f79f590605e97c565d68d6b47f1a1f6a9d515dbb49d2f98d139b2259d007a9` |
+| `docs/agents/maestro-developer.md` | `8f2254b35c17684776eb94869fa8f5f1fed58fe5a8e546d41828751e8817766b` |
+| `docs/architecture.md` | `11cf6286e1ce411a8c46d69e587bd39acef1a417d720d96cca12c11829040ccc` |
+| `docs/milestones/architecture-loop-milestones.md` | `2a31fe1a724b1f863aaf430d3db78c715ddd3b0f48e7f7e71010e9c8ff5c5633` |
+| `docs/milestones/execution-milestones.md` | `46d4ca96e89334d9b1739258ee6b3204aad678049053e8b61bc9162f2c616e58` |
+| `docs/project-overview.md` | `273b3de973e9871f773a3c3cd32065bf95e1a47f338da4329ab9e2386590a9cf` |
+
+Architecture-loop declaration version is 7: foundations milestone version 7, breakdown milestone version 6, review/confirmation milestone unchanged at version 6. Execution declaration version is 2: packet delivery milestone unchanged at version 1; integration, architectural gaps, QA/completion and lifecycle milestones version 2. Overview version is 13. Stable identities and ordering are preserved.
+
+Current source code, installed accounts/tools/configuration, live operation and deployment were not assessed. Executable schema extensions, handlers, physical tables and installed verification remain declared implementation work. Historical full-transcript fidelity is unverified. Command center, mobile, unsolicited conversation, SQL backup/restore, configurable hooks, automatic initial Execution and unauthorized production QA remain excluded. No new Monitoring app or agent is implied.
+
+
+### Whole-system decision-fidelity targeted correction coverage
+
+`whole-fidelity-2 — Whole-system decision-fidelity correction check`; pass_type=decision_fidelity; mode=targeted; parent=`whole-fidelity-1 — Whole-system decision fidelity`; budget_key=`whole-system-8853d8df-decision-fidelity`; round=2 of2, now exhausted. Reviewer `/root/whole_fidelity` remained independent and did not author/correct architectural documents. It read only the frozen correction packet and its earlier coverage. All six corrected-source hashes, scope/decision hashes and manifest match the shared corrected hash table above. Original exclusions and unavailable transcripts remain unchanged. `result=pass; coverage_complete=true; round_consumed=true`. The stale Developer-handoff finding is resolved; no broader invalidation or new fidelity finding was identified.
+
+Category keys: S starting conditions; I inputs/recipients; C configuration/selections; A credentials/authority; T storage/transactions; X interfaces/state; R results/completion; F failure/recovery. Journey numbers refer to their plain subjects in the retained full coverage.
+
+| Corrected behavior and journey subjects | Updated category coverage and locations | Finding disposition and preserved decision |
+|---|---|---|
+| Coder handoff and independent packet review (18–19) | I/A/R defined: Developer Responsibilities/Handoff; common coding Result and handoff; architecture Coder preparation and submitted results/Independent implementation review | Developer finding resolved: service→manager→independent exact-revision approval precedes Integration; no plan gate. |
+| Execution/support configuration (17,21) | C/T/X/F defined: Architectural-support configuration and fallback; Execution gap-resolution acceptance | Parent startup snapshot controls both support roles; separate counts and cause-based fallback preserved. |
+| Architecture entry/investigation/breakdown/reconciliation (9,10,12,16) | I/T/X/F defined: Architecture record contract; Architecture foundations dependency/acceptance | Verified package-record mapping preserves exact outcome identity and separates package publication from source baseline. |
+| Execution planning/packet review/integration/settlement (17,19,20,26) | S/I/C/A/T/X/R/F defined: Execution architectural determinations; Execution API/state/record contract; Independent implementation review; Pause and graceful-stop settlement; Architect findings role; Execution gap/lifecycle acceptance | Bounded configured assignment fulfills existing clarification/recommendation duties; no redesign, dispatch, approval, supplement or grant authority. Counts/settlement restrictions retained. |
+| QA-plan production/confirmation/run/recovery (12,14,24,26) | I/C/A/T/X/R/F defined: Project Quality Assurance bindings; Architecture record contract; Isolated Quality Assurance environment; Architecture breakdown and Execution QA delivery | Operator input→service catalog→architect choice→snapshot/hash→existing review/confirmation validation→isolated use is explicit. No extra registration/approval stage; changed/revoked binding is UNTESTED. |
+| Dependency delivery/promotion (23,25) | S/I/C/T/X/R/F defined: Dependency readiness and automatic continuation; Execution completed-provider acceptance | Exact completed head/closure uses FIFO import or verified containment; early eligibility and promotion gates preserved. |
+| Typed Owner/support-limit actions (3,21) | S/I/C/A/T/X/R/F defined: Owner decisions at a process limit; Support validation and publication; Execution gap-resolution limit acceptance | Exact recommendation and typed support target bind only that allowance. No automatic extra review, role activation or count reset. |
+
+Unchanged original 27-journey coverage is retained. Manual starts, independent review, exact confirmation, four work dispositions, strict FIFO, actual-path QA and automatic eligible continuation/completion remain preserved. No decision-fidelity gaps were found within retained full coverage plus this targeted scope; full historical transcript fidelity and implementation/operation remain unverified.
+
+
+### Whole-system cross-document consistency targeted coverage
+
+`WHOLE-CONSISTENCY-2 — Whole-system consistency correction check`; parent=`WHOLE-CONSISTENCY-1 — Planning, Execution and Monitoring consistency`; pass_type=cross_document_consistency; mode=targeted; budget_key=`whole-system-planning-execution-monitoring-8853d8d-consistency`; round=2 of2, exhausted. Reviewer `/root/whole_consistency` remained independent and made no architectural correction. It examined the frozen corrected sources, named changes and directly affected schemas/roles/declarations; it did not use the handoff as review evidence. All corrected-source/scope hashes match the shared map. It also examined unchanged architecture schema hash `886338556db97afbca3df93f66d0c79d3e4db853875b6222ca8417ae9bc85221` and registration schema hash `3f57f041656c241c6448b0e017b372fc076b1956192556f087356331167ba5c3`.
+
+`result=pass; coverage_complete=true; round_consumed=true; invalidated_by=null`. Support snapshot origin, registered outcome-reference conversion and stale Developer handoff are resolved. No additional inconsistency was found within named corrections/direct dependencies. Unchanged full coverage and all original exclusions remain valid.
+
+| Corrected boundary | Exact compared locations | Defined and consistent result |
+|---|---|---|
+| Support snapshot | Architecture / Execution process definition and configuration; Architectural-support configuration and fallback; Execution gap-resolution acceptance | Parent startup snapshot supplies separate support architect/reviewer configuration; assignment replacement preserves counts. |
+| Outcome reference conversion | Architecture / Package record contract, Architecture record contract; schema publishedRef/registrationRef; Architecture foundations dependency/acceptance | Verified record identity/version rename, candidate-root path, file hash and package commit match consumer shape without changing package-level reference. |
+| Developer handoff | Developer Responsibilities/Handoff; coding SOP Result and handoff; Architecture Coder preparation and submitted results/Independent implementation review | Service→Development Manager→independent exact-revision review precedes Integration eligibility. |
+| Architectural determinations | Architecture / Execution architectural determinations, Execution API/state/record contract, Packet and integration-change review limits; Architect findings role; Execution gap-resolution outcome | Saved question/count trigger, parent gap-architect route, Execution recovery allowances, response/routing/recommendation and restricted authority agree. |
+| QA bindings | Architecture / Project Quality Assurance bindings, Architecture record contract, Isolated Quality Assurance environment, Architecture-loop implementation boundary; schema assignment; Architecture breakdown and Execution QA outcomes | Operator registry→non-secret catalog→architect selection→confirmed plan/hash→isolated resolution agrees. Catalog uses existing instructions, not unsupported schema field or Git publishedRef. |
+| Completed-provider delivery | Architecture / Dependency readiness and automatic continuation, branch/import/promotion contracts; Execution integration outcome | Verified passing provider head and closure use FIFO import or verified containment before readiness, including held early imports. |
+| Support limit action | Architecture / Owner decisions at a process limit, Support validation and publication, Architectural-support configuration and fallback; Execution gap-resolution outcome | Exact support target/recommendation/allowance matches Execution validator ownership; architecture-local Owner-decision enum intentionally unchanged. |
+| Lifecycle/current state | Architecture / Pause and graceful-stop settlement; Execution lifecycle outcome; Overview Current state/Authoritative sources/Unresolved information | Determinations retain settlement restrictions; overview does not claim implementation completion or authorize Execution. |
+
+| Selection or mapping | Input source | Choosing actor | Collection | Saved value | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Support architect settings | Parent startup architect table | Prior operator choice; service fallback | Support creation | Copied config/provenance/counts | Exact tool/model/access/cause | Support author and recommendation runs |
+| Support reviewer settings | Separate parent reviewer table | Prior operator choice; eligible service fallback | Support creation | Separate reviewer route/session/counts | Exact identity and authorship independence | Role/context review |
+| Registered outcome reference | Confirmed candidate/inventory | Service mechanical conversion | Architecture entry | Exact mapping/assignment inputs | Bytes/type/identity/version/hash/inclusion | Investigation and packet/milestone outcome links |
+| Determination route | Parent gap-architect snapshot | Service | Question/exhausted-count trigger | Assignment/run/config/input bindings | Fresh exact references/permitted result | Manager routing or typed Owner action |
+| QA environment/secret/network definition | Project TOML and service credential store | Operator provisions | Project binding collection | Immutable non-secret SQL snapshot/hash | Test classification/name/permission/credential checks | Service catalog |
+| QA plan selections | Service catalog | Architect | Read-only catalog before drafting | Plan refs/project_binding_hash | Catalog equality and publication/confirmation checks | Isolated setup/support processes |
+| Support extra-review allowance | Exact support exhaustion/recommendation | Verified Owner | Linked typed owner.decision | Single support-bound grant/consumption | Identity/version/authority/replay | One extra completed support review or continued pause |
+
+Literal QA keys agree: environment `classification/variables/secret_names/network_dependency_names`; secret `classification/credential_ref/environment_variable`; network `host/protocol/ports`. Self-contained plans use empty reference lists and null binding hash. Service-only locators and secret-value isolation remain explicit.
+
+| Journey subjects | Updated categories and evidence |
+|---|---|
+| Typed Owner actions (3) | I/C/A/T/X/R/F defined at Owner decisions/Support validation: exact target, recommendation, once-only receipt and blocker. |
+| Architecture entry/investigation (9–10) | I/C/T/X/R/F defined at Architecture record contract and schema publishedRef: verified producer conversion precedes use. |
+| Breakdown/review/confirmation (12–14) | I/C/A/T/X/R/F defined at Project QA bindings/record contract and producer declaration: catalog/plan/hash carries through normal review and exact confirmation. |
+| Re-registration reconciliation (16) | I/T/X/F defined at Architecture record contract: new mapping verified; history retained. |
+| Execution planning/coder/packet review/integration (17–20) | S/I/C/A/T/X/R/F defined for determination/handoff changes at the named architecture/role locations: bounded routing, counts, independent review and original-author correction preserved. |
+| Specialist support (21) | All eight categories defined at support configuration/validation and typed decision: parent snapshot, distinct roles, recommendation, grant and recovery agree. |
+| Dependency delivery (23) | All eight categories defined at dependency readiness/import/completion and integration acceptance: exact provider closure and verified consumer incorporation. |
+| QA (24) | All eight categories defined at project binding/isolated environment and producer/consumer declarations: provision, catalog, selection, confirmation and run/failure chain. |
+| Promotion/lifecycle/monitoring (25–27) | Directly affected I/C/T/X/R/F defined at dependency/QA/support/determination/settlement contracts: current evidence gates advancement, saved limits/references survive restart, blockers remain visible. |
+
+Original full coverage supplies all unchanged categories. Executable schemas/handlers and installed proof remain delivery work; original transcripts, current code and live operation remain unverified. The reviewer's full-coverage bookkeeping was a single append-only write of 27,853 bytes, verified at SHA-256 `a0d92a5df88989486f22b85ad643fdd2830c8eeef0a928ff6a46c7784f6d3b01`; it was not an architectural edit or extra review round.
+
+
+## Whole-system architectural-completeness full coverage
+
+Record `whole-completeness-8853d8df-round1` — Whole-system architectural completeness. Independent reviewer `/root/whole_completeness_fresh`; separate session; no reviewed-document authorship, correction, prohibited conclusions, other review output or author-proposed fixes received. Pass `architectural_completeness`, mode `full`, parent null, budget `whole-system-8853d8df/architectural-completeness`, round 1 of 2. Repository jmiedreich-ux/Maestro, baseline `8853d8df5aa1a809de449449177bf0492f5efa17`; filtered packet manifest SHA-256 `3b6453e378df4445fa29f53abedadd74c6e7a8e397091567d6cc0ec21ac9ec0b`. All 34 manifest sources were actually read and byte hashes verified without mismatch. Shared full hash map supplies exact per-file hashes. Result at this snapshot: `material_changes_required`; `coverage_complete: true`; `round_consumed: true`; correction_refs initially empty; invalidated_by null. No implementation or operational readiness asserted.
+
+### Full-pass exact-location index
+
+All A aliases are exact headings in `docs/architecture.md`:
+
+| Alias | Headings |
+|---|---|
+| A01 | Purpose and boundaries; Components and responsibilities; Runtime and prerequisites |
+| A02 | Automated coordination; Agent delegation |
+| A03 | Installed validation schemas |
+| A04 | Shared process definitions; Shared output handling and process boundaries |
+| A05 | Whole-product architectural evaluation |
+| A06 | Model Execution Adapters; Tool and model selection; Tool transport |
+| A07 | Agent workspaces; Assignment delivery and clarification; Assignment and run identity |
+| A08 | Process supervision and interruption recovery; Progress reporting; Completion handling; Cancellation; Unresponsive runs |
+| A09 | Returned implementation plan |
+| A10 | Performance records; Context readings and thresholds |
+| A11 | Checkpoints and safe continuation; Visibility and delivery boundary |
+| A12 | System connections; CLI connection configuration |
+| A13 | Local Owner identity and credentials |
+| A14 | CLI request and event contract |
+| A15 | SQLite storage; Record ownership; Save and delivery sequence |
+| A16 | Identity, declarations, and ordering |
+| A17 | Layout and conversation; Startup and connection states; Projects and targeting |
+| A18 | Project activities and registration labels; Attention; Commands |
+| A19 | Questions and answers; Answer identity and uncertain delivery; Empty results; Keyboard and terminal behavior |
+| A20 | Purpose and authority; Source format and inputs; Intake and scope |
+| A21 | Source and publication selection; Source consistency |
+| A22 | Assessment and independent review; Purpose and dependency checks |
+| A23 | Registration process-definition binding; Review limits and decisions |
+| A24 | Package structure; Package record contract |
+| A25 | Publication and SQL consistency; Candidate publication; Confirmation and activation; Publication recovery |
+| A26 | Re-registration; Comparison, activation, and cancellation |
+| A27 | Registration agent response contract; Technical recovery; Activity retry request; Adapter configuration |
+| A28 | Entry and responsibility; Persistent architect session; Persistent-session adapter contract |
+| A29 | Architecture assignment and response contract; Architecture API operations |
+| A30 | Architecture schema and process-definition binding |
+| A31 | Initial code investigation; Lasting project structure and specialist guidance |
+| A32 | Information sufficiency and clarification; Work-packet-first breakdown |
+| A33 | Architecture output locations and records; Architecture record contract |
+| A34 | Saved findings and architecture decisions |
+| A35 | Owner decisions at a process limit; Run deadlines and duration exceptions |
+| A36 | Replanning after re-registration; Current versions and stale-data prevention |
+| A37 | Deterministic packet checks and correction; Independent review and amendments |
+| A38 | Confirmation and completion; Publication, recovery, and cancellation |
+| A39 | Architecture-loop interactions; Architecture-loop implementation boundary |
+| A40 | Execution initiation; Execution process definition and configuration |
+| A41 | Execution API, state and record contract |
+| A42 | Development Manager preparation and continuity; Work planning and coder selection; Planning results and questions |
+| A43 | Coder preparation and submitted results; Execution workspaces and repository writes |
+| A44 | Independent implementation review; Packet and integration-change review limits |
+| A45 | Integration management and queue; Milestone branches and product integration |
+| A46 | Milestone outcome review; Milestone-gap architectural assignment; Correction-supplement activation |
+| A47 | Milestone Quality Assurance and test data; Isolated Quality Assurance environment |
+| A48 | Dependency readiness and automatic continuation |
+| A49 | Pause and graceful-stop settlement; Execution completion and recovery; Authorized integration merges |
+| A50 | Specialist assignment and architectural support; Work disposition before re-registration |
+| A51 | Architectural-support configuration and fallback; Support validation and publication |
+| A52 | Internal hooks; Constraints and unresolved details |
+| A53 | Open and use the workspace; Answer a project question; Register a project or selected portion; Update a registration; Recover an interrupted registration |
+
+Other source/location aliases (all supplied contents actually examined in the full pass):
+
+| Alias | Path and headings |
+|---|---|
+| G01 | `docs/planning-guide/README.md`: Required sources; Entry document and source references; Architecture; Milestone declarations; Naming, ordering, and versions; Current capability and dependencies; Partial registration; Verification expectations; Missing or contradictory information; Relationship to development breakdown |
+| G02 | `docs/planning-guide/architecture-milestone-alignment.md`: Responsibilities; Connection between documents; Sufficient information for breakdown; Completion |
+| G03 | `docs/planning-guide/templates/project-overview.md`, `architecture.md`, `milestone-declaration.md`: all headings and repeated milestone shape |
+| R01 | `docs/agents/README.md`: Authority order; Roles; Contract standard |
+| R02 | `docs/agents/architecture-agent.md`: Assignment and authority; Registration responsibilities; Architecture-loop assignment; Execution architectural support; Execution findings and milestone gaps; Later design and development preparation; Saved findings and process limits |
+| R03 | `docs/agents/decision-fidelity-reviewer.md`: registration/architecture-loop/support assignment sections; Inputs and independence; Review method; Outcomes; Correction review; Review coverage; Required report |
+| R04 | `docs/agents/independent-review-agent.md`: Purpose and independence; Findings and routing; Review stages; Outcomes and report; Corrections and review limits |
+| R05 | `docs/agents/maestro-development-manager.md`: Initiation and inputs; Work planning; Persistent context; Architectural attention; Review and integration flow; Execution contract boundary |
+| R06 | `docs/agents/integration-agent.md`: Purpose and authority; Inputs and continuity; Review and evidence; Merge handoff; Boundaries |
+| R07 | `docs/agents/qa-agent.md`: Responsibilities; Test-data boundary; Findings and unavailable verification; Boundaries |
+| R08 | `docs/agents/coding-agent-sop.md`: Before changing files; Implementation; Result and handoff; Corrections. `docs/agents/maestro-developer.md`: provisional status and all sections |
+| R09 | `docs/agents/specialists/README.md`: complete format guidance. `specialist-overlay-template.md`: Responsibility; Authority; Source area; Inputs and outputs and subheadings |
+| D01 | `docs/milestones/runtime-service-milestones.md`: all SVC-PM1 — Operate the persistent Maestro service through SVC-PM5 — Apply shared process definitions, including dependencies/criteria/done/unresolved |
+| D02 | `docs/milestones/cli-milestones.md`: CLI-PM1 — Connected multi-project CLI workspace; CLI-PM2 — Reliable project questions and answers, all subsections |
+| D03 | `docs/milestones/registration-milestones.md`: REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history; REG-PM3 — Recover registration without losing decisions or exceeding limits, all subsections |
+| D04 | `docs/milestones/architecture-loop-milestones.md`: ARC-PM1 — Establish the project's architectural foundations; ARC-PM2 — Produce a bounded and parallel-ready work breakdown; ARC-PM3 — Review and confirm the development breakdown, all subsections |
+| D05 | `docs/milestones/execution-milestones.md`: EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies; EXE-PM3 — Resolve architectural gaps within authorized scope; EXE-PM4 — Verify milestones and publish completed Execution; EXE-PM5 — Pause, stop and recover Execution, all subsections |
+| S01 | `docs/schemas/registration-process.schema.json`: whole document; `$defs.processDefinition` and all nested fields |
+| S02 | `docs/schemas/architecture-loop.schema.json`: whole document/all definitions: assignment, agentResponse, selection, startPayload, request, receipt, view, processDefinition, registrationRef, setRef, publishedRef, localRef, requiredOutput, allocation, artifact, manifest, inventoryEntry, carryForward, preparedInvestigation, investigation, preparedReview, review, finding, savedFinding, findingRef, decision, decisions, projectStructure, specialist, developmentMilestone, workPacket, packetDeliverable, criterion, confirmation, confirmPayload, retryPayload, allowance, ownerDecision, ownerDecisionPayload, question, option, evidence, failure, activityState, index |
+| E01 | `docs/project-overview.md`: all sections, including Overall scope; Current state; Source observations; Authoritative sources; Unresolved information |
+| E02 | `RECORDED-DECISIONS.md`: every retained decision section; recorded evidence, not original transcript |
+| M01 | `REVIEW-SCOPE.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`; `skills/project-architecture-workshop/SKILL.md` and `references/planning-guide.md`, `reviews.md`, `workshop-state.md`: complete contents |
+
+### Full-pass findings
+
+All four were blocking and open for architect disposition at the full snapshot:
+
+| Finding | Absence and impact | Minimum correction |
+|---|---|---|
+| Completeness finding 1 — Non-milestone architectural attention | A44/R02/R04/R05 require packet/integration architectural determinations and exhausted-review recommendations, but A50/A51 only define missing-specialist support and A46 only starts gap assignments for failed milestone QA/outcome findings. Implementer must invent task/route/inputs/result/accounting before reviewed packet and integration outcomes can progress. | Define bounded service routing/assignment for planning/packet/integration architectural issues and limit recommendations, with configured route, exact inputs, saved result/consumer and existing recovery; no new gate or redesign authority. |
+| Completeness finding 2 — QA environment and secret binding chain | A33 plans reference environment_refs/secret_refs; A47 consumes approved project names/service credential store; no actor, source, collection point, authoritative registry/binding/version or approval-resolution contract. Plan production and isolated QA need invented configuration. | Define operator/existing-authority provisioning, collection, non-secret durable binding/version, reference validation, consumption and missing/changed behavior; secrets remain outside prompts/records, no new approval loop. |
+| Completeness finding 3 — Completed-milestone code delivery | A48 defines early packet import and waiting for provider completion, but A45 pins every milestone to initial baseline. No later exact source/allowed closure/import/readiness rule for completed-milestone dependencies or early imports held for excess closure. | Define completed-provider revision, authorized closure, existing FIFO/journal import, exact consumer readiness and held-import transition, retaining branch/merge authority. |
+| Completeness finding 4 — Support review-limit Owner disposition | A51 sends exhausted support review to Owner, but A35 fidelity_review covers only registration/architecture and enumerated Execution targets omit support. No actionable typed support allowance/disposition can be applied without inventing authority. | Define permitted typed Owner handling for exact support assignment/counts; map an additional grant only if already authorized, otherwise its permitted disposition; retain blocked work and original budget. |
+
+### Full-pass six-step selection chains
+
+D = defined; M = missing; N/A = not_applicable. Each row separately traces source, chooser, collection, save, validation and consumer; route rows include tool and exact model. Missing statuses below describe the original snapshot and are superseded only by the linked targeted record.
+
+| Selection | Source | Actor | Collection | Saved | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Service/storage/schema/agent settings | D A03,A04,A15,A27: bundles/TOML/defaults | D A01,A27,D01: installer/operator | D A04,A27: /etc/maestro/agents.toml | D A03,A04: effective table/bundle/config hashes | D A03,A04,A15: schema/sections/paths/SQLite access | D A01,A04,A15: startup/handlers/launches |
+| CLI service address | D A12: cli.toml or localhost:8787 | D A12: operator; specified fallback | D A12: XDG/default path, retry reread | D A12: effective session address; activity durability N/A | D A12: loopback URL/port; reachability does not substitute | D A12–A14: HTTP/SSE |
+| Owner token/file path | D A13: installation token and optional path | D A13: installer/operator | D A13: protected file, owner_credential_file, owner.* | D A13: token file/digest/Owner ID | D A13: permissions/digest/no redirects | D A13,A14: Owner requests |
+| Project/activity/question focus | D A17–A19: retrieved records | D A17–A19: user | D A17–A19: selectors/attention | D A17–A19: session focus; A14,A15 action context | D A17–A19: no guess, current question | D A14,A19: commands/answers |
+| Answer choice/text | D A19: saved options/input | D A19: Owner | D A19: explicit linked Send/Enter | D A15,A19: request/answer/pending delivery | D A19: replay/current-question transaction | D A07,A29,A42: next assignment |
+| Registration repository | D A20: explicit caller input | D A20: Owner/caller | D A18,A20: register/intake | D A20,A21: normalized project/attempt | D A21: access/unique binding/duplicate guard | D A21,A24,A25: source/publication |
+| Overview path | D G01,A20: supplied relative entry | D A20: caller/project architect | D A14,A20,A53: intake path | D A24: manifest overview_path/assignments | D A20,A21: allowed readable path/links | D A20,A22: assessment |
+| Whole/partial scope | D A20,G01: outcomes/written boundary | D A20: Owner confirms interpretation | D A20: scope presentation/questions | D A24: summary/requirements/decisions | D A20,A22: essentials/outside dependencies | D A22,A28,A32: assessment/breakdown |
+| Source selector/commit | D A21: explicit/default/inherited selector | D A21: caller or documented default | D A14,A21: payload/question/source choice | D A21,A24: SHA/provenance/Decision/manifest | D A21: full ref, readable commit, change check | D A07,A21,A28,A40: source through Execution |
+| Publication branch | D A21: explicit or retained authorization | D A21: Owner | D A21: payload/intake question | D A21,A24,A25: SQL/Decision/manifest/journal | D A21,A25: exists/protection/allowlist/head | D A25,A38,A43,A49,A51: service writes |
+| Repository profile | D A27: repository_bindings/repositories | D A21: operator; unique service match | D A21: resolve before source read | D A21: attempt/provenance/confirmed binding | D A21: unique/known/access/branch checks | D A25,A38,A40,A41: service Git |
+| Registration architect tool | D A06: Codex/Claude | D A06,A20: explicit caller | D A06,A14: own intake question | D A06,A07: activity/assignment/run | D A06: executable/version/capability/auth | D A06–A08: architect |
+| Registration architect exact model | D A06,A27: full allowed IDs | D A06: caller | D A06,A14: architect model intake | D A06,A07: requested/reported identity | D A06: no alias/substitution, actual match | D A06–A08: launch/result |
+| Registration reviewer tool | D A06: independent tool options | D A06: caller | D A06,A14: separate intake question | D A06,A07: separate choice before author launch | D A06,A07: support/independent workspace | D A22: reviewer |
+| Registration reviewer exact model | D A06,A27: full allowed IDs | D A06: independent caller choice | D A06,A14: reviewer model intake | D A06,A07: reviewer model/run evidence | D A06: requested/reported match | D A22,A27: review acceptance |
+| Architecture architect tool/model | D A06,A28: exact permitted options | D A28,A29: Owner | D A29,S02 startPayload.architect | D A28,A29,S02 assignment.selection: session | D A06,A28: exact/persistent capability | D A28: architect continuation |
+| Architecture reviewer tool/model | D A06,A28: separate options | D A28,A29: Owner separately | D A29,S02 startPayload.reviewer | D A28,A29: distinct session binding | D A06,A28: model/no author history | D A37: independent review |
+| Architecture baseline/destination | D A21: confirmed manifest/Decision | D A21: inherited Owner choice | D A21,A28,A29: entry binding | D A28–A30,S02 registrationRef/assignment | D A21,A30: SQL-confirmed verified package | D A31–A38: investigation/publication |
+| IDs/paths/specialist title/area | D A29,A33: allocation/proposal | D A29,A33: architect meaning, service IDs | D S02 allocation/allocation_bindings | D A33,A34: manifest/bindings | D A30,A33: ownership/path/collision | D A33,A38: staged publication/context |
+| QA plan/data paths | D A33,A47: outcomes/findings/setup | D A32,A33,R02: architect | D A33: milestone QA output | D A33,A38: version/hash/ref | D A33,A39: semantics/schema-extension delivery | D A47: setup/checks |
+| QA environment bindings | M A33,A47: provisioned source undefined | M: supplying/binding actor absent | M: collection/config contract absent | M: underlying binding/version absent | M: approval/resolution provenance absent | D A47: supervisor requires refs |
+| QA secret bindings | M A33,A47: project store input undefined | M: provisioning actor absent | M: collection contract absent | M: names saved, binding absent | M: existence/classification/change rules absent | D A47,R07: service requires test secrets |
+| Execution baseline/master | D A40: confirmed source and remote master | D A40: inherited Owner/service observation | D A40: start reads | D A40,A41: baseline/separate master-start SHA | D A40: current registration/object equality | D A45,A49: branches/closure |
+| Development Manager route | D A40: named configured routes/models | D A40: Owner | D A40,A41: start form/ID | D A40–A42: snapshot/session | D A40: exact/capability/credentials | D A42: first planning action |
+| Coder route/model | D A40: registry/Qwen default | D A42: manager with reason | D A42: structured launch entry | D A41–A43: assignment route/plan | D A40,A42: capabilities/location/context/capacity/model | D A43: coder launch |
+| Packet specialist | D A33,A50: confirmed/activated role | D A50: manager | D A42,A50: launch request | D A41,A50,A51: exact binding | D A50,A51: applicability/hashes/coverage | D A43,R08: coder |
+| Integration Manager route/model | D A40: configured primary/backup | D A40: operator/service eligible choice | D A40: integration_manager TOML | D A40,A41,A45: snapshot/session | D A40: model/access/backup cause | D A45: integration |
+| Packet reviewer route/model | D A40: reviewers.packet | D A40: operator/service | D A40: separate TOML | D A40,A41: snapshot/review assignment | D A40,A44,R04: model/independence | D A44: packet review |
+| Integration-change reviewer | D A40: reviewers.integration_change | D A40: operator/service | D A40: separate TOML | D A40,A41: distinct review snapshot | D A40,A44,R04: model/non-author | D A45: change review |
+| Milestone reviewer | D A40: reviewers.milestone | D A40: operator/service | D A40: separate TOML | D A40,A41: milestone review snapshot | D A40,A46,R04: fresh non-author/non-integrator | D A46: outcome review |
+| QA route/roots/limits | D A40: quality_assurance/qa settings | D A40: operator/service | D A40: required/default TOML values | D A40,A41,A47: activity/run hashes | D A40,A47: bounds/access/exact route | D A47: launch/capture/retention |
+| Milestone-gap architect | D A40: milestone_gap_architect | D A40: operator/service | D A40,A46: config/failed milestone finding | D A41,A46: bounded assignment | D A40,A46: inputs/model/authority | D A46: determination/supplement |
+| Support architect | D A51: own primary/backup | D A51: operator/service cause-based | D A51: architectural_support.architect | D A51: support snapshot/route history | D A51: exact/capability/stopping/no verdict switch | D A50,A51: role support |
+| Support reviewer | D A51: separately configured primary/backup | D A51: operator/service cause-based | D A51: architectural_support.fidelity_reviewer | D A51: separate session/count/route | D A51,R03: model/non-author | D A51: role/context review |
+| Non-milestone architect route | M A44,A46,A50: input class not mapped | M: runtime task selection absent | M: issue/recommendation intake unmapped | M: task/result binding absent | M: route/task/budget validation absent | D A35,A44,R02,R05: recommendation required |
+| Execution branches/targets | D A40,A45: baseline/IDs/current head | D A45: service fixed patterns | D A41,A45: reservation/journal | D A41,A43,A45: base/head/operation | D A43,A45,A49: scope/graph/heads/review/remote | D A43,A45,A48,A49: push/import/merge |
+| Early dependency revision | D A48: verified providing integration | D A48: service applies declared dependency | D A48: delivery/FIFO entry | D A41,A48: source/import/set/promotion refs | D A48: closure/evidence/change review | D A48: consumer readiness |
+| Completed-milestone revision | D A48: declared completion prerequisite | M A45,A48: exact source rule absent | M: post-completion delivery transition absent | M: late source/import binding absent | M: permitted late closure undefined | M: code delivery/readiness absent |
+| Confirmation/action/retry target | D A25,A29,A35,A41: exact saved context | D A13,A35: Owner | D A18,A25,A29,A35,A41: explicit form | D A15,A25,A35,A41: receipt/grant/reservation | D same: authority/version/state/replay | D A25,A38,A49: apply after verification |
+| Support limit decision | D A51: exhausted assignment/findings | D A51: Owner | M A35,A51: no applicable typed target | M: support disposition/grant binding absent | M: support consumption mapping absent | M: post-decision handling absent |
+| Performance/context settings | D A10: observations/shared defaults | D A10: operator/adapter measured limits | D A10: context_management/events | D A10,A11: snapshot/readings/checkpoints | D A10: thresholds/scope/dedup/quality | D A11: continuation/CLI |
+
+### Full-pass 27-journey coverage
+
+Columns: S starting conditions; I input/recipient; C configuration/selections; A credentials/authority; T storage/transactions; X interfaces/state including producer/schema/consumer; R results/completion; F failure/recovery. D = defined, M = missing. Every C entry incorporates the expanded selection chains. Defined means architectural meaning, not implemented operation.
+
+| Journey | S | I | C | A | T | X | R | F |
+|---|---|---|---|---|---|---|---|---|
+| 1. Service installation/config/start | D A01,D01: Linux/systemd/installer | D A01,A27,D01: installed config | D A03,A04,A12,A15,A27: exact settings/defaults | D A13,A27: Owner/agent separation/profiles | D A15: SQLite WAL/FULL/service writer | D A03,A04,A14: bundle/API/error contract | D D01: reproducible service/health evidence | D A03,A08,A15,A27: invalid setup blocks/no fallback DB |
+| 2. CLI workspace/selection/history/reconnect | D A12,A17: existing service/client | D A14,A17–A19: snapshots/navigation | D A12,A17,A18: address/focus chains | D A13: credentialed reads | D A15,A19: durable history/read-only views | D A14,A17–A19: cursors/SSE/context | D A17–A19,D02: actual history/focus | D A12,A14,A17: stale/reconnect/no replay |
+| 3. Attention/answers/typed actions | D A18,A19,A35: saved pending item | D A14,A18,A19,A35: exact linked action | M A35,A51: support target absent, finding 4 | D A13,A19,A35: token Owner/text no grant | D A15,A19,A35: atomic dedup/actions | M A35,S02 ownerDecisionPayload: support map absent | M A19,A35,A51: support disposition absent | M A19,A35,A51: generic protections defined, support recovery incomplete |
+| 4. Registration intake/selections | D A20,A21: repository/entry/access | D A14,A20,A21: intake/questions | D A06,A20,A21,A27: all separate chains | D A13,A20,A21: Owner/operator authority | D A15,A21: save before source use | D A14,A20,A21,A23,S01: policies/payload | D A20–A24,D03: exact interpreted boundary | D A20,A21,A27: missing/invalid input blocks |
+| 5. Assessment/candidate/review | D A20–A23: fixed source/role choices | D A07,A22,A27,R02,R03: independent exact inputs | D A06,A23,A27: role/time/budget config | D A07,A20,R02,R03: read-only/service writes | D A15,A24,A27: accepted response/frozen artifacts | D A24,A27,S01: response/package/config mapping | D A22–A24: justified exact review, no activation | D A23,A27: bounded amendments/late rejection |
+| 6. Registration publish/confirm/cancel | D A23–A26: eligible frozen candidate | D A14,A25,A26: explicit service request | D A21,A25: saved profile/branch/bytes | D A13,A21,A25: Owner/service write | D A15,A25: Git verify then SQL activation | D A24,A25,S02 registrationRef: exact package | D A25,A26,D03: Registered only after verify | D A25,A26: races/conflicts/unknown write reconciliation |
+| 7. Registration update/history/exclusion | D A26: current package/idle project | D A20,A26: explicit update/comparison | D A21,A26: inherited/amended choices | D A13,A21,A26: retained authorization/no silent stop | D A15,A26: lock/reservation/old pointer | D A24–A26: version/stable identity | D A26,D03: exact replacement/history | D A25,A26: unknown work rejects; failure retains prior |
+| 8. Registration interruption/recovery | D A08,A25,A27: saved intent/assignment | D A08,A25,A27: facts/intervention retry | D A21,A23,A27,A35: retained selections/counts | D A13,A27,A35: authorized retry/access | D A15,A25,A27: journals/reservations | D A08,A25,A27: same identity/replay | D A25,A27,D03: verified-step resume or pause | D A08,A11,A25,A27: stop/write/retry bounds |
+| 9. Architecture entry/session | D A21,A28: confirmed input/idle | D A28,A29: manual start/exact answers | D A06,A28,A29,S02: separate roles | D A07,A13,A28: isolated author/reviewer | D A15,A28,A29: launch/session snapshots | D A28,A29,S02: persistent protocol/state | D A28,D04: durable continued work | D A08,A11,A28: verified replacement/counts |
+| 10. Code investigation/product assessment | D A28,A31: exact outcomes/source | D A29,A31,R02: bounded sources | D A21,A29,A31: source/task/outputs | D A07,A31,R02: read-only/judgment | D A33,A34: findings/decisions/containers | D A29,A30,A34,S02: prepared→saved | D A05,A31: evidence-based code direction | D A32,A34,A36: clarify/stale pause |
+| 11. Structure/specialists/knowledge | D A31,A33: source/areas | D A29,A31,A33,R09: role/context outputs | D A29,A33: allocation/title/path | D A31,A33: architect role/specialist knowledge | D A33,A38: staged commits/version compare | D A30,A33,S02: structure/specialist refs | D A31,A33,D04: persistent useful context | D A30,A33,A36: collisions/stale reject |
+| 12. Breakdown/dependencies/QA/clarification | D A31,A32: outcomes/foundations | D A29,A32,A33: packet-first output/answers | M A33,A47: QA source chain missing, finding 2 | M A33,A47: QA binding provenance missing | D A15,A33,A34,A38: versioned set | M A33,A39,S02: schema deferral accepted; binding meaning absent | M A32,A33,D04: QA setup resolution incomplete | D A32,A36,A37: dependencies/questions/stale/cycle checks |
+| 13. Architecture checks/review/limits | D A30,A37: valid set | D A29,A37,R03: exact review/errors | D A23,A35,A37,A38: separate budgets | D A13,A35,A37: author/reviewer/Owner | D A15,A34,A35: persistent IDs/counts | D S02 review/findingRef/allowance/decisions; A30,A34–A37 | D A37: one pass/affected coverage | D A35,A37: exhaustion/unchanged error pause |
+| 14. Architecture publish/confirm/complete | D A37,A38: reviewed working set | D A29,A38: Owner exact action | D A21,A33,A38: inherited target/paths/hash | D A13,A38: Owner confirms/service writes | D A15,A38: staged journal/SQL last | D A30,A33,A38,S02: manifest/set/receipt/index | D A38,D04: exact confirmation/no Execution | D A36,A38: stale/conflict/uncertainty pause |
+| 15. Architecture cancel/interruption | D A28,A38: saved unfinished activity | D A29,A38: explicit action/evidence | D A28,A35,A38: same config/accounting | D A13,A38: cancel cannot erase confirmation | D A15,A38: reservation until reconciled | D A28,A29,A38,S02: request/retry/state | D A38: preserved work/linked budgets | D A08,A11,A35,A38: unknown blocks/separate limits |
+| 16. Architecture after re-registration | D A26,A36: confirmed update/manual start | D A21,A28,A36: new package/old exact work | D A21,A36: new registered inputs | D A26,A36: no automatic replan | D A15,A36,A38: history/working vs confirmed | D A30,A36,S02 carryForward/manifest | D A36,D04: affected revision/unaffected retention | D A36: stale/missing pause; affected work ineligible |
+| 17. Execution start/manager/planning | D A40: current breakdown/conflict checks | D A40–A42: start→manager→requests | D A40–A42: baseline/routes/manager | D A13,A40,A42: scoped Owner start | D A15,A40,A41: atomic activity/reservation | D A41,A42: contracts/owners; schema deferred | D A42,D05: event-driven durable planning | M A42,A44,A50: non-milestone architect route incomplete, finding 1 |
+| 18. Coder/plan/published result | D A40,A42,A43,A50: eligible packet/role/capacity | D A09,A42,A43,R08: exact assignment/plan/result | D A40,A42,A43,A45,A50: route/branch/path | D A43,R08: constrained author/service push | D A15,A41,A43: saved plan/verified commit/journal | D A41,A43: versions/files/evidence/model | D A43,D05: remote exact result for review | D A08,A40,A43: unsupported/mismatch/unknown blocks |
+| 19. Packet review/correction/limit | D A43,A44: exact changes/evidence | M A44,R02,R04,R05: architect task missing | M A40,A44,A46,A51: architect route/binding missing | D A44,R04: read-only non-author/Owner allowance | D A15,A41,A44: exact counts/coverage | M A35,A41,A44: required recommendation producer missing | M A44: passing path defined; exhausted path incomplete | M A44: architectural/limit recovery incomplete, finding 1 |
+| 20. FIFO integration/change review | D A44,A45: approved FIFO head | D A41,A45,R06: exact revisions | D A40,A45: role routes/fixed branches | D A43–A45,A49: independent/service merge | D A15,A41,A45: durable queue/journal | D A41,A45: single action/non-FF | D A45,D05: verified milestone head | M A44–A46,A50: architect issue/limit task missing, finding 1 |
+| 21. Missing specialist/support activation | D A50: inadequate coverage | D A50,A51: bounded author/reviewer | D A51: separate role configs | D A50,A51,R02,R03: in-scope/no self-review | D A15,A51: records/journal/atomic binding | D A51: supplemental exact reference | D A51: review+publication before role usable | M A35,A51: exhausted support typed action missing, finding 4 |
+| 22. Milestone gaps/supplements | D A46: failed exact QA/review finding | D A46,R02: gap determination | D A40,A46: configured route/assigned IDs | D A46: no dispatch/scope/approval power | D A15,A41,A46: publish then atomic activate | D A41,A46: gap result/linked bounded packets | D A46,D05: eligible correction follows normal gates | D A46: stale/started immutable/no count reset |
+| 23. Dependency import/reconciliation | D A48: declared dependency/evidence | M A48: completed-provider revision unspecified | M A45,A48: late source/closure missing | D A41,A43,A48: service credentials/no undeclared early code | D A15,A41,A48: early delivery/transitive invalidation | M A48: completed-milestone transition missing | M A48: completion does not populate consumer | M A48: held late import advancement absent, finding 3 |
+| 24. Isolated QA/data/evidence/cleanup | M A33,A47: provisioning entry absent | M A33,A47: environment/secret source absent | M A40,A47: project binding selection absent | M A47,R07: binding authority provenance absent | D A15,A41,A47: lineage/atomic capture/tombstones | M A33,A41,A47: resolver contract absent | M A47,D05: defined gates but setup incomplete, finding 2 | D A47: UNTESTED/quarantine/hash invalidation |
+| 25. Outcome review/promotion/closure | D A45–A49: branch/QA/work/dependencies | D A46–A49,R04: fresh exact reviewer | D A40,A45,A46,A49: route/targets/paths | D A46,A49: no author approval/extra Owner merge gate | D A15,A41,A49: verify merge/publication then SQL | D A41,A46,A49: named variants/invariants | D A48,A49,D05: eligible continuation/exact completion | D A46,A48,A49: failed/stale/missing evidence blocks |
+| 26. Pause/resume/stop/disposition/retry | D A35,A41,A49,A50: versioned state | D A35,A41,A50: Owner/intervention action | D A35,A40,A49,A50: choices/set/limits | D A13,A35,A49,A50: explicit supervised authority | D A15,A35,A41,A49: atomic sets/grants/journals | D A41,A49,A50: lifecycle/stopped variant | D A49,A50,D05: settled closure/unfinished retained | D A08,A11,A35,A49: reconcile/no reset/skip/false success |
+| 27. Monitoring/resources/history/evidence | D A01,A10,A11,A17,D01: actual records/systemd | D A08,A10,A14,A18: observations/events | D A10,A12,A40: thresholds/retention/availability | D A13,A47: Owner retrieval/no agent approval | D A10,A11,A15,A47: SQL/counter scopes/checkpoints | D A10,A11,A14,A41: runtime arrays/cursors/quality | D A11,A18,A41,D02,D05: progress/queues/history/honest metrics | D A08,A10,A11,A14,A47: silence/staleness/capacity/replay |
+
+Producer/schema/consumer coverage: registration TOML→S01 processDefinition→handler, with defaults before validation; architect package/response→A24/A27 service validation→frozen reviewed publication→S02 registrationRef→architecture; architecture required_outputs/allocation→preparedInvestigation/preparedReview→service finding mapping→saved schema→manifest/publication→SQL working/confirmed; A33 packet/milestone/QA meanings→A39/D04 explicitly deferred producer/schema/inventory extension→Execution/QA; A41 named Execution responses→service SQL/journal→exact branch/dependency/support/supplement/QA/completion consumers; supervisor/provider observations→service SQL/checkpoints→activity runtime arrays/SSE→CLI. Deferred executable schemas/handlers/tables are not defects where meaning/ownership are defined.
+
+Full-pass exclusions: current source code, installed access/tool versions, external documentation, running software, deployment and live readiness not assessed. Historical source observations establish only their cited revision. Original historical transcripts unavailable; E02 is recorded evidence. Prior handoff/review conclusions, other packets/reviewer output and four unrelated specialist examples were withheld. Workshop assets linked outside the packet were not accessed; project templates were supplied/read. SQL backup/restore, command center/mobile, unsolicited conversation, unapproved production QA, configurable hooks and automatic initial Execution start are not applicable to included scope. Full conclusion: four missing connections prevented claiming whole-system architectural completeness; no implementation/readiness or permission to start Execution implied.
+
+## Whole-system architectural-completeness targeted coverage
+
+Record `whole-completeness-8853d8df-round2` — Whole-system completeness corrections; parent `whole-completeness-8853d8df-round1`. Same independent eligible reviewer `/root/whole_completeness_fresh`; pass architectural_completeness, mode targeted, budget `whole-system-8853d8df/architectural-completeness`, round 2 of 2, now exhausted. Inputs limited to own full record and corrected packet; no handoff/sibling/other review output read. No authorship/correction. Baseline `8853d8df5aa1a809de449449177bf0492f5efa17` plus content-addressed corrections, no newer commit claimed. Verified correction manifest SHA-256 `5e2913f26069ef851d138137560ce5acf2bbf437b2f9f0a19cb601bfced63d80`. Result pass; coverage_complete true for targeted scope; round_consumed true; invalidated_by null. Shared corrected hash map supplies exact examined-file hashes. No broader stale coverage identified and no extra full review performed.
+
+### Targeted exact-location index and sources examined
+
+| Alias | Exact location |
+|---|---|
+| C01 | `docs/architecture.md` — Execution architectural determinations |
+| C02 | `docs/architecture.md` — Execution process definition and configuration; Execution API, state and record contract |
+| C03 | `docs/architecture.md` — Project Quality Assurance bindings |
+| C04 | `docs/architecture.md` — Architecture record contract; Architecture-loop implementation boundary |
+| C05 | `docs/architecture.md` — Dependency readiness and automatic continuation |
+| C06 | `docs/architecture.md` — Owner decisions at a process limit |
+| C07 | `docs/architecture.md` — Architectural-support configuration and fallback; Support validation and publication |
+| C08 | `docs/architecture.md` — Pause and graceful-stop settlement |
+| C09 | `docs/architecture.md` — Isolated Quality Assurance environment |
+| C10 | `docs/agents/architecture-agent.md` — Execution findings and milestone gaps |
+| C11 | `docs/milestones/execution-milestones.md` — EXE-PM2 — Integrate work and deliver declared dependencies; EXE-PM3 — Resolve architectural gaps within authorized scope; EXE-PM4 — Verify milestones and publish completed Execution; EXE-PM5 — Pause, stop and recover Execution; relevant dependencies/criteria |
+| C12 | `docs/milestones/architecture-loop-milestones.md` — ARC-PM1 — Establish the project's architectural foundations; ARC-PM2 — Produce a bounded and parallel-ready work breakdown; relevant dependencies/criteria |
+| C13 | `docs/schemas/architecture-loop.schema.json` — $defs.assignment, publishedRef, registrationRef, workPacket, developmentMilestone, ownerDecisionPayload |
+| C14 | `docs/agents/maestro-developer.md` — opening authority; Responsibilities; Handoff |
+| C15 | `docs/project-overview.md` — Current state; source text only, handoff link not followed |
+
+`CORRECTION-SCOPE.md` and `snapshot-hashes.json` were also read; manifest and exact hashes of all eight examined source files matched. Targeted reading does not claim rereading unchanged full-document sections.
+
+### Targeted dispositions
+
+| Full finding | Disposition and exact evidence |
+|---|---|
+| Completeness finding 1 — Non-milestone architectural attention | Resolved. C01 defines planning/packet/integration and exhaustion triggers, duplicate identity, bounded read-only task, parent gap-architect route/timeout and Execution recovery, exact inputs, named determinations/recommendation, atomic saved routing, stale/replay rejection and failure. C02 owns SQL record; C08 includes settlement; C10/C11 align responsibility. No additional review gate/design authority. |
+| Completeness finding 2 — QA binding chain | Resolved. C03 defines operator project TOML registry, test environments/secrets/network, store provisioning, non-secret catalog transport to separate author/reviewer, SQL snapshot/hash, plan selections, normal confirmation, exact run consumption and revocation/restoration. C04 adds project_binding_hash, C09 consumes, C11/C12 own delivery. Empty-reference self-contained plan has explicit null-hash exception. |
+| Completeness finding 3 — Completed-provider delivery | Resolved. C05 selects exact passing provider milestone head from verified promotion/completion; excludes unrelated master history; authorizes completed provider and confirmed dependency closure; FIFO import or verified containment records readiness. Held early imports use it; existing invalidation/replacement applies. C11 adds evidence. |
+| Completeness finding 4 — Support limit decision | Resolved. C06 adds execution_support_fidelity_review; C07 defines same-assignment read-only architect follow-up, support_limit_recommendation exact refs/count/grants, SQL save, typed once-only Owner grant/pause, stale/failure blocker. No activation/budget transfer. execution@1 owns new target; C13 architecture-local enum intentionally unchanged; C11 covers delivery. |
+
+### Targeted six-step corrected selection chains
+
+All cells D = defined. Separate support author/reviewer and QA architect/reviewer evidence is retained.
+
+| Choice | Source | Actor | Collection | Saved | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Determination architect tool/model | D C01,C02: parent milestone_gap_architect primary/backup | D operator/service existing cause rule | D C02 startup TOML; C01 assignment | D C01 route/config/input/run before launch | D C01,C02 exact model/access/capability/scope | D C01 bounded determination/recommendation |
+| Determination work/input versions | D C01 manager result/question/exhausted count | D manager identifies; service detects exhaustion | D C01 structured result/saved trigger | D C01,C02 deduplicated record | D C01 exact finding/work/freshness/scope | D C01 answer/author correction/Owner action |
+| Support architect route/model | D C07 parent startup architect.* | D operator/service eligible primary/backup | D C07 copy parent snapshot at support creation | D C07 provenance/routes/allowances | D C07 exact capability/stopping/no verdict switch | D C07 role work/same-assignment recommendation |
+| Support reviewer route/model | D C07 separate fidelity_reviewer.* parent snapshot | D operator independently/service | D C07 own fields copied | D C07 separate session/route/count | D C07 exact model/non-author/cause rules | D C07 independent review/granted round |
+| QA environment definition | D C03 project_bindings.<project_id>.environments.<name> | D operator | D C03 test classification/variables/permitted names TOML | D C03 immutable SQL/provenance/hash | D C03 uniqueness/test/conflicts/references | D C03,C09 catalog/setup/support processes |
+| QA secret definition/value binding | D C03 secrets.<name>/credential store | D operator, not agents | D C03 classification/credential_ref/environment_variable; values in store | D C03 service binding snapshot/run credential-version IDs | D C03 availability/test/current permission/environment/conflicts | D C03,C09 isolated service injection |
+| QA network definition | D C03 network_dependencies.<name> | D operator | D C03 exact host/protocol/ports/environment permissions | D C03 snapshot/hash | D C03 environment/authorized destination | D C03,C09 plan and network controls |
+| Architect QA selections | D C03 read-only qa-catalog.json | D architect within catalog | D C03 instructions path/hash; plan lists/process environment | D C03,C04 plan refs/project_binding_hash | D C03 saved-catalog match before publish/confirm | D C03,C09 confirmed plan/snapshot at setup |
+| Reviewer QA inputs | D C03 same catalog/plan selection evidence | D service fixes, reviewer no substitution | D C03 separate read-only reviewer assignment | D C03 file hash/assignment/SQL binding | D C03 exact catalog/plan, no secret locator/value | D C03 independent review/normal confirmation |
+| Completed-provider revision/closure | D C05 completion record/promotion | D service explicit rule | D C05 completion-dependent/held early delivery | D C05,C02 record/head/provider-dependency set | D C05 reviewed/tested input/merge containment/closure | D C05 FIFO import or verified containment/readiness |
+| Support limit recommendation | D C07 exact support/findings/count/grants | D support architect recommends | D C07 same-assignment read-only follow-up | D C07 validated recommendation/rationale SQL | D C07 identities/version/count freshness | D C06,C07 Owner decision preparation |
+| Support allowance choice | D C06,C07 recommendation/exact exhausted allowance | D credential-verified Owner | D C06 owner.decision target execution_support_fidelity_review | D C06,C07 action/grant/support identity/version/type | D C06,C07 authority/current/once-only/count preservation | D C07 extra completed-review allowance or pause, not activation |
+| Confirmed outcome conversion | D C04 verified confirmed manifest/outcome records | D service prescribed conversion | D C04 architecture entry | D C04 SQL identity/version/prefixed path/hash/package commit map | D C04,C13 bytes/type/identity/version/included outcome | D C04,C13 assignment/investigation/packet/milestone outcome refs |
+
+QA catalog transport uses existing assignment instructions and service-owned read-only inputs, explicitly not Git publishedRef. No invented schema field is required. QA producer/schema/inventory extensions remain accepted implementation delivery work.
+
+### Targeted affected-category coverage
+
+Category meanings are S/I/C/A/T/X/R/F from the full table. Every listed affected category is now D = defined at the cited correction locations. Unlisted categories retain the full pass, not a second full-pass assertion.
+
+| Journey; affected categories | Evidence and explanation |
+|---|---|
+| 1. Installation/configuration; C,A,T,X | D C03,C07: operator registry/store ownership and exact snapshot sources; installation remains delivery work |
+| 3. Attention/actions; C,X,R,F | D C06,C07: support target/recommendation/saved grant-pause/replay closes missing path |
+| 10. Investigation; I,T,X | D C04,C13: service maps verified confirmed outcome records before consumption |
+| 12. Breakdown/QA; C,A,X,R | D C03,C04,C12,C13: provision→catalog→separate role inputs→selection→confirmation connected; schema delivery deferral explicit |
+| 16. Re-registration reconciliation; I,T,X,F | D C04: new package/new verified mapping, historical map retained; C03 changed-plan boundaries preserved |
+| 17. Execution planning; I,C,T,X,F | D C01,C02: saved planning issue→configured bounded task→durable result/failure |
+| 18. Coder handoff; I,X,R | D C14 plus retained evidence: service/manager/independent approval before Integration |
+| 19. Packet review; I,C,X,R,F | D C01,C02,C06,C10,C11: exact architect task/recommendation and Owner action; no expanded authority |
+| 20. Integration; I,C,X,F | D C01,C02,C08,C11: issue/limit task, settlement, FIFO and original-author correction preserved |
+| 21. Support; C,T,X,R,F | D C06,C07,C11: parent provenance, separate roles and exact exhausted-review action/counts |
+| 23. Dependencies; I,C,T,X,R,F | D C05,C11: completed-provider source/closure/FIFO-containment/readiness/invalidation |
+| 24. QA; S,I,C,A,T,X,R,F | D C03,C04,C09,C11,C12: provision/catalog/plan/confirmation/run; test-only bindings; evidence/failure/restoration |
+| 25. Promotion/continuation; I,X,R,F | D C03,C05,C09: exact binding/delivery evidence; missing/changed/inconsistent dependencies block |
+| 26. Lifecycle; S,I,T,X,R,F | D C01,C07,C08,C11: determinations/recommendations retained in settled set; counts/identity/restrictions persist |
+| 27. Monitoring; I,X,R,F | D C01,C03,C06,C07: existing saved blockers/actions expose determination/setup/QA/support states; no new dashboard/notification authority |
+
+All original M categories attributable to the four findings are replaced only through this linked targeted record; unchanged full coverage remains. All original exclusions remain, including absent original transcripts, no source/live/installed validation, accepted executable-schema/handler deferrals and excluded product scope. No new unresolved issue or broader stale coverage found. Bounded conclusion: the four completeness findings are corrected; together with retained full coverage, no architectural gaps found within recorded scope. Documentation completeness does not establish implemented readiness or authorize software Execution.
+
+
+### Whole-system final disposition and next step
+
+All seven distinct findings are corrected. The three linked targeted checks pass, with complete original full coverage retained and no broader invalidation identified. Each pass consumed its original full round and one targeted round; all three whole-system budgets are now exhausted. No new full review or reset is implied by publication.
+
+Within the recorded 27-journey coverage, Planning, Execution and Monitoring have sufficient defined architecture and delivery outcomes for development preparation. No unresolved material architectural question was identified. This is bounded documentation completeness, not a claim that every possible defect is absent, that original unavailable transcripts were verified, or that the software is implemented or operating.
+
+The next planning step is to select the intended registration/delivery boundary and produce development milestones and bounded work packets from these sources through the established architecture process. Existing installation/source capability must be established during preparation; an unavailable live Maestro service is not assumed ready. This checkpoint does not perform registration, start agents for product implementation, dispatch work, merge software or deploy.
+
+### Save and publication state
+
+The six authoritative source files match the corrected hashes recorded above. The existing handoff retains the three full and three targeted records, filtering/source evidence, technical dispositions and unchanged implementation limits. No standalone review report was created. Documentation publication is authorized directly to `master`, preserving the baseline tree's unrelated paths, with expected parent `8853d8df5aa1a809de449449177bf0492f5efa17`. The containing documentation commit identifies this saved snapshot without a self-referential commit field. Destination-head and all seven file-blob hashes are checked after the update; final remote success is reported to the Owner only after those checks. No repository branch or pull request is created.

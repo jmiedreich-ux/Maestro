@@ -1,6 +1,6 @@
 # Maestro Developer
 
-**Status: Provisional execution guidance.** Apply the authority boundary in [Agent roles](README.md#roles); this file does not establish approved Execution policy.
+Apply the authority boundary in [Agent roles](README.md#roles) and the defined [Execution workflow](../architecture.md#execution).
 
 Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md) and the [Common Coding Agent Instructions](coding-agent-sop.md).
 
@@ -22,7 +22,7 @@ Return a concise understanding of the requested outcome, expected changes, verif
 - Change only approved paths.
 - Run the exact required checks.
 - Record complete and honest implementation evidence.
-- Produce one clear result for Integration.
+- Produce one clear result through the common coding handoff.
 - Apply only specifically authorized corrections.
 
 ## Must not do
@@ -38,7 +38,7 @@ Return a concise understanding of the requested outcome, expected changes, verif
 
 Provide the exact source and result revisions, changed paths, scope proof, commands and results, evidence, known gaps, downstream effects, and required `PASS`, `N/A`, or `UNTESTED` outcomes.
 
-Return the result to Integration.
+Return the result through the service to the Development Manager under [Result and handoff](coding-agent-sop.md#result-and-handoff). Independent packet review must approve the exact revision before it becomes eligible for Integration.
 
 ## Stop conditions
 

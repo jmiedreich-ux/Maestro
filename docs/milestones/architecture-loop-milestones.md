@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | ARC — Architecture loop |
-| Declaration version | 6 |
+| Declaration version | 7 |
 | Status | Proposed outcomes with defined technical contracts; no implementation completion or confirmed registration claimed |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,8 +30,8 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
-| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
+| 1 | ARC-PM1 — Establish the project's architectural foundations | 7 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
+| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
 | 3 | ARC-PM3 — Review and confirm the development breakdown | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
 ## ARC-PM1 — Establish the project's architectural foundations
@@ -57,7 +57,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Confirmed registration | REG-PM1 — Register and confirm a project through the CLI | Required real input; registration confirmation does not start this loop. |
+| Confirmed registration | REG-PM1 — Register and confirm a project through the CLI | Required real input; this outcome delivers the verified package-record to architecture outcome-reference mapping under `docs/architecture.md#architecture-record-contract`. Registration confirmation does not start this loop. |
 | Runtime and process definitions | SVC-PM4 — Run and recover assigned agents; SVC-PM5 — Apply shared process definitions | Runtime supplies launch/supervision and common handling. This outcome owns persistent architecture-session integration, which fresh registration runs do not establish. |
 | Terminal workspace | CLI-PM1 — Connected multi-project CLI workspace | Supplies the implemented client foundation; architecture-specific entry and status are delivered here. |
 
@@ -66,6 +66,7 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
 | A manual request targets a project | `/architecture start` requires a selected, registered project with no unfinished work and reserves it atomically. Repeated start opens the existing activity; `/architecture` only views it. Execution/re-registration for that project are blocked while reserved; other projects continue. Registration confirmation alone starts nothing. | Actual CLI/service/agent journey and essential unconfirmed-input rejection. | None |
+| Confirmed outcomes become architecture inputs | Service maps package record identities, paths, hashes and exact publication commit into architecture outcome references without substituting the code baseline. | Actual confirmed-package mapping and assignment inputs, with essential mismatched-reference rejection under `docs/architecture.md#architecture-record-contract`. | None |
 | The architect investigates existing source | Findings identify supported reuse, amendment, replacement, retirement, or missing work with reasons and relevant connections. Evaluate effects across the product. | Real repository revision, findings and cited source; distinguish observed code from operational claims. | None |
 | Foundations are created | Saved structure maps current and intended locations. Specialist files follow the exact manifest paths under their source area, including `role-<role-title>.md`, `context.md`, and optional `memory.md`. The architect owns the role and starting context; verified specialist knowledge updates cannot alter authority or overwrite another current version. | Actual saved files and repository references; no worker launch or source implementation. | None |
 | Work continues after clarification or interruption | Retain established findings, structure, and specialist records. Keep the same session across answers and corrections; when unavailable, use the same role and exact model in a replacement from verified records or pause on uncertainty. Enforce separate active-run deadlines without charging waiting for the Owner; do not silently recreate foundations. | Basic real continuation and necessary interruption evidence with preserved record identities. | None |
@@ -110,6 +111,7 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Persistent session and foundations | ARC-PM1 — Establish the project's architectural foundations | Required preceding capability; use its saved findings and structure. |
 | Linked question controls | CLI-PM2 — Reliable project questions and answers | Supplies client interaction; architecture-specific routing into the persistent session is delivered here. |
 | Shared persistence and definition handling | SVC-PM5 — Apply shared process definitions | Shared validation/saving mechanics; architecture owns record meaning and schema. |
+| Operator-provisioned QA binding catalog | EXE-PM4 — Verify milestones and publish completed Execution | Execution owns test-resource setup and service resolution; this outcome owns architect collection/selection, snapshot provenance and QA-plan validation. Shared evidence must exercise the real producer and consumer. |
 
 ### Acceptance criteria
 
@@ -119,7 +121,7 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Work can run independently or shares dependencies | Record dependencies, shared-code boundaries, integration points, and justified parallel opportunities without scheduling workers. | A real project's dependency structure and code-area references; no artificial requirement to parallelize inherently dependent work. | None |
 | Information is missing | Routine technical choices are resolved and recorded. Material questions reach the CLI, answers and follow-ups return to the same architect context, and affected work is amended. | Real linked clarification and updated outputs with preserved unrelated decisions. | None |
 | A local design affects shared capabilities | The breakdown incorporates necessary setup, integration, appropriate architectural patterns, and shared code without unsupported readiness claims or unnecessary duplication. | Investigation-to-packet links, recorded tradeoffs, and completion evidence that establishes usable outcomes. | None |
-| Execution inputs are produced | Packet `execution_requirements`, milestone `qa_plan_ref`, and versioned QA plans are accepted by the extended producer schema, inventoried, hashed and published under `docs/architecture.md#architecture-record-contract`. Missing required setup tooling is planned with explicit dependencies. | Actual saved packet/milestone/QA-plan set, producer validation and manifest references; the older supplied schema alone cannot establish readiness. | None |
+| Execution inputs are produced | Packet `execution_requirements`, milestone `qa_plan_ref`, and versioned QA plans are accepted by the extended producer schema, inventoried, hashed and published under `docs/architecture.md#architecture-record-contract`. QA selections and `project_binding_hash` resolve through the operator-provisioned catalog under `docs/architecture.md#project-quality-assurance-bindings`. Missing required setup tooling is planned with explicit dependencies. | Actual saved packet/milestone/QA-plan set, binding collection/provenance and selected-reference validation, and manifest references; unknown or changed bindings block affected completion. The older supplied schema alone cannot establish readiness. | None |
 | Outputs are validated before review | Required fields, paths, identities, dependencies, input versions, and required commits pass deterministic checks. The architect corrects precise errors within its separate allowance; unchanged errors pause early, and checks alone consume no correction or fidelity round. | Actual output correction and recheck, with assigned counts and one essential stale/misnamed-output rejection. | None |
 | Inputs or reviewed records change | Manifest and SQL references prevent stale overwrite. Mark affected dependencies and coverage for revision while retaining valid unaffected work. | Exact versions and hashes before/after a relevant change; no reliance on session memory as authority. | None |
 | A packet uses a finding or architectural decision | Resolve the exact finding and container; include the decisions snapshot in manifest inventory and reviewed content. Changed supporting decisions invalidate affected coverage without rewriting published history. | Trace a real packet to its finding and decision records, including one affected-content update. | None |

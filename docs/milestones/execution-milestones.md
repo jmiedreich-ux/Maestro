@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | EXE — Execution |
-| Declaration version | 1 |
+| Declaration version | 2 |
 | Status | Proposed delivery outcomes from the defined architecture; no implementation completion or confirmed registration claimed |
 | Architecture source | `docs/architecture.md` |
 
@@ -33,10 +33,10 @@ Apply `docs/planning-guide/README.md#verification-expectations` and `docs/archit
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
 | 1 | EXE-PM1 — Deliver independently reviewed work packets | 1 | `docs/milestones/execution-milestones.md#exe-pm1--deliver-independently-reviewed-work-packets` |
-| 2 | EXE-PM2 — Integrate work and deliver declared dependencies | 1 | `docs/milestones/execution-milestones.md#exe-pm2--integrate-work-and-deliver-declared-dependencies` |
-| 3 | EXE-PM3 — Resolve architectural gaps within authorized scope | 1 | `docs/milestones/execution-milestones.md#exe-pm3--resolve-architectural-gaps-within-authorized-scope` |
-| 4 | EXE-PM4 — Verify milestones and publish completed Execution | 1 | `docs/milestones/execution-milestones.md#exe-pm4--verify-milestones-and-publish-completed-execution` |
-| 5 | EXE-PM5 — Pause, stop and recover Execution | 1 | `docs/milestones/execution-milestones.md#exe-pm5--pause-stop-and-recover-execution` |
+| 2 | EXE-PM2 — Integrate work and deliver declared dependencies | 2 | `docs/milestones/execution-milestones.md#exe-pm2--integrate-work-and-deliver-declared-dependencies` |
+| 3 | EXE-PM3 — Resolve architectural gaps within authorized scope | 2 | `docs/milestones/execution-milestones.md#exe-pm3--resolve-architectural-gaps-within-authorized-scope` |
+| 4 | EXE-PM4 — Verify milestones and publish completed Execution | 2 | `docs/milestones/execution-milestones.md#exe-pm4--verify-milestones-and-publish-completed-execution` |
+| 5 | EXE-PM5 — Pause, stop and recover Execution | 2 | `docs/milestones/execution-milestones.md#exe-pm5--pause-stop-and-recover-execution` |
 
 ## EXE-PM1 — Deliver independently reviewed work packets
 
@@ -118,6 +118,7 @@ Executable schemas, physical SQL tables, route installation and installed capabi
 | Remote effects are uncertain or the target changes | The journal binds intended objects and expected heads; service verifies remote state before advancement. Changed targets require reconciliation and affected review; no force-push, rebase, squash, overwrite or unverified success. | Actual repository reads and essential lost-response or changed-head evidence through the real handlers. | None |
 | A dependent milestone needs integrated code early | Only an eligible accumulated packet set within the declared dependency closure is imported through its FIFO entry and dependency branch. Readiness binds verified source/import commits; dependent packet branches use the updated consumer head. Source milestone promotion remains a prerequisite unless the confirmed architecture assigns the outcome otherwise. | Connected producer-to-consumer branch history, closure check, readiness record and promotion dependency; ineligible import remains waiting. | None |
 | Source evidence changes | Atomically invalidate affected transitive consumers and branch-bound QA/review evidence. Affected starts and merges stop; running results are quarantined until reconciliation. Replacement import and affected checks restore readiness without retargeting old approvals. | Essential invalidation/replacement journey with retained old records, real merge evidence and unaffected work remaining eligible. | None |
+| A dependency requires source-milestone completion | After verified promotion/completion, deliver the exact passing provider milestone head and confirmed dependency closure through FIFO import, or verify existing containment. A completion flag or moving master head cannot release dependent work. | Real completed-provider delivery, including an early import held for excess closure, saved completion/source/import references and an essential mismatch rejection. | None |
 
 ### Definition of done
 
@@ -141,13 +142,14 @@ Git handlers, persistent Integration Manager integration and dependency state ar
 |---|---|
 | Missing specialist and bounded support | `docs/architecture.md#specialist-assignment-and-architectural-support`; `docs/architecture.md#architectural-support-configuration-and-fallback`; `docs/architecture.md#support-validation-and-publication` |
 | Milestone finding determination and supplement activation | `docs/architecture.md#milestone-gap-architectural-assignment`; `docs/architecture.md#correction-supplement-activation`; `docs/architecture.md#milestone-outcome-review` |
+| Packet/integration architectural questions and review-limit recommendations | `docs/architecture.md#execution-architectural-determinations` |
 | Owner authority and re-registration transition | `docs/architecture.md#owner-decisions-at-a-process-limit`; `docs/architecture.md#work-disposition-before-re-registration`; `docs/architecture.md#replanning-after-re-registration` |
 
 ### Dependencies
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Saved assignments, review records, linked questions and repository operations | EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies | Implemented interfaces required; support and supplement record semantics and handlers are owned here. |
+| Saved assignments, review records, linked questions and repository operations | EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies | Implemented interfaces required; support, architectural-determination and supplement record semantics and handlers are owned here. |
 | Current confirmed roles, source and breakdown | ARC-PM3 — Review and confirm the development breakdown | Actual references and source-local ownership bound to the assignment. |
 | Actual milestone findings and correction verification | EXE-PM4 — Verify milestones and publish completed Execution | Supplies QA/outcome-review findings and verifies corrected behavior. Shared final acceptance must use that real path, not injected successful results. |
 | Work settlement and later re-registration | EXE-PM5 — Pause, stop and recover Execution; REG-PM2 — Update a registration without losing approved history | Execution owns disposition and settlement; registration owns its later explicit idle-only update. |
@@ -157,10 +159,10 @@ Git handlers, persistent Integration Manager integration and dependency state ar
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
 | A packet lacks adequate specialist guidance | A separate bounded support assignment validates an existing role or supplies an in-scope role/context. A new role receives independent fidelity review; its validated, remotely verified activation binds exact files to affected packets before reconsideration. Existing unchanged roles need applicability checks, not a new content review. | Actual missing-coverage request, architect response, new-role review and publication/activation records; no overwritten confirmed breakdown. | None |
-| A support route is unavailable or output fails | Only configured eligible fallback is used, with stopping confirmed where needed and counters preserved. A failed assessment/review does not justify verdict-seeking model substitution. Neither usable route or uncertain stopping pauses affected work. | Actual configuration and route evidence plus essential cause-based fallback or blocked-route case. | None |
+| A support route is unavailable or output fails | Assignment configuration comes from the parent Execution snapshot despite later file edits. Only configured eligible fallback is used, with stopping confirmed where needed and counters preserved. A failed assessment/review does not justify verdict-seeking model substitution. Neither usable route or uncertain stopping pauses affected work. | Actual configuration and route evidence plus essential cause-based fallback or blocked-route case. | None |
 | Milestone QA or outcome review reports a defect or gap | A distinct read-only milestone-gap assignment receives exact evidence and remaining allowances. Its validated result routes implementation defects to Integration, missing in-scope work to bounded supplements, and scope changes to Owner disposition. It cannot approve or dispatch code. | Actual finding-to-determination journey shared with EXE-PM4 — Verify milestones and publish completed Execution, including saved affected-work references. | None |
 | An in-scope supplement is produced | Service-assigned identity/version, bounded paths, ownership, dependencies and exact finding references validate. Journaled publication verifies remote bytes/hash before atomic activation. Identical replay does not duplicate work; started versions remain immutable. Implemented corrections follow normal review and integration without resetting milestone counts. | Real supplement, external hash/journal, activation, correction packet and affected verification records; essential stale/conflicting or invalid payload rejection. | None |
-| Findings reach a process limit or need replanning | CLI presents the exact architect recommendation and typed Owner choices. A grant remains bound to its review/assignment; disposition enforces the selected affected-work restrictions. Unrelated eligible work continues where allowed. Free text is not approval and a disposition does not start registration. | Linked decision, durable receipt, unchanged scope/counters and actual service enforcement; later idle transition shares lifecycle evidence. | None |
+| Findings reach a process limit or need replanning | Packet/integration architectural questions and exhausted-review findings produce the configured bounded determination and validated saved recommendation; failed milestone findings use their distinct milestone-gap assignment. CLI presents the exact architect recommendation and typed Owner choices. Support-review exhaustion uses its own typed target and same-assignment architect recommendation. A grant remains bound to its review/assignment; disposition enforces the selected affected-work restrictions. Unrelated eligible work continues where allowed. Free text is not approval and a disposition does not start registration. | Linked decision, durable receipt, unchanged scope/counters and actual service enforcement; later idle transition shares lifecycle evidence. | None |
 
 ### Definition of done
 
@@ -183,7 +185,7 @@ Support and supplement validators, publication handlers and connected assignment
 | Required behavior or journey | Architecture section |
 |---|---|
 | Confirmed QA inputs and test-data limits | `docs/architecture.md#architecture-output-locations-and-records`; `docs/architecture.md#milestone-quality-assurance-and-test-data` |
-| Environment, evidence and cleanup | `docs/architecture.md#isolated-quality-assurance-environment` |
+| Project test bindings, environment, evidence and cleanup | `docs/architecture.md#project-quality-assurance-bindings`; `docs/architecture.md#isolated-quality-assurance-environment` |
 | Independent outcome review and corrections | `docs/architecture.md#milestone-outcome-review`; `docs/architecture.md#milestone-gap-architectural-assignment`; `docs/architecture.md#correction-supplement-activation` |
 | Promotion, continuation and completion records | `docs/architecture.md#milestone-branches-and-product-integration`; `docs/architecture.md#authorized-integration-merges`; `docs/architecture.md#dependency-readiness-and-automatic-continuation`; `docs/architecture.md#execution-completion-and-recovery` |
 
@@ -194,13 +196,13 @@ Support and supplement validators, publication handlers and connected assignment
 | Integrated exact milestone branch and dependencies | EXE-PM2 — Integrate work and deliver declared dependencies | Must be verified and current; target changes or invalidated imports invalidate affected evidence. |
 | In-scope correction and scope-change handling | EXE-PM3 — Resolve architectural gaps within authorized scope | Required for real finding disposition and corrected acceptance; implementation can share the connected journey. |
 | Versioned QA plan, data/setup requirements and completion criteria | ARC-PM3 — Review and confirm the development breakdown | Supplies the exact confirmed plan after ARC-PM2 — Produce a bounded and parallel-ready work breakdown delivers its QA-plan/packet schema and inventory extensions. Missing product setup tooling is declared packet/dependency work, not improvised QA. |
-| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation; selected project's allowed setup and secret references must exist. |
+| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation, including operator provisioning, the service QA binding catalog and exact snapshot/credential resolution. ARC-PM2 — Produce a bounded and parallel-ready work breakdown owns plan selection/validation against that catalog; neither side assumes pre-existing references. |
 
 ### Acceptance criteria
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| A milestone is ready for QA | Service uses the exact source and confirmed QA-plan version, creates isolated storage/credentials and starts declared product/support processes with health checks. Network access and secret handling follow the approved plan; no production target is silently used. | Actual supervised setup, source/configuration hashes, process/port/health evidence and test credential references without secret values. | None |
+| A milestone is ready for QA | Service resolves the confirmed plan against its saved project binding/hash, checks current test-only authorization, records non-secret credential version identities, creates isolated storage and starts declared product/support processes with health checks. Network access and secret handling follow the approved plan; no production target is silently used. | Actual operator-provisioning-to-plan-to-run journey, source/binding/configuration hashes, process/port/health evidence and test credential references without secret values; essential revoked or changed-binding rejection. | None |
 | Actual user journeys run | Data provenance, setup, actual input/result paths, expected/actual results and limitations are recorded. Required bypassed or unavailable paths remain `UNTESTED`, block promotion and appear as specific CLI blockers. Failed paths use the existing correction route and affected reruns. | Real connected product journey and essential failure, plus a missing prerequisite/bypassed-path case demonstrating that it cannot pass. | None |
 | Artifacts and environments are retained safely | Required evidence has service-owned identity/hash/size/media type and authorized retrieval. Capture/retention and tombstones follow configuration; missing required evidence before closure invalidates the check. Cleanup/reset failures quarantine the environment and block reuse. | Actual artifact write/read/hash, cleanup and essential missing-evidence or failed-reset handling; retention scheduling may use a controlled clock with its limitation recorded. | None |
 | Whole-milestone review completes | A fresh non-author/non-integrator independently checks exact assembled revisions, connected outcomes, dependencies and QA evidence. Blocking findings use the architect determination; targeted correction retains unaffected coverage and original review counts. Non-blocking preferences add no gate. | Actual outcome review and gap analysis, plus shared finding/correction evidence and configured-limit enforcement. | None |
@@ -213,7 +215,7 @@ The full installed path delivers a real confirmed outcome through integration, i
 
 ### Unresolved details
 
-QA supervision, artifact capture/retention, executable completion validators and Git/SQL handlers are implementation work. Product-specific setup, data and secrets come from the confirmed QA plan; missing prerequisites stay planned and unverified rather than being supplied by a fabricated passing result.
+QA supervision, artifact capture/retention, executable completion validators and Git/SQL handlers are implementation work. Product-specific setup and data come from the confirmed QA plan; referenced credentials come from its service-resolved project binding; missing prerequisites stay planned and unverified rather than being supplied by a fabricated passing result.
 
 ## EXE-PM5 — Pause, stop and recover Execution
 
@@ -245,7 +247,7 @@ QA supervision, artifact capture/retention, executable completion validators and
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
 | Pause or graceful stop is accepted | Versioned Owner action atomically saves the exact in-progress set and restrictions. No outside packet/supplement joins; only permitted downstream settlement proceeds. Held/unfinished FIFO heads cannot be skipped. Pause reaches paused only after uncertainty settles; eligible resume preserves state. | Actual lifecycle requests during active work, before/after settlement records, refusal of new reservations and essential stale/replayed action handling. | None |
-| Work is stopped or prepared for re-registration | The chosen disposition enforces its exact affected scope and distinguishes safe finishing from supervised unsafe stopping. Unstarted work remains unfinished. A verified stopped record lists completed and unfinished work; SQL/CLI never label it successful delivery. Idle is reported only after runs and external operations reconcile. | Real stopped-closure bytes and UI, settlement evidence, and explicit idle-only re-registration followed by separately started architecture and Execution steps. | None |
+| Work is stopped or prepared for re-registration | The chosen disposition enforces its exact affected scope, retains active architectural determinations in settlement, and distinguishes safe finishing from supervised unsafe stopping. Unstarted work remains unfinished. A verified stopped record lists completed and unfinished work; SQL/CLI never label it successful delivery. Idle is reported only after runs and external operations reconcile. | Real stopped-closure bytes and UI, settlement evidence, and explicit idle-only re-registration followed by separately started architecture and Execution steps. | None |
 | Service, agent or Git response is interrupted | Reload saved sessions, deadlines, counters, queue position, restrictions, grants, environments, artifacts and journals. Reconcile existing effects before replacement or advancement. Verified completed steps are not repeated; unknown outcomes remain blocked. | Essential real restart/lost-response journey with correlated process/Git/SQL evidence; controlled fault inputs cannot replace actual recovery handlers. | None |
 | Recovery reaches its configured limit | Cause-based recovery and configured backup preserve assignment identity and allowances. Manual retry requires its typed unconsumed grant, recorded intervention and eligible operation; launch/attempt consumption is atomic and cannot be replayed. Duration exceptions cannot extend active work or replenish attempts. | Actual saved recovery/decision records and essential rejection of reused or unauthorized grants; one permitted manual retry through the real service path. | None |
 | Persistent context fills or a session is lost | Shared checkpoint/continuation recovers verified work and exact bindings. Capacity handling preserves remaining active-time budget and does not consume failure/review allowances or lower performance status. Unsafe or ineffective continuation pauses visibly. | Actual supported Execution-session continuation, occupancy quality and retained decisions/counters; unavailable capabilities remain explicit blockers. | None |
