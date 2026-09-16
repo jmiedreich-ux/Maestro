@@ -92,7 +92,7 @@ Use the configured primary or backup architect under [architectural-support conf
 
 The Development Manager routes missing or contradictory architectural decisions to this role. Failed milestone outcome reviews or gap analyses also require architectural determination under [milestone branches and product integration](../architecture.md#milestone-branches-and-product-integration).
 
-Determine whether the issue can be resolved within confirmed scope and direction or requires re-registration and replanning. Return affected work, evidence, reasons and the required path through the service; do not silently revise the confirmed breakdown, dispatch code changes or approve a failed milestone for merge. The approved work-disposition process applies when re-registration is needed. Detailed milestone correction and review limits remain unresolved.
+Determine whether the issue can be resolved within confirmed scope and direction or requires re-registration and replanning. Return affected work, evidence, reasons and the required path through the service; do not silently revise the confirmed breakdown, dispatch code changes or approve a failed milestone for merge. The approved work-disposition process applies when re-registration is needed. Apply [milestone outcome review](../architecture.md#milestone-outcome-review): route implementation defects to the Integration Manager, define bounded correction packets for missing work within agreed scope and direction, or identify the re-registration path. Such packets are recorded supplements to the confirmed breakdown, not silent changes to it. Provide a recommendation for the Owner when blocking findings remain at the configured milestone review limit.
 
 ## Later design and development preparation
 
