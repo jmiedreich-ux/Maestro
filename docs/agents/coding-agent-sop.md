@@ -1,33 +1,33 @@
 # Common Coding Agent Instructions
 
-**Status: Provisional execution guidance.** Apply the authority boundary in [Agent roles](README.md#roles); this file does not establish approved Execution policy.
-
-Every implementation agent follows the repository-wide rules in [AGENTS.md](../../AGENTS.md), the joined project's engineering policy, and the exact approved work assignment.
+These shared rules apply to every coder. Follow [AGENTS.md](../../AGENTS.md), the project's engineering policy and the exact work packet. A specialist role adds source-area knowledge and constraints; it references these rules without duplicating or weakening them.
 
 ## Before changing files
 
-- Confirm the repository, exact source revision, approved work, role, allowed and prohibited paths, required checks, dependencies, resources, and handoff.
-- Use the workspace and Git delivery method required by the project.
-- Read the exact authority named by the work assignment.
-- Stop if approval, authority, scope, dependencies, credentials, or verification requirements are missing or contradictory.
+Read the packet, applicable specialist role and context, exact source revision, permitted paths, dependencies, resources and required checks. Use the assigned workspace and authorized Git delivery method.
+
+Return the [implementation plan](../architecture.md#returned-implementation-plan) through the service before changing files. The service saves it and makes it available to the CLI and Development Manager. Continue without a separate plan-approval gate unless a material conflict or missing prerequisite blocks the work; report that blocker.
 
 ## Implementation
 
-- Change only the approved scope.
-- Preserve accepted architecture, conventions, and user behavior.
-- Use real project verification rather than tests that only repeat implementation logic.
-- Follow the approved quality boundary, including its operating model, exclusions, sufficient proof, implementation limit, and stop rule.
-- Do not silently strengthen requirements or absorb adjacent work.
-- Do not merge, deploy, expose credentials, bypass protections, or resolve an owner decision by assumption.
+- Change only the assigned scope; preserve architecture, conventions and required behavior.
+- Follow the assigned quality boundary without strengthening requirements or adding adjacent work.
+- Use basic, meaningful checks under the [verification expectations](../planning-guide/README.md#verification-expectations).
+- Do not merge, deploy, expose credentials, bypass controls or assume an Owner decision.
 
-## Verification and handoff
+## Result and handoff
 
-Run the required checks without weakening them. Report changed files, commands and results, evidence, known gaps, downstream effects, and each required outcome as `PASS`, `N/A` with a reason, or `UNTESTED` with its consequence.
+Return a structured result through the service containing:
 
-Hand the exact result to Integration. Do not approve your own work.
+- What changed and how it meets the packet's expected outcome.
+- Exact source and result revisions, with changed files.
+- Verification commands, results and supporting evidence.
+- Known limitations, blockers, unfinished work and downstream effects.
+
+Report required outcomes honestly as `PASS`, `N/A` with a reason, or `UNTESTED` with its consequence. The service validates the result and referenced artifacts, records them and notifies the Development Manager.
+
+A completion claim means ready for the next review step. It does not complete the packet, approve the coder's own work or authorize merging.
 
 ## Corrections
 
-Perform at most one targeted correction for a work item, and only after the responsible authority approves the exact findings. Reassignment, replacement work, workspace movement, or takeover does not reset the allowance.
-
-Limit the change and follow-up evidence to the approved findings and directly affected behavior. Stop and escalate when a new failure class, missing decision, shared-boundary conflict, unsafe condition, or exhausted correction allowance appears.
+Apply only authorized corrections within the packet's scope. Correction limits and the implementation-review process remain to be defined; this file sets neither. Report conflicting instructions, insufficient scope or missing authority rather than inventing a rule.
