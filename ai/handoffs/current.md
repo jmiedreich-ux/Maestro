@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+Today's Execution conversation has now received an independent decision-fidelity review against a frozen master snapshot. No gaps were found within the recorded coverage of ten journeys; no source corrections were required. See [independent Execution fidelity review](#independent-execution-fidelity-review) for coverage and limits. Architectural completeness and runtime behavior were not certified.
+
 Independent packet review, persistent Integration Manager authority, FIFO integration and development-milestone branching/promotion are now documented. See [integration and milestone delivery checkpoint](#integration-and-milestone-delivery-checkpoint). Earlier statements that all merge or implementation-review authority is undecided are superseded within this agreed scope. Current documentation changes still go directly to master.
 
 The follow-up agreements on Owner-selected work disposition, normal-lifecycle completion, specialist review and configured backup agents are saved. See [architectural-support checkpoint](#architectural-support-checkpoint). Earlier unresolved notes on those subjects are superseded by this checkpoint; general Execution lifecycle and delivery policy remain unfinished.
@@ -58,6 +60,177 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Independent Execution fidelity review
+
+**Result: pass.** Reviewer `/root/today_execution_fidelity` found no gaps within the recorded decision-fidelity coverage and returned no blocking or non-blocking findings. No correction or second round was required. This does not establish architectural completeness or operational readiness.
+
+| Review field | Recorded value |
+|---|---|
+| Identity and subject | `execution-conversation-fidelity-20260916-round1` — 2026-09-16 Execution conversation fidelity |
+| Pass and mode | Decision fidelity; full within today's selected conversation scope; no parent review |
+| Budget | `2026-09-16 Execution conversation fidelity`; round 1 of maximum 2; first pass ends this review. Earlier pre-execution completeness/consistency budgets remain unchanged. |
+| Coverage and consumption | Coverage complete: true; round consumed: true |
+| Reviewer | `/root/today_execution_fidelity`; separate agent context; host session identifier unavailable |
+| Independence | Reviewer authored/corrected none of the documents and reported no prohibited-input exposure. Received original dialogue evidence, scope, instructions and frozen source packet, not the author's verdict, suspected defects or previous findings. |
+| Repository snapshot | `jmiedreich-ux/Maestro` at `8309144b856c4d88fa3db618850471800ceabb7a` |
+| Packet SHA-256 | `96863d77bec6e0a0bd5fb92c81c70ed30a7d92ac7c5284d9432a2e28bbe955f5` |
+| Evidence SHA-256 | `4b94f5aaeb3214f66b494c3495ff66a07b88a0839d98f2bb46c41f9049e6c9b6`; chronological original-dialogue excerpt selection from today's hooks discussion through milestone branching and this review request |
+| Findings and corrections | None; correction references empty; no invalidating changes to the reviewed design during this pass |
+| Publication verification | Parent fetched the frozen files from GitHub and confirmed master still matched the snapshot before recording this result. The reviewer verified all 16 packet file hashes, not remote Git independently. |
+
+### Input filtering and evidence limits
+
+The handoff packet retained the unchanged technical passages from **Integration and milestone delivery checkpoint** before **Validation and remaining design**, **Architectural-support checkpoint** before **Validation**, and **Execution design checkpoint** before **Validation coverage and limits**, including **Resume here**. All other handoff passages were excluded to remove earlier findings, self-check outcomes, readiness conclusions and unrelated historical review material. Within the retained material, the sentence claiming role documents already agreed with the flow and the **Decisions preserved** heading were also removed. Technical statements and accepted deferrals remained available for checking.
+
+Temporary packet preparation added one final newline to each unfiltered source document. The parent verified that removing that byte reproduced each Git blob hash; packet hashes describe the actual reviewed bytes. The reviewer was told this normalization and reported it. No other changes were made to unfiltered documents. The filtered handoff SHA-256 was `4c439ce67b72a94c8ef11dd44b8d16d92ce22bdfd0cef17537d88d7072e4ba06`.
+
+Original evidence consisted of the available dialogue excerpts, with speaker labels, acceptance turns, corrections and standing Owner excerpts. Tool logs, save reports, review conclusions and redundant acknowledgments were omitted. Exact message timestamps were unavailable. Source evidence remains the conversation; no raw transcript or standalone review report is added to the repository.
+
+Examples of controlling Owner evidence retained: “the current work should be allowed to finish through the natural life cycle”; “the integration manager is the 'code' manager where the development manager is the 'process' manager”; “work packet is complete, goes to indepent review cycle, once approved, goes to the intergration agent”; “first in, first out queueu only one at a time”; and milestone merge “I don't need to approve that”. The reviewer also received accepted assistant proposals with their agreement/correction turns, rather than assuming proposals were decisions.
+
+### Sources actually examined
+
+At the frozen commit: AGENTS.md, CLAUDE.md, project overview, role index, Project Architect, common coding instructions, Decision Fidelity Reviewer, Independent Implementation Reviewer, Integration Manager and Development Manager; all supplied text read. The filtered handoff, evidence selection, review method and coverage-record instructions were read in full.
+
+Architecture sections examined: **Returned implementation plan**; **Agent performance and context management** and its performance/context/checkpoint subsections; **Local Owner identity and credentials**; **CLI request and event contract**; **SQLite storage**; **Record ownership**; **Save and delivery sequence**; **Questions and answers**; **Answer identity and uncertain delivery**; **Re-registration**; **Comparison, activation, and cancellation**; **Adapter configuration**; **Lasting project structure and specialist guidance**; **Replanning after re-registration**; **Current versions and stale-data prevention**; all of **Execution**; **Journeys and interactions** and its supplied subsections; **Constraints and unresolved details**. The reviewer inspected the heading inventory but did not claim to read every other architecture section.
+
+### Journey coverage
+
+Every journey below records the method's eight trace categories. “Defined” means faithful to the decision or authorized technical elaboration, not proven implementation. “Open” means undecided behavior remains visibly undecided. Architecture headings below refer to `docs/architecture.md`. Conversation heading references identify the original evidence selection, not source-document interpretations.
+
+<details>
+<summary>Ten journeys and their decision-fidelity evidence</summary>
+
+#### Hooks boundary
+
+Evidence: conversation **Hooks**.
+- Starting conditions — defined in **Internal hooks**: optional organization during implementation, not a prerequisite.
+- Input and recipient — defined there: required checks remain in service/wrappers; detailed hook interfaces not assessed because not agreed.
+- Configuration and selections — defined there: configurable framework excluded; internal Python handlers permitted.
+- Credentials and authority — defined there: no second authority; a separate hook-credential journey is not applicable.
+- Storage and transactions — defined there: no second process-state source; no hook-specific storage decision was agreed.
+- Interfaces and state — defined there: mandatory checks remain mandatory; no new state contract claimed.
+- Results and completion — defined there: implementation organization does not weaken the checks.
+- Failure and recovery — defined there: hooks cannot grant retries; detailed failure mechanics not assessed.
+
+#### Execution entry and initial understanding
+
+Evidence: conversation **Execution start and discussion boundary**, **Development Manager launch and purpose**, **Initial understanding**.
+- Starting conditions — **Execution initiation**: explicit selected-project start, current confirmed breakdown, conflict/access/configuration and eligible-packet checks.
+- Input and recipient — **Execution initiation** and **Development Manager preparation and continuity**: service launches manager first with registration, breakdown, packets, dependencies and saved progress.
+- Configuration and selections — **Execution initiation**: manager model collected during start, separate from coder selection; exact payload/controls remain open.
+- Credentials and authority — **Execution initiation**, **Development Manager preparation and continuity**, **Local Owner identity and credentials**: confirmed scope only; no manager redesign/replan authority. Live provisioning not assessed.
+- Storage and transactions — **Execution initiation**, **SQLite storage**: save before dispatch, duplicate opens existing activity, shared start reservation; provenance of earlier engine choice not assessed.
+- Interfaces and state — **Execution initiation**: command/repetition retained; display states remain open and the unaccepted Starting/Running/Blocked proposal is not adopted.
+- Results and completion — **Development Manager preparation and continuity**; manager role **Initiation and inputs**: understanding precedes work requests and respects existing progress.
+- Failure and recovery — **Execution initiation**: conflicts prevent start, other projects remain independent; detailed Execution lifecycle remains open.
+
+#### Planning, coder selection, notifications and questions
+
+Evidence: conversation **Work choice and coder routing**, **Scheduling and event triggers**, **Planning result and CLI questions**.
+- Starting conditions — **Work planning and coder selection**: confirmed dependencies, boundaries, progress and capacity; manager chooses, service validates/reserves.
+- Input and recipient — same heading and **Planning results and questions**: completed/blocked/failed work, answers and availability events; grouping and next-pass answer delivery retained.
+- Configuration and selections — same headings: permitted routes originate in configuration; manager selects during planning, returns exact model and reason; service validates availability/current state before launch. Qwen primary; justified cloud choice needs no Qwen failure. Registry/location/transport remain open.
+- Credentials and authority — **Work planning and coder selection**: no silent substitution, service enforcement and architectural attention for missing dependencies; detailed tool credentials not assessed.
+- Storage and transactions — **Planning results and questions**, **SQLite storage**, **Save and delivery sequence**, **Answer identity and uncertain delivery**: durable questions/answers and reservations.
+- Interfaces and state — **Planning results and questions**: launch requests, priorities, blockers, questions, checkpoint and stale-request reasons; exact schemas/events remain open.
+- Results and completion — **Work planning and coder selection**, **Planning results and questions**: unblocker/parallel priorities, delivery order, reason recording, only dependent work waits.
+- Failure and recovery — same headings plus **Questions and answers**: rejected invalid requests and linked reconciliation; replanning pending work cannot automatically interrupt running work.
+
+#### Persistent manager context
+
+Evidence: conversation **Persistent Development Manager**.
+- Starting conditions — **Development Manager preparation and continuity**: persistent session per project execution activity.
+- Input and recipient — same heading: compact current view with detailed records on demand.
+- Configuration and selections — same heading and **Context readings and thresholds**: existing shared policy applies; earlier threshold provenance not assessed.
+- Credentials and authority — same heading: memory is not authority; separate persistence credentials not applicable.
+- Storage and transactions — same heading and **Checkpoints and safe continuation**: service-saved decisions and versioned checkpoints.
+- Interfaces and state — same heading: one planning action, idle between actions, no repeated handled events; exact session protocol remains open.
+- Results and completion — same heading; manager role **Persistent context**: preserve useful decisions/reasons/issues, not transcript accumulation.
+- Failure and recovery — same heading and **Checkpoints and safe continuation**: verified reconstruction/compaction with retained allowances; live adapter operation not assessed.
+
+#### Specialist gap, support, review, publication and fallback
+
+Evidence: conversation **Specialists and architectural support**, **New-role activation and review**, **Support configuration and backups**, **Common instructions and excluded specialists**.
+- Starting conditions — **Specialist assignment and architectural support**: packet-linked gap starts bounded support, not the completed architecture loop.
+- Input and recipient — same heading and **Support validation and publication**: packet, roles, confirmed architecture, exact source/context and reviewed inventory.
+- Configuration and selections — manager chooses applicable specialist in **Specialist assignment and architectural support**; architect determines existing/new role. **Architectural-support configuration and fallback** separately defines primary/backup tool/model for architect and reviewer, configuration origin, assignment snapshot, hash, availability/capability validation and launch consumption. **Support validation and publication** binds service-assigned paths before drafting through inventory/review to activated references. Configuration authoring UI not assessed.
+- Credentials and authority — **Architectural-support configuration and fallback**, **Adapter configuration**, **Support validation and publication**: tool profiles separate from service publication credentials; bounded creation, separate non-author reviewer sessions and no new Owner gate. Machine credential verification remains deferred.
+- Storage and transactions — **Support validation and publication**: SQL owns support state/routes/counts/bindings; immutable support/review/activation records, source-local role/context, journal and verified remote publication before atomic activation.
+- Interfaces and state — same heading and architect/reviewer support-role sections: existing-role validation versus new-role review, exact versions and activation eligibility; executable validators remain implementation work.
+- Results and completion — **Support validation and publication**: required validation/review/publication precede use; unchanged breakdown supplemented, two separate completed-review rounds by default, first pass sufficient, no repeat contents review for unchanged role.
+- Failure and recovery — **Architectural-support configuration and fallback**, **Support validation and publication**: prelaunch fallback, normal recovery/confirmed stopping, linked new session with verified progress and preserved budgets; no verdict shopping; at-limit Owner issue and unrelated work continuation; changed inputs invalidate affected binding.
+The other project's specialists are excluded in **Coder preparation and submitted results**; their contents were not inspected.
+
+#### Work disposition and finish-current-work
+
+Evidence: conversation **Four dispositions**, **Disposition authority**, **Normal lifecycle clarification**.
+- Starting conditions — **Work disposition before re-registration** separates re-registration need from continuation choice.
+- Input and recipient — same heading: architect reasons/affected work → saved CLI choice → Owner → manager/service.
+- Configuration and selections — same heading: all four Owner choices, exact recommendation/activity/question/version/packet context; fourth remains available even when queued work could continue.
+- Credentials and authority — same heading: verified Owner, recommendation or clarification alone not stopping authority; no automatic re-registration/replan.
+- Storage and transactions — same heading: saved restriction/in-progress set, atomic first-launch reservation and disposition; including already-reserved work is explicit delegated mechanics.
+- Interfaces and state — same heading, **Re-registration**, **Replanning after re-registration**: typed choices, replay/stale handling and distinct manual stages; general lifecycle/stop mechanics remain open.
+- Results and completion — **Work disposition before re-registration**: started packets finish normal lifecycle; manager tracks, service closes only after settlement; then explicit re-registration.
+- Failure and recovery — same heading: no special retry question/prohibition; unsafe work requires explicit stopping decision; preserved restrictions and no false idle/completion.
+
+#### Coder plan and result
+
+Evidence: conversation **Coder plan and result**, **Common instructions and excluded specialists**.
+- Starting conditions — **Coder preparation and submitted results**; coding SOP **Before changing files**: exact packet, role, revision and boundaries.
+- Input and recipient — same locations: common instructions plus project specialist and packet; service exposes plan and routes result to manager.
+- Configuration and selections — **Specialist assignment and architectural support**, **Work planning and coder selection**: exact assignment and manager route choices; no invented coder model or branch naming.
+- Credentials and authority — **Returned implementation plan**; coding SOP **Before changing files**, **Implementation**: no plan-approval gate; scope controls and no coder merge/deploy authority. Credential operation not assessed.
+- Storage and transactions — **Coder preparation and submitted results**, **Returned implementation plan**: intermediate plan distinct from validated final result; detailed Execution schemas/transactions remain open.
+- Interfaces and state — same headings: intended changes, existing code, connections, checks/blockers, exact revisions/files and known limitations.
+- Results and completion — **Coder preparation and submitted results**; coding SOP **Result and handoff**: ready for review is not complete or authorized to merge.
+- Failure and recovery — same architecture section and coding SOP **Corrections**: material conflict blocks, limits not invented, older one-correction rule not adopted.
+
+#### Independent implementation review
+
+Evidence: conversation **Reviewer identity and scope**, **Queues and final review/integration ordering**.
+- Starting conditions — **Independent implementation review**; reviewer role **Purpose and independence**: exact result/evidence reviewed before Integration.
+- Input and recipient — same headings: packet, architecture, common/specialist instructions and evidence; service routes to manager.
+- Configuration and selections — **Independent implementation review**; role index **Roles**: Implementation Reviewer distinct from Fidelity Reviewer. Model/config selection remains open/not assessed, not borrowed from support.
+- Credentials and authority — **Independent implementation review**: read-only non-author, no code editing/dispatch/merge authority. Retained work-definition-author exclusion's earlier provenance not assessed.
+- Storage and transactions — same heading; reviewer **Outcomes and report**, **Corrections and unresolved policy**: exact review/correction coverage saved through service; detailed persistence remains open.
+- Interfaces and state — **Independent implementation review**; reviewer **Findings and routing**: requirement/code/impact/minimum correction; defects to coder, missing decisions to architecture, preferences non-blocking.
+- Results and completion — same heading and reviewer **Review stages**: exact approval permits Integration, not merge/completion; final Owner ordering correction preserved.
+- Failure and recovery — same locations: material correction/escalation; implementation limits/exceptions remain open without borrowing planning budgets.
+
+#### FIFO integration and integration-change review
+
+Evidence: conversation **Queues and final review/integration ordering**, **Integration code authority**, **Integration-change review**, **FIFO integration**.
+- Starting conditions — **Integration management and queue**: approved packets, persistent manager and one active integration per project.
+- Input and recipient — same heading; integration role **Inputs and continuity**: exact approved code, latest accepted target, evidence, dependencies/shared boundaries.
+- Configuration and selections — **Integration management and queue**: durable FIFO order and retained slot through corrections/review; model/session/event/exception details remain open.
+- Credentials and authority — same heading; integration role **Purpose and authority**: Integration code manager, Development Manager process manager, necessary in-scope changes, no self-approval; service merge authority separate.
+- Storage and transactions — **Integration management and queue**: service queue and durable records authoritative, not memory; detailed queue transaction protocol not assessed/open.
+- Interfaces and state — same heading: one active across project milestones, no silent blocked-item skipping, other projects independent and permitted parallel coding/review.
+- Results and completion — same heading; integration role **Review and evidence**: review new integration changes/affected behavior, retain valid unchanged coverage; no automatic repeat packet review if no code changes.
+- Failure and recovery — same heading and **Authorized integration merges**: corrections return to Integration, next waits for resolution, invalidated target evidence reconciled; exceptional queue handling open.
+
+#### Milestone branching, outcome review, gap analysis and merge
+
+Evidence: conversation **Merge authority and milestone branches**.
+- Starting conditions — **Milestone branches and product integration**: milestone from baseline, packets from milestone, assembled milestone checked after its work.
+- Input and recipient — same heading: assembled code, completion criteria, confirmed outcomes and connections reviewed; failures to architect.
+- Configuration and selections — same heading: exact branch/base identity mapping; naming, branch lifecycle, milestone reviewer/model/limits and result contract remain open. **Authorized integration merges** leaves merge strategy open.
+- Credentials and authority — **Authorized integration merges**; AGENTS.md **Git changes**: Integration requests, service verifies/performs, passing milestones need no extra Owner approval; documentation remains direct master. Service credentials remain deferred.
+- Storage and transactions — **Milestone branches and product integration**, **Authorized integration merges**: recorded branches/bases and remote verification before success; detailed journals/APIs/completion shapes remain open.
+- Interfaces and state — **Milestone branches and product integration**: coder → independent review → FIFO Integration → milestone → outcome review/gap analysis → master eligibility.
+- Results and completion — same heading, **Authorized integration merges**; integration role **Merge handoff**: both milestone checks required, packet approval insufficient; detailed delivery/completion records unfinished.
+- Failure and recovery — same headings; architect role **Execution findings and milestone gaps**: in-scope determination or re-registration, no silent scope change/replan, changed-target reconciliation.
+
+</details>
+
+### Review disposition and exclusions
+
+No findings were returned; no source correction is required by this review. The reviewer found the technical elaborations in support configuration, records, publication, fallback accounting and disposition receipts within delegated authority, not falsely described as individually approved settings.
+
+The evidence is a chronological excerpt selection without exact timestamps, not all prior conversation. Earlier decisions' provenance is available only where supplied. Excluded: unrelated specialists, code, unsupplied schemas/declarations, prior review reports, live master inspection by the reviewer, credentials and runtime behavior. General Execution protocols, correction limits, Quality Assurance, milestone reviewer assignment, branch naming, merge strategy and completion remain open. Faithfully retaining those open matters is not a defect in this fidelity pass.
+
 
 ## Integration and milestone delivery checkpoint
 
