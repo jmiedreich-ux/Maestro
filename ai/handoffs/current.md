@@ -658,3 +658,22 @@ The current documents specify outcomes and behavior, not implementation completi
 Commit authorized changes directly to `master`; no branches or pull requests. Use plain, concise wording and include subjects with coded references. Architecture explains behavior; declarations explain delivery outcomes. Keep each fact authoritative in one place and use references elsewhere.
 
 Apply review corrections to the main documents. Do not create or present separate review reports unless requested. Resume from the current documents and this handoff, without reopening settled decisions.
+
+
+## Milestone Quality Assurance and test-data checkpoint
+
+The Owner confirmed that Quality Assurance is a milestone-level function. It checks the assembled milestone rather than individual work packets or Integration Manager changes. Coders verify their changes; independent reviewers assess packet changes, Integration Manager changes, and the whole-milestone outcome and gap analysis. Quality Assurance separately exercises user journeys, connected behavior, and failure cases. Findings use the existing correction path and the affected checks are rerun; no additional approval loop was created.
+
+Quality Assurance may start the product and required supporting services in an isolated test environment when needed to exercise actual behavior.
+
+The architecture loop defines each milestone's required data sources, preparation and setup, expected results, and actual capability paths. Quality Assurance prepares or uses that data and records its origin, entry path, actual result path, expected and actual results, and limitations. Missing setup tooling is planned work with an explicit dependency; Quality Assurance does not improvise it.
+
+The controlling safeguard is that test data may supply inputs but cannot replace the capability under verification. Directly creating an expected result, bypassing a required service or journey, or relying on a mock does not verify the bypassed path. Every bypassed required step remains `UNTESTED` and cannot establish milestone completion.
+
+Unavailable required verification is neither a defect nor a pass. It keeps the milestone unmerged and appears as a specific CLI blocker while unrelated eligible work may continue. Quality Assurance runs the affected verification after its prerequisite becomes available.
+
+The authoritative behavior is in [milestone Quality Assurance and test data](../../docs/architecture.md#milestone-quality-assurance-and-test-data). The Quality Assurance, Project Architect, Development Manager, Integration Manager, Independent Implementation Reviewer and role-index files now align with it. The milestone delivery sequence requires both completed required Quality Assurance with no failed or unverified required path and a passing milestone outcome review and gap analysis before promotion to product `master`.
+
+### Validation and limits
+
+This documentation update was self-checked against the available conversation decision sequence and current master files. It defines responsibilities and safeguards, not implementation completion. Detailed isolated-environment mechanics remain open, and deployed-environment testing remains separately authorized. Packet and Integration Manager review/correction limits and detailed completion records remain unresolved. Earlier handoff statements that Quality Assurance responsibilities were open are superseded by this checkpoint; their other recorded open subjects remain unchanged.
