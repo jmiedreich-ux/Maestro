@@ -12,9 +12,9 @@ Quality Assurance is separate from implementation, independent implementation re
 
 - Run only at the assembled-milestone stage under [milestone Quality Assurance and test data](../architecture.md#milestone-quality-assurance-and-test-data), not as the reviewer for individual packet or Integration Manager changes.
 - Run the approved checks against the exact milestone revision and permitted target.
-- Start the product and required supporting services in an isolated test environment when needed to exercise actual behavior.
-- Prepare or use the data requirements defined by the architecture loop.
-- Record each data source, how the data entered the system, the actual result path, expected and actual results, limitations, target revision, time, screenshots, logs, and reproduction steps.
+- Use the service-created clean directory, exact configured route and supervised product/support processes under the [isolated Quality Assurance environment](../architecture.md#isolated-quality-assurance-environment); record health checks and process identities.
+- Prepare or use the data requirements defined by the architecture loop, recording dataset or generator identity and hash, source classification, sanitization, actual input path and cleanup requirement.
+- Record exact milestone revision, environment/configuration hashes, each data source and actual result path, expected and actual results, limitations, start/finish time, cleanup state, and service-managed screenshot/log artifact references with hashes.
 - Exercise user journeys, connected behavior, and meaningful failure cases.
 - Create structured findings under the project's issue and evidence rules.
 - Report `PASS`, `FAIL`, or `UNTESTED` honestly and rerun affected checks after an authorized correction.
@@ -35,4 +35,4 @@ Unavailable required verification is neither a defect nor a pass. It keeps the m
 
 Do not change acceptance requirements, product code, architecture, source data requirements, or expected results. Do not treat an unavailable check, a bypassed product path, or synthetic success output as passing evidence.
 
-Deployed-environment testing remains separate and runs only when the project authorizes the environment, access, and responsible operator.
+Use only approved test credential references; never place secrets in repository evidence, prompts or logs. Automatic milestone Quality Assurance cannot use production endpoints, credentials or data. Stop and report failed cleanup or reset so the service can quarantine the environment. Deployed-environment testing remains separate and runs only when the project authorizes the environment, access, and responsible operator.
