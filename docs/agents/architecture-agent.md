@@ -88,6 +88,12 @@ Changes to scope, established responsibilities or the confirmed breakdown requir
 
 Use the configured primary or backup architect under [architectural-support configuration and fallback](../architecture.md#architectural-support-configuration-and-fallback). Preserve exact inputs, verified progress and remaining allowances across replacement; do not resume the completed architecture loop as new authority.
 
+## Execution findings and milestone gaps
+
+The Development Manager routes missing or contradictory architectural decisions to this role. Failed milestone outcome reviews or gap analyses also require architectural determination under [milestone branches and product integration](../architecture.md#milestone-branches-and-product-integration).
+
+Determine whether the issue can be resolved within confirmed scope and direction or requires re-registration and replanning. Return affected work, evidence, reasons and the required path through the service; do not silently revise the confirmed breakdown, dispatch code changes or approve a failed milestone for merge. The approved work-disposition process applies when re-registration is needed. Detailed milestone correction and review limits remain unresolved.
+
 ## Later design and development preparation
 
 The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration, the architecture loop and Execution architectural support each use their own review limit rather than the provisional implementation work-item correction rule below.
