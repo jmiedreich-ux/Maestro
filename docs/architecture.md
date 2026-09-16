@@ -1378,7 +1378,17 @@ The [Independent Implementation Reviewer](agents/independent-review-agent.md) ex
 
 Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the Development Manager. Clear implementation defects return to the coder; missing or contradictory architectural decisions go to architectural support. Reviewers do not edit code, dispatch corrections or authorize merges.
 
-An approved exact packet revision becomes eligible for Integration. Independent review remains before Integration; the Integration Manager does not replace this stage. Correction counts, review limits and detailed exception handling for implementation remain to be defined; neither registration limits nor retained one-correction rules apply by inference.
+An approved exact packet revision becomes eligible for Integration. Independent review remains before Integration; the Integration Manager does not replace this stage.
+
+#### Packet and integration-change review limits
+
+Packet implementation review and review of Integration Manager code changes have separate configurable limits. Each defaults to a maximum of two completed rounds for the exact assignment: the initial review and, when required, one targeted correction review. One passing round is sufficient.
+
+A valid completed review consumes a round. Malformed output, interrupted review and technical recovery do not consume a completed round or establish approval. The service saves the effective limit and consumed count. Reassigning the author, replacing the reviewer, starting a new session, renaming the work or moving the workspace does not reset the limit.
+
+The packet coder corrects packet findings; the Integration Manager corrects findings in its own integration changes. The correction review covers the named findings and affected behavior while retaining valid coverage of unchanged work. Neither author can approve its own correction.
+
+If blocking findings remain at the applicable limit, the affected work pauses unapproved and unmerged. The Project Architect supplies a recommendation and the Owner is notified through the CLI. No automatic extra review is allowed. Unrelated eligible work continues. Registration, architecture-loop, architectural-support and milestone-review budgets remain separate and do not supply extra rounds.
 
 ### Integration management and queue
 
@@ -1638,6 +1648,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Packet/integration correction and review limits, milestone reviewer model selection, correction-supplement and cross-milestone source-delivery mechanics, and detailed completion records remain unresolved. |
+| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Milestone reviewer model selection, correction-supplement and cross-milestone source-delivery mechanics, and detailed completion records remain unresolved. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
