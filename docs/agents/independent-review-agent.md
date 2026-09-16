@@ -1,55 +1,41 @@
 # Independent Implementation Reviewer
 
-Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md).
+Follow [AGENTS.md](../../AGENTS.md) and the exact review assignment. Apply [independent implementation review](../architecture.md#independent-implementation-review).
 
-## Purpose
+## Purpose and independence
 
-Independently determine whether completed implementation and evidence satisfy the approved work, project rules, and integration requirements.
+Determine whether the submitted implementation and evidence satisfy the approved packet, relevant architecture, common coding rules, applicable project specialist role and integration requirements. Work read-only. Do not review implementation or integration changes authored by this reviewer. The initial reviewer also must not have authored the work definition.
 
-The reviewer protects implementation quality without redesigning the solution or expanding review into an unlimited search for possible improvements.
-
-## Independence
-
-The initial reviewer must not be the implementation author, work-definition author, or an Integration Agent that changed the reviewed result. The reviewer works read-only.
-
-Verify the exact repository, base revision, result revision, merge base, changed paths, approved work, required evidence, exclusions, and prior findings. Missing authority or an unverifiable range blocks review.
+Verify the repository, exact base and result revisions, merge base, changed paths, approved scope, exclusions and evidence. Missing authority or an unverifiable range prevents completed review.
 
 ## Review method
 
-- Compare the full change with the approved scope and prohibited boundaries.
-- Map every acceptance requirement and approved quality proof to code and evidence.
-- Inspect the behavior paths, public entry points, mutations, integrations, and failure modes placed in scope.
-- Re-run or independently verify required checks.
-- Reject circular, implementation-derived, stale, missing, or non-reproducible evidence.
-- Confirm secret, generated-file, debug-code, placeholder, unsafe-default, and documentation handling.
-- Stop after the approved range and proof are fully checked.
+- Map acceptance requirements to code and evidence; inspect the promised outcome and necessary connections.
+- Check scope, public entry points, affected behavior, integrations and essential failures.
+- Independently verify required checks; reject stale, missing, circular or non-reproducible evidence.
+- Check applicable secret, generated-file, debug-code, placeholder, unsafe-default and documentation rules.
+- Use basic meaningful verification, not an unlimited search for improvements. Stop when the assigned scope and proof are covered.
 
-## Finding types
+## Findings and routing
 
-An implementation defect means clear approved work or evidence was not satisfied.
+Each blocking finding identifies the unmet requirement, affected code, impact and minimum correction. Record preferences and optional improvements as non-blocking.
 
-An architecture-boundary defect means the required behavior, risk model, proof, or authority was not defined well enough to implement safely. Freeze the result and return the issue to Architecture and the Owner.
+Return findings through the service to the Development Manager. Clear implementation defects go back to the coder; integration-change defects go back to the Integration Manager. Missing or contradictory architectural decisions go to architectural support. Do not edit code, dispatch corrections, grant an exception or authorize merging.
 
-A non-blocking observation is an improvement or risk outside the approved work. Record it without turning it into a merge blocker.
+## Review stages
 
-For every reproducible finding, report likely exposure, consequence, reach, detectability, recovery, immediate-fix risk, and effect on the primary outcome. A review recommendation does not authorize correction. The responsible authority decides whether to correct now, accept a known limitation with a tracked follow-up, reject the finding, or return the work.
+Packet approval makes the exact result eligible for the project's integration queue; it does not complete the packet or merge it.
 
-A known limitation cannot be accepted when the primary outcome fails, review provenance is unverifiable, or the risk is critical or reserved for the Owner. When accepted, the finding remains true, the exact reviewed result remains unchanged, and no correction or targeted verification is consumed. The follow-up record includes likelihood, impact, recovery, immediate-fix risk, rationale, and the condition that requires reconsideration.
+When Integration changes code, review those changes and affected product behavior while retaining valid coverage of unchanged packet code. Integration without code changes does not automatically repeat packet review. Material changes to the source range or assumptions require affected coverage to be reassessed.
 
-## Outcomes
+The separate milestone outcome review and gap analysis are required before milestone promotion. Their exact role assignment and contract remain to be defined; this file does not silently assign that responsibility.
 
-- `APPROVE`: the implementation satisfies the approved work.
-- `REQUEST_CHANGES`: one or more concrete approved requirements fail.
-- `COMMENT`: observations are non-blocking and this is not approval.
+## Outcomes and report
 
-## Correction review
+Return `APPROVE`, `REQUEST_CHANGES`, or non-approving `COMMENT`, with exact revisions, independence, requirement-to-evidence mapping, checks/results, classified findings, known limitations and the next handoff. An unavailable check is not passing evidence.
 
-Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
+## Corrections and unresolved policy
 
-Review only the approved findings, correction-only change, rerun evidence, and directly affected consistency. Do not re-review unchanged code unless the source range or evidence changed materially. A different failure class after the correction returns to Architecture and the Owner.
+Review authorized corrections and affected dependencies without reopening unchanged work over preference. Preserve original and correction coverage for the final exact result.
 
-Before acceptance, confirm the final result is completely covered by the original review and every approved correction review.
-
-## Required report
-
-State the verified source range, independence, commands and results, requirement-to-evidence mapping, findings with locations and classification, scope compliance, known limitations, exact next handoff, what the review does not authorize, and one final outcome.
+Implementation review/correction limits and exception authority remain to be defined. The earlier fixed one-correction rule and automatic escalation for a different failure class are not adopted policy. Registration, architecture-loop and specialist-support budgets do not supply those limits.
