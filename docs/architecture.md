@@ -87,7 +87,7 @@ Read-only assignments do not require commits solely to satisfy the wrapper. Thes
 
 Registration runs agents to assess sources, prepare and amend candidates, and independently review their fidelity. Its assignment, supervision, permission, output-validation, publication, and recovery controls apply to that work. They do not establish the general software Execution policy.
 
-Execution review and merge boundaries are defined under [Execution](#execution); its remaining coding correction limits and completion mechanics require further design. Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
+Execution review, correction, integration, Quality Assurance, merge and completion boundaries are defined under [Execution](#execution). Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
 
 ### Installed validation schemas
 
@@ -986,10 +986,12 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file. A
 | `registration.recovery.automatic_recovery_attempts` | Nonnegative integer; default 2; preserves the existing registration assignment recovery accounting. |
 | `registration.architect.run_timeout_seconds` | Positive integer; default 1800. |
 | `registration.fidelity_reviewer.run_timeout_seconds` | Positive integer; default 1800. |
-| `tools.codex.executable`, `tools.claude_code.executable` | Absolute installed tool paths. |
+| `tools.codex.executable`, `tools.claude_code.executable`, `tools.qwen.executable` | Absolute installed tool paths. |
 | `tools.<tool>.credential_profile` | Reference to provisioned service credentials, never the secret itself. |
 | `tools.<tool>.settings_profile` | Reference to service-managed tool settings and permitted operations. |
 | `tools.<tool>.allowed_model_ids` | Full provider identifiers allowed for explicit role selection; not default model choices. |
+| `repositories.<profile>.credential_profile` | Provisioned service Git credential reference used by registration, architecture and Execution publication/merge operations when the saved project binding selects that profile. |
+| `repositories.<profile>.allowed_repositories`, `.allowed_branch_patterns` | Required allowlists checked before every service Git read or write. |
 
 Effective tool configuration is hashed and recorded for each assignment/run. Tool-setting changes affect new runs after validation, never a running agent. Process behavior is fixed by the activity snapshot under [shared process definitions](#shared-process-definitions). Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
 
@@ -1326,7 +1328,7 @@ General Execution scheduling, implementation review, and merge authority remain 
 
 ## Execution
 
-The agreed behavior covers initiation, work planning, independent packet review, product integration and milestone promotion. Milestone review, correction routing, review limits and automatic continuation/completion are defined below. Packet and integration correction/review limits, detailed delivery records and remaining execution contracts are unfinished. Registration and architecture-loop rules do not supply missing Execution policies.
+The Execution contracts below define initiation, work planning, coder routing, independent review, product integration, milestone Quality Assurance and review, authorized merges, correction supplements, cross-milestone source delivery, stopping, recovery and completion. Registration and architecture-loop controls remain separate and do not supply or change Execution budgets.
 
 ### Execution initiation
 
@@ -1334,7 +1336,75 @@ The selected project's execution begins only through an explicit `/execution sta
 
 The service records the execution activity before dispatching work. Repeating the command opens the existing execution activity rather than creating another. Other projects can continue independently. Starting authorizes only work within the confirmed breakdown, not scope changes or replanning.
 
-The start process collects the model selection for the Maestro Development Manager. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning. Exact start payload, selection controls and execution display states remain to be defined; the agreed command does not imply that these contracts already exist.
+The start process collects a configured route for the Maestro Development Manager. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning.
+
+### Execution process definition and configuration
+
+Execution uses the installed `execution@1` schema bundle. Installation resolves it as `schemas/execution/1/schema.json` relative to the Maestro installation folder; its repository source is `schemas/execution.schema.json`. The source schema and executable validators are implementation work. A missing, unsupported or changed installed bundle blocks new Execution work and continuation that cannot verify its recorded bundle hash; read-only status remains available. The service saves the exact bundle reference, dependency hashes and effective Execution configuration hash with each activity.
+
+The shared `/etc/maestro/agents.toml` file contains the following Execution settings. Exact model values are installation choices, not architecture defaults.
+
+| Setting | Contract |
+|---|---|
+| `execution.saved_outputs.schema` | Required literal `"execution@1"`. |
+| `execution.development_manager.routes.<route_id>.tool`, `.model`, `.backup_route_id` | Named permitted Development Manager route, exact full model identifier and configured backup. `/execution start` selects one route ID. |
+| `execution.development_manager.run_timeout_seconds` | Required positive duration for one planning action; idle persistent-session time does not consume it. |
+| `execution.integration_manager.primary.tool`, `.model`, `backup.tool`, `backup.model` | Required exact primary and backup routes for the persistent Integration Manager. |
+| `execution.reviewers.packet.*`, `execution.reviewers.integration_change.*`, `execution.reviewers.milestone.*` | Separate primary and backup `tool` and exact `model` pairs for each independent-review assignment type. |
+| `execution.quality_assurance.primary.*`, `backup.*` | Primary and backup `tool` and exact `model` for milestone Quality Assurance. |
+| `execution.coder_default_route_id` | Required route ID for the local Qwen primary coder. |
+| `execution.coder_routes.<route_id>.*` | Required `adapter`, exact `model`, `location`, string `capabilities`, positive `context_limit_tokens`, positive `maximum_concurrent_runs`, and optional configured `backup_route_id`. |
+| `execution.reviews.packet.maximum_completed_rounds` | Positive integer; default 2. |
+| `execution.reviews.integration_change.maximum_completed_rounds` | Positive integer; default 2. |
+| `execution.reviews.milestone.maximum_completed_rounds` | Positive integer; default 2. |
+| `execution.recovery.automatic_recovery_attempts` | Nonnegative integer; default 2 per role assignment after its initial run. |
+| `execution.recovery.manual_retry_attempts` | Nonnegative integer; default 1 after the applicable intervention and linked Owner action. |
+| `execution.repository.credential_profile` | Required reference to a provisioned service Git credential. Agents never receive this credential. |
+| `execution.qa.environment_root` | Absolute local path for isolated Quality Assurance environments. |
+| `execution.qa.maximum_parallel_environments` | Positive integer; default 1. |
+| `execution.qa.startup_timeout_seconds`, `shutdown_timeout_seconds` | Required positive service-supervision durations. |
+
+Primary and backup pairs for a role must differ. The service validates the selected tool, exact model, capability, credentials, workspace access and structured-output support before launch and verifies the running tool's reported identity before accepting output. No moving alias, implicit downgrade or unconfigured substitution is allowed. Backup routing follows the existing cause-based recovery boundary: a preflight failure may choose the configured backup without consuming a run-recovery attempt; a failure after launch requires confirmed stopping and preserves all consumed counts. A failed review never triggers a route switch merely to seek another verdict.
+
+The local Qwen coder route uses adapter `local_qwen_qwen_cli`. It launches the installed `qwen` executable against the configured local Ollama model in the isolated packet worktree, using an argument array and a prompt that directs the agent to the service-written assignment file. The current source contains a local Qwen CLI adapter; reuse requires code assessment and installed verification rather than assuming that source is production-ready. Codex and Claude Code routes use the shared [tool transport](#tool-transport).
+
+Configuration is snapshotted when an Execution activity starts. Route availability is rechecked at each launch, but later file edits do not change the activity's permitted routes, exact models, review limits or recovery allowances. A new confirmed registration and new Execution activity may use a newer valid snapshot.
+
+### Execution API, state and record contract
+
+Execution operations use the common request envelope and idempotency rules. The process-specific operations are:
+
+| Operation | Required input and effect |
+|---|---|
+| `execution.start` | Project identity, exact confirmed registration and breakdown references, expected project version, selected Development Manager route ID and idempotency key. Atomically validates eligibility, snapshots configuration and creates or returns the one active activity. |
+| `execution.status` | Project or activity identity; returns saved state, restrictions, active work, queues, blockers, review counts, milestone evidence and completion reference without changing state. |
+| `execution.pause` | Expected activity version and Owner identity; prevents new packet reservations while already-started work completes its natural lifecycle. |
+| `execution.resume` | Expected paused activity version and Owner identity; permits new reservations only when no stronger saved restriction, re-registration transition or unresolved unsafe condition applies. |
+| `execution.stop` | Expected activity version and Owner identity; prevents new starts and finishes already-started work through its normal lifecycle before recording a stopped activity. Unsafe work uses the existing linked disposition action and supervised stop rather than this graceful path. |
+| `execution.retry` | Exact failed assignment or external operation, expected version and applicable saved grant; creates one linked recovery action without resetting other counts. |
+| `execution.owner_decision` | Exact linked question/recommendation, expected version, selected permitted action and verified Owner identity; applies review-limit or re-registration dispositions already defined by the relevant process. |
+
+Activity states are `starting`, `running`, `paused`, `finishing`, `blocked`, `closing`, `completed` and `stopped`. `blocked` means no eligible progress can run; it does not convert failed or unfinished work into completion. Pause and graceful stop restrictions survive service restart. A repeated operation with the same idempotency key returns the saved receipt; a stale expected version returns current state without applying the action.
+
+SQL owns live Execution state. The service is the only writer. At minimum it stores the following linked records:
+
+| Record | Required contents |
+|---|---|
+| Execution activity | Project, registration and breakdown references; configuration/schema hashes; product baseline; state/version; start, pause, stop and closure data. |
+| Role route and session | Role, selected primary/backup, exact model/tool evidence, assignment/run/session identity, context checkpoint and recovery counts. |
+| Packet assignment | Packet/version, milestone, branch/base, specialist role, coder route, plan/result references, permitted paths, state and dependency bindings. |
+| Review assignment | Type, exact reviewed revisions and evidence hashes, reviewer independence/tool/model, findings, outcome, completed count and configured limit. |
+| Integration queue entry | Durable sequence, packet and milestone, source/target revisions, active/blocked/resolved state, Integration Manager changes and review references. |
+| Dependency delivery | Providing packet/milestone and commit, consuming milestone, allowed dependency closure, import operation and readiness/invalidation state. |
+| Correction supplement | Finding, original breakdown/milestone, versioned packet definitions, publication and activation references. |
+| Quality Assurance run | Exact milestone revision, environment/configuration, data lineage, checks, evidence artifacts, result and cleanup state. |
+| Repository operation | Intended repository/ref/head, operation kind, input hashes, idempotency key, attempt state and verified remote result. |
+| Milestone completion | Exact branch and merge revisions, packet/integration/review/Quality Assurance references, dependency deliveries, observations and publication state. |
+| Execution completion | All authorized milestones, final merge references, unresolved-work check, non-blocking observations, stop/completion reason and published record. |
+
+Planning, coder, review, integration and Quality Assurance responses are validated named definitions in `execution@1`. Every response carries `schema_version: 1`, project/activity/assignment identity, exact input versions, run identity and result state. Planning results include requested launches with route/model/reason, priorities, blockers, questions and checkpoint. Coder results include plan/result revisions, changed paths, checks, evidence and limitations. Review results include exact reviewed range, independence, finding classification, minimum correction and count/limit. Integration results include source and target revisions, changes, checks and dependency effects. Quality Assurance and completion fields follow their sections below.
+
+External Git operations use a durable SQL journal. Before a branch creation, merge or record publication, the service saves the exact intended repository, credential profile reference, expected remote heads, input object hashes and idempotency key. After the operation it reads the remote refs and bytes before recording success. A lost acknowledgment reconciles the same intent; changed heads or conflicting bytes pause without force, overwrite or duplicate effects. SQL state advances only after verified external success.
 
 ### Development Manager preparation and continuity
 
@@ -1352,7 +1422,7 @@ The Development Manager selects packets and requests assignments. The service ch
 
 Qwen is the primary coder and default route. The manager may choose a cloud coder directly when packet complexity, required capabilities, context needs or available capacity justify it; Qwen does not have to fail first. The manager chooses Codex or Claude Code and the appropriate configured model level/version, recording a brief reason.
 
-Maestro maintains a configured list of permitted coder routes and exact model versions, with capabilities, context capacity and concurrency limits. The manager selects only from that list. The service checks availability before launch and reports an unavailable selection without silent substitution. Registry fields, configuration location and Qwen adapter transport remain to be specified; no model names, capacity values or providers are inferred.
+Maestro uses the snapshotted `execution.coder_routes` registry. The manager selects only a permitted route whose declared capabilities, context capacity, execution location and live concurrency allow the packet. The service checks availability before reservation and launch and reports an unavailable selection without silent substitution. The configured local Qwen route remains the default; an unavailable default does not by itself authorize an unconfigured cloud route.
 
 Scheduling favors packets that unblock dependent work or enable useful parallel work, while considering declared delivery order and available coder capacity. Independent work may proceed while another packet is blocked. Each choice records its reason. The confirmed architecture supplies dependencies, parallel opportunities, shared-code boundaries and integration points; the manager uses them with live progress instead of rewriting the plan. Missing or contradictory dependencies are raised for architectural attention.
 
@@ -1362,7 +1432,7 @@ Planning continually reassesses pending work as progress, dependencies and resou
 
 Each planning pass returns a structured result containing requested packet launches with coder route, exact model version and reason; pending priorities and blockers; questions or architectural issues; and a concise continuity checkpoint. The service validates requests against current saved state before reservation. If state changed during planning, it returns the affected rejection reasons for reconsideration rather than accepting stale work.
 
-Development Manager questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. The machine-readable planning-result schema and event-delivery contract remain to be defined.
+Development Manager questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. Planning responses and delivered events use the [Execution response contract](#execution-api-state-and-record-contract); handled event identities are checkpointed so a resumed session does not treat old events as new.
 
 ### Coder preparation and submitted results
 
@@ -1400,11 +1470,24 @@ Each assignment uses the latest accepted target state and the exact approved pac
 
 Its own integration changes require independent review of the new changes and affected product behavior. Valid coverage of unchanged packet code is retained. Findings return through the service and Development Manager to the Integration Manager for correction. It cannot approve its own changes. When no code changes are made, record the integration evidence without automatically repeating packet review.
 
-The persistent session supports continuity; saved source revisions, review results and queue state remain authoritative. Context capacity and replacement use the shared context-management rules. Integration model selection, exact session/event contracts and exceptional queue-resolution actions remain to be defined.
+The persistent session uses the configured Integration Manager primary/backup route and the shared context-management rules. Saved source revisions, review results, queue state and handled event identities remain authoritative; a replacement session starts from those records and the latest valid checkpoint.
+
+Strict FIFO has no automatic skip. If the active entry blocks, later entries for that project remain queued while unrelated coding, packet review and other projects may continue. The active entry leaves the head only after a verified merge, an Owner-authorized stop whose external operations have reconciled, or supersession following confirmed re-registration and architectural reconciliation. Withdrawal records the exact reason and preserved work; moving or renaming the same entry cannot bypass its review limit or queue position.
 
 ### Milestone branches and product integration
 
-Each development milestone has its own integration branch created from the product baseline. Each work packet has a separate branch created from its milestone branch and returns its reviewed work to that milestone branch. Branches are not literally nested: recorded source and destination relationships establish the hierarchy. The service records exact branch names and base commits against milestone and packet identities; naming syntax and branch-lifecycle mechanics remain to be defined rather than guessed by agents.
+Each development milestone has its own integration branch created from the recorded product baseline. Each work packet has a separate branch created from its milestone branch and returns its reviewed work to that milestone branch. Branches are not literally nested: recorded source and destination relationships establish the hierarchy.
+
+The service owns these fixed branch patterns, using validated service-assigned identifiers and collision checks:
+
+- `maestro/<execution-activity-id>/milestone/<milestone-id>`
+- `maestro/<execution-activity-id>/packet/<packet-id>`
+- `maestro/<execution-activity-id>/integration/<queue-entry-id>`
+- `maestro/<execution-activity-id>/dependency/<dependency-delivery-id>`
+
+Milestone branches are created lazily from their recorded baseline. A packet branch is created from the then-current milestone head recorded with its assignment. When an approved packet reaches the FIFO head, the service creates an integration branch from the current milestone head and merges the exact approved packet head into it. The Integration Manager resolves conflicts and makes any necessary in-scope integration changes on that branch. Independent review binds to its exact head. After approval, the service performs a non-fast-forward merge into the milestone branch and verifies the remote result.
+
+Milestone promotion uses a non-fast-forward merge into product `master` after the required Quality Assurance and milestone review pass. Reviewed branches are never rebased, squashed, force-pushed or amended. A changed target head requires reconciliation and affected review before merge. Branches and worktrees remain until the activity closes and no recovery, audit or pending operation needs them; later retention cleanup is recorded separately and cannot change completion evidence.
 
 The delivery sequence is:
 
@@ -1415,7 +1498,7 @@ The delivery sequence is:
 5. Once the milestone's work is complete, its assembled branch receives milestone Quality Assurance and an independent outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.
 6. Only completed required Quality Assurance with no failed or unverified required path, together with a passing milestone review and gap analysis, makes that branch eligible to merge into product `master`.
 
-Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The review assignment, limits and correction handling follow [milestone outcome review](#milestone-outcome-review). Reviewer model selection and the machine-readable result contract remain to be defined.
+Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The review assignment, configured reviewer route, limits and result contract follow [milestone outcome review](#milestone-outcome-review) and the [Execution configuration](#execution-process-definition-and-configuration).
 
 ### Milestone outcome review
 
@@ -1429,11 +1512,21 @@ Findings distinguish blocking defects from non-blocking observations. A blocking
 | Missing work needed for the agreed outcome, within confirmed scope and direction | The architect defines the necessary bounded correction packets; the Development Manager schedules them. |
 | Change requiring replanning | Use re-registration and the existing Owner-selected work-disposition process. |
 
-In-scope correction packets are recorded as supplements linked to the original breakdown, milestone and finding; they do not silently replace confirmed records or authorize changed outcomes, dependencies or architectural direction. Those changes still require re-registration. Exact supplement formats and activation mechanics remain to be defined.
+In-scope correction packets are recorded as supplements linked to the original breakdown, milestone and finding; they do not silently replace confirmed records or authorize changed outcomes, dependencies or architectural direction. Those changes still require re-registration.
+
+#### Correction-supplement activation
+
+The service assigns a supplement identity and positive version before the Project Architect drafts it. The architect returns the exact triggering finding, confirmed registration and breakdown references, affected milestone, bounded correction packets, permitted paths, dependencies, acceptance evidence, and a plain explanation of why the work remains within confirmed scope and direction.
+
+Deterministic validation rejects missing links, duplicate packet identities, unsatisfied ownership, changed outcomes, dependency cycles, unbounded paths or work that requires re-registration. No separate Owner approval or extra packet-definition review is added for a valid in-scope supplement; its implemented packets still receive normal packet, integration, Quality Assurance and milestone review.
+
+SQL owns the working and active supplement state. Immutable UTF-8 JSON is published under `.maestro/execution/<execution-activity-id>/supplements/<supplement-id>/versions/<version>/supplement.json`. It carries `schema_version: 1`, exact project/activity/registration/breakdown/milestone/finding identities, packet definitions, dependency changes limited to those packets, architect assignment/run/model evidence, validation result and file hash. The service journal verifies the authorized repository and publication branch, expected head and remote bytes before one SQL transaction activates the version and releases its eligible packets to the Development Manager.
+
+An identical replay returns the saved activation. Conflicting remote content, stale findings or changed inputs pause without overwrite. A supplement may be superseded before any of its packets starts by publishing and activating the next version. Once work starts, its active version is immutable; a material change uses the normal disposition and re-registration path. A supplement and its packets do not reset the milestone review count.
 
 A corrected milestone receives a targeted check of the named corrections and their affected dependencies and product behavior. Valid approval remains for unchanged, unaffected work. If a correction affects a wider part of the product, the reviewer records why the affected coverage must broaden. A correction check does not automatically repeat the whole milestone review.
 
-The service configuration sets the maximum completed milestone review rounds, defaulting to two: the initial review and, if required, one correction review. One passing round is sufficient. The service saves the effective limit and consumed count for the milestone; replacement reviewers, new sessions, renamed work and corrections do not reset them. Invalid or interrupted review output is not a completed round or approval; technical recovery does not grant additional completed reviews. The configuration key and result schema remain to be specified.
+The `execution.reviews.milestone.maximum_completed_rounds` setting defaults to two: the initial review and, if required, one correction review. One passing round is sufficient. The service saves the effective limit and consumed count for the milestone; replacement reviewers, new sessions, renamed work and corrections do not reset them. Invalid or interrupted review output is not a completed round or approval; technical recovery does not grant additional completed reviews. Results use the milestone-review definition in `execution@1`.
 
 After the configured limit, unresolved blocking findings keep the milestone unmerged and reach the Owner through the CLI with the architect's recommendation. No automatic extra review or merge is permitted. This milestone limit does not define packet or integration review budgets.
 
@@ -1447,15 +1540,43 @@ Quality Assurance prepares or uses the required data and records its origin, how
 
 Every bypassed required step remains `UNTESTED`; it cannot support a pass or milestone completion. If required verification is unavailable, the result is neither a defect nor a pass. The milestone remains unmerged, the CLI shows the specific blocker, and unrelated eligible work may continue. Once the prerequisite is available, Quality Assurance runs the affected verification.
 
+#### Isolated Quality Assurance environment
+
+Each Quality Assurance run receives a service-owned environment identity and a clean directory under `execution.qa.environment_root`. Setup uses only versioned scripts or argument-array commands referenced by the confirmed architecture and exact milestone source; agent-supplied arbitrary shell text is not a setup contract. The service starts required product and support processes, checks declared health conditions, captures process identities and ports, and stops them after the run.
+
+The environment uses separate storage and test credentials referenced through the registered project's approved environment and secret-reference names. Secrets remain in the service credential store and are not written to repository records, prompts or logs. Outbound network access is denied unless the confirmed setup names an allowed dependency. Production endpoints, production credentials and production data are prohibited in automatic milestone Quality Assurance. A production or deployed-environment run requires its separate existing authorization and is not substituted for an isolated run without that authority.
+
+Data setup records the dataset or generator identity and hash, source classification, sanitization when applicable, setup operation, actual entry path and cleanup requirement. Generated or copied data may be input to the real capability path; it cannot directly create the result whose path is being verified. Reusable environments must pass the declared reset check before another run. Failed shutdown, cleanup or reset marks the environment quarantined and blocks reuse without changing the Quality Assurance result.
+
+The Quality Assurance result records exact milestone commit, environment/configuration hashes, process and health evidence, data-lineage entries, each expected and actual result, artifact path/hash/size, `PASS`, `FAIL` or `UNTESTED`, limitations, start/finish time and cleanup state. Logs and screenshots are service-managed evidence artifacts with configured retention; repository completion records carry hashes and references rather than embedded secrets or unbounded logs.
+
 ### Dependency readiness and automatic continuation
 
-An independently approved packet that has completed integration may satisfy a declared dependency before its milestone merges into master. The architect explicitly identifies dependencies that require a completed milestone instead. Review approval alone, before integration, is insufficient. The service binds readiness to the exact integrated result and makes that result available to dependent work; cross-milestone source delivery and branch mechanics remain to be specified. An inaccessible or invalidated result cannot make a packet eligible.
+An independently approved packet that has completed integration may satisfy a declared dependency before its milestone merges into master. The architect explicitly identifies dependencies that require a completed milestone instead. Review approval alone, before integration, is insufficient.
+
+For an early code dependency, the service records the providing packet, source milestone head after its verified integration, accumulated integrated packet set and consuming milestone. It checks that the accumulated set is within the consuming milestone's declared dependency closure. If not, the dependency waits for source-milestone completion rather than importing undeclared code.
+
+An eligible delivery creates a FIFO `dependency_import` entry and a branch from the consuming milestone head using the fixed dependency branch pattern. The service merges the exact providing commit with both histories preserved. The Integration Manager resolves conflicts or necessary connection changes; any new code receives integration-change review. After a verified non-fast-forward merge into the consuming milestone branch, SQL binds readiness to the source commit, import result and included packet set. Dependent packet branches are created only from that updated head.
+
+An import creates a promotion dependency: the consuming milestone cannot merge to product `master` before the providing milestone has merged, unless the confirmed architecture explicitly assigns the imported outcome to the consuming milestone instead. Changed or inaccessible source evidence invalidates readiness and produces another recorded delivery/reconciliation operation; it never silently retargets a prior approval.
 
 Execution automatically continues with eligible work across confirmed milestones within its already authorized scope. A blocked milestone does not stop unrelated eligible work. Active stop or finish-current-work instructions still prevent new starts as defined by their disposition.
 
 A failed milestone review immediately prevents new work that depends on the failed outcome from starting. Already-running affected work follows the existing work-disposition process; unrelated eligible work continues. The service records changed readiness and notifies the Development Manager to recalculate pending assignments.
 
-Once all authorized milestones have merged and their required checks have passed, the service automatically closes Execution and notifies the Owner through the CLI with a completion summary. No additional Owner approval is required. Closure verifies that no required correction, active run or unresolved merge remains; missing or uncertain evidence is not completion. The summary identifies delivered milestones, verified merge results and any recorded non-blocking observations. Detailed completion records remain to be defined.
+Once all authorized milestones have merged and their required checks have passed, the service automatically closes Execution and notifies the Owner through the CLI with a completion summary. No additional Owner approval is required. Closure verifies that no required correction, active run or unresolved merge remains; missing or uncertain evidence is not completion.
+
+### Execution completion and recovery
+
+A milestone becomes complete only after its required packets and supplements are resolved, dependency imports are valid, Quality Assurance has no failed or unverified required path, the milestone outcome review passes, and the verified milestone-to-master merge exists. The service publishes immutable UTF-8 JSON under `.maestro/execution/<execution-activity-id>/milestones/<milestone-id>/completion/versions/<version>/completion.json`.
+
+The milestone record contains `schema_version: 1`; project, activity, registration, breakdown and milestone identities; configuration/schema hashes; baseline, branch and final merge commits; packet and integration queue results; review counts and references; supplement versions; dependency deliveries; Quality Assurance run and artifact references; non-blocking observations; repository-operation references; and start/completion times. SQL marks the milestone complete only after publication bytes and the remote merge are verified.
+
+Execution closes automatically when every authorized milestone has a verified completion record; no packet, correction, queue entry, run, question, stop action or external operation is active or uncertain; and all required branches are reconciled. The service publishes `.maestro/execution/<execution-activity-id>/completion/versions/<version>/completion.json` with the exact registration/breakdown, configuration/schema hashes, ordered milestone-completion references and hashes, product-master start/final commits, unresolved-work assertion, retained non-blocking observations, and closure reason `completed` or `stopped`. A graceful stop record also lists unfinished packets and preserves their status; it is not a successful delivery record.
+
+Publication uses the repository-operation journal. SQL advances to `completed` or `stopped` only after verifying remote bytes; a lost acknowledgment reconciles the same version. Conflicting bytes or a changed final master head pause closure. The CLI completion summary is rendered from SQL and includes the immutable repository reference. It cannot claim completion from an agent message, local-only commit or partially published record.
+
+Service restart reloads the activity, restrictions, sessions, queue, review counts, environment cleanup state and pending repository journal. Known completed steps are not repeated. Unknown agent or Git operation outcomes remain blocked until observed or reconciled. Automatic recovery and the single configured manual retry retain the original assignment, source, target, review and allowance identities. Recovery cannot change models except through the configured backup rule, reset a review count, skip FIFO or weaken completion criteria.
 
 ### Authorized integration merges
 
@@ -1463,7 +1584,7 @@ The Integration Manager requests the packet-to-milestone merge after applicable 
 
 Routine authorized merges at both levels do not require another Owner approval. This includes a passing milestone branch merging into `master`. A target change that invalidates integration or milestone evidence returns the affected assignment for reconciliation; approval of an earlier baseline cannot silently cover different code. The service must verify the remote result before recording merge success. No agent self-approval, protection bypass or unverified merge is permitted.
 
-These are Execution code-delivery branches. Registration and architecture-package publication still use their saved authorized destination. Current Maestro documentation edits remain direct commits to `master`; writing this design does not create branches or launch implementation. Merge strategy, recovery journal/API shapes and detailed completion records remain implementation/design details to settle.
+These are Execution code-delivery branches. Registration and architecture-package publication still use their saved authorized destination. Current Maestro documentation edits remain direct commits to `master`; writing this design does not create branches or launch implementation. Branch patterns, merge strategy, journal behavior and completion records are defined above; executable Git handlers and installed verification remain implementation work.
 
 ### Specialist assignment and architectural support
 
@@ -1496,7 +1617,7 @@ Once this set has settled under the normal lifecycle and all associated runs, su
 
 The linked disposition action records request, project, execution activity, question and recommendation identities, expected activity version, selected choice, affected packet references and verified Owner identity. Stable choice values are `continue_unaffected`, `finish_safe_work`, `stop_affected_or_all` and `finish_current_for_replanning`, paired with the plain labels above. In one SQL transaction, validate the current recommendation and scope, save the choice and apply its pending-start restrictions. An identical replay returns the saved receipt; a stale or conflicting choice requires a refreshed decision. A written clarification alone does not authorize a stopping action. Process stopping is supervised and reconciled after that saved decision, never inside the transaction.
 
-Re-registration still uses its explicit entry and existing idle checks. Re-registration, manual architecture start, confirmation and explicit execution start remain separate steps. General Execution lifecycle and stop-operation contracts still require design; these transition rules do not supply missing correction limits or completion mechanics.
+Re-registration still uses its explicit entry and existing idle checks. Re-registration, manual architecture start, confirmation and explicit execution start remain separate steps. General pause, resume, graceful stop, retry and completion behavior follows the [Execution API and state contract](#execution-api-state-and-record-contract) and [Execution completion and recovery](#execution-completion-and-recovery).
 
 ### Architectural-support configuration and fallback
 
@@ -1648,6 +1769,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Milestone reviewer model selection, correction-supplement and cross-milestone source-delivery mechanics, and detailed completion records remain unresolved. |
+| Execution implementation | Execution behavior, configuration, records, review, integration, Quality Assurance, stopping, recovery and completion are defined under [Execution](#execution). The `execution@1` schema, API handlers, Git journals, adapters, isolated-environment supervisor, physical SQL tables and installed operational evidence remain implementation work. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
