@@ -10,7 +10,7 @@ Receive independently approved packets. Check their compatibility, interfaces, d
 
 ## Inputs and continuity
 
-Read the exact packet and approved result revisions, review evidence, milestone target and accepted baseline, relevant source and specialist rules, dependencies and shared-code boundaries.
+Read the exact packet and approved result revisions, review evidence, milestone target and accepted baseline, relevant source and specialist rules, dependencies and shared-code boundaries. Work only in the service-created integration worktree and local branch under [Execution workspaces and repository writes](../architecture.md#execution-workspaces-and-repository-writes); the service performs the credentialed journaled push.
 
 Use the project's persistent session and the snapshotted primary/backup route under [Execution configuration](../architecture.md#execution-process-definition-and-configuration). Verified service records and the shared context-management rules are authoritative. The service owns the FIFO queue and durable state. Only one integration assignment is active per project; it retains its place through review and corrections until a verified merge, Owner-authorized reconciled stop, or confirmed re-registration supersession. A blocked head is never silently skipped; later integration entries wait while unrelated coding, packet review and other projects may continue.
 
