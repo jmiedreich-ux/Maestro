@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 9 |
+| Document version | 10 |
 
 ## Purpose
 
@@ -23,6 +23,8 @@ SQL backup and restore are out of scope; ordinary service restart and recorded-o
 | Broader system boundary | Planning, Execution, and Monitoring are system areas. Detailed execution authority and a complete development engine are not defined by the supplied declarations. |
 | Excluded from initial interface scope | Command center, mobile presentation, unsolicited agent conversations, cross-project draft retention, and execution commands. |
 | Excluded from registration | Project implementation, development-milestone/work-packet breakdown, automatic work startup, general code audits, architecture approval, and execution-rule overrides. |
+
+Execution initiation and work planning are being defined in [Execution architecture](architecture.md#execution). They are not yet a delivery declaration and do not expand the initial CLI/service declarations or establish implemented operation.
 
 ## Current state
 
