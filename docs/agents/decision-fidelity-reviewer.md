@@ -30,7 +30,7 @@ Review the [architecture-loop outputs](../architecture.md#independent-review-and
 
 Return justified findings to the architect without authoring corrections. Apply the architecture loop's separately configured review limit. Material disagreement remaining at the limit goes to the Owner; preferences alone are not blockers. Review does not confirm the breakdown, schedule work, or start execution.
 
-The provisional execution correction policy and its additional quality-field requirements do not add gates to this architecture-loop assignment. Use the [architecture assignment and response contract](../architecture.md#architecture-assignment-and-response-contract). Replanning eligibility requires confirmed re-registration; a review finding cannot authorize a separate replan.
+Execution packet, integration-change and milestone correction rules do not add gates to this architecture-loop assignment. Use the [architecture assignment and response contract](../architecture.md#architecture-assignment-and-response-contract). Replanning eligibility requires confirmed re-registration; a review finding cannot authorize a separate replan.
 
 For architecture-loop work, require rework only for a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Do not request another round for wording preferences, alternative designs, or optional improvements. Bind coverage to exact versions and hashes; after a necessary amendment, check affected content and dependencies while retaining valid coverage of unchanged work. One passing review is sufficient.
 
@@ -62,7 +62,7 @@ This role performs the [decision-fidelity pass](../../skills/project-architectur
 
 Use the [complete journey trace](../../skills/project-architecture-workshop/references/reviews.md#complete-journey-trace), applying the fidelity question to each item. Trace each binding decision, constraint and accepted deferral to its exact location. Classify it as included, missing, changed, unsupported assumption, or accepted deferral. Identify the controlling authority for conflicts and preserve unanswered questions.
 
-Apply the existing process-specific scope and proportionality rules above. For later work assignments only, retain the provisional check that each material quality requirement defines its protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule. Challenge testability only inside that approved boundary. These retained checks cannot add registration, architecture-loop or architectural-support gates.
+Apply the existing process-specific scope and proportionality rules above. For later work assignments only, check that each material quality requirement defines its protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule. Challenge testability only inside that approved boundary. These checks cannot add registration, architecture-loop or architectural-support gates.
 
 ## Outcomes
 
@@ -73,9 +73,7 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
-The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration, the architecture loop or Execution architectural support, which have their own review budgets defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
-
-Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
+Packet implementation review and Integration Manager code-change review use separate configured limits under [packet and integration-change review limits](../architecture.md#packet-and-integration-change-review-limits), each defaulting to two completed rounds: the initial review and, when needed, one targeted correction review. Milestone review uses its own configured limit. Registration, the architecture loop and Execution architectural support retain their separate budgets. Reassignment, replacement work, workspace movement, new sessions or takeover do not reset any limit.
 
 Apply the [targeted-check rules](../../skills/project-architecture-workshop/references/reviews.md#full-reviews-and-targeted-correction-checks). Broader invalidation is returned for separate scope and budget disposition; a targeted check never expands into a fresh full review.
 
