@@ -22,7 +22,7 @@ The [CLI declaration](cli-milestones.md) owns terminal installation, presentatio
 | CLI | Terminal controls, displayed states, commands, question forms, attention navigation, and sending requests to the service. |
 | Registration | Source and scope interpretation, required assessment/review content, registration eligibility and review budget, package schemas and GitHub publication, activation, registration-specific action validation, and use of runtime reservations/recovery. |
 
-Generic service storage persists process-defined records; each process owns their meaning and required fields. SVC-PM5 — Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. General software Execution policy, a full development scheduler, command center, mobile UI, and development breakdown are excluded.
+Generic service storage persists process-defined records; each process owns their meaning and required fields. SVC-PM5 — Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. Execution implementation, a full development scheduler, command center, mobile UI, and development breakdown are excluded from this declaration.
 
 ### Development order and connected acceptance
 
@@ -34,7 +34,7 @@ Initial registration supplies real projects, questions, and agent work. REG-PM1 
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: basic real journeys and essential failures, with necessary simulated conditions identified. Multiple criteria may share evidence. Live verification is deferred to development.
 
-Existing-code condition remains as recorded in the [project overview](../project-overview.md). Relevant source is assessed during development preparation for reuse or amendment; no existing component is assumed ready. Each completion record identifies the implementation revision, reproducible setup, observations, and required reviews. General implementation-review and acceptance authority remain provisional for separate Execution design. Unresolved behavior or authority must be settled before affected breakdown; implementation and operational checks are not prerequisites to this documentation.
+Existing-code condition remains as recorded in the [project overview](../project-overview.md). Relevant source is assessed during development preparation for reuse or amendment; no existing component is assumed ready. Each completion record identifies the implementation revision, reproducible setup, observations, and required reviews. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed; they are not additional runtime-service milestone scope. Unresolved behavior or authority must be settled before affected breakdown; implementation and operational checks are not prerequisites to this documentation.
 
 ## Milestones and order
 
@@ -85,7 +85,7 @@ Installation and systemd operation work on the AI box with reproducible setup an
 
 ### Unresolved details
 
-No additional service-lifecycle behavior is proposed. Exact installation packaging, unit settings, and permission setup are implementation work against the architecture. General delivery-review authority remains provisional as described above.
+No additional service-lifecycle behavior is proposed. Exact installation packaging, unit settings, and permission setup are implementation work against the architecture. Delivery review and acceptance follow the defined Execution architecture when this outcome is implemented.
 
 ## SVC-PM2 — Preserve project activity and requests
 
@@ -128,7 +128,7 @@ Connected CLI and registration evidence demonstrates durable records, isolated p
 
 ### Unresolved details
 
-SQLite tables and storage implementation remain development work. Delivery evidence must show the configured local database, service-owned writes, committed records surviving service restart, and competing project-start requests producing only one reservation under [SQLite storage](../architecture.md#sqlite-storage). SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. General delivery-review authority remains provisional.
+SQLite tables and storage implementation remain development work. Delivery evidence must show the configured local database, service-owned writes, committed records surviving service restart, and competing project-start requests producing only one reservation under [SQLite storage](../architecture.md#sqlite-storage). SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. Delivery review and acceptance follow the defined Execution architecture.
 
 ## SVC-PM3 — Connect the CLI to recorded service activity
 
@@ -170,7 +170,7 @@ The actual CLI uses the implemented service API and saved events for the main in
 
 ### Unresolved details
 
-No new API behavior is introduced. Executable API validation and transport handling are implementation work; registration handlers remain an explicit dependency. General delivery-review authority remains provisional.
+No new API behavior is introduced. Executable API validation and transport handling are implementation work; registration handlers remain an explicit dependency. Delivery review and acceptance follow the defined Execution architecture.
 
 ## SVC-PM4 — Run and recover assigned agents
 
@@ -178,7 +178,7 @@ No new API behavior is introduced. Executable API validation and transport handl
 
 **Included:** Codex and Claude Code adapters, exact model checks, immutable assignments, protected workspaces, separate run identities, supervisor units, output collection, progress, timeouts, technical retries, stopping, and supervisor recovery.
 
-**Excluded:** Agent judgment, registration review/activation decisions, package publication policy, software implementation agents, and general Execution policy.
+**Excluded:** Agent judgment, registration review/activation decisions, package publication policy, software implementation agents, and Execution implementation or policy changes.
 
 ### Architecture and journeys
 
@@ -215,7 +215,7 @@ Real registration agent assignments use the service adapters and return usable v
 
 ### Unresolved details
 
-Installed capability and isolation checks are development verification. If a tool cannot meet the specified exact-model or stopping contract, report the concrete limitation rather than silently weaken it. General software Execution policy remains outside this outcome.
+Installed capability and isolation checks are development verification. If a tool cannot meet the specified exact-model or stopping contract, report the concrete limitation rather than silently weaken it. Execution implementation and policy changes remain outside this outcome.
 
 ## SVC-PM5 — Apply shared process definitions
 
