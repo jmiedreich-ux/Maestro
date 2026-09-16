@@ -1326,7 +1326,7 @@ General Execution scheduling, implementation review, and merge authority remain 
 
 ## Execution
 
-The agreed behavior covers initiation, work planning, independent packet review, product integration and milestone promotion. Detailed correction/review limits, milestone-review assignments, delivery acceptance and completion records remain unfinished. Registration and architecture-loop rules do not supply missing Execution policies.
+The agreed behavior covers initiation, work planning, independent packet review, product integration and milestone promotion. Milestone review, correction routing, review limits and automatic continuation/completion are defined below. Packet and integration correction/review limits, detailed delivery records and remaining execution contracts are unfinished. Registration and architecture-loop rules do not supply missing Execution policies.
 
 ### Execution initiation
 
@@ -1405,7 +1405,37 @@ The delivery sequence is:
 5. Once the milestone's work is complete, its assembled branch receives an outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.
 6. Only a passing milestone review and gap analysis make that branch eligible to merge into product `master`.
 
-Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The exact milestone-review assignment, reviewer model, limits and result contract remain to be defined.
+Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The review assignment, limits and correction handling follow [milestone outcome review](#milestone-outcome-review). Reviewer model selection and the machine-readable result contract remain to be defined.
+
+### Milestone outcome review
+
+The service starts a fresh session of the [Independent Implementation Reviewer](agents/independent-review-agent.md) to review the complete assembled milestone branch and perform its gap analysis. The assignment includes exact branch revisions, agreed milestone outcomes, relevant architecture, dependencies and completion evidence. The reviewer checks that the packets work together and that the usable outcome has no missing required parts. It must not have authored or integrated any code under review. The Integration Manager prepares the branch and supporting evidence but cannot approve its own work.
+
+Findings distinguish blocking defects from non-blocking observations. A blocking finding prevents the agreed outcome or its required evidence; preferences and optional improvements do not block merging or require another round. The service records the findings and routes failures to the Project Architect for determination:
+
+| Finding | Correction path |
+|---|---|
+| Implementation defect within the confirmed design | The Integration Manager corrects it, with process coordination by the Development Manager. |
+| Missing work needed for the agreed outcome, within confirmed scope and direction | The architect defines the necessary bounded correction packets; the Development Manager schedules them. |
+| Change requiring replanning | Use re-registration and the existing Owner-selected work-disposition process. |
+
+In-scope correction packets are recorded as supplements linked to the original breakdown, milestone and finding; they do not silently replace confirmed records or authorize changed outcomes, dependencies or architectural direction. Those changes still require re-registration. Exact supplement formats and activation mechanics remain to be defined.
+
+A corrected milestone receives a targeted check of the named corrections and their affected dependencies and product behavior. Valid approval remains for unchanged, unaffected work. If a correction affects a wider part of the product, the reviewer records why the affected coverage must broaden. A correction check does not automatically repeat the whole milestone review.
+
+The service configuration sets the maximum completed milestone review rounds, defaulting to two: the initial review and, if required, one correction review. One passing round is sufficient. The service saves the effective limit and consumed count for the milestone; replacement reviewers, new sessions, renamed work and corrections do not reset them. Invalid or interrupted review output is not a completed round or approval; technical recovery does not grant additional completed reviews. The configuration key and result schema remain to be specified.
+
+After the configured limit, unresolved blocking findings keep the milestone unmerged and reach the Owner through the CLI with the architect's recommendation. No automatic extra review or merge is permitted. This milestone limit does not define packet or integration review budgets.
+
+### Dependency readiness and automatic continuation
+
+An independently approved packet that has completed integration may satisfy a declared dependency before its milestone merges into master. The architect explicitly identifies dependencies that require a completed milestone instead. Review approval alone, before integration, is insufficient. The service binds readiness to the exact integrated result and makes that result available to dependent work; cross-milestone source delivery and branch mechanics remain to be specified. An inaccessible or invalidated result cannot make a packet eligible.
+
+Execution automatically continues with eligible work across confirmed milestones within its already authorized scope. A blocked milestone does not stop unrelated eligible work. Active stop or finish-current-work instructions still prevent new starts as defined by their disposition.
+
+A failed milestone review immediately prevents new work that depends on the failed outcome from starting. Already-running affected work follows the existing work-disposition process; unrelated eligible work continues. The service records changed readiness and notifies the Development Manager to recalculate pending assignments.
+
+Once all authorized milestones have merged and their required checks have passed, the service automatically closes Execution and notifies the Owner through the CLI with a completion summary. No additional Owner approval is required. Closure verifies that no required correction, active run or unresolved merge remains; missing or uncertain evidence is not completion. The summary identifies delivered milestones, verified merge results and any recorded non-blocking observations. Detailed completion records remain to be defined.
 
 ### Authorized integration merges
 
@@ -1598,6 +1628,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Implementation correction/review limits, milestone-review assignments and detailed completion mechanics remain unresolved. |
+| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Packet/integration correction and review limits, milestone reviewer model selection, correction-supplement and cross-milestone source-delivery mechanics, and detailed completion records remain unresolved. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
