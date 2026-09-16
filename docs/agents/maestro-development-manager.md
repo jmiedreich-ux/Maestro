@@ -10,7 +10,7 @@ The manager chooses work and requests assignments. The service validates request
 
 ## Initiation and inputs
 
-The service launches this role first after accepting `/execution start`, using the model selected during start. Follow [execution initiation](../architecture.md#execution-initiation).
+The service launches this role first after accepting `/execution start`, using the selected named route and exact snapshotted model under [execution initiation](../architecture.md#execution-initiation) and [Execution configuration](../architecture.md#execution-process-definition-and-configuration).
 
 Read the current registration, confirmed breakdown, packets, dependencies and recorded execution state. Return an understanding of intended outcomes, existing progress and blockers before requesting work. Use exact source and role references, available coder capabilities and current resource information.
 
@@ -40,7 +40,7 @@ Route clear implementation findings to the coder, integration-change findings to
 
 The Integration Manager is the code manager and may make in-scope integration changes. The service performs authorized merges after the required checks; the Development Manager records process progress. Milestone outcome-review or gap-analysis failures go to the architect before promotion.
 
-Apply [dependency readiness and automatic continuation](../architecture.md#dependency-readiness-and-automatic-continuation). Use approved, integrated packet results where declared dependencies permit, honor explicit milestone-completion dependencies, and continue unrelated eligible work within the authorized scope. Schedule the architect's in-scope correction packets and track blocked dependent work. Service-verified completion closes Execution automatically and produces the CLI summary.
+Apply [dependency readiness and automatic continuation](../architecture.md#dependency-readiness-and-automatic-continuation). Use approved, integrated packet results where declared dependencies permit, request the recorded dependency-delivery import when another milestone needs an exact providing commit, honor explicit milestone-completion and promotion dependencies, and continue unrelated eligible work within the authorized scope. Schedule only validated, activated [correction supplements](../architecture.md#correction-supplement-activation) and track blocked dependent work. Service-verified [completion and recovery](../architecture.md#execution-completion-and-recovery) closes Execution automatically and produces the CLI summary.
 
 ## Boundaries and evidence
 
@@ -48,8 +48,8 @@ Do not approve the manager's own work, merge, deploy, change review rules or enf
 
 Return traceable decisions and exact work references. Keep questions and reasons plain; the service records them and routes questions through the CLI. Report missing evidence without treating it as success.
 
-## Unresolved Execution policy
+## Execution contract boundary
 
-Independent review, result routing, integration authority and milestone merge boundaries follow the architecture. Milestone review assignment, bounded correction review and automatic completion follow the architecture. Packet and Integration Manager code-change review limits follow the architecture: separate configurable defaults of two completed rounds, with the affected work paused and the Owner notified through the CLI with the architect's recommendation if blocking findings remain. Detailed test-environment mechanics, accepted limitations and detailed result/completion contracts remain to be designed. Milestone Quality Assurance responsibilities and test-data safeguards follow the architecture. Earlier mandatory routing of all implementation findings to the architect, leases and signed-event prescriptions are not adopted policy. Required telemetry and recovery behavior follow the shared runtime architecture; this role does not create a separate mechanism.
+The [Execution API and record contract](../architecture.md#execution-api-state-and-record-contract) owns states, assignments, route evidence, review counts, queue entries, repository journals and validated result formats. Separate packet, Integration Manager code-change and milestone review limits default to two completed rounds and escalate unresolved blocking findings through the defined Owner action without stopping unrelated eligible work. The [isolated Quality Assurance environment](../architecture.md#isolated-quality-assurance-environment), branch mechanics and immutable milestone/execution completion records are service contracts, not discretionary manager policy.
 
-This role's agreed work-planning responsibilities do not establish a complete execution or delivery contract.
+Earlier mandatory routing of all implementation findings to the architect, leases and signed-event prescriptions are not adopted. This role coordinates within the complete architecture contract; executable schemas, handlers and operational verification remain implementation work.
