@@ -14,7 +14,7 @@ A lower level may add restrictions but cannot weaken a higher level. If two auth
 
 ## Roles
 
-Registration uses the Project Architect and Decision Fidelity Reviewer under the architecture's registration rules. General software Execution policies, including retained implementation-review, correction, merge, and development-completion rules, remain provisional until separately designed. Their presence in a role file does not grant that authority through registration.
+Registration uses the Project Architect and Decision Fidelity Reviewer under the architecture's registration rules. The Development Manager's [Execution work-planning role](maestro-development-manager.md) and the architect's bounded support responsibility are now defined. Remaining Execution policies, including retained implementation-review, correction, merge and development-completion rules, remain provisional until separately designed. Their presence in a role file does not grant that authority through registration.
 
 - [Maestro Project Architect — Software Architecture Role](architecture-agent.md)
 - [Maestro Development Manager](maestro-development-manager.md)
