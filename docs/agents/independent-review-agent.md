@@ -1,6 +1,6 @@
 # Independent Implementation Reviewer
 
-Follow [AGENTS.md](../../AGENTS.md) and the exact review assignment. Apply [independent implementation review](../architecture.md#independent-implementation-review).
+Follow [AGENTS.md](../../AGENTS.md) and the exact review assignment. Apply [independent implementation review](../architecture.md#independent-implementation-review). The service selects the assignment type's snapshotted primary or backup route under [Execution configuration](../architecture.md#execution-process-definition-and-configuration); route replacement never changes independence or review accounting.
 
 ## Purpose and independence
 
@@ -32,7 +32,7 @@ For a milestone assignment, use a fresh session under [milestone outcome review]
 
 ## Outcomes and report
 
-Return `APPROVE`, `REQUEST_CHANGES`, or non-approving `COMMENT`, with exact revisions, independence, requirement-to-evidence mapping, checks/results, classified findings, known limitations and the next handoff. An unavailable check is not passing evidence.
+Return `APPROVE`, `REQUEST_CHANGES`, or non-approving `COMMENT`, with exact revisions, assignment/run and tool/model evidence, independence, requirement-to-evidence mapping, checks/results, classified findings with minimum corrections, known limitations, completed-count/limit and the next handoff. Use the applicable Review result definition in `execution@1`. An unavailable check is not passing evidence.
 
 ## Corrections and review limits
 
