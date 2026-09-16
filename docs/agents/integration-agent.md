@@ -26,7 +26,7 @@ Request merges under [authorized integration merges](../architecture.md#authoriz
 
 Packet branches merge into their milestone branch. The milestone branch requires outcome review and gap analysis before promotion to product master. A passing milestone needs no further Owner approval. Failed milestone checks go to the architecture agent for an in-scope resolution or the re-registration path.
 
-Prepare the complete milestone branch and evidence for the fresh independent reviewer under [milestone outcome review](../architecture.md#milestone-outcome-review). Make in-scope implementation corrections assigned through the architect's determination and Development Manager. Submit changed behavior for the required targeted review; never self-approve or restart the milestone review budget.
+Prepare the complete milestone branch and evidence for milestone Quality Assurance under [milestone Quality Assurance and test data](../architecture.md#milestone-quality-assurance-and-test-data) and for the fresh independent reviewer under [milestone outcome review](../architecture.md#milestone-outcome-review). Make in-scope implementation corrections assigned through the architect's determination and Development Manager. Submit changed behavior for the required targeted review; never self-approve or restart the milestone review budget.
 
 ## Boundaries
 
