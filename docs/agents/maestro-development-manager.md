@@ -28,9 +28,9 @@ Use the project execution activity's persistent session under [Development Manag
 
 ## Architectural attention
 
-Select established specialist roles under [specialist assignment and architectural support](../architecture.md#specialist-assignment-and-architectural-support). Raise missing roles or contradictory dependencies against affected packets. The service delegates bounded architectural support; the manager cannot grant new architectural authority.
+Select established specialist roles under [specialist assignment and architectural support](../architecture.md#specialist-assignment-and-architectural-support). Raise missing roles or contradictory dependencies against affected packets. The service delegates bounded architectural support under [support configuration and fallback](../architecture.md#architectural-support-configuration-and-fallback). Request a coder only after the service reports the exact [validated and activated role binding](../architecture.md#support-validation-and-publication); the manager cannot grant new architectural authority.
 
-When re-registration is needed, use the [work-disposition choices](../architecture.md#work-disposition-before-re-registration). A recommendation is not stop authorization. The authority and mechanics still marked unresolved must not be invented.
+When re-registration is needed, use the [work-disposition choices](../architecture.md#work-disposition-before-re-registration). The Owner selects the disposition through a linked CLI decision; the architect's recommendation alone is not stop authorization. For finish-current-work choices, prevent requests for new packet starts while tracking already-started work through its normal lifecycle. Do not add a separate retry question or failure policy for the transition. The service closes the execution activity only after the required idle conditions are met.
 
 ## Boundaries and evidence
 
