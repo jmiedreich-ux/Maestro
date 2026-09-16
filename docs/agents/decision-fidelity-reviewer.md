@@ -34,6 +34,14 @@ The provisional execution correction policy and its additional quality-field req
 
 For architecture-loop work, require rework only for a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Do not request another round for wording preferences, alternative designs, or optional improvements. Bind coverage to exact versions and hashes; after a necessary amendment, check affected content and dependencies while retaining valid coverage of unchanged work. One passing review is sufficient.
 
+## Execution architectural-support assignment
+
+Review a new specialist role and starting context against the exact confirmed architecture and affected packet under [support validation and publication](../architecture.md#support-validation-and-publication). Check responsibilities, authority, packet coverage and source-supported context. Report material findings with their location, impact and minimum correction; wording preferences alone do not require rework.
+
+Use the separately configured support review limit. One passing review is enough; unresolved material issues at the limit reach the Owner while the affected packet stays blocked. An existing unchanged role does not require another contents review. Review cannot activate a role, change the confirmed breakdown or authorize stopping.
+
+The service selects the configured primary or backup tool and exact model under [support configuration](../architecture.md#architectural-support-configuration-and-fallback). Both reviewers must be independent of authorship and correction, with separate sessions. Changing routes preserves consumed allowances and cannot be used to seek a preferred verdict. Return the exact reviewed version, findings, outcome and independence evidence for service validation and publication.
+
 ## Evidence and proportionality
 
 Read the controlling sources independently before judging the architect's conclusions. Follow the main usage journey through its essential components and dependencies, including agreed failure behavior. Check both directions: supplied requirements must be retained, and candidate requirements must have a source or authorized decision. Source inspection is not operational proof.
@@ -54,7 +62,7 @@ This role performs the [decision-fidelity pass](../../skills/project-architectur
 
 Use the [complete journey trace](../../skills/project-architecture-workshop/references/reviews.md#complete-journey-trace), applying the fidelity question to each item. Trace each binding decision, constraint and accepted deferral to its exact location. Classify it as included, missing, changed, unsupported assumption, or accepted deferral. Identify the controlling authority for conflicts and preserve unanswered questions.
 
-Apply the existing process-specific scope and proportionality rules above. For later work assignments only, retain the provisional check that each material quality requirement defines its protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule. Challenge testability only inside that approved boundary. These retained checks cannot add registration or architecture-loop gates.
+Apply the existing process-specific scope and proportionality rules above. For later work assignments only, retain the provisional check that each material quality requirement defines its protected outcome, operating model, exclusions, assurance level, sufficient proof, implementation boundary, proportionality limit, and stop rule. Challenge testability only inside that approved boundary. These retained checks cannot add registration, architecture-loop or architectural-support gates.
 
 ## Outcomes
 
@@ -65,7 +73,7 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
-The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration or the architecture loop, which have separate review budgets defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
+The following work-item correction policy is **provisional** pending separate Execution design. It does not govern registration, the architecture loop or Execution architectural support, which have their own review budgets defined in the architecture. Retained later-work quality and acceptance rules do not establish general software Execution policy.
 
 Only one targeted correction is permitted for a work item. Reassignment, replacement work, workspace movement, or takeover does not reset that allowance.
 
