@@ -690,3 +690,18 @@ Coverage included the architecture, Quality Assurance, Project Architect, Develo
 The reviewer checked 121 local Markdown links across the nine required files, covering 24 unique local targets, and found no missing target or heading anchor.
 
 Implementation, runtime and live CLI behavior, environment provisioning, deployed-environment testing and unrelated Execution-policy gaps were excluded. The review made no repository changes and does not claim those areas are complete.
+
+
+## Packet and integration-change review-limit checkpoint
+
+The Owner had already confirmed this decision before the milestone Quality Assurance discussion; its omission from the active master documents was a recording gap, not an open policy question.
+
+Packet implementation review and review of Integration Manager code changes have separate configurable limits. Each defaults to two completed rounds for the exact assignment: the initial review and, if required, one targeted correction review. Invalid or interrupted review output and technical recovery do not consume a completed round. Reassignment, reviewer replacement, a new session, renamed work or workspace movement does not reset the limit.
+
+If blocking findings remain at the applicable limit, the affected work stays unapproved and unmerged. The Project Architect supplies a recommendation and the Owner is notified through the CLI. No automatic extra review is permitted. Unrelated eligible work continues.
+
+The authoritative rule is [packet and integration-change review limits](../../docs/architecture.md#packet-and-integration-change-review-limits). The Development Manager, Project Architect, Integration Manager, Independent Implementation Reviewer and role-index files now align with it. Registration, architecture-loop, architectural-support and milestone-review budgets remain separate.
+
+### Validation and remaining design
+
+This correction was checked against the recorded September 16 Owner agreement and the current delivery sequence. Active statements that packet and integration-change review limits were unresolved were removed. Detailed result records, milestone reviewer model selection, correction-supplement activation, cross-milestone source delivery, exceptional FIFO queue resolution and other implementation mechanics remain separate technical design.
