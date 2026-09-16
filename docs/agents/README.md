@@ -14,7 +14,7 @@ A lower level may add restrictions but cannot weaken a higher level. If two auth
 
 ## Roles
 
-Registration uses the Project Architect and Decision Fidelity Reviewer under the architecture's registration rules. The Development Manager's [Execution work-planning role](maestro-development-manager.md) and the architect's bounded support responsibility are now defined. Independent implementation review, Integration Manager authority, FIFO integration and milestone promotion follow [Execution](../architecture.md#execution). Packet and integration review/correction limits and detailed completion records remain unfinished. Milestone Quality Assurance follows the architecture; retained older policies do not fill the remaining gaps. Their presence in a role file does not grant that authority through registration.
+Registration uses the Project Architect and Decision Fidelity Reviewer under the architecture's registration rules. The Development Manager's [Execution work-planning role](maestro-development-manager.md) and the architect's bounded support responsibility are now defined. Independent implementation review, Integration Manager authority, FIFO integration and milestone promotion follow [Execution](../architecture.md#execution). Packet and Integration Manager code-change review limits follow the architecture. Detailed completion records remain unfinished. Milestone Quality Assurance follows the architecture; retained older policies do not fill the remaining gaps. Their presence in a role file does not grant that authority through registration.
 
 - [Maestro Project Architect — Software Architecture Role](architecture-agent.md)
 - [Maestro Development Manager](maestro-development-manager.md)
