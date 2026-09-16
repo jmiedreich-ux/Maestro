@@ -14,9 +14,9 @@ Read by subject: [runtime and agents](#runtime-and-prerequisites), [connections 
 
 ### Functional areas
 
-The three functional areas are established. Their detailed responsibilities and automation authority remain **provisional**.
+The three functional areas are established. Execution behavior and authority are defined in [Execution](#execution); implementation evidence remains outstanding. Planning and Monitoring retain only the responsibilities defined by their process sections and do not gain authority from this summary.
 
-| Area | Provisional responsibility |
+| Area | Responsibility |
 |---|---|
 | Planning | Interpret requirements and architecture, organize work and dependencies, define completion criteria, and handle authorized changes. |
 | Execution | Assign approved work to agents, manage implementation and checks, obtain reviews, and carry out authorized corrections and merges. |
@@ -58,9 +58,9 @@ Agents communicate with the service through command-line tools or APIs. They do 
 
 ### Automated coordination
 
-The general unattended loop remains **provisional**: Planning supplies approved work, Execution performs it, and Monitoring reports progress and problems.
+The unattended coordination contract is: Planning supplies approved work, Execution performs it under the defined gates, and Monitoring reports progress and problems.
 
-| Situation | Provisional response |
+| Situation | Response |
 |---|---|
 | Checks and independent review pass | Complete the work, merge where already authorized, and release dependent work. |
 | A worker crashes or stalls | Recover or reassign within the authorized retry limit. |
@@ -69,7 +69,7 @@ The general unattended loop remains **provisional**: Planning supplies approved 
 | Scope, architecture, or an Owner-reserved requirement changes | Pause affected work and request a decision. Unrelated approved work may continue. |
 | Time, cost, or retry limits are reached | Stop affected work and report the reason. |
 
-Implementation and integration authors cannot approve their own changes. Monitoring reports and routes problems without changing requirements. The specific [Execution review and merge rules](#independent-implementation-review) govern delivery; this provisional overview grants no additional authority or automatic replanning.
+Implementation and integration authors cannot approve their own changes. Monitoring reports and routes problems without changing requirements. The specific [Execution review and merge rules](#independent-implementation-review) govern delivery; this overview grants no additional authority or automatic replanning.
 
 ### Agent delegation
 
