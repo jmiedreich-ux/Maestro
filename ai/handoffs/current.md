@@ -14,6 +14,10 @@
 
 ## Where the discussion paused
 
+The Owner confirmed manual registration candidate version 1 and its full 18-outcome scope. See [the exact confirmation receipt](#manual-registration-owner-confirmation). The accepted publication is `4953aa555b9e5da5b73407f62184c7905efb7898`; source investigation remains pinned to `182bf4290ef2960d4691a7f41315ebf71d5bf85c`.
+
+The manual architecture stage is now beginning: existing-code investigation, persistent project/specialist foundations, then bounded work packets and development milestones with verification and Quality Assurance plans. No software Execution is started. Earlier pending-confirmation statements below are historical and superseded by the actual Owner receipt.
+
 Manual registration candidate version 1 is prepared and independently reviewed for the full supplied scope: 18 project milestones across Runtime service, Command-line interface, Project registration, Architecture loop and Execution. See [the candidate](../../docs/planning/manual-registration.md), [preparation checkpoint](#manual-registration-preparation-checkpoint) and [review disposition](#manual-registration-review-disposition). All three new manual-candidate passes found no gaps within their recorded coverage; each ended after its first full round without correction.
 
 Exact Owner confirmation of the published candidate is the next required step. The source baseline remains `182bf4290ef2960d4691a7f41315ebf71d5bf85c`; candidate SHA-256 is `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79`. The publishing commit must be established by reading the remote destination; the commit containing this candidate and checkpoint is the intended confirmation target. Record the actual subsequent Owner response and its conversation locator before the manual architecture handoff. No acceptance is inferred from “Ok let’s begin.”
@@ -2279,3 +2283,26 @@ Publication intent: update only this existing handoff and add the exact reviewed
 Owner-confirmation receipt: **pending**. No response, locator, signature, runtime identifier or approval is fabricated. The exact published candidate and its full 18-outcome scope must be presented, with its manual-only authority and unverified implementation/installation limits. After an actual exact confirmation, append the response, available conversation locator, candidate version/path/publishing commit/SHA-256 and accepted scope or exceptions, then verify that receipt on resumption. Refusal, cancellation or ambiguity leaves the candidate unconfirmed.
 
 The next stage is manual architecture preparation only after that receipt. Development milestone/packet planning, detailed code reuse decisions, executable schemas, installation, model/profile selection, connected acceptance and software Execution are not completed by this candidate.
+
+## Manual registration Owner confirmation
+
+The Owner's actual response was **“Yes”**, immediately following the assistant's presentation of candidate version 1 and question, **“Do you confirm candidate v1 and its full scope?”** This is an explicit acceptance of that exact published candidate.
+
+| Receipt field | Recorded value |
+|---|---|
+| Owner | Jeremy Miedreich |
+| Conversation locator | Current conversation: user message “Yes” directly following the assistant message linking candidate v1 at the publishing commit below and asking the quoted confirmation question |
+| Host message identifier / precise response timestamp | Unavailable; not fabricated |
+| Recording date | 2026-09-16 |
+| Repository and path | `jmiedreich-ux/Maestro`, `docs/planning/manual-registration.md` |
+| Candidate version | 1 |
+| Exact publishing commit | `4953aa555b9e5da5b73407f62184c7905efb7898` |
+| Candidate SHA-256 | `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79` |
+| Accepted scope | All five supplied declarations and all 18 project milestones, with the candidate's exclusions and evidence limits |
+| Exceptions in Owner response | None stated |
+| Unchanged source baseline | `182bf4290ef2960d4691a7f41315ebf71d5bf85c` |
+| Authority established | Confirmed manual planning baseline; proceed to existing-code investigation, lasting project/specialist foundations, and packet-first development breakdown under the already requested manual sequence |
+| Authority not established | No installed-service activation, development-breakdown confirmation, implementation acceptance, deployment or software Execution |
+| Candidate verification | Fetched from the exact publishing commit; Git blob `49b5fdd88e502d3725b50d86fe4c9eb9ab89efd8`; original reviewed SHA-256 checked locally against the fetched exact bytes |
+
+The candidate is retained unchanged as the preparation record. Its historical “not supplied” status and earlier pending-receipt passages describe preparation; this receipt supersedes their current-state meaning. The completed candidate review coverage remains unchanged. Later architecture output receives its own required review and exact Owner confirmation.
