@@ -13,7 +13,7 @@
 
 ## Where the discussion paused
 
-**Execution design is paused.** The Owner requested a check of previous information before proceeding. See [pause before Execution design](#pause-before-execution-design) for the checked coverage and outstanding qualifications.
+Execution design resumed after the earlier check and is now paused for a short break. The agreed initiation, Development Manager work planning and architectural-support discussion is saved below. See [Execution design checkpoint](#execution-design-checkpoint). The earlier [pre-Execution check](#pause-before-execution-design) remains historical coverage.
 
 The remaining smaller third-party review items were checked and corrected where applicable. See [consistency cleanup](#consistency-cleanup). GitHub App credential verification remains deferred; this cleanup is not a full readiness review.
 
@@ -37,7 +37,7 @@ Blind full completeness and consistency passes, followed by one targeted selecti
 
 The reusable [Project Architecture Workshop skill](../../skills/project-architecture-workshop/SKILL.md) is packaged with a generalized Planning Guide, templates, durable workshop state and bounded independent-review instructions. It is intended for new or existing projects, not reproduction of Maestro's design. [Installation instructions](../../skills/project-architecture-workshop/INSTALL.md) cover Codex and Claude Code. The package is committed, not installed into the owner's machines. No general Execution design was added by creating the skill.
 
-Shared agent performance and context management are now defined in [Architecture](../../docs/architecture.md#agent-performance-and-context-management) and covered by the runtime, CLI, registration and architecture-loop declarations. Defaults warn at 75% context, hand off at 85%, and resume below 70%. Every supported runtime uses the same capacity classification; a future Qwen adapter must apply it without penalizing context exhaustion. Persistent sessions retain occupancy across runs. Capacity continuation preserves verified work and remaining active-time budget without consuming failure/correction/review allowances. Adapter capability verification remains implementation work; this does not select Qwen for registration or change exact model choices.
+Shared agent performance and context management are now defined in [Architecture](../../docs/architecture.md#agent-performance-and-context-management) and covered by the runtime, CLI, registration and architecture-loop declarations. Defaults warn at 75% context, hand off at 85%, and resume below 70%. Every supported runtime uses the same capacity classification; the planned Qwen execution adapter must apply it without penalizing context exhaustion. Qwen is now the primary Execution coder in the design, while its transport remains unspecified and registration/architecture-loop tool selections are unchanged. Persistent sessions retain occupancy across runs. Capacity continuation preserves verified work and remaining active-time budget without consuming failure/correction/review allowances. Adapter capability verification remains implementation work; this does not select Qwen for registration or change exact model choices.
 
 The pre-execution gap closures define stable saved finding references, the fixed architecture `decisions.json` snapshot, typed Owner decisions for one extra review/correction attempt, per-run deadlines with separate next-run duration exceptions, and the local Owner credential boundary. These contracts remain recorded; the validation below identifies unresolved cross-document gaps. SQL backup and restore are explicitly out of scope; the contradictory backup procedure is removed. Ordinary restart and recorded-operation recovery remain included.
 
@@ -54,6 +54,45 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Execution design checkpoint
+
+The Owner authorized writing the agreed discussion and validating it on master before a short break. [Execution](../../docs/architecture.md#execution) owns behavior; the [Development Manager](../../docs/agents/maestro-development-manager.md) and [Project Architect](../../docs/agents/architecture-agent.md#execution-architectural-support) describe their responsibilities. The role index and overview point to those boundaries. Existing milestone declarations and machine-readable contracts were not expanded to imply complete Execution delivery.
+
+### Decisions preserved
+
+| Conversation agreement | Authoritative location |
+|---|---|
+| Explicit selected-project start; current confirmed breakdown, conflict/access/configuration/eligible-packet checks; save before dispatch; duplicate opens existing activity; independent projects | Architecture — Execution initiation |
+| Model selected at start; service launches the Development Manager first | Architecture — Execution initiation |
+| Manager coordinates approved work, not scope changes or replanning; reads sources/progress and returns initial understanding | Architecture — Development Manager preparation and continuity |
+| Manager chooses work; service validates, reserves and launches | Architecture — Work planning and coder selection |
+| Qwen primary; justified Codex or Claude Code model level/version without requiring Qwen failure | Architecture — Work planning and coder selection |
+| Configured permitted routes, capabilities/context/concurrency; no invented model or silent substitution | Architecture — Work planning and coder selection |
+| Use architecture dependencies, parallel boundaries and integration points; prioritize unblockers while considering delivery order and capacity | Architecture — Work planning and coder selection |
+| Event-driven reassessment, related-event grouping, pending work only; running work not automatically interrupted/reassigned | Architecture — Work planning and coder selection |
+| Persistent per-activity manager session; idle between actions; one active planning action; compact context and verified replacement | Architecture — Development Manager preparation and continuity |
+| Structured launch requests, reasons, priorities, blockers, questions and checkpoint; reject stale requests | Architecture — Planning results and questions |
+| Saved CLI questions/answers; only dependent work waits | Architecture — Planning results and questions |
+| Existing specialist role/context assigned with exact packet, source and change bounds | Architecture — Specialist assignment and architectural support |
+| Bounded architect support chooses existing role or creates one in confirmed boundaries; material changes require re-registration | Architecture — Specialist assignment and architectural support |
+| Four work dispositions, including deliberate finish-current-work choice even when queued work could continue | Architecture — Work disposition before re-registration |
+| Idle-only re-registration and separate manual architecture/execution starts preserved | Architecture — Work disposition before re-registration |
+| Required checks stay in service/wrappers; internal hooks optional, configurable framework excluded | Architecture — Internal hooks |
+
+The earlier assistant proposals for service-only work selection and specific Starting/Running/Blocked display states were not adopted. Model choice for the Development Manager is separate from its coder choices. The finish-current-work choice does not silently approve continuing work known unsafe or invalid, nor bypass the existing idle conditions.
+
+### Resume here
+
+Stay with the current architectural-attention/re-registration subject before moving to another Execution topic. The unresolved question is who authorizes the work disposition and the transition out of execution. Also define how the execution activity ends to become idle, how failed running work is treated, and how reviewed/versioned specialist additions become usable without altering a confirmed manifest silently.
+
+Remaining technical contracts include Execution request/result/event shapes, coder registry location and fields, Qwen transport, and architectural-support model/session selection, permissions, publication, review and limits. Later result review, Integration, Quality Assurance, corrections, merge authority and completion are not settled by the work-planning decisions. No implementation or live verification occurred. GitHub App/service credentials remain deferred to the local machine.
+
+### Validation coverage and limits
+
+Author self-check, not an independent pass. Inputs were the available conversation from the hooks discussion through this save request, current master architecture, both affected role files, role index, overview, repository rules and existing handoff. The table above traces decision fidelity. Consistency checks covered command wording, Qwen's execution-versus-registration boundary, service/agent authority, role status, unchanged initial declaration scope, idle-only replanning and the separation of proposals from agreements. New architecture heading links were checked. The older Development Manager role's assumed service mechanics and correction rules were replaced with the agreed responsibilities and an explicit unresolved-policy boundary; they were not silently adopted.
+
+No independent review budget was restarted or round consumed. This is an evolving design checkpoint, not a claim that sources are sufficient for registration or that the full Execution design is complete. Existing earlier review coverage remains tied to its original snapshots. Live model capabilities, installation, schema validation and full end-to-end readiness were not assessed. No standalone review report was created.
 
 ## Pause before Execution design
 
