@@ -69,7 +69,7 @@ The general unattended loop remains **provisional**: Planning supplies approved 
 | Scope, architecture, or an Owner-reserved requirement changes | Pause affected work and request a decision. Unrelated approved work may continue. |
 | Time, cost, or retry limits are reached | Stop affected work and report the reason. |
 
-Execution does not approve its own results. Monitoring reports and routes problems without changing requirements. This provisional loop does not grant automatic replanning, acceptance, or merge authority.
+Implementation and integration authors cannot approve their own changes. Monitoring reports and routes problems without changing requirements. The specific [Execution review and merge rules](#independent-implementation-review) govern delivery; this provisional overview grants no additional authority or automatic replanning.
 
 ### Agent delegation
 
@@ -87,7 +87,7 @@ Read-only assignments do not require commits solely to satisfy the wrapper. Thes
 
 Registration runs agents to assess sources, prepare and amend candidates, and independently review their fidelity. Its assignment, supervision, permission, output-validation, publication, and recovery controls apply to that work. They do not establish the general software Execution policy.
 
-Implementation-review authority, coding correction limits, merge authority, and development-milestone completion policy remain provisional for separate Execution design. Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
+Execution review and merge boundaries are defined under [Execution](#execution); its remaining coding correction limits and completion mechanics require further design. Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
 
 ### Installed validation schemas
 
@@ -1326,7 +1326,7 @@ General Execution scheduling, implementation review, and merge authority remain 
 
 ## Execution
 
-The agreed behavior below covers initiation and work planning. Implementation review, correction limits, integration, merge authority, delivery acceptance and completion remain unresolved. Registration and architecture-loop rules do not supply those missing Execution policies.
+The agreed behavior covers initiation, work planning, independent packet review, product integration and milestone promotion. Detailed correction/review limits, milestone-review assignments, delivery acceptance and completion records remain unfinished. Registration and architecture-loop rules do not supply missing Execution policies.
 
 ### Execution initiation
 
@@ -1364,6 +1364,57 @@ Each planning pass returns a structured result containing requested packet launc
 
 Development Manager questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. The machine-readable planning-result schema and event-delivery contract remain to be defined.
 
+### Coder preparation and submitted results
+
+Each coder follows the [common coding instructions](agents/coding-agent-sop.md), the exact packet and the applicable project specialist role. Specialist guidance adds source-area knowledge without duplicating or weakening common rules. The unrelated example roles currently in this repository's specialists folder are not assignment options for this work.
+
+Before implementation, the coder returns the [implementation plan](#returned-implementation-plan) through the service. It identifies intended changes, relevant existing code, necessary connections, basic verification and blockers. The service saves it and exposes it to the CLI and Development Manager. There is no separate plan-approval gate; material conflicts or missing prerequisites block affected work.
+
+The final structured result explains changes against the expected outcome, exact source/result revisions, changed files, checks and results, evidence, limitations, blockers and unfinished work. The service validates the response and referenced artifacts, records it and notifies the Development Manager. A coder's completion claim means ready for independent review, not packet acceptance or merge permission.
+
+### Independent implementation review
+
+The [Independent Implementation Reviewer](agents/independent-review-agent.md) examines the exact submitted changes against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
+
+Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the Development Manager. Clear implementation defects return to the coder; missing or contradictory architectural decisions go to architectural support. Reviewers do not edit code, dispatch corrections or authorize merges.
+
+An approved exact packet revision becomes eligible for Integration. Independent review remains before Integration; the Integration Manager does not replace this stage. Correction counts, review limits and detailed exception handling for implementation remain to be defined; neither registration limits nor retained one-correction rules apply by inference.
+
+### Integration management and queue
+
+The [Integration Manager](agents/integration-agent.md) is the project's code manager; the Development Manager is its process manager. The service owns queues and durable assignment state rather than agents retaining pending work only in conversation memory. The Development Manager uses recorded progress, dependencies and capacity to manage work flow.
+
+Each project has a persistent Integration Manager session and a first-in, first-out queue of independently approved packets. Only one integration assignment is active for the project at a time, across all its development milestones. Queue order is the service's durable enqueue order. The active assignment retains its position through integration review and necessary corrections; the next starts only after it is resolved. A blocked assignment is not silently skipped. Other projects integrate independently, and coding and packet review may continue where dependencies and shared-code boundaries permit.
+
+Each assignment uses the latest accepted target state and the exact approved packet revisions. The Integration Manager checks compatibility, shared interfaces, dependencies, necessary connections and the assembled outcome. It may make code changes needed to achieve the packet or larger confirmed outcome, including code-level integration fixes. It cannot change confirmed scope or established architectural direction; those issues go to architectural attention.
+
+Its own integration changes require independent review of the new changes and affected product behavior. Valid coverage of unchanged packet code is retained. Findings return through the service and Development Manager to the Integration Manager for correction. It cannot approve its own changes. When no code changes are made, record the integration evidence without automatically repeating packet review.
+
+The persistent session supports continuity; saved source revisions, review results and queue state remain authoritative. Context capacity and replacement use the shared context-management rules. Integration model selection, exact session/event contracts and exceptional queue-resolution actions remain to be defined.
+
+### Milestone branches and product integration
+
+Each development milestone has its own integration branch created from the product baseline. Each work packet has a separate branch created from its milestone branch and returns its reviewed work to that milestone branch. Branches are not literally nested: recorded source and destination relationships establish the hierarchy. The service records exact branch names and base commits against milestone and packet identities; naming syntax and branch-lifecycle mechanics remain to be defined rather than guessed by agents.
+
+The delivery sequence is:
+
+1. The coder submits a completed implementation from the packet branch.
+2. Independent review approves its exact revision.
+3. The packet enters the project's FIFO integration queue.
+4. The Integration Manager integrates it into the milestone branch, with independent review of any integration code changes.
+5. Once the milestone's work is complete, its assembled branch receives an outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.
+6. Only a passing milestone review and gap analysis make that branch eligible to merge into product `master`.
+
+Packet approvals alone do not establish milestone completion. The milestone check must establish coverage of the connected promised outcome, not merely a completed packet list. Failed checks go to the architecture agent to determine a correction within confirmed scope and direction or the need for re-registration and replanning. That finding does not itself grant a scope change or start replanning. The exact milestone-review assignment, reviewer model, limits and result contract remain to be defined.
+
+### Authorized integration merges
+
+The Integration Manager requests the packet-to-milestone merge after applicable integration checks and independent review pass. The service checks the exact approved result revision, current destination branch and standing project authorization before performing the merge. The same checks apply to milestone-to-master promotion after its outcome review and gap analysis pass. The Development Manager records the process outcome; it does not provide code approval.
+
+Routine authorized merges at both levels do not require another Owner approval. This includes a passing milestone branch merging into `master`. A target change that invalidates integration or milestone evidence returns the affected assignment for reconciliation; approval of an earlier baseline cannot silently cover different code. The service must verify the remote result before recording merge success. No agent self-approval, protection bypass or unverified merge is permitted.
+
+These are Execution code-delivery branches. Registration and architecture-package publication still use their saved authorized destination. Current Maestro documentation edits remain direct commits to `master`; writing this design does not create branches or launch implementation. Merge strategy, recovery journal/API shapes and detailed completion records remain implementation/design details to settle.
+
 ### Specialist assignment and architectural support
 
 The Development Manager selects the applicable specialist role alongside the coder route and model. The service supplies and validates the exact packet, role, relevant starting context, source revision and permitted change boundaries before launch. Role descriptions and source-local context established by the architecture phase remain the basis of specialization; the manager cannot silently rewrite their authority.
@@ -1395,7 +1446,7 @@ Once this set has settled under the normal lifecycle and all associated runs, su
 
 The linked disposition action records request, project, execution activity, question and recommendation identities, expected activity version, selected choice, affected packet references and verified Owner identity. Stable choice values are `continue_unaffected`, `finish_safe_work`, `stop_affected_or_all` and `finish_current_for_replanning`, paired with the plain labels above. In one SQL transaction, validate the current recommendation and scope, save the choice and apply its pending-start restrictions. An identical replay returns the saved receipt; a stale or conflicting choice requires a refreshed decision. A written clarification alone does not authorize a stopping action. Process stopping is supervised and reconciled after that saved decision, never inside the transaction.
 
-Re-registration still uses its explicit entry and existing idle checks. Re-registration, manual architecture start, confirmation and explicit execution start remain separate steps. General Execution lifecycle and stop-operation contracts still require design; these transition rules do not supply missing review, correction or completion policy.
+Re-registration still uses its explicit entry and existing idle checks. Re-registration, manual architecture start, confirmation and explicit execution start remain separate steps. General Execution lifecycle and stop-operation contracts still require design; these transition rules do not supply missing correction limits or completion mechanics.
 
 ### Architectural-support configuration and fallback
 
@@ -1547,6 +1598,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Implementation-review authority, coding correction limits, merge authority and development completion remain provisional. |
+| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Independent packet review, integration review and authorized milestone promotion are defined above. Implementation correction/review limits, milestone-review assignments and detailed completion mechanics remain unresolved. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
