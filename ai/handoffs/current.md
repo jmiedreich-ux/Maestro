@@ -14,6 +14,10 @@
 
 ## Where the discussion paused
 
+The Owner-confirmed manual registration baseline is recorded in [the exact receipt](#manual-registration-owner-confirmation). The first manual architecture preparation draft is now saved: [source investigation](../../docs/planning/manual-architecture/investigation.md), [project structure](../../docs/planning/manual-architecture/project-structure.md), [42-contribution work map and seven development milestone groups](../../docs/planning/manual-architecture/work-breakdown.md), and [QA resource proposal](../../docs/planning/manual-architecture/qa-resources.md).
+
+Seven source-area specialist roles and starting contexts are defined under the proposed Python package areas. Product source remains unchanged. The work map covers all 18 confirmed project outcomes but is not a full packet specification, reviewed architecture version or approved implementation input. See [manual architecture preparation checkpoint](#manual-architecture-preparation-checkpoint) for remaining work and the test-resource input. No service, model, product test, installation or software Execution was run.
+
 The Owner confirmed manual registration candidate version 1 and its full 18-outcome scope. See [the exact confirmation receipt](#manual-registration-owner-confirmation). The accepted publication is `4953aa555b9e5da5b73407f62184c7905efb7898`; source investigation remains pinned to `182bf4290ef2960d4691a7f41315ebf71d5bf85c`.
 
 The manual architecture stage is now beginning: existing-code investigation, persistent project/specialist foundations, then bounded work packets and development milestones with verification and Quality Assurance plans. No software Execution is started. Earlier pending-confirmation statements below are historical and superseded by the actual Owner receipt.
@@ -2306,3 +2310,39 @@ The Owner's actual response was **“Yes”**, immediately following the assista
 | Candidate verification | Fetched from the exact publishing commit; Git blob `49b5fdd88e502d3725b50d86fe4c9eb9ab89efd8`; original reviewed SHA-256 checked locally against the fetched exact bytes |
 
 The candidate is retained unchanged as the preparation record. Its historical “not supplied” status and earlier pending-receipt passages describe preparation; this receipt supersedes their current-state meaning. The completed candidate review coverage remains unchanged. Later architecture output receives its own required review and exact Owner confirmation.
+
+## Manual architecture preparation checkpoint
+
+### Authority and verified confirmation
+
+The Owner's “Yes” confirms only candidate version 1's manual full-scope baseline as recorded above. The receipt was published and fetched byte-for-byte at `7416c25a2c7365435676c4b4d3a06307b4a280dc`, and master was verified at that revision before continuing. The original accepted candidate is unchanged at `4953aa555b9e5da5b73407f62184c7905efb7898`, SHA-256 `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79`. Source code and governing architecture remain pinned to `182bf4290ef2960d4691a7f41315ebf71d5bf85c`.
+
+### Prepared content and evidence limits
+
+| Record | Status |
+|---|---|
+| `docs/planning/manual-architecture/investigation.md` | Source-supported selected-location investigation and architect code-direction proposals. All 35 service files fetched and their Git blobs verified; all Python top-level definitions indexed; actual semantic coverage named in the investigation. Not an exhaustive audit or operational verification. |
+| `docs/planning/manual-architecture/project-structure.md` | Current/intended paths, shared responsibilities, ownership and proposed moves. No existing code was moved or retired. |
+| `docs/planning/manual-architecture/work-breakdown.md` | Packet-first draft: 42 bounded contribution subjects, proposed output/test paths, dependencies and essential failure cases; grouped afterward into seven development milestone subjects; all 18 source outcomes mapped. Detailed final records are incomplete. |
+| Seven source-local specialist role/context pairs | Created under `services/maestro/maestro/{foundation,service,terminal,agents,planning,execution,quality}/.maestro/`; unique context ownership and required template headings. These project overlays do not change runtime agent authority or launch workers. |
+| `docs/planning/manual-architecture/qa-resources.md` | Concrete test-resource proposal and required non-secret input; not a validated catalog, installed configuration or permission to use resources. |
+
+The historical driver, intake, mechanical approval and direct default-branch merge paths conflict with current process separation. The investigation recommends replacing those orchestration paths while assessing low-level SQLite/path/Git/evidence utilities for selective reuse. Source findings identify exact functions and limits; old comments/test claims are not accepted authority. Product architecture and milestone declarations are unchanged.
+
+Static preparation checks verify local links/fragments, source-file preservation, all 42 dependency subjects resolving without a cycle, and each contribution belonging to exactly one of seven groups. These checks do not validate complete outcome implementation, a final development graph, runtime schemas or installed operation. No implementation tests were run.
+
+### Remaining preparation and open resource input
+
+Continue with final per-packet outcome references, permitted-path/shared-output allocation, execution requirements, exact verification commands and required-output records; refine milestone integration and promotion dependencies; then complete each QA plan with actual setup/data/artifact/cleanup/reset contracts. The initial map explicitly identifies these unfinished fields. Do not present it as the exact final breakdown.
+
+The existing architecture's **Project Quality Assurance bindings** requires an operator-provided non-secret test-resource catalog before plans can select external environments, credentials or network permissions. No such catalog or installed-state evidence is available here. Self-contained checks remain possible, but cannot substitute for real GitHub publication and actual agent paths required by the declarations.
+
+The resource proposal names the existing Linux AI-box target and proposes a dedicated disposable GitHub test repository, `jmiedreich-ux/Maestro-qa`. Its selection, existence and access are unconfirmed. The next consequential resource question is whether that is the intended QA repository. No repository is created, no credential value is requested and no wildcard access is inferred. Existing deferred verification on the AI box is preserved. Choosing a repository does not establish the remaining operator catalog or grant test execution.
+
+Routine packet-detail work can continue independently of that resource input. Only affected QA-plan completion and the claim that the entire breakdown is ready for confirmation are blocked by its absence.
+
+### Review and publication accounting
+
+No full architecture-breakdown review is claimed or consumed for this unfinished draft. Its investigation, structure, role/context files, decisions, complete packets/milestones and completed QA plans must be frozen together for the required separate independent fidelity, completeness and consistency passes before exact Owner confirmation. Prior manual-registration reviews and earlier architectural coverage remain intact; this preparation does not rerun them or reset runtime budgets.
+
+Publication intent: add only these 18 planning/role/context documents and update this existing handoff on authorized master, with expected parent `7416c25a2c7365435676c4b4d3a06307b4a280dc`. Preserve original code, governing architecture, declarations and accepted candidate. Verify remote destination and bytes after publication; local files or uploaded blobs alone are not publication. No next operational action is scheduled.
