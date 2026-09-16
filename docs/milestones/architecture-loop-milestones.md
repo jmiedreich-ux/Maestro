@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | ARC — Architecture loop |
-| Declaration version | 5 |
+| Declaration version | 6 |
 | Status | Proposed outcomes with defined technical contracts; no implementation completion or confirmed registration claimed |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,9 +30,9 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
-| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 4 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
-| 3 | ARC-PM3 — Review and confirm the development breakdown | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
+| 1 | ARC-PM1 — Establish the project's architectural foundations | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
+| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 5 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
+| 3 | ARC-PM3 — Review and confirm the development breakdown | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
 
 ## ARC-PM1 — Establish the project's architectural foundations
 
@@ -81,13 +81,13 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Installed adapter verification | Continuation operations and event mapping are specified. | Implement and verify the selected protocols against the installed tool releases during development. |
-| Validator integration | Exact schemas are supplied in `docs/schemas/architecture-loop.schema.json`. | Integrate schema and semantic checks during implementation. No new Owner decision is identified. |
+| Validator integration | The supplied `docs/schemas/architecture-loop.schema.json` supports existing shapes; the Execution-facing additions are identified under `docs/architecture.md#architecture-loop-implementation-boundary`. | Integrate foundation checks here; ARC-PM2 — Produce a bounded and parallel-ready work breakdown owns the additional packet and QA-plan schema delivery. No new Owner behavior decision is identified. |
 
 ## ARC-PM2 — Produce a bounded and parallel-ready work breakdown
 
 **Outcome:** The architect turns confirmed outcomes and investigated foundations into the smallest bounded work packets, organized into development milestones with explicit dependencies and parallel opportunities.
 
-**Included:** Information sufficiency, recorded questions and follow-ups, packet/milestone records and outcome links, integration requirements, architectural quality decisions, and persistent amendments.
+**Included:** Information sufficiency, recorded questions and follow-ups, packet/milestone records and outcome links, versioned Quality Assurance plans, their producer-schema and inventory extensions, integration requirements, architectural quality decisions, and persistent amendments.
 
 **Excluded:** Work scheduling, worker assignment or dispatch, source implementation, and changing confirmed outcomes without the required authority.
 
@@ -119,6 +119,7 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Work can run independently or shares dependencies | Record dependencies, shared-code boundaries, integration points, and justified parallel opportunities without scheduling workers. | A real project's dependency structure and code-area references; no artificial requirement to parallelize inherently dependent work. | None |
 | Information is missing | Routine technical choices are resolved and recorded. Material questions reach the CLI, answers and follow-ups return to the same architect context, and affected work is amended. | Real linked clarification and updated outputs with preserved unrelated decisions. | None |
 | A local design affects shared capabilities | The breakdown incorporates necessary setup, integration, appropriate architectural patterns, and shared code without unsupported readiness claims or unnecessary duplication. | Investigation-to-packet links, recorded tradeoffs, and completion evidence that establishes usable outcomes. | None |
+| Execution inputs are produced | Packet `execution_requirements`, milestone `qa_plan_ref`, and versioned QA plans are accepted by the extended producer schema, inventoried, hashed and published under `docs/architecture.md#architecture-record-contract`. Missing required setup tooling is planned with explicit dependencies. | Actual saved packet/milestone/QA-plan set, producer validation and manifest references; the older supplied schema alone cannot establish readiness. | None |
 | Outputs are validated before review | Required fields, paths, identities, dependencies, input versions, and required commits pass deterministic checks. The architect corrects precise errors within its separate allowance; unchanged errors pause early, and checks alone consume no correction or fidelity round. | Actual output correction and recheck, with assigned counts and one essential stale/misnamed-output rejection. | None |
 | Inputs or reviewed records change | Manifest and SQL references prevent stale overwrite. Mark affected dependencies and coverage for revision while retaining valid unaffected work. | Exact versions and hashes before/after a relevant change; no reliance on session memory as authority. | None |
 | A packet uses a finding or architectural decision | Resolve the exact finding and container; include the decisions snapshot in manifest inventory and reviewed content. Changed supporting decisions invalidate affected coverage without rewriting published history. | Trace a real packet to its finding and decision records, including one affected-content update. | None |
@@ -131,7 +132,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Record validation implementation | Schemas and canonical hashing are supplied. | Implement the documented validation and publication rules; verify real output sets during development. |
+| Record validation implementation | Packet execution requirements, milestone QA-plan references, QA-plan records and inventory support are defined in prose but missing from the supplied executable schema. | Extend `docs/schemas/architecture-loop.schema.json`, allocation and response/output inventories, semantic validation and publication under `docs/architecture.md#architecture-loop-implementation-boundary`; verify real output sets during development. |
 | Replanning implementation | Reconciliation is permitted only after confirmed re-registration. | Implement the existing manual architecture entry and affected-record preservation rules; no separate trigger or design prerequisite. |
 
 ## ARC-PM3 — Review and confirm the development breakdown
@@ -168,7 +169,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 |---|---|---|---|
 | Review begins | A separate reviewer receives the exact confirmed sources, findings, foundations, and breakdown; checks outcome coverage, bounds, dependencies, parallelism, setup, and usable integration. | Real independent assignment, input references, review output, and justified architect amendments. | None |
 | Findings or clarification arrive | Apply the separate review budget; one passing review is sufficient. Only outcome-blocking omissions, contradictions, or requirement violations justify rework. Check necessary corrections and affected dependencies without reopening unchanged reviewed work. Route material disagreement at the limit to the Owner. | Main passing journey and a necessary controlled review-limit/duplicate-delivery case; do not demand every failure combination. | None |
-| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
+| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Required Execution input fields and QA-plan references must have passed the producer validation owned by ARC-PM2 — Produce a bounded and parallel-ready work breakdown. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
 | The loop completes or is interrupted | Completion does not schedule or start execution. Interruption reconciles the same publication/confirmation operation without a new version, repeated completed agent work, or another Owner confirmation already recorded. Advance SQL references only after verified publication; unknown outcomes pause. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
 | The loop is cancelled or later restarted | Preserve saved work and prior confirmation; retain the project reservation until agents and pending operations resolve. A new activity reuses valid work and carries the same unresolved-work budgets rather than resetting them. | Actual cancellation/restart and linked accounting records, with no automatic execution. | None |
 | A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually after that re-registration is confirmed; a same-registration completed breakdown is viewed rather than replanned. | None |
@@ -188,3 +189,4 @@ A real registration-to-architecture journey reaches independently reviewed and e
 ## Partial-registration boundary
 
 No narrower portion is selected. Registering a subset requires explicit selected outcomes, outside dependencies and evidence, exclusions, and acceptance coverage. Documentation sufficiency permits registration assessment; only the separate registration process can produce and confirm its actual registration package.
+

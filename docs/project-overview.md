@@ -7,7 +7,7 @@
 | Project name | Maestro |
 | Repository | https://github.com/jmiedreich-ux/Maestro |
 | Responsible architect | Jeremy Miedreich and the software architect agent; human and agent responsibility |
-| Document version | 11 |
+| Document version | 12 |
 
 ## Purpose
 
@@ -19,12 +19,12 @@ SQL backup and restore are out of scope; ordinary service restart and recorded-o
 
 | Boundary | Description |
 |---|---|
-| Included in the supplied declarations | A Linux-based CLI/service foundation for multiple projects, reliable question responses, project registration, versioned registration updates, recovery, shared process definitions, and the separately started architecture loop. |
-| Broader system boundary | Planning, Execution, and Monitoring are system areas. Execution authority and technical contracts are defined in the architecture; the executable development engine and operational evidence are not yet delivered by the supplied milestone declarations. |
+| Included in the supplied declarations | A Linux-based CLI/service foundation for multiple projects, reliable question responses, project registration, versioned registration updates, recovery, shared process definitions, the separately started architecture loop, and explicitly started Execution through reviewed implementation, integration, milestone verification, promotion and completion. |
+| Broader system boundary | Planning, Execution, and Monitoring are system areas. The declarations define delivery outcomes; current implementation and operational evidence remain unverified. |
 | Excluded from initial interface scope | Command center, mobile presentation, unsolicited agent conversations, cross-project draft retention, and execution commands. |
 | Excluded from registration | Project implementation, development-milestone/work-packet breakdown, automatic work startup, general code audits, architecture approval, and execution-rule overrides. |
 
-Execution initiation, work planning, review, integration, isolated Quality Assurance, recovery and completion are defined in [Execution architecture](architecture.md#execution). They are not yet a delivery declaration and do not expand the initial CLI/service declarations or establish implemented operation.
+Execution behavior is defined in [Execution architecture](architecture.md#execution), with delivery outcomes in the [Execution declaration](milestones/execution-milestones.md). That declaration owns Execution-specific CLI actions and monitoring over the initial CLI/service foundations. It does not establish implemented operation or start Execution.
 
 ## Current state
 
@@ -32,7 +32,8 @@ Execution initiation, work planning, review, integration, isolated Quality Assur
 |---|---|---|---|---|
 | Runtime service | Specified; current integrated operation not verified | Reported | `docs/milestones/runtime-service-milestones.md` | Implementation of service installation, durable storage, API/event delivery, and supervised agents; shared real registration evidence for connected acceptance. |
 | Shared process handling | Defined shared structure and architecture-loop contracts; implementation unverified | Not applicable to implementation status | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` | Defined policy/schema mappings and connected registration/architecture evidence. |
-| Architecture loop | Defined delivery outcomes and technical contracts; actual registration not performed | Not applicable to implementation status | `docs/milestones/architecture-loop-milestones.md` | Implement and verify the specified tool protocols, schema/semantic validation, and connected journey. Documentation sufficiency does not establish operational readiness. |
+| Architecture loop | Defined delivery outcomes and technical contracts; actual registration not performed | Not applicable to implementation status | `docs/milestones/architecture-loop-milestones.md` | Deliver the Execution-facing packet and QA-plan extensions missing from the supplied schema, and implement/verify tool protocols, validation and the connected journey. Documentation sufficiency does not establish operational readiness. |
+| Execution and its CLI monitoring | Defined delivery outcomes and technical contracts; current integrated operation not verified | Not applicable to implementation status | `docs/milestones/execution-milestones.md` | Implement and verify the declared agent, review, integration, QA, promotion, completion and lifecycle journeys over actual runtime, CLI, registration and architecture-loop inputs. |
 | CLI interface | Specified; current integrated operation not verified | Reported | `docs/milestones/cli-milestones.md` | Implemented runtime interfaces, terminal installation, and real registration integration for final connected acceptance. |
 | Registration and history | Specified; current integrated operation not verified | Reported | `docs/milestones/registration-milestones.md` | Implementation and operational evidence for the specified adapters, package validation, publication access, work-state enforcement, and SQL/GitHub consistency. |
 | Existing service components | Source evidence from the recorded revision below; current capability not established by that evidence | Supported by source inspection at the cited revision only | Source observations below | Current source validation and actual operational evidence before claiming dependency readiness. |
@@ -60,6 +61,7 @@ No current service installation, account access, real agent routing, or complete
 | Milestone declaration | CLI — Command-line interface | `docs/milestones/cli-milestones.md` |
 | Milestone declaration | REG — Project registration | `docs/milestones/registration-milestones.md` |
 | Milestone declaration | ARC — Architecture loop | `docs/milestones/architecture-loop-milestones.md` |
+| Milestone declaration | EXE — Execution | `docs/milestones/execution-milestones.md` |
 
 Registration entry uses `docs/project-overview.md` within the repository. The [Planning Guide](planning-guide/README.md) governs source format and conventions.
 
@@ -68,6 +70,6 @@ Registration entry uses `docs/project-overview.md` within the repository. The [P
 | Missing or conflicting information | Affected source or capability | Clarification needed |
 |---|---|---|
 | Current implementation and operational evidence | Dependencies across the supplied declarations | Establish the actual condition before claiming existing capability. |
-| Execution implementation and operational evidence | Broader delivery engine | The architecture defines Execution authority and contracts. Implement `execution@1`, API handlers, physical SQL tables, Git journals, agent adapters, isolated-environment supervision and installed integration checks; verify the connected journey during development. |
+| Execution implementation and operational evidence | Broader delivery engine | Deliver the outcomes in `docs/milestones/execution-milestones.md` using the defined architecture, including executable contracts, installed integration and actual connected evidence. |
 
 No narrower registration portion is selected by this overview. A registration request supplies its chosen boundary using the declaration references.

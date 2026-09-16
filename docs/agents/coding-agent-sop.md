@@ -30,4 +30,4 @@ A completion claim means ready for the next review step. It does not complete th
 
 ## Corrections
 
-Apply only authorized corrections within the packet's scope. Follow [independent implementation review](../architecture.md#independent-implementation-review). Correction limits remain to be defined; this file sets none. Report conflicting instructions, insufficient scope or missing authority rather than inventing a rule.
+Apply only authorized corrections within the packet's scope. Follow [independent implementation review](../architecture.md#independent-implementation-review) and the configured accounting under [packet and integration-change review limits](../architecture.md#packet-and-integration-change-review-limits). This file adds no separate allowance. Report conflicting instructions, insufficient scope or missing authority rather than inventing a rule.

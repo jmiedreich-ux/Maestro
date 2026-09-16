@@ -6,7 +6,7 @@
 |---|---|
 | Project | Maestro |
 | Declaration | REG — Project registration |
-| Declaration version | 21 |
+| Declaration version | 22 |
 | Status | Proposed outcomes; no recorded implementation completion |
 | Architecture source | `docs/architecture.md` |
 
@@ -30,8 +30,8 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
 |---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 16 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
-| 2 | REG-PM2 — Update a registration without losing approved history | 10 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
+| 1 | REG-PM1 — Register and confirm a project through the CLI | 17 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
+| 2 | REG-PM2 — Update a registration without losing approved history | 11 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 16 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
 
 ## REG-PM1 — Register and confirm a project through the CLI
@@ -75,7 +75,7 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Source and publication choices are established | Intake resolves and records source and destination using `docs/architecture.md#source-and-publication-selection`; assignments and published records use those exact selections. | Real intake shows defaults or supplied choices, recorded authority and commit, and matching candidate/assignment references. Include one unresolved-ref or unauthorized-destination rejection; no silent fallback. | None |
+| Source and publication choices are established | Intake resolves and records source, destination and the operator-configured repository-profile binding using `docs/architecture.md#source-and-publication-selection`; assignments and published records use those exact selections. | Real intake shows defaults or supplied choices, recorded authority and commit, and matching candidate/assignment references. Include essential unresolved-ref, unauthorized-destination or missing/ambiguous-binding rejection evidence; no silent fallback or exposed credentials. | None |
 | The Owner follows startup and access instructions | The preceding CLI/service foundation is available, and the registration process reaches configured agents and the project repository using real authorized access. No missing service account or unpublished manual command is needed to reach intake. | Startup and connection evidence from the AI box, including access to the running service; record configuration references without secret values. | None |
 | Source prepared using the Planning Guide is submitted | The explicit repository-relative overview path locates the architecture and declarations; Python validates identity, scope, architecture, current state, project milestones, project-level completion requirements, and authoritative document locations. The responsible project architect may be a person, an agent, or both. Missing required inputs are identified specifically. | Guide and validation-format references, source commit, accepted input record, and a rejected-input example identifying the missing field or document. Coding rules are not demanded as registration inputs. | None |
 | Whole-project or partial-project scope is selected | The interpreted boundary is presented for explicit scope confirmation before assessment proceeds. The candidate records included outcomes, explicit exclusions, partial-milestone boundaries, and outside dependencies. Missing essentials produce a finding, not a silent scope expansion. | Inspect the presented boundary, recorded scope confirmation, candidate boundaries, and a dependency finding. Scope confirmation is distinct from final registration activation. Include a targeted source check distinguishing reported existence, source-supported implementation, and operationally verified behavior. No full code audit is required. | None |
@@ -133,7 +133,7 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| Registration is rerun | Inherited or amended selections follow `docs/architecture.md#source-and-publication-selection`; the chosen source is resolved for the new attempt while the prior active version retains its own selections. | Saved selectors, resolved commits, authorization and before/after active references; failed intake does not alter the prior package. | None |
+| Registration is rerun | Inherited or amended selections follow `docs/architecture.md#source-and-publication-selection`; the chosen source and configured repository binding are resolved for the new attempt while the prior active version retains its own selections. A profile change is shown and becomes active only with replacement confirmation. | Saved selectors, resolved commits, authorization and before/after active references; failed intake does not alter the prior package. | None |
 | Project work is active | Re-registration cannot begin until all active work finishes or is explicitly stopped. The idle check and registration reservation are atomic. Reserved starts, unfinished waiting work, pending external operations, and uncertain runs prevent entry with named reasons. Once re-registration begins, only that registration's assignments and operations may start until it ends; other projects continue normally. | Runtime work-state evidence, a rejected re-registration request through the CLI, and a rejected new-work attempt at the service boundary. The work-state and start-inhibition connection is an explicit dependency, not a checkbox supplied by the reviewer. | None |
 | An idle project is re-registered | Create the next registration version while preserving previous versions. Additions or amendments concern project milestones, not development milestones or work packets. Apply the same fidelity loop and two-round configured limit. | Successive version folders, source and milestone versions, and real review records. | None |
 | A candidate differs from the active version | Show additions, changes, removals, affected scope or completion requirements, and reasons linked to findings or Owner decisions. | Comparison visible before confirmation, tied to the exact candidate. The project remains Registered with Updating registration displayed while the prior version stays active. | None |
@@ -205,3 +205,4 @@ Both registration journeys remain valid after recovery. Completion evidence and 
 ## Partial-registration boundary
 
 No narrower portion is declared. A selected subset must identify included outcomes, exclusions, the journey/criteria references above, and external dependencies before confirmation. Registration of a subset is not a claim that the complete capability is covered.
+

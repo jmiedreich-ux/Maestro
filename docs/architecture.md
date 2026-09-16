@@ -281,7 +281,7 @@ This behavior concerns execution work packets. A registration architect returns 
 
 ## Agent performance and context management
 
-Performance records and context management apply to every supported agent route, including persistent architect sessions. Qwen is the primary coder in the [Execution design](#work-planning-and-coder-selection); its adapter remains to be specified and it is not selectable in the registration or architecture-loop contracts. The same capacity handling applies when implemented; context exhaustion is not an agent-performance failure. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
+Performance records and context management apply to every supported agent route, including persistent architect sessions. Qwen is the primary coder in the [Execution design](#work-planning-and-coder-selection); its adapter contract is defined under [Execution configuration](#execution-process-definition-and-configuration), while implementation and installed verification remain outstanding. It is not selectable in the registration or architecture-loop contracts. The same capacity handling applies when implemented; context exhaustion is not an agent-performance failure. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
 
 ### Performance records
 
@@ -680,6 +680,10 @@ Re-registration displays inherited choices and permits authorized amendments dur
 
 The architecture loop obtains its source baseline from the SQL-confirmed registration manifest's `source_commit` and its publication destination from that manifest's `source_repository` and `publication_branch`. It verifies the referenced manifest and decision before binding the activity and assignments. Registration package commits and later specialist/output commits do not advance the code baseline; separately published inputs retain their own exact references. A different baseline or destination requires confirmed re-registration and a manual architecture start. Unavailable or unverifiable saved inputs pause affected work without substitution.
 
+The repository credential profile comes from the operator-provisioned `repository_bindings` configuration under [adapter configuration](#adapter-configuration), not an agent or Execution request. Before the first repository read, registration matches the normalized repository identity to exactly one configured binding, resolves its named `repositories.<profile>` entry, and validates its credential reference and repository allowlist. After destination collection it also checks the branch allowlist and actual required access. Missing, duplicate, unknown or incompatible bindings stop intake with a setup error; the service does not choose among profiles or fall back to an agent credential.
+
+Intake saves `repository_profile`, the binding identity, configuration hash and operator-configuration provenance with the attempt in SQL. The service-built selection Decision records these non-secret references alongside the source/destination selections. Package confirmation activates that exact profile in the project binding after normal publication verification. Initial publication uses the saved attempt profile; architecture and Execution use the confirmed project binding. Re-registration resolves the configured binding for its new attempt and shows any change with the existing source/destination comparison; the prior confirmed binding remains active until replacement confirmation. Recovery retains the original attempt/operation profile and rechecks access without silently adopting a configuration edit.
+
 ### Source consistency
 
 Review uses the exact Git commit fixed by [source and publication selection](#source-and-publication-selection), shared by the Maestro architect and Fidelity Reviewer. Relevant input changes are shown before confirmation.
@@ -992,6 +996,7 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file. A
 | `tools.<tool>.allowed_model_ids` | Full provider identifiers allowed for explicit role selection; not default model choices. |
 | `repositories.<profile>.credential_profile` | Provisioned service Git credential reference used by registration, architecture and Execution publication/merge operations when the saved project binding selects that profile. |
 | `repositories.<profile>.allowed_repositories`, `.allowed_branch_patterns` | Required allowlists checked before every service Git read or write. |
+| `repository_bindings.<binding_id>.repository`, `.profile` | Operator-provisioned normalized repository identity and named `repositories.<profile>` entry. Exactly one binding may match a repository. Registration collects and saves it under [source and publication selection](#source-and-publication-selection); it contains no secret. |
 
 Effective tool configuration is hashed and recorded for each assignment/run. Tool-setting changes affect new runs after validation, never a running agent. Process behavior is fixed by the activity snapshot under [shared process definitions](#shared-process-definitions). Changing configuration does not reset an assignment's recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
 
@@ -1344,6 +1349,8 @@ These settings use the activity's validated definition snapshot and do not alter
 
 Session operations, state transitions, assignments, responses, API payloads, saved-record schemas, and replanning entry are defined above. Implementing those contracts and verifying installed tool support belong to development; no separate replanning-design prerequisite remains.
 
+The supplied `docs/schemas/architecture-loop.schema.json` does not yet represent all fields in [Architecture record contract](#architecture-record-contract): work-packet `execution_requirements`, milestone `qa_plan_ref`, and Quality Assurance plan records and inventory entries remain executable-schema alignment work. Their meanings are defined in that contract. Architecture-loop delivery must extend the producer schema, allocation and response/output inventory, and validation/publication handling before a breakdown containing those required inputs can be confirmed or consumed by Execution. The existing schema alone is not evidence of a valid Execution-ready breakdown.
+
 General Execution scheduling, implementation review, and merge authority remain outside this loop. A documentation readiness check does not confirm a live registration or establish implementation completion.
 
 ## Execution
@@ -1357,6 +1364,8 @@ The selected project's execution begins only through an explicit `/execution sta
 The service records the execution activity before dispatching work. Repeating the command opens the existing execution activity rather than creating another. Other projects can continue independently. Starting authorizes only work within the confirmed breakdown, not scope changes or replanning.
 
 The start process collects a configured route for the Maestro Development Manager. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning.
+
+The service derives the product code baseline from the exact confirmed breakdown's `source_commit` and verifies that it equals the current confirmed registration's pinned source baseline. The Owner's registration source selection is the originating choice; `/execution start` cannot supply a replacement baseline. Before accepting start, the service verifies those records and the source object, reads product `master` and records its current head separately as `product_master_start_commit`. That observed merge target does not replace the approved code baseline. In the start transaction, SQL saves both commits, their confirmed input references and the observation time. Missing objects, inconsistent source bindings or a failed current-input check block start. Lazy milestone-branch creation consumes the saved product baseline; packet branches use the recorded current milestone head. Separately published specialist and QA inputs retain their exact references. Changed merge targets follow reconciliation and affected review; a change to the approved code baseline requires the existing re-registration and architecture-confirmation path.
 
 ### Execution process definition and configuration
 
@@ -1843,4 +1852,3 @@ The following architectural mechanisms remain unresolved:
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
 | Execution implementation | Execution behavior, configuration, records, review, integration, Quality Assurance, stopping, recovery and completion are defined under [Execution](#execution). The `execution@1` schema, API handlers, Git journals, adapters, isolated-environment supervisor, physical SQL tables and installed operational evidence remain implementation work. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
-

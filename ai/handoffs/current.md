@@ -7,11 +7,14 @@
 - [Architecture](../../docs/architecture.md) — system behavior and remaining mechanisms.
 - [Runtime Service declaration](../../docs/milestones/runtime-service-milestones.md), [CLI declaration](../../docs/milestones/cli-milestones.md), and [registration declaration](../../docs/milestones/registration-milestones.md).
 - [Architecture-loop declaration](../../docs/milestones/architecture-loop-milestones.md).
+- [Execution declaration](../../docs/milestones/execution-milestones.md).
 - [Planning Guide and templates](../../docs/planning-guide/README.md).
 - [Maestro Project Architect — Software Architecture Role](../../docs/agents/architecture-agent.md).
 - [Independent Fidelity Reviewer](../../docs/agents/decision-fidelity-reviewer.md).
 
 ## Where the discussion paused
+
+The missing Execution project milestone declaration is recorded in [Execution](../../docs/milestones/execution-milestones.md), with its source entry and current-state boundary in the project overview. See [Execution delivery milestone checkpoint](#execution-delivery-milestone-checkpoint). Earlier statements that an Execution delivery declaration is absent are historical; implementation remains unverified.
 
 Milestone review assignment, correction routing and limits, dependency readiness, automatic continuation and automatic completion are now recorded. See [milestone review and execution completion checkpoint](#milestone-review-and-execution-completion-checkpoint). Earlier unresolved statements on these specific decisions are superseded; remaining technical contracts are identified there.
 
@@ -779,3 +782,256 @@ All full passes used the same ten end-to-end journeys: start/configuration/model
 ### Publication state
 
 The architecture and aligned documents are ready as technical design, not as implemented capability. Continue from the current `master` documents. Do not reopen the settled Execution decisions unless new evidence, changed scope or a reserved Owner decision requires it.
+
+
+## Execution delivery milestone checkpoint
+
+### Scope and decision evidence
+
+The Owner requested the missing Execution project milestones in the current conversation: “Ok do the mission project milestones”, immediately corrected to “Missing”. This follows the clarification that Maestro's own Execution declaration was absent, distinct from the development milestones Maestro generates for registered projects. The Owner also agreed to project progress, agent activity, attention and history as the Monitoring scope and identified notification behavior as already decided. No notification policy was reopened.
+
+The architect organized the existing Execution contracts into five project outcomes in [EXE — Execution](../../docs/milestones/execution-milestones.md): reviewed packet delivery; integration and declared dependencies; bounded architectural corrections; milestone verification and completed Execution; and pause, stop and recovery. Grouping and delivery order are architect choices within the requested declaration, not new Owner behavior decisions. The project overview is version 12 and lists the declaration as an authoritative registration source.
+
+The declaration owns Execution-specific service and CLI delivery over the existing foundations. It keeps source/current-state limitations, genuine connected acceptance, milestone-only QA, test-data safeguards, separate review limits, authorized automatic promotion, and distinct completed/stopped closure. It records shared correction/QA acceptance and lifecycle controls alongside affected stages so delivery order creates no circular implementation prerequisite or permission to omit safeguards. No development packets, implementation, installation, registration or Execution start were performed.
+
+### Prerequisite corrections
+
+The declaration review identified missing producer/consumer definitions. The architect clarified the repository credential-profile input chain through operator-provisioned repository bindings, registration intake and confirmation, and inherited Execution use. Execution now explicitly derives its product code baseline from the confirmed breakdown/registration source and separately records the observed product-master start head. These are technical definitions under the existing source, credential and confirmation authority; no additional Owner approval step or credential selection during Execution is added.
+
+The supplied architecture-loop schema lacks the packet execution requirements, milestone QA-plan reference and QA-plan records/inventory required by the architecture. Their executable-schema and publication alignment is explicitly assigned to ARC-PM2 — Produce a bounded and parallel-ready work breakdown, with confirmation/Execution consumption dependent on that actual delivered validation. No executable schema was implemented in this documentation task. Stale wording about coder correction limits and the Qwen adapter contract was aligned with the existing authoritative rules; no allowance or model policy changed. The architecture-loop declaration is version 6; its milestone versions are 6, 5 and 6 in declaration order. The registration declaration is version 22; its milestone versions are 17, 11 and 16 in declaration order. Existing histories remain in Git.
+
+### Documentation review coverage
+
+The full passes assessed the same ten journeys below against source commit `1d3e3a3a06e7ac0983beb4cfa2251cc1d25a4f9f` and the initial draft. Initial packet manifest SHA-256: `80f6f168fc3ea7ad17f7cd278cb64c6ca93872d69771b24cb9d90c6f521b68cf`. The corrected packet manifest is `2909e5ddc586ca8b0e8162969b2f20a44ed35f2ead4313635d5876a48c54b693`. Each reviewer checked the manifest against the supplied bytes. Original input availability was the current conversation excerpts and frozen authoritative sources; full historical transcripts were not available. The exact request and its correction are retained above, separately from the architect's grouping and technical choices.
+
+Fresh review inputs excluded all earlier handoff history and review conclusions and the proposed review-state/next-action bookkeeping. Only the new checkpoint's Scope and decision evidence was supplied; its filtered hash was `8d20f840b0b65efe55d0037a8368291ff66aaf0ba22a59f52286bdd8f266824c`. Targeted inputs added the prerequisite-correction section, named findings and exact changed-source diff; corrected filtered handoff hash: `81d313a79fbfbc0835e4df9b985ecdc5d218ab8c87f09438483e0ec276bd15de`. Reviewer sessions were separate, read-only, non-author and not exposed to prohibited author or prior-review conclusions in the fresh passes. No standalone reports were created.
+
+| Review identity and subject | Pass and scope | Reviewer | Full result and round | Targeted result |
+|---|---|---|---|---|
+| execution-declaration-fidelity-1 — Execution project milestone declaration | Decision fidelity of the declaration, overview, filtered checkpoint and connected authority/input boundaries | `/root/execution_milestones_fidelity` | Round 1: pass, no findings; coverage complete and round consumed | Round 2 targeted delta: pass; coverage complete and round consumed |
+| execution-milestones-completeness-full-1 — Execution milestone prerequisite and delivery completeness | Architectural completeness of all ten delivery journeys and prerequisite input chains | `/root/execution_milestones_completeness` | Round 1: material changes required; three findings; coverage complete and round consumed | Round 2 targeted correction check: pass; all named findings resolved; coverage complete and round consumed |
+| execution-declaration-consistency-1 — Execution declaration and connected source consistency | Cross-document consistency of declaration, architecture, overview, roles, guide, producer schema and foundation declarations | `/root/execution_milestones_consistency` | Round 1: material changes required; four findings; coverage complete and round consumed | Round 2 targeted correction check: pass; all named findings resolved; coverage complete and round consumed |
+
+Each pass retains its own budget key (Execution milestone declaration version 1 / its pass type), maximum two rounds: the full pass and one targeted correction check. Full coverage is retained separately from the corrected delta. The findings and corrections are:
+
+| Finding and subject | Classification | Impact and minimum correction | Canonical correction | Disposition |
+|---|---|---|---|---|
+| AC-1 / C2 — Repository credential-profile binding | Blocking | Execution used an already-saved profile without its choosing/collection/save chain. Define and assign its producer without an Execution credential override. | Architecture — Source and publication selection; Adapter configuration; registration declaration initial/update acceptance | Resolved by targeted verification |
+| AC-2 — Execution product baseline | Blocking | Branch creation consumed an unexplained baseline. Define derivation, pinning, validation and recovery binding separately from current master. | Architecture — Execution initiation; Execution declaration reviewed-packet start acceptance | Resolved by targeted verification |
+| AC-3 / C1 — Execution inputs absent from producer schema | Blocking prerequisite alignment | Supplied schema rejects required packet requirements and milestone QA reference and lacks QA-plan/inventory/allocation support. Explicitly assign the missing producer-schema work or implement it; never weaken consumer checks. | Architecture — Architecture-loop implementation boundary; architecture-loop declaration breakdown/confirmation; Execution dependencies; overview status | Resolved as explicit unimplemented prerequisite delivery; targeted verification passed |
+| C3 — Stale coder correction-limit statement | Non-blocking | Coding instructions called limits undefined despite the controlling configured review rules. | Common Coding Agent Instructions — Corrections | Resolved; targeted verification passed |
+| C4 — Stale Qwen adapter-status statement | Non-blocking | Context introduction called the adapter unspecified despite its Execution contract. | Architecture — Agent performance and context management | Resolved; targeted verification passed; implementation/installed checks remain unverified |
+
+#### Examined sources and exact snapshots
+
+The hash table preserves the relevant source bytes independently of any later source edit. Unchanged hashes remain the initial value. Review-packet metadata files are temporary evidence packaging, not new project deliverables.
+
+| Source | Initial SHA-256 | Corrected SHA-256 if changed |
+|---|---|---|
+| `AGENTS.md` | `c64a97b69cc3485c98bf84e792366729d1f8292492bbfbbb74a349ff9496ed25` | Unchanged |
+| `CLAUDE.md` | `fc35ea4c8df3e90a0cddffafd23ed6937f379d308d80005643b33c3408883cf0` | Unchanged |
+| `REVIEW-SCOPE.md` | `18c976d91eefb23742832a9b0167e93a4226138678c35cca71b2d6e25c40c893` | Unchanged |
+| `docs/agents/README.md` | `37cf5448fbcf6f9c4aa9eea7a45cbb9365ff96d8f65bbd1b160f934863a737da` | Unchanged |
+| `docs/agents/architecture-agent.md` | `e3d491513f0729fd90b593d7c201658df27a64132062528c0fe8b8aaa3f97151` | Unchanged |
+| `docs/agents/coding-agent-sop.md` | `5e9df78036c10713ad7f9d45538010d67cc33d175f4746dd51ac52a8a9ea0619` | `3a6df86cdd8b5d9d0626feb32b393d0bac309be45d38962ad8ade811f94e42f2` |
+| `docs/agents/decision-fidelity-reviewer.md` | `4c8eb2727e450eab28cf8161d834bd9f9b5a694b491cea4739e5f71575f9100f` | Unchanged |
+| `docs/agents/independent-review-agent.md` | `b1088e2543e88c31267fb60eaf55ae68af29de8458ec3bb1ed914ce70d446356` | Unchanged |
+| `docs/agents/integration-agent.md` | `75d12e65dc65695ac6ec4d64d6768bded619f64d25098ef441d5ce8301120fed` | Unchanged |
+| `docs/agents/maestro-development-manager.md` | `3150782e9e91b7b7a7cf208e477d640aae50b03cc6791f362f89978c8a30de58` | Unchanged |
+| `docs/agents/qa-agent.md` | `cc4f374792f5490d14ad25a07fe5c2d96edd461e40de8c9b5584789cc4cf52dd` | Unchanged |
+| `docs/architecture.md` | `0b2b5151b1506a899cd284f9440a808c117537429bcdfcddd61c56cc96b2fcc7` | `d5424d855e577746e3069ddb10f5a82b56cf9194a461b5339ec3aa45fab01090` |
+| `docs/milestones/architecture-loop-milestones.md` | `5df8b135b562c482b6bcc10f5338888c379a1dc3104b9c3e2f68a9cfe3e34f4d` | `f6cfe14f0f043e973378a49d8f20db9d17949fc7f0ad4cc69a63cc7c51d94d74` |
+| `docs/milestones/cli-milestones.md` | `210987bac9d380997d054c815b63f55a08e9725ae2ad46147683b13bca21a44b` | Unchanged |
+| `docs/milestones/execution-milestones.md` | `bc39a9a0fbd808f97f71e8adbb69aaa54ce1427300c7c427fd40e5d45aa882dc` | `1a159637542b65c1f279418bce08a827d91819862d933a18eaca5a640a6bf25f` |
+| `docs/milestones/registration-milestones.md` | `eaff1a200da9a7d33eba1d0b7d027f324557651d93b73b2d75af3b7926628c92` | `a58460130a2fee7b34877b75e7f8e9a30a95347c65d35a3c386734c3c00748d1` |
+| `docs/milestones/runtime-service-milestones.md` | `824ce8f547a39a374683e2414d3cd0089c308bddc9ab45a0a1506a7877252d25` | Unchanged |
+| `docs/planning-guide/README.md` | `7dc1a70a362aef5331a4f75ca3acd66fbcb15e54bc715eaaeb0ad60ecb88efeb` | Unchanged |
+| `docs/planning-guide/templates/milestone-declaration.md` | `ec0fdc48b92fdf7935af4f96268447ceef161322fda86811cd0a782ceeb117e3` | Unchanged |
+| `docs/project-overview.md` | `a13167fedd928e6737dda5c11d98998a7750917c8241592e72bf518e0dcf0b1a` | `3dc554f060ac851f2e9dc3bed1430ab40815e5ab7d918e724c36767a24bdce88` |
+| `docs/schemas/architecture-loop.schema.json` | `6bae8e665a2e407da7922af42e8377989b2e22f5a89227d26183191a505e5daa` | Unchanged |
+| `skills/project-architecture-workshop/SKILL.md` | `c167c809ddbe921cdbcf1490643b59d75c8540bd54940e09cfe83726aa79e423` | Unchanged |
+| `skills/project-architecture-workshop/references/planning-guide.md` | `fb48e5768e904e56643d13664e5de4e8daa92df499448fceec6e4c5d09c9ae9c` | Unchanged |
+| `skills/project-architecture-workshop/references/reviews.md` | `84b9d32b891b194dd9ddbb983f8b2202a12a7f0c3004a3959aaceeb4d7031dd7` | Unchanged |
+| `skills/project-architecture-workshop/references/workshop-state.md` | `40c296cd297f52e263a6e623aeb5f404ce1fa10211e6a0c5ef1285eb4e0769e0` | Unchanged |
+
+All passes examined the entire new declaration and overview, the filtered checkpoint, Planning Guide/template, review method, and all Execution headings in Architecture. Applicable shared headings were: installed schemas and process handling; adapters/tool selection/transport/workspaces/assignment identity/supervision; implementation plans; performance/context/checkpoints; credentials, API/events, SQLite/ownership/transactions; CLI workspace/attention/questions/answers/reconnect; source/publication selection and registration reuse; architecture start, record/manifest contracts, confirmation/reconciliation; Owner grants and durations.
+
+All passes examined runtime, CLI, registration and architecture-loop declarations for source/consumer responsibility and acceptance boundaries; coder, manager, integrator, independent reviewer, QA, architect and fidelity-reviewer roles for applicable authority. Completeness and consistency inspected all applicable foundation outcome sections and the role index; fidelity inspected their scope/outcome boundaries and architecture review/confirmation outcome, and did not use CLAUDE.md or the role index as decision evidence. Completeness read CLAUDE.md. Sources supplied but not used do not imply coverage.
+
+Schema coverage: `workPacket`, `developmentMilestone`, `manifest`, `inventoryEntry`, `publishedRef`, `registrationRef`, `assignment`, `requiredOutput`, `startPayload`, `selection`, `specialist` and record-definition inventory for producer compatibility. Completeness additionally inspected `packetDeliverable`; consistency inspected `allocation`; fidelity inspected `request`, `setRef`, `projectStructure`. Schema existence was never treated as proof of installed compatibility.
+
+#### Selection and shared-contract trace
+
+For each applicable journey, all reviewers traced input, selecting actor, collection point, saved identity/provenance, validation and consumer separately. The corrected selection chains under targeted review are explicitly identified; no original full pass is represented as having checked their later bytes.
+
+| Subject | Source, chooser and collection | Saving, checks and consumer | Controlling locations |
+|---|---|---|---|
+| Source and planning publication branch | Verified caller request/linked intake; documented source default or inherited selector; explicit or retained destination authority | SQL selector/resolved commit/branch/provenance, candidate decision and manifest; readability/authorization/current-input checks; exact assignments and journal destinations | Architecture — Source and publication selection; Source consistency; registration initial/update declaration |
+| Registration architect and reviewer | Separate Owner tool/exact-model choices collected before architect launch; separate missing-choice questions | Separate SQL selections and requested/reported identity checks; architect assessment and independent reviewer assignments | Architecture — Tool and model selection; CLI request and event contract; registration initial acceptance |
+| Architecture architect and reviewer | Separate explicit start-form choices | `startPayload.architect` and `.reviewer`, `selection.tool/model_id`; SQL/session bindings, exact-model/capability/independence checks; separate architecture assignments | Architecture — Persistent architect session; Architecture API operations; producer schema |
+| Repository profile | Initial full review: missing producer, AC-1 / C2. Correction: operator provisions unique normalized repository binding; registration resolves before first read and validates branch after collection | Attempt profile/configuration/provenance and selection Decision; allowlists/access validated; confirmation activates project binding; publication/recovery inherit exact profile | Architecture — Source and publication selection; Adapter configuration; Execution configuration; registration initial/update acceptance |
+| Product baseline | Initial full review: missing derivation, AC-2. Correction: service derives confirmed breakdown source, checks confirmed registration; observes current master separately at start | Atomic baseline/master-start commits, input references and time; source/current-input checks; lazy milestone branches and recovery consume pinned value | Architecture — Execution initiation; Milestone branches and product integration; Execution API/state contract |
+| Development Manager | Owner selects installed named route at explicit start | Activity configuration/route/session snapshot, capability/access/exact-model checks; first manager launch and event-driven planning | Architecture — Execution initiation; Execution configuration; Development Manager preparation and continuity |
+| Coder and specialist | Manager chooses permitted route/exact model/reason and applicable source-local specialist from confirmed inputs | Assignment saves exact packet/role/context/base; service validates capability subset, location, context minimum, concurrency, identity and applicability; coder launch consumes | Architecture — Work planning and coder selection; Planning results and questions; Specialist assignment and architectural support |
+| Integration, packet/integration-change/milestone review, QA, milestone-gap roles | Separate installation-provisioned exact primary/backup pairs and positive role durations; service chooses eligible configured route | Activity snapshot and independent assignment/session evidence; actual identity/authority/preflight and cause-based fallback; corresponding run consumes | Architecture — Execution process definition and configuration; applicable role files |
+| Support architect and fidelity reviewer | Separately configured exact primary/backup pairs and timeouts, selected by service | Assignment-created snapshot, separate sessions, authority/identity/independence checks, unchanged counts; bounded support and role review | Architecture — Architectural-support configuration and fallback; Support validation and publication |
+| Branches, workspaces and destinations | Service-assigned identity/path patterns and exact recorded current base/target | Assignment/journal expected heads, paths, objects and credential reference; collision, permissions, graph, clean diff and remote checks; coder/integration/import/publication handlers | Architecture — Execution workspaces and repository writes; Milestone branches and product integration; API/state contract |
+| QA plan, environment and evidence | Architect supplies reviewed/confirmed versioned plan; installation supplies routes, roots and limits; service allocates environment/artifact identities | Source/plan/configuration hashes, named test secrets/network/data paths and lineage; setup/health/isolation/capture/hash/reset checks; supervisor and authorized artifact retrieval | Architecture — Architecture record contract; Isolated Quality Assurance environment; architecture-loop breakdown/confirmation delivery |
+| Owner grants, durations and disposition | Verified Owner chooses linked typed action; architect recommendation when required | Exact decision/target/version/grant or restriction, atomic validation/reservation/consumption; eligible review/retry/next-run/settlement consumes, never free text | Architecture — Owner decisions at a process limit; Run deadlines and duration exceptions; Work disposition before re-registration |
+
+Shared storage trace: local SQLite, service-only writer, WAL/FULL, short serialized write transactions, atomic eligibility/reservations/state, and external Git/agent operations outside transactions. SQL receipt/events follow commit; Git intent precedes effect and verified remote bytes precede advancement. Physical tables remain delivery work. Locations: Architecture — SQLite storage; Record ownership; Save and delivery sequence; Execution API, state and record contract; runtime storage declaration.
+
+Shared authority trace: protected local Owner credential for CLI actions, separate agent identities/tool profiles, and service-only repository credentials. No role output becomes an Owner decision; writer cannot approve its own work. Locations: Architecture — Local Owner identity and credentials; Adapter configuration; Execution workspaces and repository writes; role authority boundaries.
+
+Shared settings comparison: Execution `execution@1` repository source and installed bundle path remain distinct; exact route/model values and positive role timeouts are installed choices. Packet/integration/milestone review defaults remain separate two-round limits; Execution recovery remains two automatic/one manual by default; support has its own configured budget. Context defaults remain 75/85/70 percent and 10/30 seconds; QA defaults remain one environment and 90 days post-close retention. Registration and architecture-loop tool/model fields and default durations are not silently inherited by Execution. Source and installed schema paths are compared literally in the cited contracts; deferred implementations are not claimed present.
+
+#### Full journey coverage retained across the three passes
+
+The following entries preserve all eight examined categories and their concrete locations. Each full pass assessed this same journey set for its distinct question: fidelity compared controlling decisions, completeness checked definitions/delivery ownership, and consistency compared declarations/roles/schema with those definitions. Status was defined/preserved at the decision level in fidelity; completeness/consistency recorded the explicit missing chains and incompatible producer shapes above. Those findings affect the indicated categories without erasing other covered categories. Corrected bytes are covered only by each later targeted record.
+
+**Journey 1 — Start and persistent planning.** Architecture headings: Execution initiation; Execution process definition and configuration; Development Manager preparation and continuity; Planning results and questions. Compared delivery/role sources: Execution declaration — reviewed-packet outcome; Development Manager role — Initiation and inputs, Work planning, Persistent context.
+
+- Starting conditions: Current confirmed registration/breakdown, no conflicting or uncertain work, configured access and eligible packet; foundation delivery explicitly required.
+- Input and recipient: Owner start request to service, then exact saved inputs to Development Manager; understanding precedes work requests.
+- Configuration and selections: Source and separate producer role selections, manager route, repository binding and product-baseline chains as traced above; missing binding/baseline recorded in full completeness.
+- Credentials and authority: Authenticated Owner starts only confirmed scope; manager requests and service validates/reserves; no automatic startup from confirmation.
+- Storage and transactions: Atomic single-activity reservation/configuration/input snapshot; persistent session, checkpoint and handled-event identities saved.
+- Interfaces and state: Common request/idempotency plus execution.start/status and structured planning results; required producer packet input gap recorded.
+- Results and completion: Real CLI/service/manager path yields saved understanding, priorities, blockers and visible questions; start is not packet completion.
+- Failure and recovery: Repeated start opens existing activity; stale/ineligible/configuration/unknown-run requests cannot dispatch; checkpoint/current saved state governs continuation.
+
+**Journey 2 — Coder preparation and exact published result.** Architecture headings: Work planning and coder selection; Returned implementation plan; Coder preparation and submitted results; Execution workspaces and repository writes. Compared delivery/role sources: Execution declaration — reviewed-packet outcome; Common Coding Agent Instructions.
+
+- Starting conditions: Eligible reserved packet, adequate specialist, dependencies/capacity and assigned constrained workspace.
+- Input and recipient: Manager route request to service; immutable packet/source/role/context to coder; plan and structured result back through service.
+- Configuration and selections: Coder route/model/reason, packet capabilities/location/context and specialist paths checked separately; supplied producer execution_requirements gap recorded.
+- Credentials and authority: Coder writes assigned paths and local commits only; privileged service publishes; no coder approval or merge.
+- Storage and transactions: Plan saved before continuation; assignment/result/workspace and intended push journal retained; remote equality precedes success.
+- Interfaces and state: Execution typed result binds revisions/files/checks/limitations; wrapper verifies base/branch/graph/allowed paths and clean output.
+- Results and completion: Visible plan adds no approval gate; actual verified remote revision is only review-ready, not accepted packet.
+- Failure and recovery: Conflicts/missing inputs block; invalid/stale output or changed remote head quarantines/reconciles without force or silent substitution.
+
+**Journey 3 — Independent packet review and Owner limit action.** Architecture headings: Independent implementation review; Packet and integration-change review limits; Owner decisions at a process limit. Compared delivery/role sources: Execution declaration — reviewed-packet and architectural-correction criteria; Independent Implementation Reviewer role; coder Corrections.
+
+- Starting conditions: Exact submitted revision/evidence, non-author reviewer and separate read-only checkout.
+- Input and recipient: Service supplies packet/code/architecture/rules/evidence; findings return through manager to coder or architectural attention.
+- Configuration and selections: Separate packet-review route/timeout and saved default-two completed-round limit; typed Owner action binds exact review.
+- Credentials and authority: Reviewer cannot edit/dispatch/merge; architect recommends at limit; only verified Owner grants allowance.
+- Storage and transactions: Exact findings/revisions/count/base/grants retained; decision validation and grant save atomic.
+- Interfaces and state: Validated review result and execution_packet_review target with grant_one/remain_paused; free text cannot grant.
+- Results and completion: Passing exact revision becomes integration-eligible; targeted correction retains unaffected coverage; no approval at exhausted limit.
+- Failure and recovery: Malformed/interrupted output consumes no completed round; replacement/rename/recovery never resets counts; unrelated eligible work continues.
+
+**Journey 4 — FIFO integration and branch delivery.** Architecture headings: Integration management and queue; Milestone branches and product integration; Authorized integration merges; Packet and integration-change review limits. Compared delivery/role sources: Execution declaration — integration outcome; Integration Manager role; independent reviewer role.
+
+- Starting conditions: Independently approved exact packet at durable project FIFO head; one active integration across milestones.
+- Input and recipient: Service supplies exact packet/current target to persistent Integration Manager; own changes go to independent review.
+- Configuration and selections: Independent configured integration/reviewer routes, assigned integration branch/current head; original baseline/profile gaps recorded.
+- Credentials and authority: Manager makes in-scope local connection fixes; service alone performs authorized credentialed merge after review.
+- Storage and transactions: Durable sequence/source/target/counts and intent journal; remote verification required for advancement.
+- Interfaces and state: Fixed integration/milestone branch patterns; exact reviewed head; non-fast-forward merge; separate integration-change accounting.
+- Results and completion: Verified milestone result resolves head; no-change integration retains evidence without automatic duplicate packet review.
+- Failure and recovery: Blocked head cannot be skipped; only authorized resolved dispositions remove it; changed targets require reconciliation/affected review.
+
+**Journey 5 — Missing specialist and role activation.** Architecture headings: Specialist assignment and architectural support; Architectural-support configuration and fallback; Support validation and publication. Compared delivery/role sources: Execution declaration — architectural-correction outcome; architect and fidelity-reviewer support responsibilities.
+
+- Starting conditions: No adequate role for named packet; completed architecture session is not assumed running.
+- Input and recipient: Service bounded assignment supplies exact packet/roles/architecture; new role/context goes to separate independent reviewer.
+- Configuration and selections: Separate support architect/reviewer selection chains and assignment-created snapshots; service-assigned allowed paths and source refs.
+- Credentials and authority: Architect cannot change confirmed scope/responsibilities or dispatch; new-role reviewer independent; service publishes.
+- Storage and transactions: SQL working state/counts/route history; immutable support/review/activation records; verified remote bytes then atomic binding.
+- Interfaces and state: Use-existing/create-role/replanning dispositions and exact role/context inventory; coder consumes original confirmed plus activated binding.
+- Results and completion: Existing unchanged role needs applicability check; new role needs review and verified activation before manager reconsideration.
+- Failure and recovery: Invalid ownership/paths/stale inputs block; cause-based fallback preserves counts and requires stopping; no verdict-shopping or silent overwrite.
+
+**Journey 6 — Milestone finding and correction supplement.** Architecture headings: Milestone outcome review; Milestone-gap architectural assignment; Correction-supplement activation. Compared delivery/role sources: Execution declaration — architectural-correction and milestone-verification outcomes; architect milestone-gap responsibilities.
+
+- Starting conditions: Actual QA/outcome-review finding and remaining allowances; separate bounded assignment, not missing-role support.
+- Input and recipient: Service supplies exact branch/registration/breakdown/QA/finding/dependency/supplement/work state to read-only architect.
+- Configuration and selections: Separate milestone-gap route/timeout and service-assigned supplement identity/version; inherited publication binding.
+- Credentials and authority: Architect determines defect/supplement/re-registration only; cannot approve, dispatch or change scope; valid in-scope supplement adds no approval gate.
+- Storage and transactions: SQL working/active supplement; external final-byte hash and journal; verified publication before atomic activation/releases.
+- Interfaces and state: Typed disposition and bounded payload include exact finding/paths/ownership/dependencies; original breakdown preserved.
+- Results and completion: Actual finding-to-determination-to-correction/verification journey; implementation defects to Integration, valid missing work through normal lifecycle.
+- Failure and recovery: Duplicates/cycles/stale findings/changed outcomes reject; replay idempotent; started version immutable and review counts unchanged.
+
+**Journey 7 — Dependency import and invalidation.** Architecture headings: Dependency readiness and automatic continuation; Milestone branches and product integration; Execution API, state and record contract. Compared delivery/role sources: Execution declaration — integration outcome; manager/integrator roles; schema packet/milestone dependencies.
+
+- Starting conditions: Provider packet reviewed and integrated; accumulated source set within declared consumer dependency closure.
+- Input and recipient: Confirmed dependency semantics and exact providing commit/set to service FIFO import then Integration Manager.
+- Configuration and selections: Architect declares closure; service binds current source/consumer/import branch; initial baseline/profile gaps recorded.
+- Credentials and authority: No undeclared code or promotion-order override; new integration changes independently reviewed; service owns merge.
+- Storage and transactions: SQL delivery/source/import/readiness and atomic transitive invalidation; external merge journal retained.
+- Interfaces and state: FIFO dependency_import and fixed dependency branch; verified non-fast-forward consumer head becomes dependent packet base.
+- Results and completion: Exact imported objects establish readiness; provider promotion precedes consumer except confirmed outcome assignment.
+- Failure and recovery: Ineligible imports wait; source changes invalidate affected starts/merges/QA/review; running results quarantine; replacement import/affected checks preserve history.
+
+**Journey 8 — Isolated milestone QA and evidence.** Architecture headings: Architecture record contract; Milestone Quality Assurance and test data; Isolated Quality Assurance environment. Compared delivery/role sources: Execution declaration — milestone-verification outcome; architecture-loop breakdown/confirmation; QA role; supplied producer schema.
+
+- Starting conditions: Assembled exact milestone and confirmed QA plan with real setup/data prerequisites; producer-schema gap explicitly found.
+- Input and recipient: Architect plan to service supervisor/QA; actual data source, entry and result paths plus expected outcomes supplied.
+- Configuration and selections: Installed QA route/roots/limits and confirmed scripts/health/ports/test-secret/network/data/artifact plan; service saves exact hashes/identities.
+- Credentials and authority: Separate storage/test credentials, named network dependencies, no automatic production access; QA cannot alter acceptance or approve code.
+- Storage and transactions: Service SQL run/lineage/artifact state; temporary capture/size/secret/hash checks and atomic artifact publication; retention/tombstone records.
+- Interfaces and state: Exact source/plan/config/process/health and expected/actual results; PASS/FAIL/UNTESTED plus cleanup state and artifact metadata.
+- Results and completion: Actual connected required paths and retrievable evidence; generated input cannot manufacture expected result; milestone-level only.
+- Failure and recovery: Missing/bypassed required path stays UNTESTED; absent/corrupt artifact invalidates affected check; failed cleanup/reset quarantines; affected rerun after remedy.
+
+**Journey 9 — Outcome review, promotion and successful closure.** Architecture headings: Milestone outcome review; Authorized integration merges; Dependency readiness and automatic continuation; Execution completion and recovery. Compared delivery/role sources: Execution declaration — milestone-verification outcome; independent reviewer and integrator roles.
+
+- Starting conditions: Assembled milestone, exact outcomes/dependencies/current QA evidence and fresh non-author/non-integrator reviewer.
+- Input and recipient: Service supplies branch/outcome/evidence to reviewer; findings to bounded architect; eligible promotion to service.
+- Configuration and selections: Separate milestone review route/limit, exact branch/current master and assigned completion identities; no inherited planning review budget.
+- Credentials and authority: Standing authorized promotion and closure require no new Owner approval; no self-approval/protection bypass; service Git credential chain applies.
+- Storage and transactions: Exact gate/import/review/merge references; immutable completion bytes remotely verified before SQL completion.
+- Interfaces and state: Milestone completion path and execution-completion@1/kind completed; all authorized milestones and no active/uncertain work required.
+- Results and completion: Both no failed/unverified QA path and passing outcome review permit verified merge; eligible continuation and final CLI summary follow saved evidence.
+- Failure and recovery: Blocking findings stop affected promotion/dependants; stale target causes affected reconciliation; lost publication receipt reconciles same version, conflicts pause.
+
+**Journey 10 — Pause, stop, re-registration and recovery.** Architecture headings: Pause and graceful-stop settlement; Work disposition before re-registration; Execution completion and recovery; Owner decisions at a process limit; Run deadlines and duration exceptions; Checkpoints and safe continuation. Compared delivery/role sources: Execution declaration — lifecycle outcome; registration update; architecture confirmation/reconciliation; shared CLI reconnect.
+
+- Starting conditions: Existing current activity, eligible paused/failed action; intervention/grant/stopping prerequisites; idle-only later re-registration.
+- Input and recipient: Explicit CLI lifecycle or typed Owner disposition to service; managers/supervisors receive saved restrictions; subsequent starts remain separate.
+- Configuration and selections: Original model/configuration/source/deadline/allowances retained; exact grant and next-run exception bound; capacity continuation retains remaining active time.
+- Credentials and authority: Credential-verified Owner authorizes; service enforces and confirms stopping; prose/recommendation alone grants nothing.
+- Storage and transactions: Atomic exact settlement set/restrictions and grant reservation/consumption; restart reloads sessions/queue/journal/environment/artifacts.
+- Interfaces and state: Pause/resume/stop/retry and typed dispositions; held/unfinished entries; execution-stop@1/kind stopped separate from successful record.
+- Results and completion: Only permitted downstream stages settle; pause becomes resumable or verified stopped closure lists unfinished work; idle readiness requires reconciliation.
+- Failure and recovery: No outside packet/supplement or FIFO skip; unknown effects block replacement/closure; counters/deadlines preserved; unsafe context/cleanup pauses or quarantines.
+
+Cross-journey monitoring compared Architecture — CLI workspace; Attention; Questions and answers; Answer identity and uncertain delivery; CLI request and event contract; Performance records; Visibility and delivery boundary against both CLI outcomes and each Execution stage. SQL-backed facts distinguish agent progress, verified results and unknown/stale telemetry. Viewing does not acknowledge or authorize; exact linked answers are saved before receipt/delivery; snapshot/event cursor and reconnect restore state without mutation replay or implied stopping. No notification policy was reopened.
+
+#### Targeted correction records
+
+| Record and subject | Parent full record | Reviewer | Mode, round and conclusion |
+|---|---|---|---|
+| execution-declaration-fidelity-2 — Fidelity of prerequisite and wording corrections | execution-declaration-fidelity-1 — Execution project milestone declaration | `/root/execution_milestones_fidelity` | Targeted, round 2: pass, no findings; original full fidelity retained |
+| execution-milestones-completeness-targeted-2 — Execution prerequisite correction check | execution-milestones-completeness-full-1 — Execution milestone prerequisite and delivery completeness | `/root/execution_milestones_completeness` | Targeted, round 2: pass; all three completeness findings resolved |
+| execution-declaration-consistency-2 — Targeted Execution prerequisite corrections | execution-declaration-consistency-1 — Execution declaration and connected source consistency | `/root/execution_milestones_consistency` | Targeted, round 2: pass; all four consistency findings resolved; baseline clarification consistent |
+
+All targeted records have `coverage_complete: true`, `round_consumed: true`, no unresolved findings and no invalidated broader coverage. Reviewer independence and original exclusions remain unchanged. Scope is the named corrections and directly affected dependencies only. Correction references are the corrected source hashes above, manifest `2909e5ddc586ca8b0e8162969b2f20a44ed35f2ead4313635d5876a48c54b693`, instruction hash `698a87f0ea03cbf85f6df667d9249168931b1bacac63c61d7e64725d695e541b` and exact delta hash `a07eb65632f0b39f878fe6e02d11503e35cc963c147fa110cb5f13b1cee0b5f2`. Each reviewer verified the corrected packet bytes. The following affected trace was completed separately by each reviewer for its pass type.
+
+| Trace category | Repository-profile correction | Product-baseline correction | Producer-schema delivery correction |
+|---|---|---|---|
+| Starting conditions | Unique configured binding before first read; initial registration acceptance owns missing/ambiguous binding rejection | Confirmed matching registration/breakdown and accessible source before start | Producer extension required before affected confirmation/consumption |
+| Input and recipient | Operator mapping to registration service, then saved attempt/confirmed profile to publishers | Existing registration source choice to service derivation; separate master observation | Architect packet/milestone/QA inputs to extended producer validation/publication, then Execution consumers |
+| Configuration and selections | Operator chooser; TOML keys; intake collection; SQL/Decision/provenance; unique/known/profile/credential/allowlist/access checks; exact inherited consumer | Original Owner source selection; pinned producer commits; start derivation/observation; saved commits/references/time; equality/object/current-input checks; branch/recovery consumer | Existing semantic fields, service identities and confirmed plan selections; explicit schema/allocation/inventory delivery; validation before consumption |
+| Credentials and authority | Service-held credential references; existing publication authorization remains separate; no agent/Execution override or added approval | Observed master grants no new source authority; existing re-registration path owns baseline change | Existing architect/service/reviewer/Owner responsibilities retained; no startup or acceptance bypass |
+| Storage and transactions | Attempt profile saved, Decision retained, activation after publication; prior active binding retained during update | Both commits and input provenance saved in start transaction; recovery consumes saved facts | Existing exact paths/manifests/hashes/SQL working/confirmed references; extension includes producer publication |
+| Interfaces and state | Named configuration binding maps to attempt and confirmed project field, then activity/journal; registrationRef remains unchanged | Confirmed source_commit distinct from product_master_start_commit and later publication/branch heads | Supplied executable schema omissions explicitly retained as delivery work; no claim of present compatibility |
+| Results and completion | Actual initial/update acceptance binds saved exact profile; availability alone is insufficient | Declaration start evidence includes both commits; branch and completion use correct lineage | Breakdown requires real validated/inventoried/hashed/published set; confirmation and Execution require it |
+| Failure and recovery | Missing/duplicate/unknown/incompatible mapping rejects; original operation profile retained on recovery; changed binding activates only after replacement confirmation | Missing/inconsistent/current-input failure blocks; changed target reconciles; changed approved baseline requires existing confirmation path | Missing extensions cannot produce confirmed usable inputs; existing stale/publication/recovery checks apply; no fabricated QA plan |
+
+Canonical locations for the table are Architecture — Source and publication selection, Adapter configuration, Execution initiation, Architecture-loop implementation boundary, Architecture record contract, Confirmation and activation, Milestone branches and product integration, Execution completion and recovery; registration initial/update acceptance; architecture-loop foundation/breakdown/confirmation; Execution reviewed-packet and QA dependencies; overview Current state. All three checks examined these changed locations and directly affected original definitions.
+
+Targeted mapping to the ten retained journeys: start/coordination gained defined profile, baseline and producer prerequisites; coder delivery gained exact baseline/profile and assigned packet-schema inputs; packet review retained its rules with stale coder wording removed; integration gained explicit baseline/profile origins while FIFO/merge behavior stayed fixed; specialist and supplement publication inherited the clarified profile; dependency delivery retained exact branch/import lineage; QA gained explicit producer-plan/schema ownership; milestone promotion/closure retained its gates with separate baseline/master evidence; lifecycle/re-registration retained original operation bindings and explicit activation/change authority. Each unaffected category retains its full-pass location and explanation rather than claiming another full review.
+
+The two wording corrections were checked against the existing authoritative contracts: Common Coding Agent Instructions — Corrections now references established configured accounting without another allowance; Architecture — Agent performance and context management references the defined Qwen adapter while retaining unimplemented/installed status and role-selection exclusions. Declaration and milestone versions match the checkpoint's metadata.
+
+The final review conclusion for each pass is no gaps found within its recorded coverage. This is documentation readiness, not executable-schema compatibility, installed capability or operating evidence. The unchanged producer schema still requires its explicitly assigned extensions during delivery. Review-result bookkeeping appended after the frozen substantive snapshot was self-checked against the actual independent outputs; it is not represented as an additional independent pass.
+
+#### Limits and next action
+
+Full historical conversation fidelity, unrelated registration/architecture internals, source audit, installed tools/accounts/configuration, executable validation, physical SQL implementation and live runtime behavior were not assessed. Foundation processes were examined only for relevant setup, selections, authority, producer/consumer contracts, confirmation and recovery transitions. Command center/mobile, unsolicited conversation, configurable hooks, SQL backup/restore and unauthorized production testing remain excluded. There is no operational readiness or successful registration claim.
+
+The declaration and its prerequisite alignment have completed the required independent documentation reviews. Delivery remains directly to master under repository policy. The next planning step is selecting the registration scope and producing its later development breakdown through the established process; these have not been started. This documentation does not start implementation or Execution.
