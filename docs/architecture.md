@@ -281,7 +281,7 @@ This behavior concerns execution work packets. A registration architect returns 
 
 ## Agent performance and context management
 
-Performance records and context management apply to every supported agent route, including persistent architect sessions. Qwen is a future adapter route, not a selectable tool in the current registration or architecture-loop contracts. When that route is added, the same capacity handling applies; context exhaustion is not an agent-performance failure. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
+Performance records and context management apply to every supported agent route, including persistent architect sessions. Qwen is the primary coder in the [Execution design](#work-planning-and-coder-selection); its adapter remains to be specified and it is not selectable in the registration or architecture-loop contracts. The same capacity handling applies when implemented; context exhaustion is not an agent-performance failure. They do not select new models, change role authority, or define general Execution policy. Each adapter declares its supported measurements and continuation operations; unsupported capabilities remain explicit.
 
 ### Performance records
 
@@ -559,7 +559,7 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 
 The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions. Architecture confirmation and cancellation likewise use explicit actions in its activity view.
 
-Architecture start and view commands are defined above. Execution still requires a separate manual start; its command name and execution controls remain unspecified.
+Architecture start and view commands are defined above. The later Execution entry is `/execution start`, defined under [execution initiation](#execution-initiation); its detailed interface contract remains unfinished. This does not expand the existing CLI milestone declaration.
 
 ### Questions and answers
 
@@ -1281,7 +1281,7 @@ The view also shows the exact version and whether independent review coverage is
 
 The confirmation request carries the expected working reference and content hash. The service compares them before reserving the operation. If they changed, reject the stale request, explain the change, and present the updated version; never confirm it silently. A successful confirmation saves that exact version and completes the loop. The underlying investigation, structure, and specialist records remain traceable.
 
-Completion does not start or schedule execution. A separate manual CLI command starts execution; command syntax and its execution rules remain to be defined.
+Completion does not start or schedule execution. `/execution start` uses the separate [execution initiation](#execution-initiation) rules.
 
 ### Publication, recovery, and cancellation
 
@@ -1323,6 +1323,75 @@ These settings use the activity's validated definition snapshot and do not alter
 Session operations, state transitions, assignments, responses, API payloads, saved-record schemas, and replanning entry are defined above. Implementing those contracts and verifying installed tool support belong to development; no separate replanning-design prerequisite remains.
 
 General Execution scheduling, implementation review, and merge authority remain outside this loop. A documentation readiness check does not confirm a live registration or establish implementation completion.
+
+## Execution
+
+The agreed behavior below covers initiation and work planning. Implementation review, correction limits, integration, merge authority, delivery acceptance and completion remain unresolved. Registration and architecture-loop rules do not supply those missing Execution policies.
+
+### Execution initiation
+
+The selected project's execution begins only through an explicit `/execution start`. Before acceptance, the service checks that the confirmed architectural breakdown belongs to the current registration; no registration, architecture activity, unresolved publication or uncertain agent run conflicts with starting; required execution configuration and agent access are available; and at least one packet is eligible to run.
+
+The service records the execution activity before dispatching work. Repeating the command opens the existing execution activity rather than creating another. Other projects can continue independently. Starting authorizes only work within the confirmed breakdown, not scope changes or replanning.
+
+The start process collects the model selection for the Maestro Development Manager. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning. Exact start payload, selection controls and execution display states remain to be defined; the agreed command does not imply that these contracts already exist.
+
+### Development Manager preparation and continuity
+
+The Development Manager coordinates execution within the current registration and confirmed breakdown. It cannot change scope, redesign architecture or initiate replanning.
+
+At first launch, it reads the registration, confirmed breakdown, packets, dependencies and recorded execution state. It returns a concise understanding of intended outcomes, existing progress and blockers before requesting work. A resumed project is not assumed to be new.
+
+Each project's execution activity has a persistent Development Manager session. Persistence retains useful understanding between planning actions; the agent is idle between actions and does not continuously poll or consume model tokens. The service resumes it with relevant events and current saved state, with only one planning action active in that session at a time.
+
+The working context contains current milestones, eligible and blocked packets, active assignments, available capacity and relevant recent decisions. Detailed records remain accessible when needed. Handled events are not repeatedly included as new input. Checkpoints preserve decisions, reasons and unresolved issues rather than duplicate transcripts. Decisions are saved through the service; session memory is not authoritative. The shared [context-management rules](#agent-performance-and-context-management) govern compaction and replacement from verified records and a checkpoint when capacity fills or a session becomes unusable.
+
+### Work planning and coder selection
+
+The Development Manager selects packets and requests assignments. The service checks current eligibility, dependencies, resource and parallel-work boundaries, rejects stale, blocked, conflicting or unauthorized requests, and reserves accepted work before launch. Agent judgment chooses work; the service enforces the rules.
+
+Qwen is the primary coder and default route. The manager may choose a cloud coder directly when packet complexity, required capabilities, context needs or available capacity justify it; Qwen does not have to fail first. The manager chooses Codex or Claude Code and the appropriate configured model level/version, recording a brief reason.
+
+Maestro maintains a configured list of permitted coder routes and exact model versions, with capabilities, context capacity and concurrency limits. The manager selects only from that list. The service checks availability before launch and reports an unavailable selection without silent substitution. Registry fields, configuration location and Qwen adapter transport remain to be specified; no model names, capacity values or providers are inferred.
+
+Scheduling favors packets that unblock dependent work or enable useful parallel work, while considering declared delivery order and available coder capacity. Independent work may proceed while another packet is blocked. Each choice records its reason. The confirmed architecture supplies dependencies, parallel opportunities, shared-code boundaries and integration points; the manager uses them with live progress instead of rewriting the plan. Missing or contradictory dependencies are raised for architectural attention.
+
+Planning continually reassesses pending work as progress, dependencies and resources change. The service notifies the manager when a packet completes, becomes blocked or fails, a relevant answer arrives, or coder availability changes. Related events may be grouped; every progress message does not require another planning action. Recalculation does not automatically interrupt or reassign running work.
+
+### Planning results and questions
+
+Each planning pass returns a structured result containing requested packet launches with coder route, exact model version and reason; pending priorities and blockers; questions or architectural issues; and a concise continuity checkpoint. The service validates requests against current saved state before reservation. If state changed during planning, it returns the affected rejection reasons for reconsideration rather than accepting stale work.
+
+Development Manager questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. The machine-readable planning-result schema and event-delivery contract remain to be defined.
+
+### Specialist assignment and architectural support
+
+The Development Manager selects the applicable specialist role alongside the coder route and model. The service supplies and validates the exact packet, role, relevant starting context, source revision and permitted change boundaries before launch. Role descriptions and source-local context established by the architecture phase remain the basis of specialization; the manager cannot silently rewrite their authority.
+
+If no role adequately covers a packet, the manager records the issue against that packet. The completed architecture loop's agent is not assumed still running. The service starts a bounded architectural-support assignment with the packet, existing roles and relevant confirmed architecture.
+
+The architect determines whether an existing role covers the work. If none does, it may create a role and starting context within the already confirmed scope and architectural boundaries. The service validates and saves the result and notifies the manager to reconsider the packet; unrelated work continues. This support assignment does not restart the architecture loop.
+
+A solution that changes scope, established responsibilities or the confirmed breakdown requires replanning under [replanning after re-registration](#replanning-after-re-registration). The support path's exact session/model selection, publication and version binding, review requirements and limits remain unresolved. It does not yet authorize bypassing confirmed-manifest or review rules to activate a new role.
+
+### Work disposition before re-registration
+
+Determining that re-registration is required is separate from deciding whether current execution can continue. The architect identifies affected work and reasons and provides a recommendation; the manager adjusts pending work and the service enforces authorized stopping actions.
+
+| Disposition | Effect |
+|---|---|
+| Continue unaffected work | Block affected packets and their dependants while valid unrelated work continues. |
+| Stop new starts and finish safe running work | Let valid running assignments finish to reach idle state where the architectural issue requires a transition to re-registration. |
+| Stop affected or all running work | Stop where continuing could produce invalid changes or undermine shared assumptions. |
+| Finish current work and prioritize replanning | Deliberately stop all new packet starts even when unaffected queued work could continue; let running assignments finish and record their results so replanning can proceed promptly. |
+
+The fourth choice is available regardless of whether further queued work is viable; it does not require waiting until execution is blocked. Work already identified as unsafe or invalid to continue still requires an explicit stopping decision.
+
+Re-registration starts only once the project's existing idle conditions are satisfied, including resolved running work and pending external operations. Re-registration, the manual architecture loop, confirmation and explicit execution start remain separate steps. Finishing current work does not itself start any of them. Who authorizes the disposition, its CLI action, treatment of failed running work and the execution-activity closure needed to reach idle remain unresolved.
+
+### Internal hooks
+
+Required checks remain explicit in the service and wrappers. Internal Python hooks may organize genuinely shared behavior during implementation. A configurable hook framework is outside current scope. Hooks cannot make mandatory checks optional, create extra retries or become another source of process state or authority.
 
 ## Journeys and interactions
 
@@ -1419,6 +1488,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Implementation-review authority, coding correction limits, merge authority, and development completion policy remain provisional and require separate Execution design. Registration controls do not settle them. |
+| Execution policy | Initiation and work planning are defined under [Execution](#execution). Detailed request/result contracts, route configuration, support-assignment handling, stop authority and idle transition remain unresolved. Implementation-review authority, coding correction limits, merge authority and development completion remain provisional. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
