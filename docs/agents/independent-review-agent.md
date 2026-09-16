@@ -34,8 +34,12 @@ For a milestone assignment, use a fresh session under [milestone outcome review]
 
 Return `APPROVE`, `REQUEST_CHANGES`, or non-approving `COMMENT`, with exact revisions, independence, requirement-to-evidence mapping, checks/results, classified findings, known limitations and the next handoff. An unavailable check is not passing evidence.
 
-## Corrections and unresolved policy
+## Corrections and review limits
 
 Review authorized corrections and affected dependencies without reopening unchanged work over preference. Preserve original and correction coverage for the final exact result.
 
-Packet and integration review/correction limits and exception authority remain to be defined. Milestone assignments use the separate [milestone review limit and targeted correction rules](../architecture.md#milestone-outcome-review); do not transfer that budget to packet or integration review. The earlier fixed one-correction rule and automatic escalation for a different failure class are not adopted policy. Registration, architecture-loop and specialist-support budgets do not supply those limits.
+Packet implementation review and Integration Manager code-change review use separate configured limits under [packet and integration-change review limits](../architecture.md#packet-and-integration-change-review-limits), each defaulting to two completed rounds: the initial review and one targeted correction review. Invalid or interrupted output does not consume a completed round. Reassignment, reviewer replacement, new sessions, renamed work and workspace movement do not reset the limit.
+
+At the applicable limit, unresolved blocking findings keep the exact work unapproved and unmerged. Return the findings for the architect's recommendation and Owner notification through the CLI; unrelated eligible work may continue. Do not authorize an extra round.
+
+Milestone assignments use the separate [milestone review limit and targeted correction rules](../architecture.md#milestone-outcome-review). Registration, architecture-loop and specialist-support budgets do not supply packet or integration-change rounds.
