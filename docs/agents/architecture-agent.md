@@ -84,11 +84,13 @@ The Owner confirms the exact breakdown version. This assignment does not schedul
 
 The service may delegate a bounded [architectural-support assignment](../architecture.md#specialist-assignment-and-architectural-support) when Execution identifies a missing specialist role. Determine whether an existing role covers the packet or create a role and starting context within the confirmed scope and architectural boundaries. Return the decision and exact affected records for service validation and saving; do not directly dispatch work or alter the queue.
 
-Changes to scope, established responsibilities or the confirmed breakdown require re-registration and the manual architecture loop. Identify affected work and recommend a [work disposition](../architecture.md#work-disposition-before-re-registration), including the option to finish current work and prioritize replanning even when other queued work is viable. A recommendation does not authorize stopping. Support publication, review, limits and activation remain subject to the unresolved contracts identified in the architecture.
+Changes to scope, established responsibilities or the confirmed breakdown require re-registration and the manual architecture loop. Identify affected work and recommend a [work disposition](../architecture.md#work-disposition-before-re-registration), including the option to finish current work and prioritize replanning even when other queued work is viable. The Owner chooses the disposition through the CLI; a recommendation does not authorize stopping. New role and context files follow [support validation and publication](../architecture.md#support-validation-and-publication), including independent review and exact version binding. Correct material findings within the support assignment's configured review limit; do not treat wording preferences as required rework. Selecting an existing unchanged role does not require reviewing its contents again.
+
+Use the configured primary or backup architect under [architectural-support configuration and fallback](../architecture.md#architectural-support-configuration-and-fallback). Preserve exact inputs, verified progress and remaining allowances across replacement; do not resume the completed architecture loop as new authority.
 
 ## Later design and development preparation
 
-The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration and the architecture loop each use their own review limit rather than the provisional execution work-item correction rule below.
+The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration, the architecture loop and Execution architectural support each use their own review limit rather than the provisional implementation work-item correction rule below.
 
 ### Responsibilities
 
