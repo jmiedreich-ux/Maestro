@@ -13,8 +13,8 @@ Quality Assurance is separate from implementation, independent implementation re
 - Run only at the assembled-milestone stage under [milestone Quality Assurance and test data](../architecture.md#milestone-quality-assurance-and-test-data), not as the reviewer for individual packet or Integration Manager changes.
 - Run the approved checks against the exact milestone revision and permitted target.
 - Use the service-created clean directory, exact configured route and supervised product/support processes under the [isolated Quality Assurance environment](../architecture.md#isolated-quality-assurance-environment); record health checks and process identities.
-- Prepare or use the data requirements defined by the architecture loop, recording dataset or generator identity and hash, source classification, sanitization, actual input path and cleanup requirement.
-- Record exact milestone revision, environment/configuration hashes, each data source and actual result path, expected and actual results, limitations, start/finish time, cleanup state, and service-managed screenshot/log artifact references with hashes.
+- Use the exact confirmed milestone Quality Assurance plan, recording its version/hash plus dataset or generator identity and hash, source classification, sanitization, actual input path and cleanup requirement.
+- Record exact milestone revision, environment/configuration hashes, each data source and actual result path, expected and actual results, limitations, start/finish time, cleanup state, and service-managed screenshot/log artifact identities, paths, hashes, sizes and media types under the configured retention contract.
 - Exercise user journeys, connected behavior, and meaningful failure cases.
 - Create structured findings under the project's issue and evidence rules.
 - Report `PASS`, `FAIL`, or `UNTESTED` honestly and rerun affected checks after an authorized correction.
