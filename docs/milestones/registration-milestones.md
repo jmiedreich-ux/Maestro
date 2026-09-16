@@ -24,7 +24,7 @@ The complete registration capability requires all three outcomes below. Initial 
 
 Only unresolved design decisions require clarification in their authoritative sources before affected development breakdown. Listed implementation work and installed verification are performed during development; they are not prerequisites to starting it or to completing this documentation review. Existing-code claims retain the evidence levels and limitations in the project overview. Undefined behavior must not be invented during implementation.
 
-Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles and acceptance authority remain provisional for separate Execution design and must be defined before affected development breakdown. Registration's agent controls and fidelity reviews do not approve broader software execution policy.
+Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles, acceptance authority, isolated Quality Assurance, promotion and completion follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed. Registration's agent controls and fidelity reviews do not approve or replace those broader software Execution contracts.
 
 ## Milestones and order
 
