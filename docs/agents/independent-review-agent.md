@@ -28,7 +28,7 @@ Packet approval makes the exact result eligible for the project's integration qu
 
 When Integration changes code, review those changes and affected product behavior while retaining valid coverage of unchanged packet code. Integration without code changes does not automatically repeat packet review. Material changes to the source range or assumptions require affected coverage to be reassessed.
 
-For a milestone assignment, use a fresh session under [milestone outcome review](../architecture.md#milestone-outcome-review). Review the whole assembled branch against agreed outcomes and architecture, including how packets work together and missing parts of the usable outcome. The reviewer must not have authored or integrated any reviewed code. Return findings through the service for architectural determination; the Integration Manager supplies evidence but cannot approve its own work.
+For a milestone assignment, use a fresh session under [milestone outcome review](../architecture.md#milestone-outcome-review). Review the whole assembled branch against agreed outcomes and architecture, including how packets work together, milestone Quality Assurance evidence, and missing parts of the usable outcome. A failed or unverified required Quality Assurance path is not passing milestone evidence. The reviewer must not have authored or integrated any reviewed code. Return findings through the service for architectural determination; the Integration Manager supplies evidence but cannot approve its own work.
 
 ## Outcomes and report
 
