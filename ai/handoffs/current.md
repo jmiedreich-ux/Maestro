@@ -14,9 +14,17 @@
 
 ## Where the discussion paused
 
+Manual registration candidate version 1 is prepared and independently reviewed for the full supplied scope: 18 project milestones across Runtime service, Command-line interface, Project registration, Architecture loop and Execution. See [the candidate](../../docs/planning/manual-registration.md), [preparation checkpoint](#manual-registration-preparation-checkpoint) and [review disposition](#manual-registration-review-disposition). All three new manual-candidate passes found no gaps within their recorded coverage; each ended after its first full round without correction.
+
+Exact Owner confirmation of the published candidate is the next required step. The source baseline remains `182bf4290ef2960d4691a7f41315ebf71d5bf85c`; candidate SHA-256 is `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79`. The publishing commit must be established by reading the remote destination; the commit containing this candidate and checkpoint is the intended confirmation target. Record the actual subsequent Owner response and its conversation locator before the manual architecture handoff. No acceptance is inferred from “Ok let’s begin.”
+
+After confirmation, continue with pinned-source code investigation, lasting project structure and specialist guidance, then bounded work packets, development milestones and verification/QA plans. That breakdown requires its own independent review and exact Owner confirmation. This preparation has not invoked live registration, architecture start or software Execution, and does not establish installed readiness.
+
+The previously completed connected architectural review remains valid within its recorded scope. Earlier checkpoint summaries below are historical; this manual-registration checkpoint governs the current next action.
+
 The connected review of Planning, Execution and Monitoring is complete within its recorded 27-journey scope. Seven distinct issues were corrected; independent decision-fidelity, architectural-completeness and cross-document-consistency correction checks all passed. See [Whole-system architecture review checkpoint](#whole-system-architecture-review-checkpoint) and the retained full and targeted coverage records. No unresolved material architectural question was identified in that coverage. Implementation and installed operation remain unverified.
 
-The next planning step is the development-milestone and bounded work-packet breakdown for the selected delivery scope. No registration or software Execution was started. The earlier checkpoint summaries below remain historical; the whole-system checkpoint governs current documentation status.
+At the whole-system checkpoint, development breakdown was identified as the next planning goal. The later manual-registration checkpoint above now defines the immediate confirmation step toward that goal.
 
 The missing Execution project milestone declaration is recorded in [Execution](../../docs/milestones/execution-milestones.md), with its source entry and current-state boundary in the project overview. See [Execution delivery milestone checkpoint](#execution-delivery-milestone-checkpoint). Earlier statements that an Execution delivery declaration is absent are historical; implementation remains unverified.
 
@@ -1770,3 +1778,504 @@ The next planning step is to select the intended registration/delivery boundary 
 ### Save and publication state
 
 The six authoritative source files match the corrected hashes recorded above. The existing handoff retains the three full and three targeted records, filtering/source evidence, technical dispositions and unchanged implementation limits. No standalone review report was created. Documentation publication is authorized directly to `master`, preserving the baseline tree's unrelated paths, with expected parent `8853d8df5aa1a809de449449177bf0492f5efa17`. The containing documentation commit identifies this saved snapshot without a self-referential commit field. Destination-head and all seven file-blob hashes are checked after the update; final remote success is reported to the Owner only after those checks. No repository branch or pull request is created.
+
+
+## Manual registration preparation checkpoint
+
+The Owner asked whether registration could be performed manually for development-milestone preparation. The assistant proposed manual source/scope assessment, followed by code investigation and the architecture breakdown, independent review and exact Owner confirmation, with repository artifacts explicitly distinguished from an automated-service run. The Owner replied “Ok let’s begin.” This authorizes preparing the candidate and carrying out the manual planning process; no exact unpublished candidate or later breakdown was represented as already confirmed.
+
+### Candidate identity and scope
+
+- Candidate: `docs/planning/manual-registration.md`, version1, SHA-256 `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79`.
+- Repository: `jmiedreich-ux/Maestro`; source selector `refs/heads/master`; pinned input commit `182bf4290ef2960d4691a7f41315ebf71d5bf85c`; source tree `d6fccdde86a15ec6ea5d7a71fbb790e056cb6f4d`.
+- Entry: `docs/project-overview.md`; full supplied scope proposed, no narrower portion selected. Runtime service:5 outcomes; CLI:2; registration:3; architecture loop:3; Execution:5. All18 original identities, subjects, versions, declaration positions and complete source sections are retained by exact reference.
+- Source versions: overview13; Runtime service declaration10; CLI declaration13; Registration declaration22; Architecture-loop declaration7; Execution declaration2.
+- Canonical candidate sections: Identity and authority; Purpose and scope; Exact source inventory; Included project outcomes; Dependency assessment; Current-source observations; Manual process and evidence handling; Confirmation boundary and next stage.
+- Manual-only adaptation: Git-backed candidate and handoff receipt, no service SQL activation/project reservation, installed profile/route selection, runtime registration JSON package, CLI receipt or software Execution. Host author/reviewer identities are recorded; exact host-model selection remains unknown, not fabricated as an Owner-selected Maestro runtime route.
+
+The architect checked27 original supplied file bytes against their source-commit Git blob hashes; every match succeeded. All18 milestone fragment references resolve and preserve declaration order/version. Limited current-source observations were read at pyproject metadata/scripts, CLI build_parser/_register_project, project_onboarding.register_project, and read_api._COMMAND_ROUTES. The older onboarding function creates graph/run records and was not invoked. The untruncated99-entry repository tree has no tracked .service path; this does not establish installed AI-box state. No implementation test, service, real registration or audit was run. Detailed reuse investigation follows confirmed manual registration.
+
+### Independent review inputs and accounting
+
+This is the new manual-candidate subject, not a reset or rerun of completed whole-system architecture reviews. Existing architectural source coverage is retained for unchanged behavior. Each manual-candidate pass permits one full round and at most one targeted correction; a passing first round ends the pass. Runtime product review budgets are not exercised. Reviewers received separate contexts without author findings, expected verdicts or prior review conclusions, and did not author/correct the candidate.
+
+The frozen packet manifest SHA-256 is `ddfd1d533f96b5dc4cf6729bbc6092e244a58ccef6ecfbb3ad017be763d91d32`. It contains31 files. Filtering removed only the overview Current state paragraph linking the prior whole-system review; the original overview hash remains in SOURCE-INVENTORY.json and the candidate's exact source table. Existing handoff, other reviewer outputs and sibling drafting directories were withheld. Original historical full transcripts are unavailable; USER-REQUEST.md records the visible current exchange.
+
+During full-pass examination, the primary repository-tree response was supplied separately to all three reviewers to resolve availability of the candidate's limited tree observation. Its SHA-256 is `b74a622e91a198c510ab50e9cfad895c6f73009b769419f9879f7c113b045302`. This supplemental evidence contains only repository/commit identity and the untruncated same-commit GitHub tree, no authored conclusion or proposed correction. The frozen candidate/document bytes and review scope did not change; no additional review round was consumed by supplying this primary evidence.
+
+| Frozen packet source | SHA-256 |
+|---|---|
+| `AGENTS.md` | `aa21abb1739a22142c827e6a87dd7704cbcdcf1964a67346319479dea15fb418` |
+| `CLAUDE.md` | `d9815eb34819dc8f72d63965d1602e63541e338a3eca9515372197344976352f` |
+| `REVIEW-SCOPE.md` | `9e0568884db223083cc8fdfa61de0201e615a527cf0e41b2e868cfc5704f7989` |
+| `SOURCE-INVENTORY.json` | `e0be92d908dc2a1a3e6cad99213429529341cfffa1be2d2b4f51d605d2258d26` |
+| `USER-REQUEST.md` | `450e93ec02c017c3d931e36dc43269a02a23588606c42a94377312c1116009dc` |
+| `docs/agents/README.md` | `f6720efcee9cfc0356749027e7a3ec617a95ec2e1952384b5d7debb6c72b5597` |
+| `docs/agents/architecture-agent.md` | `31f79f590605e97c565d68d6b47f1a1f6a9d515dbb49d2f98d139b2259d007a9` |
+| `docs/agents/decision-fidelity-reviewer.md` | `04189e93fbde6073c7154d7b3b6ad652e928e73ac634dbed91f61434afd52d3c` |
+| `docs/architecture.md` | `11cf6286e1ce411a8c46d69e587bd39acef1a417d720d96cca12c11829040ccc` |
+| `docs/milestones/architecture-loop-milestones.md` | `2a31fe1a724b1f863aaf430d3db78c715ddd3b0f48e7f7e71010e9c8ff5c5633` |
+| `docs/milestones/cli-milestones.md` | `a4443270f35c85914ba8337fd21f79a906b5554ddb20a5430e514b6c15b27ed3` |
+| `docs/milestones/execution-milestones.md` | `46d4ca96e89334d9b1739258ee6b3204aad678049053e8b61bc9162f2c616e58` |
+| `docs/milestones/registration-milestones.md` | `a58460130a2fee7b34877b75e7f8e9a30a95347c65d35a3c386734c3c00748d1` |
+| `docs/milestones/runtime-service-milestones.md` | `c87b71032928b9c67d31de3935f1bdc391efc8b0da6f126662f87427cb01d481` |
+| `docs/planning-guide/README.md` | `02d16bba0693b046665c3e78baa082fa52c3713617aed80c04723cedb28aa323` |
+| `docs/planning-guide/architecture-milestone-alignment.md` | `d15ea9556a7ffa03bc332740222086a74b989118939dafa7fdb987ab806f9d2b` |
+| `docs/planning-guide/templates/architecture.md` | `473fd0cf3ba6161b58410873b06c15d815997b922e52227bb2c61a63c75af8fd` |
+| `docs/planning-guide/templates/milestone-declaration.md` | `8a01abd3f88fdc7598a695836dbcbff349470539f2a50f6b77d338b08516cff7` |
+| `docs/planning-guide/templates/project-overview.md` | `4b32f8b6b30f4b025b4db971a48ba33b8c1852bdfec0e12ebc45a1d9dd601d04` |
+| `docs/planning/manual-registration.md` | `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79` |
+| `docs/project-overview.md` | `743ea69e62880a84883f4e0e5399d07e24e880debda0e3305d5e7300c9569765` |
+| `docs/schemas/architecture-loop.schema.json` | `886338556db97afbca3df93f66d0c79d3e4db853875b6222ca8417ae9bc85221` |
+| `docs/schemas/registration-process.schema.json` | `3f57f041656c241c6448b0e017b372fc076b1956192556f087356331167ba5c3` |
+| `services/maestro/maestro/cli.py` | `eff0dc76dc569fad5625622db8366a17cb59eb08934c25682409578322af041b` |
+| `services/maestro/maestro/project_onboarding.py` | `7c8ad72a99e412906a650640e36f54ac0a3854ebc04ca2b374c14e339ea33567` |
+| `services/maestro/maestro/read_api.py` | `b2ae54fa88d48c11f943efca4cddb7ec2e955a9766b2148823286bae380fa96f` |
+| `services/maestro/pyproject.toml` | `83340b49529c9b5365b69016c19b6a942c61847e6e8fbf87291d61c5da406be6` |
+| `skills/project-architecture-workshop/SKILL.md` | `6dd591f717e26907b54860f464e1c7d3fdc64c4c4a9b181cce5c31011cf79d52` |
+| `skills/project-architecture-workshop/references/planning-guide.md` | `8a0188ba3d6d5943da968c5e08655503297fb18592da921d67c0ef1902eabb51` |
+| `skills/project-architecture-workshop/references/reviews.md` | `0f79b20d1f199dba38f9dbd4be82e4e21e4a8187be45114afd1c1bc3a8d223b4` |
+| `skills/project-architecture-workshop/references/workshop-state.md` | `06d1acba14f17384d2951b44d6df6cc317ae5a47c5ab27221dd64f28b01ea6fb` |
+
+The eight manual journey subjects are: intake/scope/source selection; all18 outcome/dependency/completion mappings; current-source evidence and unknown prerequisites; manual assessment/artifact authority; independent review/correction accounting; exact publication/write recovery; Owner confirmation/refusal/receipt; confirmed-input architecture handoff/resumption. Each pass below retains all eight trace categories and separate six-step selection evidence. No new whole-product behavioral review, installed verification, full code audit, external tool research or development breakdown was included.
+
+
+## Manual registration decision-fidelity full coverage
+
+Record: manual-registration-v1-fidelity-full-1 — Manual registration candidate fidelity review. Reviewer/session: /root/manual_registration_fidelity, independent non-author context. No authorship, corrections, prohibited findings or expected verdict received. Pass: decision_fidelity; mode: full; parent review: null. Scope: docs/planning/manual-registration.md version 1 and its source, dependency, completion, evidence and authority mappings. Budget key: manual-registration-candidate / decision_fidelity; round 1 of maximum 2, with at most one targeted correction if needed. Earlier architecture and runtime budgets are untouched. Result: pass / APPROVE. coverage_complete: true; round_consumed: true. Findings, correction_refs and invalidated_by: empty.
+
+Snapshot: jmiedreich-ux/Maestro at source commit 182bf4290ef2960d4691a7f41315ebf71d5bf85c. Packet manifest SHA-256 ddfd1d533f96b5dc4cf6729bbc6092e244a58ccef6ecfbb3ad017be763d91d32; every listed file matched its hash. Candidate SHA-256 a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79. The shared source-hash map retained in this handoff supplies exact hashes for examined paths below. The overview's prior-review link in Current state was excluded; original overview hash 273b3de973e9871f773a3c3cd32065bf95e1a47f338da4329ab9e2386590a9cf, filtered hash 743ea69e62880a84883f4e0e5399d07e24e880debda0e3305d5e7300c9569765. The excluded passage was not read.
+
+Supplemental primary evidence authorized during the same full pass: manual-review-evidence/repository-tree.json, SHA-256 b74a622e91a198c510ab50e9cfad895c6f73009b769419f9879f7c113b045302. It identifies the pinned commit, tree d6fccdde86a15ec6ea5d7a71fbb790e056cb6f4d, 99 entries, truncated:false, and no tracked .service path. No author correction or review conclusion was supplied in it.
+
+### Sources actually examined and location index
+
+Read REVIEW-SCOPE.md, USER-REQUEST.md, AGENTS.md, SOURCE-INVENTORY.json, snapshot-hashes.json, the workshop SKILL.md and its references/reviews.md, references/workshop-state.md and references/planning-guide.md. Read the complete candidate, filtered overview, project Planning Guide, all five milestone declarations and the decision-fidelity-reviewer role; examined the architecture-agent role's authority and planning assignments. Architectural reading was limited to the indexed sections below. Code reading was limited to services/maestro/pyproject.toml metadata/scripts; services/maestro/maestro/cli.py imports/parser registration arguments and _register_project; services/maestro/maestro/project_onboarding.py introduction and register_project; services/maestro/maestro/read_api.py _COMMAND_ROUTES. Examined docs/schemas/architecture-loop.schema.json root/definition inventory and registrationRef, workPacket, developmentMilestone and manifest definitions; docs/schemas/registration-process.schema.json root/definition inventory only. No full schema/code audit is claimed.
+
+| Evidence label | Exact path and heading or row |
+|---|---|
+| Candidate identity | docs/planning/manual-registration.md → Identity and authority |
+| Candidate scope | Same file → Purpose and scope |
+| Candidate sources | Same file → Exact source inventory |
+| Candidate outcomes | Same file → Included project outcomes |
+| Candidate dependencies | Same file → Dependency assessment |
+| Candidate observations | Same file → Current-source observations |
+| Manual intake | Same file → Manual process and evidence handling, Intake and pinned-source assessment row |
+| Manual mapping | Same heading, Outcome and dependency mapping row |
+| Manual assessment | Same heading, Current-state assessment row |
+| Manual review | Same heading, Independent package review row |
+| Manual publication | Same heading, Publication row |
+| Manual confirmation | Same heading, Owner confirmation row |
+| Manual receipt | Same heading, Confirmation receipt or cancellation row |
+| Manual handoff | Same heading, Manual architecture handoff and recovery row |
+| Manual boundaries | Same heading, two paragraphs after the stage table |
+| Next stage | Same file → Confirmation boundary and next stage |
+| Source overview | docs/project-overview.md → Overall scope; Current state; Authoritative sources; Unresolved information |
+| Source guide | docs/planning-guide/README.md → Entry document and source references; Naming, ordering, and versions; Current capability and dependencies; Partial registration; Verification expectations |
+| Registration authority | docs/architecture.md → Purpose and authority; Source format and inputs; Intake and scope; Source and publication selection; Source consistency; Assessment and independent review; Purpose and dependency checks |
+| Registration records | Same file → Package structure; Package record contract; Candidate publication; Confirmation and activation; Publication recovery; Re-registration; Comparison, activation, and cancellation |
+| Architecture continuation | Same file → Entry and responsibility; Persistent architect session; Initial code investigation; Lasting project structure and specialist guidance; Information sufficiency and clarification; Work-packet-first breakdown; Replanning after re-registration; Current versions and stale-data prevention; Independent review and amendments; Confirmation and completion; Publication, recovery, and cancellation; Architecture-loop implementation boundary |
+| Live prerequisites | Same file → Runtime and prerequisites; Tool and model selection; Adapter configuration; Execution initiation; Execution process definition and configuration; Milestone Quality Assurance and test data; Project Quality Assurance bindings |
+| Review method | skills/project-architecture-workshop/references/reviews.md → Independent inputs and eligibility; Complete journey trace; Coverage and findings; Full reviews and targeted correction checks |
+| Saved review evidence | skills/project-architecture-workshop/references/workshop-state.md → Saving and recovery; Configurable review bound; Review coverage record |
+
+### All 18 outcome mappings
+
+Each source location is its identically titled level-two heading in the named declaration, including Dependencies, Acceptance criteria, Definition of done, Unresolved details and declaration-wide scope/evidence sections. Every row is preserved by the candidate's exact-commit milestone link. Preserved means identity, plain subject, milestone version, position, complete dependencies and completion requirements.
+
+| Declaration/version; position | Outcome/version | Fidelity |
+|---|---|---|
+| Runtime service 10; 1 | SVC-PM1 — Operate the persistent Maestro service, version 3 | Preserved |
+| Runtime service 10; 2 | SVC-PM2 — Preserve project activity and requests, version 4 | Preserved |
+| Runtime service 10; 3 | SVC-PM3 — Connect the CLI to recorded service activity, version 2 | Preserved |
+| Runtime service 10; 4 | SVC-PM4 — Run and recover assigned agents, version 4 | Preserved |
+| Runtime service 10; 5 | SVC-PM5 — Apply shared process definitions, version 7 | Preserved |
+| Command-line interface 13; 1 | CLI-PM1 — Connected multi-project CLI workspace, version 8 | Preserved |
+| Command-line interface 13; 2 | CLI-PM2 — Reliable project questions and answers, version 5 | Preserved |
+| Project registration 22; 1 | REG-PM1 — Register and confirm a project through the CLI, version 17 | Preserved |
+| Project registration 22; 2 | REG-PM2 — Update a registration without losing approved history, version 11 | Preserved |
+| Project registration 22; 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits, version 16 | Preserved |
+| Architecture loop 7; 1 | ARC-PM1 — Establish the project's architectural foundations, version 7 | Preserved |
+| Architecture loop 7; 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown, version 6 | Preserved |
+| Architecture loop 7; 3 | ARC-PM3 — Review and confirm the development breakdown, version 6 | Preserved |
+| Execution 2; 1 | EXE-PM1 — Deliver independently reviewed work packets, version 1 | Preserved |
+| Execution 2; 2 | EXE-PM2 — Integrate work and deliver declared dependencies, version 2 | Preserved |
+| Execution 2; 3 | EXE-PM3 — Resolve architectural gaps within authorized scope, version 2 | Preserved |
+| Execution 2; 4 | EXE-PM4 — Verify milestones and publish completed Execution, version 2 | Preserved |
+| Execution 2; 5 | EXE-PM5 — Pause, stop and recover Execution, version 2 | Preserved |
+
+Declaration paths: docs/milestones/runtime-service-milestones.md; docs/milestones/cli-milestones.md; docs/milestones/registration-milestones.md; docs/milestones/architecture-loop-milestones.md; docs/milestones/execution-milestones.md.
+
+Retained distinctions: runtime/CLI implementation can precede shared final registration evidence without creating circular development prerequisites. Registration retains installed CLI/agent/publication/confirmation evidence for future acceptance; the manual document claims none. Architecture-loop packet execution fields, QA-plan records and schema/inventory extensions remain delivery work; the selected executable definitions confirm the disclosed limitation. QA-plan selection depends on the operator-provisioned catalog owned through Execution setup. Execution gap correction and milestone verification retain real producer/consumer evidence; lifecycle controls must accompany affected stages. Candidate summaries do not replace exact milestone completion sources.
+
+### Separate six-step selection chains
+
+Each cell identifies evidence or explicit non-applicability. Collection is separate from validation.
+
+| Choice | Input source | Choosing actor | Collection point | Saved value | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Repository and overview | USER-REQUEST.md; Source overview identity/authoritative sources | Architect uses supplied repository/entry without guessing alternatives | Manual intake | Candidate identity: jmiedreich-ux/Maestro and docs/project-overview.md | Candidate sources; missing source/access/reference blocks assessment | Candidate assessment, reviewers, Manual handoff |
+| Full or partial boundary | Current request; Source overview Unresolved information says no narrower portion selected | Architect proposes full plan; Owner fixes accepted boundary | Candidate identity/scope; Manual confirmation | Five declarations/all 18 outcomes; response/exceptions saved by Manual receipt | Manual mapping/review; exact Owner confirmation pending | Assessment and, after confirmation, manual architecture |
+| Source selector and commit | Existing master source route | Architect records refs/heads/master; no invented additional Owner selection | Manual intake | Candidate identity/sources: pinned commit and hashes | Readability/reference checks, frozen packet; publication cannot replace baseline | Assessment, independent review, publication provenance, investigation |
+| Authoritative source paths | Overview Authoritative sources | Source author supplies; architect follows explicit references | Manual intake and Candidate sources | Architecture, guide and five declaration paths/hashes | Exact inventory and outcome references | Mapping, assessment, later breakdown inputs |
+| Documentation branch/path | AGENTS.md Git changes and existing candidate location | Repository rules fix master; architect prepares candidate path | Candidate identity; Manual publication | master; docs/planning/manual-registration.md; expected parent and exact bytes | Reconcile changed parent; verify destination commit/bytes | Publication, exact confirmation, resumption |
+| Architect session | Host-provided author session; architecture-agent role | Host supplies session; architect acts within manual assignment | Manual boundaries; host assignment | Available identity in handoff; unavailable exact host model unknown | Authorship/authority trace; no invented installed route/model | Manual assessment and publication |
+| Independent reviewer session | Host-provided separate contexts; Review method | Host assigns separate non-authors | Manual review; Manual boundaries | Reviewer/session, scope, hashes, findings, coverage in ai/handoffs/current.md | Non-author eligibility, filtered inputs, exact snapshot, bounded count | Candidate readiness and affected corrections |
+| Review policy | Review method; Saved review evidence Configurable review bound | Existing workshop policy; reviewer cannot add rounds | Manual review assignment | One full plus at most one targeted check per pass; same-subject continuity | Full coverage before consumption; affected coverage links after change | Presentation for confirmation |
+| Exact confirmation target | Published version/path/commit/hash and disclosed scope/limits | Owner only | Manual confirmation | Manual receipt: actual response, locator, reference, scope/exceptions | Unclear or changed-version response cannot confirm by inference | Confirmed-input manual architecture |
+| Runtime models/profile/credentials/deadlines/schemas | Live prerequisites define future installed inputs | Runtime Owner/operator/service roles unchanged | not_applicable to manual action; explicitly excluded in Manual boundaries | No simulated values or bindings | No live check claimed; future service enforces actual eligibility | Future live import/start only |
+
+### Eight journeys by eight trace categories
+
+D means defined and faithful within this documentation scope. N/A means not applicable to this manual action with the live boundary retained. These are fidelity statuses, not independent completeness or operational certifications.
+
+| Journey | Starting conditions | Inputs/recipients | Configuration/selections | Credentials/authority | Storage/transactions | Interfaces/state | Results/completion | Failures/recovery |
+|---|---|---|---|---|---|---|---|---|
+| 1. Manual intake and exact scope/source/destination | D: current request authorizes manual preparation; Candidate identity | D: Owner request/overview reach architect; Manual intake | D: repository, entry, full proposal, selector, commit, master; chains above | D: architect prepares, Owner confirmation pending; N/A service credential binding | D: candidate/Git record; N/A runtime SQL reservation; Manual boundaries | D: version 1 proposed, not registered; Candidate identity | D: exact reviewable baseline, not acceptance; Candidate sources/scope | D: missing sources/access block affected work; no retargeting; Manual intake |
+| 2. Five declarations and 18 outcomes | D: overview explicitly supplies all five; Source overview | D: pinned declarations to architect/reviewers; Candidate outcomes | D: all identities, versions and declaration order; outcome table | D: no new outcome or implementation approval; Candidate identity/outcomes | D: exact links preserve authoritative source bytes; N/A runtime conversion | D: project outcomes distinct from later development milestones/packets | D: complete dependency/acceptance/done sections retained; Candidate outcomes/dependencies | D: missing outcome/incompatible source/unassigned essential prerequisite resolved; Manual mapping |
+| 3. Current state and external prerequisites | D: existing source, installed state unknown; Candidate observations | D: named code excerpts and prerequisite declarations to assessment | D: pinned source; installed routes/config future inputs; Live prerequisites | D: no invented secrets; operator/service duties retained; Candidate dependencies | D: Git observation evidence; N/A proof of SQLite operation | D: reported/source-supported/operational levels separated; Source guide/Manual assessment | D: no outside dependency certified; no reuse decision | D: missing real paths unverified/UNTESTED; detailed investigation after confirmation |
+| 4. Architect assessment and manual/runtime mapping | D: authorized documentation assignment; Candidate identity | D: scope, observations, dependencies/completion form assessment | D: author session separate from installed route; architect chain | D: assess/prepare, not confirm/start Execution; architecture-agent Assignment and authority | D: candidate/handoff/Git; N/A simulated service transaction | D: manual record differs from JSON package/SQL activation/CLI receipt; Manual boundaries | D: reviewable assessment retains source authority; Candidate dependencies/observations | D: command names/old status cannot create readiness; Manual assessment |
+| 5. Independent review and corrections | D: frozen candidate/current authority; Review method | D: separate non-author contexts receive pinned inputs; Manual review | D: three separate passes, one full plus at most one targeted each | D: reviewer read-only, author corrects, Owner confirms | D: coverage/identities/hashes/counts in handoff; Saved review evidence | D: full/targeted records separate; architecture budget not reset | D: unresolved material findings prevent ready-for-confirmation | D: only affected coverage invalidated; same budget retained; Manual review/confirmation |
+| 6. Publication and uncertain writes | D: reviewed document/evidence for authorized target; Manual publication | D: architect publishes exact candidate/evidence, saves parent | D: master/path/bytes fixed; source baseline distinct from publication commit | D: documentation authority under repository rules; N/A service-only profile | D: Git destination commit/bytes verified; N/A Git/SQL atomicity claim | D: local save/blob upload distinct from publication | D: verified destination supports exact confirmation | D: changed parent reconciled, lost response read before retry; Manual publication |
+| 7. Owner confirmation/refusal/receipt | D: published candidate/review evidence; Manual confirmation | D: exact version/path/commit/hash, scope, limits presented to Owner | D: Owner chooses exact candidate; begin is not inherited approval | D: Owner only; no fabricated signature/service credential/runtime receipt | D: response/locator/reference in handoff; Git history retained | D: unconfirmed versus accepted manual baseline explicit | D: accepts planning scope only; Next stage | D: rejection/cancellation unconfirmed; ambiguous/changed-version response needs exact reference; Manual receipt |
+| 8. Confirmed handoff and resumption | D: exact receipt required for next stage; Manual handoff | D: pinned sources/receipt to investigation, structure/specialists, breakdown | D: baseline not changed by publication; no preset packets/schedule | D: current request permits manual sequence; Execution separately started | D: saved Git bytes/receipt checked on resume; N/A live SQL/reservation inference | D: manual stage not architecture.start; later breakdown has own review/confirmation | D: reviewed/confirmed implementation input is later work, not current completion | D: saved input not inferred; future live service checks actual state/eligibility; Manual boundaries/handoff |
+
+### Findings, exclusions and bounded conclusion
+
+No blocking or non-blocking fidelity defect found; no correction, author disposition or extra gate requested. "Ok let's begin" authorizes preparation, while full scope remains proposed until exact-candidate confirmation. No runtime selection, activation, installed readiness or Execution is invented.
+
+Original historical transcripts are unavailable. Fidelity is established against supplied current authority and frozen authoritative sources, not independently recovered historical agreement. Original handoffs and prior review outcomes were excluded. Existing architecture was an input, not reopened for whole-product review. Code/schema examination remains limited to the named excerpts. No live tests, credential checks, installation validation, external research, actual publication verification or actual Owner confirmation were performed. Supplemental tree evidence supports only the absence of a tracked .service file, not installation state.
+
+No gaps found within the recorded coverage. The exact version-1 candidate faithfully carries five declarations and 18 outcomes into a manual planning baseline. This review approves fidelity for the next documentation step only. It does not confirm the candidate, activate registration, establish operational readiness or start Execution. Retain this completed full coverage alongside the other required passes; publication and exact Owner confirmation remain the candidate's next steps. Retention of this record is bookkeeping, not a new review round or candidate authorship.
+
+
+## Manual registration cross-document-consistency full coverage
+
+Record: manual-registration-consistency-1 — Manual registration candidate consistency. Reviewer/session: /root/manual_registration_consistency. Pass: cross_document_consistency; mode: full; parent_review_id: null. Independent non-author, no source/candidate edits or corrections authored; exact host model unknown. No prohibited drafting conversation, prior verdict, sibling review, or author correction was received. Scope: candidate version 1, five declarations, 18 outcomes and eight manual journeys. Budget key: manual-registration-candidate, consistency pass; round 1 of maximum 2 (one full plus at most one targeted correction); runtime and previous architecture budgets untouched.
+
+Snapshot: repository jmiedreich-ux/Maestro; source commit 182bf4290ef2960d4691a7f41315ebf71d5bf85c; candidate docs/planning/manual-registration.md SHA-256 a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79. Packet manifest SHA-256 ddfd1d533f96b5dc4cf6729bbc6092e244a58ccef6ecfbb3ad017be763d91d32. Every listed file matched its manifest hash; source hashes are the exact corresponding entries in the retained shared hash map. Supplemental primary repository-tree.json SHA-256 b74a622e91a198c510ab50e9cfad895c6f73009b769419f9879f7c113b045302 was supplied during this same full pass without changed candidate bytes or additional round.
+
+Filtering/authority: only the specified overview Current state paragraph linking a previous whole-system review was removed. Original source overview hash 273b3de973e9871f773a3c3cd32065bf95e1a47f338da4329ab9e2386590a9cf comes from SOURCE-INVENTORY.json; examined filtered bytes hash 743ea69e62880a84883f4e0e5399d07e24e880debda0e3305d5e7300c9569765. Excluded original bytes were not read. Other prior review/handoff content was excluded. USER-REQUEST.md provides visible current authority; unavailable historical transcripts were not reconstructed.
+
+### Examined-source and precise-location index
+
+Each indexed source is bound to its exact path/hash in the shared verified packet hash map. Listing headings below limits the examination claim; supplied code was not exhaustively audited.
+
+| Index | Path and examined headings/locations |
+|---|---|
+| C1 | docs/planning/manual-registration.md — Identity and authority; Purpose and scope |
+| C2 | Same — Exact source inventory; Included project outcomes |
+| C3 | Same — Dependency assessment; Current-source observations |
+| C4 | Same — Manual process and evidence handling, all stage rows and following paragraphs |
+| C5 | Same — Confirmation boundary and next stage |
+| U | USER-REQUEST.md — Current manual planning authority |
+| R | REVIEW-SCOPE.md — entire assignment |
+| G | AGENTS.md — Git changes; Milestone declarations; Documentation review results; Cross-document alignment |
+| O | docs/project-overview.md — Project identity; Overall scope; Current state; Source observations; Authoritative sources; Unresolved information |
+| P | docs/planning-guide/README.md — Required sources; Entry document and source references; Milestone declarations; Naming, ordering, and versions; Current capability and dependencies; Partial registration; Verification expectations; Relationship to development breakdown |
+| PT | docs/planning-guide/templates/milestone-declaration.md — metadata/order/required headings; docs/planning-guide/architecture-milestone-alignment.md — Responsibilities; Connection between documents; Sufficient information for breakdown; Completion |
+| D | docs/milestones/runtime-service-milestones.md, cli-milestones.md, registration-milestones.md, architecture-loop-milestones.md, execution-milestones.md — Declaration identity, Capability and scope, common dependency/evidence rules, Milestones and order, all 18 outcome sections and dependency/acceptance/definition-of-done/unresolved boundaries |
+| A1 | docs/architecture.md — Runtime and prerequisites; Registration: Purpose and authority, Source format and inputs, Intake and scope, Source and publication selection, Source consistency |
+| A2 | Same — Assessment and independent review; Purpose and dependency checks; Registration process-definition binding; Review limits and decisions |
+| A3 | Same — Package structure; Package record contract; Publication and SQL consistency; Candidate publication; Confirmation and activation; Publication recovery; Re-registration; Comparison, activation, and cancellation |
+| A4 | Same — Adapter configuration; Architecture-loop Entry and responsibility; Initial code investigation; Lasting project structure and specialist guidance; Information sufficiency and clarification; Work-packet-first breakdown |
+| A5 | Same — Replanning after re-registration; Current versions and stale-data prevention; Deterministic packet checks and correction; Independent review and amendments; Confirmation and completion; Publication, recovery, and cancellation; Architecture-loop implementation boundary; Execution initiation |
+| AR | docs/agents/architecture-agent.md — Assignment and authority; Registration responsibilities; Architecture-loop assignment; applicable later-preparation boundaries |
+| FR | docs/agents/decision-fidelity-reviewer.md — Registration assignment/authority; Architecture-loop assignment; Evidence and proportionality; Inputs and independence; Review method; Correction review; Review coverage; Required report |
+| RI | docs/agents/README.md — Authority order; Roles; Contract standard |
+| W | skills/project-architecture-workshop/SKILL.md — Start or resume; Save, review, and continue; Stop conditions; references/planning-guide.md — source/scope/evidence/naming conventions |
+| WR | Workshop references/reviews.md — all sections; references/workshop-state.md — What to keep; Saving and recovery; Configurable review bound; Review coverage record |
+| S | docs/schemas/registration-process.schema.json — $defs.processDefinition; docs/schemas/architecture-loop.schema.json — definition inventory, registrationRef, workPacket, developmentMilestone, manifest, requiredOutput |
+| K | services/maestro/pyproject.toml — project metadata/scripts; services/maestro/maestro/cli.py — build_parser, _register_project; project_onboarding.py — register_project; read_api.py — _COMMAND_ROUTES |
+| T | Supplemental repository-tree.json — metadata and complete path inventory |
+
+### All outcome mappings
+
+Every row matches C2 against the declaration's own order table and exact source fragment. C2 explicitly incorporates each linked outcome's complete scope, architecture/journeys, dependencies, acceptance, definition of done, unresolved details and declaration-wide evidence rules. No weaker completion copy is introduced.
+
+| Declaration/version | Position | Outcome/version | Source fragment in that declaration |
+|---|---:|---|---|
+| SVC — Runtime service / 10 | 1 | SVC-PM1 — Operate the persistent Maestro service / 3 | svc-pm1--operate-the-persistent-maestro-service |
+| SVC — Runtime service / 10 | 2 | SVC-PM2 — Preserve project activity and requests / 4 | svc-pm2--preserve-project-activity-and-requests |
+| SVC — Runtime service / 10 | 3 | SVC-PM3 — Connect the CLI to recorded service activity / 2 | svc-pm3--connect-the-cli-to-recorded-service-activity |
+| SVC — Runtime service / 10 | 4 | SVC-PM4 — Run and recover assigned agents / 4 | svc-pm4--run-and-recover-assigned-agents |
+| SVC — Runtime service / 10 | 5 | SVC-PM5 — Apply shared process definitions / 7 | svc-pm5--apply-shared-process-definitions |
+| CLI — Command-line interface / 13 | 1 | CLI-PM1 — Connected multi-project CLI workspace / 8 | cli-pm1--connected-multi-project-cli-workspace |
+| CLI — Command-line interface / 13 | 2 | CLI-PM2 — Reliable project questions and answers / 5 | cli-pm2--reliable-project-questions-and-answers |
+| REG — Project registration / 22 | 1 | REG-PM1 — Register and confirm a project through the CLI / 17 | reg-pm1--register-and-confirm-a-project-through-the-cli |
+| REG — Project registration / 22 | 2 | REG-PM2 — Update a registration without losing approved history / 11 | reg-pm2--update-a-registration-without-losing-approved-history |
+| REG — Project registration / 22 | 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits / 16 | reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits |
+| ARC — Architecture loop / 7 | 1 | ARC-PM1 — Establish the project's architectural foundations / 7 | arc-pm1--establish-the-projects-architectural-foundations |
+| ARC — Architecture loop / 7 | 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown / 6 | arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown |
+| ARC — Architecture loop / 7 | 3 | ARC-PM3 — Review and confirm the development breakdown / 6 | arc-pm3--review-and-confirm-the-development-breakdown |
+| EXE — Execution / 2 | 1 | EXE-PM1 — Deliver independently reviewed work packets / 1 | exe-pm1--deliver-independently-reviewed-work-packets |
+| EXE — Execution / 2 | 2 | EXE-PM2 — Integrate work and deliver declared dependencies / 2 | exe-pm2--integrate-work-and-deliver-declared-dependencies |
+| EXE — Execution / 2 | 3 | EXE-PM3 — Resolve architectural gaps within authorized scope / 2 | exe-pm3--resolve-architectural-gaps-within-authorized-scope |
+| EXE — Execution / 2 | 4 | EXE-PM4 — Verify milestones and publish completed Execution / 2 | exe-pm4--verify-milestones-and-publish-completed-execution |
+| EXE — Execution / 2 | 5 | EXE-PM5 — Pause, stop and recover Execution / 2 | exe-pm5--pause-stop-and-recover-execution |
+
+Dependency preservation: pinned tables remain authoritative. C3 preserves shared final acceptance without circular implementation prerequisites; architecture/Execution QA producer-consumer dependencies remain included; required stopping/recovery accompanies affected stages despite its last declaration position. No connected completion criterion is replaced by the manual document.
+
+### Separate six-step selection chains
+
+Each cell provides separate evidence for its named step. Collection is not inferred merely from validation.
+
+| Choice | Input source | Chooser | Collection point | Saved value | Validation | Consumer |
+|---|---|---|---|---|---|---|
+| Repository and overview | O identity/source list; U | Architect records supplied project | C4 Intake | C1 repository and docs/project-overview.md | C2 inventory; P explicit-reference rule | Assessment, review, later handoff |
+| Full or partial boundary | O no narrower portion; U begin manual work | Architect proposes; Owner accepts | C4 Intake and Owner confirmation | C1 full proposed boundary; C2 outcomes; later C4 receipt | C2/D mapping and C3 dependencies | Review, exact confirmation, architecture work |
+| Source selector/commit | Existing master source in frozen packet | Architect records manual choice | C4 Intake | C1 refs/heads/master and exact commit | C2 hashes/pinned links; no silent retargeting | Author/reviewer assessment; publication preserves baseline; resumed architecture |
+| Destination/path | G documentation writes to master; candidate path | Established rule applied by architect | C1 identity and C4 Publication | Existing master, path, expected parent/bytes | C4 parent reconciliation and destination verification | Publication and uncertain-write recovery |
+| Architect session | Host author session; U | Host provides; assignment applies AR | C4 manual/runtime mapping | Available identity in handoff; unavailable model unknown | AR authority; exact candidate/source evidence | Source assessment and document preparation |
+| Reviewer sessions | Separate host non-author contexts | Assigning agent applies WR eligibility | C4 Independent package review | Identity/pass/scope/hashes/findings/coverage in handoff | WR authorship/exposure checks; frozen packet | Three distinct documentation judgments; targeted check if needed |
+| Review allowance | WR default two; R one full plus one targeted | Existing policy | Assignment before review | C4 bound and this budget record | Complete coverage and preserved same-subject counts | Readiness and any targeted correction |
+| Accepted candidate | Published reviewed candidate | Owner | C4 Owner confirmation | Actual response/locator/version/path/commit/hash/scope/exceptions | Publication first; resolve unclear or changed-version reference | Manual architecture handoff |
+| Runtime tools/models/profile/credentials | Operator/Owner sources in A1/A4/runtime schemas | Future runtime actors | Not applicable to manual action | No invented live selections | C4 leaves live checks outstanding | Future live intake/start establishes actual state and enforces own rules |
+
+### Eight manual journeys and all eight categories
+
+D means defined and consistent for this manual action. N/A identifies the runtime-only component not exercised; the live boundary remains outstanding. Evidence labels resolve to the index above.
+
+| Journey | Starting conditions | Inputs/recipients | Configuration/selections | Credentials/authority | Storage/transactions | Interfaces/state | Results/completion | Failures/recovery |
+|---|---|---|---|---|---|---|---|---|
+| 1. Intake/scope/source/destination | D: U preparation; C1 unconfirmed | D: O references to architect, C4 | D: separate repository/scope/source/destination chains, C1/C2 | D: U/G preparation/master authority; runtime profile N/A, C4 | D: identity/scope/hash in candidate; runtime SQL reservation N/A, C4 | D: proposed versus confirmed boundary, C1/C5 | D: fixed assessable input set, P/C2 | D: missing access/reference blocks affected work; moving master cannot retarget, C4 |
+| 2. Declarations and outcomes | D: exact source set, C2/D | D: declaration tables to author/reviewers | D: all 18 identities/versions/positions/links checked | D: source ownership retained, G/C1 | D: exact references preserve authoritative content, P/C2 | D: stable identities/declaration-owned order, P/D | D: dependencies/acceptance/done retained, C2/C3/D | D: missing outcome or essential prerequisite resolved, C4 |
+| 3. Current evidence/prerequisites | D: limited source reads, C3/K | D: named code/tree to observations | D: pinned commit/locations, C1/C3/T | D: source read confers no installation or credential proof, P/C3 | D: observations saved; no live-store mutation, C4 | D: source-supported versus unverified operation, O/P/C3 | D: delivery work uncompleted; external setup unverified, C3/D | D: no fabricated readiness; later investigation decides reuse, C3/C5 |
+| 4. Assessment/manual-runtime mapping | D: requested manual sequence, U/C1 | D: sources to author; assessment C2/C3 | D: author chain separate; runtime routes N/A, C4 | D: AR preparation; Owner accepts | D: Git document; runtime SQLite/package transactions N/A, C4/A3 | D: explicit difference from runtime JSON/schema/activation, C1/C4/S | D: manual baseline only, C5; schema deferral C3/A5/S | D: missing sources/authority pause affected work; no legacy activation, C1/C4 |
+| 5. Independent review/correction | D: frozen filtered input, R/WR | D: separate reviewer contexts, C4 | D: reviewer and budget chains separate from author | D: read-only non-author judgment, FR/WR | D: handoff retains identities/hashes/full coverage/linked checks, C4/WR | D: full versus targeted; prior architecture coverage separate | D: valid coverage/no unresolved material issue before ready presentation, C4 | D: at most one targeted check; affected invalidation and preserved budget, C4/WR |
+| 6. Publication/uncertain writes | D: reviewed bytes/master authority, C4/G | D: exact candidate/evidence to repository | D: saved parent/destination/bytes, C4 | D: documentation writer under G; service credentials N/A | D: verified Git commit; no simulated cross-system transaction, C4/A3 | D: local save/blob upload distinguished from publication | D: destination commit/bytes verified, C4 | D: reconcile changed parent; read destination before retry, C4/WR |
+| 7. Confirmation/refusal/receipt | D: published exact candidate, C4 | D: identity/scope/limits to Owner; response to handoff | D: separate exact-candidate chain | D: Owner only; begin is not confirmation, U/C1/C4 | D: response locator and exact reference retained in Git-backed handoff | D: unconfirmed/accepted/rejected; runtime receipt/activation N/A | D: accepts manual scope only, C5 | D: refusal/cancellation starts no work; resolve ambiguity/version; retain history, C4 |
+| 8. Architecture handoff/resumption/Execution | D: exact manual acceptance first, C4/C5 | D: receipt/sources to investigation then structure/breakdown | D: baseline inherited; source/publication commits separate, C2/C4/A1 | D: U permits manual planning; Execution separately started, C5/A5 | D: verify saved bytes/receipt on resume; live SQL N/A | D: manual handoff not architecture.start; no invented runtime registration | D: later breakdown independently reviewed and exactly confirmed, C5 | D: unverifiable saved inputs block continuation; future live state/eligibility checks required; Execution separate, C4 |
+
+### Evidence comparisons and accepted differences
+
+Candidate inventory hashes match SOURCE-INVENTORY.json; unfiltered packet bytes match the manifest. Overview filtering accounts for the sole intentional overview hash difference. All 18 exact source URLs retain the pinned source commit; publication does not substitute a newer code baseline.
+
+Python metadata supports the limited Alpha/Python 3.12/entry-point claim. The inspected CLI handler reads local JSON and invokes onboarding. Inspected onboarding consumes binding, graph, work_items and run inputs and creates a Planned run. The inspected route table contains the four named decision/crash routes. These are source-supported observations, not proof of the designed installed registration flow.
+
+The supplemental tree is untruncated with 99 entries, pinned repository/commit and tree d6fccdde86a15ec6ea5d7a71fbb790e056cb6f4d, and no tracked path ending .service. It resolves the initially reported evidence-availability concern during this full pass; it is not a candidate correction.
+
+Markdown plus Git-backed handoff intentionally differs from runtime .maestro/registrations JSON, SQL activation, service publication, repository profiles, exact runtime model selection and runtime response schemas. C1/C4 state the adaptation and U authorizes manual preparation. No implementation acceptance is claimed. The older architecture schema lacks the identified packet execution requirements and QA-plan extensions; C3 preserves the accepted implementation boundary and delivery responsibility. Three workshop documentation passes do not multiply or reset the runtime registration review budget.
+
+### Findings, exclusions, and result
+
+Findings: none. No impact/minimum correction/classification entry is required because no defect is asserted. The temporary tree evidence limitation was resolved by primary evidence before completing coverage.
+
+Not assessed: installed service, credentials, actual model routes, runtime state/reservations, operational behavior, software tests, exhaustive code audit, actual candidate publication, actual Owner acceptance/receipt, later architecture output. None is claimed completed by the candidate. Missing historical transcripts and excluded original overview passage were not reconstructed. Unchanged product architecture was not reopened. This is a documentation consistency conclusion, not runtime activation, architectural-completeness approval, decision-fidelity approval, or authorization to implement.
+
+Result: pass — no gaps found within the recorded cross-document-consistency coverage. coverage_complete: true; round_consumed: true; correction_refs: []; invalidated_by: null. No targeted check is needed. This append retains the already completed full record and consumes no additional round.
+
+
+## Manual registration architectural-completeness full coverage
+
+### Identity, frozen sources and accounting
+
+Review manual-registration-completeness-1 — Manual registration candidate completeness; pass_type architectural_completeness; mode full; parent_review_id null; reviewer /root/manual_registration_completeness, independent non-author separate context. Host session identifier and exact host model unavailable/null. Eligible: no candidate authorship or correction, no prohibited author verdicts, previous findings or suggested corrections received. The later append of this completed record is bookkeeping only. Scope: docs/planning/manual-registration.md candidate version 1 and its manual source/dependency/evidence mappings; eight manual journeys and all 18 project outcomes. This is not a reopened whole-product architecture review.
+
+Repository jmiedreich-ux/Maestro; exact product source commit 182bf4290ef2960d4691a7f41315ebf71d5bf85c. Candidate SHA-256 a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79. Frozen packet manifest SHA-256 ddfd1d533f96b5dc4cf6729bbc6092e244a58ccef6ecfbb3ad017be763d91d32; all listed snapshot hashes matched. Per-source hashes are retained in the shared source map. Budget key manual-registration-candidate/architectural-completeness: round 1 of maximum 2, one full plus at most one targeted correction. No correction round indicated. Existing architectural and runtime budgets unaffected.
+
+Sources examined: REVIEW-SCOPE.md; USER-REQUEST.md; AGENTS.md; SOURCE-INVENTORY.json; snapshot-hashes.json; the whole candidate; filtered docs/project-overview.md; all five milestone declarations; docs/planning-guide/README.md and architecture-milestone-alignment.md; docs/agents/architecture-agent.md role/registration and later-preparation sections; docs/agents/decision-fidelity-reviewer.md; workshop SKILL.md and references/planning-guide.md, reviews.md and workshop-state.md. Selected architecture and schema locations are indexed below. Limited code observations: services/maestro/pyproject.toml metadata/scripts; services/maestro/maestro/cli.py build_parser and _register_project; project_onboarding.py especially register_project; read_api.py _COMMAND_ROUTES. Listing supplied files or computing their hashes is not a claim to have audited their contents.
+
+The overview's prior-review paragraph was filtered by the packet: examined hash 743ea69e62880a84883f4e0e5399d07e24e880debda0e3305d5e7300c9569765; original hash 273b3de973e9871f773a3c3cd32065bf95e1a47f338da4329ab9e2386590a9cf. Original unfiltered contents and earlier handoff/review verdicts were not examined. Current decision authority is USER-REQUEST.md; unavailable historical transcripts were not reconstructed.
+
+Supplemental primary source examined after specific authorization: /workspace/scratch/a62eef195a35/manual-review-evidence/repository-tree.json, SHA-256 b74a622e91a198c510ab50e9cfad895c6f73009b769419f9879f7c113b045302. It identifies the pinned commit and tree d6fccdde86a15ec6ea5d7a71fbb790e056cb6f4d, truncated=false, 99 entries and no .service path. This supports only the limited tracked-tree observation, not installed-system absence. It contains no author correction or assessment.
+
+### Exact-location index
+
+All candidate labels refer to docs/planning/manual-registration.md:
+
+| Location label | Exact heading and row |
+|---|---|
+| Candidate identity | Identity and authority |
+| Candidate scope | Purpose and scope |
+| Candidate sources | Exact source inventory |
+| Candidate outcomes | Included project outcomes |
+| Candidate dependencies | Dependency assessment |
+| Candidate observations | Current-source observations |
+| Manual intake | Manual process and evidence handling / Intake and pinned-source assessment |
+| Manual mapping | Manual process and evidence handling / Outcome and dependency mapping |
+| Manual assessment | Manual process and evidence handling / Current-state assessment |
+| Manual review | Manual process and evidence handling / Independent package review |
+| Manual publication | Manual process and evidence handling / Publication |
+| Manual confirmation | Manual process and evidence handling / Owner confirmation |
+| Manual receipt | Manual process and evidence handling / Confirmation receipt or cancellation |
+| Manual handoff | Manual process and evidence handling / Manual architecture handoff and recovery |
+| Manual boundary | Manual process and evidence handling / paragraphs beginning The manual record and Runtime architect/reviewer |
+| Next stage | Confirmation boundary and next stage |
+
+Other exact supporting locations:
+
+- Overview references: docs/project-overview.md / Project identity, Overall scope, Current state, Authoritative sources, Unresolved information.
+- Guide rules: docs/planning-guide/README.md / Entry document and source references; Naming, ordering, and versions; Current capability and dependencies; Partial registration; Verification expectations; Relationship to development breakdown.
+- Publication authority: AGENTS.md / Git changes.
+- Review method: skills/project-architecture-workshop/references/reviews.md / Independent inputs and eligibility; Complete journey trace; Coverage and findings; Full reviews and targeted correction checks; Disposition and retention.
+- Durable coverage: skills/project-architecture-workshop/references/workshop-state.md / What to keep; Saving and recovery; Configurable review bound; Review coverage record.
+- Runtime registration boundary: docs/architecture.md / Purpose and authority; Source format and inputs; Intake and scope; Source and publication selection; Source consistency; Assessment and independent review; Purpose and dependency checks; Review limits and decisions; Package structure; Package record contract; Candidate publication; Confirmation and activation.
+- Runtime role/setup boundary: docs/architecture.md / Runtime and prerequisites; Tool and model selection; Adapter configuration.
+- Architecture handoff boundary: docs/architecture.md / Entry and responsibility; Persistent architect session; Initial code investigation; Lasting project structure and specialist guidance; Information sufficiency and clarification; Work-packet-first breakdown; Architecture output locations and records; Architecture record contract; Confirmation and completion; Publication, recovery, and cancellation; Architecture-loop implementation boundary.
+- Execution/setup boundary: docs/architecture.md / Execution initiation; opening configuration table of Execution process definition and configuration; Project Quality Assurance bindings.
+- Schema evidence: docs/schemas/architecture-loop.schema.json / $defs.registrationRef, workPacket, developmentMilestone, manifest, requiredOutput, plus property inventories of allocation, inventoryEntry and agentResponse; docs/schemas/registration-process.schema.json / processDefinition structure. These were inspected to understand the existing live boundary and explicit producer-schema deferral, not to certify full schema implementation.
+
+### All 18 outcome mappings
+
+Every candidate Included project outcomes row points to the same-named heading in its declaration at the pinned commit. Each outcome's Outcome, Included, Excluded, Architecture and journeys, Dependencies, Acceptance criteria, Definition of done and Unresolved details were examined with declaration-wide scope/evidence rules. Completion references are these exact milestone headings and their Acceptance criteria/Definition of done, not the candidate's shorter group summaries.
+
+| Declaration path and version; position | Preserved outcome and version | Dependency/completion mapping checked |
+|---|---|---|
+| docs/milestones/runtime-service-milestones.md v10; 1 | SVC-PM1 — Operate the persistent Maestro service v3 | Linux/systemd and configured installation/access; actual installation and essential failures remain delivery evidence. |
+| Same runtime declaration; 2 | SVC-PM2 — Preserve project activity and requests v4 | Persistent service, connected interface, real initial/update registration records; storage implementation precedes shared connected acceptance. |
+| Same runtime declaration; 3 | SVC-PM3 — Connect the CLI to recorded service activity v2 | Durable records, CLI workspace/answers, registration handlers; actual API/SQL/events required. |
+| Same runtime declaration; 4 | SVC-PM4 — Run and recover assigned agents v4 | Storage/API, installed tools/credentials, genuine registration assignments/recovery; standalone model response insufficient. |
+| Same runtime declaration; 5 | SVC-PM5 — Apply shared process definitions v7 | Records/transport/supervision, registration policies, architecture sessions; both real process integrations required. |
+| docs/milestones/cli-milestones.md v13; 1 | CLI-PM1 — Connected multi-project CLI workspace v8 | Service/storage/API and registration-created records; empty foundation checks distinguished from connected acceptance. |
+| Same CLI declaration; 2 | CLI-PM2 — Reliable project questions and answers v5 | Workspace, real question producer/consumer and durable request delivery; linked saved effects/failures retained. |
+| docs/milestones/registration-milestones.md v22; 1 | REG-PM1 — Register and confirm a project through the CLI v17 | Shared handlers, CLI, planning sources, runtime agents, publication/persistence; actual JSON publication and deliberate CLI confirmation remain future acceptance. |
+| Same registration declaration; 2 | REG-PM2 — Update a registration without losing approved history v11 | Initial registration and atomic idle/reservation state; prior approval and explicit replacement confirmation retained. |
+| Same registration declaration; 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits v16 | Initial/update journeys, shared recovery, checkpoints/supervision and remote evidence; counters and reconciled effects required. |
+| docs/milestones/architecture-loop-milestones.md v7; 1 | ARC-PM1 — Establish the project's architectural foundations v7 | Confirmed registration, runtime/process integration and CLI; mapped inputs and saved investigation/specialist records required. |
+| Same architecture-loop declaration; 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown v6 | Foundations, linked questions, shared persistence, operator QA catalog supplied through Execution; producer schema/inventory extensions explicit. |
+| Same architecture-loop declaration; 3 | ARC-PM3 — Review and confirm the development breakdown v6 | Saved breakdown, shared review/confirmation, independent reviewer, real registration update for changed-input evidence; confirmation starts no Execution. |
+| docs/milestones/execution-milestones.md v2; 1 | EXE-PM1 — Deliver independently reviewed work packets v1 | Runtime/CLI, confirmed registration/breakdown, specialist inputs, installed routes/access; independently approved remote revisions required. |
+| Same Execution declaration; 2 | EXE-PM2 — Integrate work and deliver declared dependencies v2 | Reviewed packets/substrate, confirmed closure, later promotion/lifecycle evidence; review alone is not dependency readiness. |
+| Same Execution declaration; 3 | EXE-PM3 — Resolve architectural gaps within authorized scope v2 | Assignments/integration, confirmed roles, real QA findings, lifecycle settlement and later re-registration; producer-to-correction path required. |
+| Same Execution declaration; 4 | EXE-PM4 — Verify milestones and publish completed Execution v2 | Exact integrated branches, correction handling, confirmed extended QA plans, installed environment/artifact/routes; missing/bypassed paths remain unverified. |
+| Same Execution declaration; 5 | EXE-PM5 — Pause, stop and recover Execution v2 | Actual earlier stages, supervision/transport, explicit later registration/architecture reconciliation; controls accompany affected stages. |
+
+Declaration order is preserved independently in each file. Candidate groups do not impose a cross-project schedule, remove shared-evidence dependencies, certify external prerequisites, or weaken completion by presenting manual planning as implementation evidence.
+
+### Separate six-step selection chains
+
+Each column is a separate evidence step. Defined means procedure specified, not future operation performed.
+
+| Choice | Input source | Choosing actor | Collection point | Saved value | Validation | Consuming operation |
+|---|---|---|---|---|---|---|
+| Repository/overview | Overview references; current task authority | Architect uses supplied project and entry | Manual intake | Candidate identity repository and docs/project-overview.md | Readability/references; missing access/source blocks | Assessment and exact-source handoff |
+| Full/partial boundary | Five declarations and no narrower current request | Architect proposes; Owner fixes acceptance | Candidate identity/scope and exact confirmation | Five declarations, 18 outcomes, exclusions, actual receipt | Mapping, review, exact acceptance | Manual architecture and later breakdown |
+| Source selector | Existing source context and overview references | Architect pins preparation input | Manual intake before assessment | refs/heads/master, exact resolved commit, source hashes | Frozen hashes; missing/incompatible source blocks | Assessment, review, later source reads |
+| Publication destination | Repository working rule | Existing authority fixes master; architect applies | Candidate identity and publication preparation | Repository/branch, expected parent, bytes, verified resulting commit | Reconcile changed parent; verify destination bytes/commit | Publication, exact presentation, receipt lookup |
+| Candidate path/version | Manual document/stable planning path | Architect maintains versions within scope | Preparation/amendment | docs/planning/manual-registration.md, version, publication commit/hash | Review exact bytes; changed candidate/affected coverage | Confirmation and resumption |
+| Architect session | Host author session | Host supplies; architect owns assessment | Preparation under Manual boundary | Available identity in handoff; unavailable exact model unknown | Role/authority separation; no installed route claim | Assessment and documentation publication |
+| Reviewer sessions | Frozen candidate, authority and review method | Orchestrator assigns separate non-authors; host supplies | Review assignment before examination | Identity/pass/scope/hashes/findings/coverage in handoff | Non-authorship, separate context, filtered inputs, complete coverage | Readiness and targeted correction |
+| Review allowance | Workshop bound and packet scope | Existing policy | Review assignment | One full plus at most one targeted per pass; saved counts | No reset on correction/replacement/resumption | Full review and bounded disposition |
+| Exact confirmation target | Reviewed verified publication | Owner alone accepts/refuses | Presentation and actual response | Response/locator/version/path/commit/hash/scope/exceptions | Exact intended reference; no inference from changed/ambiguous approval | Receipt and manual architecture entry |
+| Handoff inputs | Exact receipt and pinned sources | Architect carries accepted records | Handoff/resumption | Receipt and source references in existing handoff | Verify Git bytes and actual response | Investigation, structure/specialists, breakdown |
+
+Runtime-only selections are not_applicable to this manual action: installed architect tool/model, installed reviewer tool/model, service repository profile, provider credentials, process deadlines, SQLite engine/transactions, service schema invocation, QA environment/secret/network selections and software Execution routes. Manual boundary and Candidate dependencies retain their future live requirements. Architect and reviewer are separately recorded rather than represented as a fictitious installed route. Later QA-plan selections remain subject to the existing operator-catalog/plan-validation contract; no such values are selected now.
+
+### Eight journeys and all eight categories
+
+Status defined means manual behavior/necessary evidence specified, not an actual future operation completed. Runtime mechanisms explicitly excluded from this action are marked not_applicable. No category omitted.
+
+#### Journey 1 — Manual intake, scope and exact selection
+
+- Starting conditions: defined — USER-REQUEST.md, Candidate identity and Manual intake authorize preparation, not acceptance.
+- Inputs/recipients: defined — supplied repository/overview and request reach architect; Overview references and Guide rules.
+- Configuration/selections: defined — separate repository, boundary, source selector/commit and destination chains above.
+- Credentials/authority: defined — Publication authority and Candidate identity; service credentials not_applicable under Manual boundary.
+- Storage/transactions: defined — Git-backed candidate/handoff, Manual boundary and Durable coverage; SQL reservation/transaction not_applicable.
+- Interfaces/state: defined — candidate version 1, whole scope proposed, unconfirmed; Candidate identity/scope.
+- Results/completion: defined — pinned assessable sources and explicit inclusions/exclusions; Candidate sources/outcomes.
+- Failures/recovery: defined — missing access/source/reference blocks affected assessment; no silent retargeting; Manual intake.
+
+#### Journey 2 — Five declarations and all 18 outcomes
+
+- Starting conditions: defined — exact overview and referenced declarations; Candidate sources.
+- Inputs/recipients: defined — complete declaration sections reach assessment/review; Candidate outcomes.
+- Configuration/selections: defined — proposed full scope, preserved per-declaration order and versions; mapping table above.
+- Credentials/authority: defined — architecture owns behavior, declarations own outcomes/evidence; Candidate identity and Guide rules.
+- Storage/transactions: defined — pinned references/hashes preserve source bytes; runtime outcome storage not_applicable.
+- Interfaces/state: defined — qualified identities/subjects/versions/exact headings; no generated development milestones.
+- Results/completion: defined — entire acceptance and definition-of-done sources retained; Candidate outcomes and declaration sections.
+- Failures/recovery: defined — missing outcome, incompatible source or unassigned essential prerequisite must resolve; Manual mapping.
+
+#### Journey 3 — Source evidence and unverified prerequisites
+
+- Starting conditions: defined — existing source snapshot, unknown installation; Candidate observations.
+- Inputs/recipients: defined — metadata/functions/routes/tree reach architect; inspected code locations and supplemental tree above.
+- Configuration/selections: defined — limited reads/evidence levels; future reuse reserved for investigation.
+- Credentials/authority: defined — operator setup remains unverified; no secrets requested/recorded; Candidate dependencies.
+- Storage/transactions: defined — observations retained in Git-backed candidate; installed storage inspection not_applicable.
+- Interfaces/state: defined — legacy onboarding consumes graph/work/run inputs; inspected routes do not establish designed registration.
+- Results/completion: defined — source-supported observations only; no dependency certified operational.
+- Failures/recovery: defined — missing setup remains delivery work; absent evidence cannot become success; Candidate dependencies/observations.
+
+#### Journey 4 — Assessment and manual/runtime mapping
+
+- Starting conditions: defined — manual adaptation authorized; Candidate identity and USER-REQUEST.md.
+- Inputs/recipients: defined — pinned source set/request reach architect; Manual assessment.
+- Configuration/selections: defined — separate host author identity chain; installed tool/model selection not_applicable.
+- Credentials/authority: defined — preparation, Owner confirmation and separately started Execution distinguished; Candidate identity/Next stage.
+- Storage/transactions: defined — manual candidate/assessment plus handoff in Git; no fabricated SQL activation.
+- Interfaces/state: defined — manual Markdown baseline/receipt explicitly differ from runtime package/response; Manual boundary.
+- Results/completion: defined — reviewable scope/dependency/evidence interpretation, not architecture approval or runtime readiness.
+- Failures/recovery: defined — unsupported claims establish no completion; missing material decisions block affected preparation; Guide rules.
+
+#### Journey 5 — Independent review and bounded corrections
+
+- Starting conditions: defined — frozen candidate and independent eligible contexts; Manual review and Review method.
+- Inputs/recipients: defined — same exact inputs assigned separately to fidelity/completeness/consistency.
+- Configuration/selections: defined — reviewer/allowance chains; author and reviewers separately identified.
+- Credentials/authority: defined — read-only reviewers return findings, architect corrects, Owner confirms.
+- Storage/transactions: defined — ai/handoffs/current.md retains identities/hashes/findings/coverage and required accounting; Durable coverage.
+- Interfaces/state: defined — full/targeted records, affected invalidation, same-subject budget retention.
+- Results/completion: defined — complete coverage required; one passing round sufficient; unresolved material findings prevent readiness.
+- Failures/recovery: defined — incomplete coverage consumes no round; exhausted material correction pauses affected work; no resumption reset.
+
+#### Journey 6 — Publication and uncertain-write recovery
+
+- Starting conditions: defined — reviewed candidate/evidence and authorized master; Manual publication.
+- Inputs/recipients: defined — exact bytes and expected parent supplied to writing architect.
+- Configuration/selections: defined — saved repository/branch/path/version/parent chains above.
+- Credentials/authority: defined — writing agent owns authorized documentation publication; service-only profile not_applicable.
+- Storage/transactions: defined — Git documents and verified destination; no simulated Git/SQL atomicity.
+- Interfaces/state: defined — prepared/local/uploaded distinguished from actually published.
+- Results/completion: defined — verified publication commit/bytes before exact Owner presentation.
+- Failures/recovery: defined — reconcile changed parent; read destination after lost response before retry; local/blob save cannot advance.
+
+#### Journey 7 — Exact Owner confirmation and receipt
+
+- Starting conditions: defined — exact reviewed publication available; Manual confirmation.
+- Inputs/recipients: defined — version/path/commit/hash/scope/evidence limits shown to Owner; actual response reaches recorder.
+- Configuration/selections: defined — exact target and response chains above.
+- Credentials/authority: defined — Owner alone confirms; starting work/prior architecture acceptance cannot substitute.
+- Storage/transactions: defined — actual response/locator/target/scope/exceptions in handoff and Git history; runtime receipt/SQL not_applicable.
+- Interfaces/state: defined — unconfirmed versus manual scope acceptance; no invented signature/activation.
+- Results/completion: defined — durable receipt identifies precisely accepted scope; Next stage.
+- Failures/recovery: defined — refusal/cancellation leaves unconfirmed and starts nothing; ambiguous/changed-version reference resolved; resumption verifies response.
+
+#### Journey 8 — Handoff, resumption and Execution separation
+
+- Starting conditions: defined — exact manual confirmation and pinned sources; Manual handoff.
+- Inputs/recipients: defined — receipt/source references passed into architecture preparation.
+- Configuration/selections: defined — unchanged source baseline/exact accepted candidate; no packet identities/counts/routes/schedule preassigned.
+- Credentials/authority: defined — manual preparation follows accepted sequence; future live start/import establishes actual service eligibility; Execution separately started.
+- Storage/transactions: defined — handoff/Git bytes govern continuation; live reservation/SQLite not_applicable.
+- Interfaces/state: defined — manual architecture differs from architecture.start; live registration/architecture contracts remain future boundaries.
+- Results/completion: defined — investigation, lasting structure/specialists, bounded packet-first breakdown with verification/QA plans, separate review and exact Owner confirmation.
+- Failures/recovery: defined — resumed session verifies receipt/Git; unknown runtime state never means idle/eligible; missing later behavior/evidence blocks affected breakdown.
+
+### Findings, exclusions and bounded conclusion
+
+Findings: empty. No blocking or non-blocking correction required within this manual candidate scope. No finding is raised merely for unimplemented software, unknown installed choices, or absence of runtime JSON/SQL operations from this documentation action.
+
+Not assessed: unchanged whole-product architecture as a fresh subject; installed service/access/credentials/model identity/state; actual publication or Owner acceptance; exhaustive code correctness/reuse; executable schema integration or live connected acceptance. Missing historical transcripts/prior review records were excluded and not reconstructed. The visible current authority and exact packet bound this result. No tests, live operations, external research, candidate edits or standalone report were performed. The sole later handoff append retains this already completed coverage and consumes no round.
+
+Result pass; coverage_complete true; round_consumed true; correction_refs empty; invalidated_by null. No gaps found within the recorded architectural-completeness coverage. Preparation, review, publication, exact confirmation and subsequent manual architecture handoff are sufficiently defined. Actual publication and Owner confirmation remain separate actions; this review grants no software Execution authority. Proceed through the documented manual sequence when the other required passes and evidence retention are complete. This result does not supply other pass verdicts, implementation readiness or live registration.
+
+## Manual registration review disposition
+
+Candidate version 1, `docs/planning/manual-registration.md`, SHA-256 `a22bbd6fa494ef9f595113fbaf150ed3eee0f1cbf014ede1dd8f32cff6b21e79`, was unchanged across the three independent reviews. Each completed its full eight-journey/eight-category coverage and separate six-step selection traces. No blocking or nonblocking finding was returned; no author correction or targeted round occurred.
+
+| Pass | Independent reviewer | Retained coverage | Result and accounting |
+|---|---|---|---|
+| Decision fidelity | `/root/manual_registration_fidelity` | [Full fidelity coverage](#manual-registration-decision-fidelity-full-coverage) | Pass; full round 1 completed; no additional round indicated |
+| Architectural completeness | `/root/manual_registration_completeness` | [Full completeness coverage](#manual-registration-architectural-completeness-full-coverage) | Pass; full round 1 completed; no additional round indicated |
+| Cross-document consistency | `/root/manual_registration_consistency` | [Full consistency coverage](#manual-registration-cross-document-consistency-full-coverage) | Pass; full round 1 completed; no additional round indicated |
+
+The author inspected the completed records and retained their exact subject, evidence limits and conclusions. Review eligibility and prohibited-input exclusions are recorded per reviewer. This new manual-candidate review subject does not reset earlier architecture reviews or runtime review allowances. Source-tree evidence added during the same full passes resolved an evidence-availability limitation without changing the candidate or constituting an author correction.
+
+Publication intent: update only this existing handoff and add the exact reviewed candidate on `jmiedreich-ux/Maestro`, branch `master`, expected parent `182bf4290ef2960d4691a7f41315ebf71d5bf85c`. Preserve all other paths. Verify the resulting remote ref and exact file bytes before presenting confirmation; a local file, uploaded blob or created commit alone is not publication. The eventual publishing commit is distinct from the unchanged source baseline. This record does not predeclare remote verification.
+
+Owner-confirmation receipt: **pending**. No response, locator, signature, runtime identifier or approval is fabricated. The exact published candidate and its full 18-outcome scope must be presented, with its manual-only authority and unverified implementation/installation limits. After an actual exact confirmation, append the response, available conversation locator, candidate version/path/publishing commit/SHA-256 and accepted scope or exceptions, then verify that receipt on resumption. Refusal, cancellation or ambiguity leaves the candidate unconfirmed.
+
+The next stage is manual architecture preparation only after that receipt. Development milestone/packet planning, detailed code reuse decisions, executable schemas, installation, model/profile selection, connected acceptance and software Execution are not completed by this candidate.
