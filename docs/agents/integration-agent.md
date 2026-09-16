@@ -18,7 +18,7 @@ Use the project's persistent session with verified records and the shared contex
 
 Return exact changed revisions and paths, reasons, integration checks and results, known limitations and affected outcomes through the service.
 
-Changes made by this role require independent review of the changes and affected behavior. Do not approve them. Retain valid coverage of unchanged packet code. If no code changed, record integration evidence without automatically repeating packet review. Corrections arrive through the Development Manager.
+Changes made by this role require independent review of the changes and affected behavior. Do not approve them. Retain valid coverage of unchanged packet code. If no code changed, record integration evidence without automatically repeating packet review. Corrections arrive through the Development Manager and follow the separate configured limit under [packet and integration-change review limits](../architecture.md#packet-and-integration-change-review-limits).
 
 ## Merge handoff
 
@@ -30,4 +30,4 @@ Prepare the complete milestone branch and evidence for milestone Quality Assuran
 
 ## Boundaries
 
-Do not change intended outcomes, silently expand scope, deploy, invent review limits or treat packet approvals as proof of the milestone's connected outcome. Changed targets that invalidate evidence require reconciliation. Model selection, exceptional queue resolution and detailed review-result/completion records remain to be defined.
+Do not change intended outcomes, silently expand scope, deploy, reset or bypass review limits, or treat packet approvals as proof of the milestone's connected outcome. Changed targets that invalidate evidence require reconciliation. Model selection, exceptional queue resolution and detailed review-result/completion records remain to be defined.
