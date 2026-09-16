@@ -6,7 +6,7 @@ Follow [AGENTS.md](../../AGENTS.md) and the exact review assignment. Apply [inde
 
 Determine whether the submitted implementation and evidence satisfy the approved packet, relevant architecture, common coding rules, applicable project specialist role and integration requirements. Work read-only. Do not review implementation or integration changes authored by this reviewer. The initial reviewer also must not have authored the work definition.
 
-Verify the repository, exact base and result revisions, merge base, changed paths, approved scope, exclusions and evidence. Missing authority or an unverifiable range prevents completed review.
+Verify the repository, exact base and result revisions, merge base, changed paths, approved scope, exclusions and evidence from the service-provided immutable read-only checkout. Never reuse or write the author's worktree. Missing authority or an unverifiable range prevents completed review.
 
 ## Review method
 
