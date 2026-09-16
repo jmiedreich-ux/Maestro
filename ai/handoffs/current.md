@@ -13,6 +13,8 @@
 
 ## Where the discussion paused
 
+Milestone review assignment, correction routing and limits, dependency readiness, automatic continuation and automatic completion are now recorded. See [milestone review and execution completion checkpoint](#milestone-review-and-execution-completion-checkpoint). Earlier unresolved statements on these specific decisions are superseded; remaining technical contracts are identified there.
+
 Today's Execution conversation has now received an independent decision-fidelity review against a frozen master snapshot. No gaps were found within the recorded coverage of ten journeys; no source corrections were required. See [independent Execution fidelity review](#independent-execution-fidelity-review) for coverage and limits. Architectural completeness and runtime behavior were not certified.
 
 Independent packet review, persistent Integration Manager authority, FIFO integration and development-milestone branching/promotion are now documented. See [integration and milestone delivery checkpoint](#integration-and-milestone-delivery-checkpoint). Earlier statements that all merge or implementation-review authority is undecided are superseded within this agreed scope. Current documentation changes still go directly to master.
@@ -60,6 +62,29 @@ Earlier targeted rechecks did not establish full architectural completeness. Doc
 The review-method validation below is historical evidence for its frozen snapshots. Later corrections have their own linked records; live implementation evidence remains separate.
 
 No implementation, runtime configuration installation, or live AI box verification has been performed. Those belong to development. Continue directly on `master` and retain no separate review reports.
+
+## Milestone review and execution completion checkpoint
+
+The Owner agreed the following after the independent Execution fidelity review:
+
+- A fresh Independent Implementation Reviewer session assesses the whole milestone branch and its connected outcomes. It cannot have authored or integrated the reviewed code; Integration prepares evidence without approving its own work.
+- The architect assesses failed milestone findings: Integration corrects implementation defects, the architect defines bounded packets for missing in-scope work and the Development Manager schedules them, or the issue follows re-registration and work disposition.
+- Correction review covers named corrections and their effects, retaining valid coverage of unchanged work. Wider checks require an explained impact.
+- Milestone review has a configurable maximum of two completed rounds by default. Remaining blocking findings go to the Owner through the CLI with the architect's recommendation; the milestone stays unmerged. Non-blocking observations neither prevent merge nor require another round. Sessions and reviewer changes do not reset the budget.
+- Execution continues automatically across eligible confirmed milestones. Unrelated eligible work continues when another milestone is blocked, subject to stop or finish-current-work instructions.
+- Failed milestone outcomes block new dependent starts; running affected work follows the existing disposition process.
+- Approved, integrated packets may satisfy dependencies before their milestone finishes. The architect explicitly marks dependencies requiring completed milestones.
+- Once all authorized milestones are merged and required checks pass, Execution closes automatically with a CLI completion summary and no additional Owner approval.
+
+Behavior is authoritative in [milestone outcome review](../../docs/architecture.md#milestone-outcome-review), [dependency readiness and automatic continuation](../../docs/architecture.md#dependency-readiness-and-automatic-continuation) and [authorized merges](../../docs/architecture.md#authorized-integration-merges). The reviewer, architect, Development Manager and Integration Manager role files reference those rules.
+
+Routine elaborations preserve service ownership: exact result binding for dependencies, recorded correction supplements instead of silently rewriting the confirmed breakdown, saved milestone review counts, and closure checks against unresolved required work. These details were authored within delegated technical authority; they are not represented as individually approved Owner choices.
+
+### Validation and limits
+
+This update is self-checked against the conversation from the agreement on fresh milestone review through automatic completion and packet-level dependencies. Changed files: architecture and the four affected role files, plus this handoff. Checks covered controlling decisions, correction authority, preserved packet/integration budgets, stale unresolved wording and local heading links. No independent review was performed on this update; the earlier independent pass applies only to its recorded snapshot. This is an interim design checkpoint, not a declaration of complete or operationally verified sources.
+
+Reviewer model selection, the milestone configuration key, machine-readable review/completion records, correction-supplement activation, and cross-milestone source-delivery mechanics remain open technical details. Packet/integration review limits and remaining general Execution policy are not supplied by the milestone limit. The proposed requirement to incorporate current master before every milestone merge was not explicitly accepted; the existing changed-target reconciliation rule remains authoritative.
 
 ## Independent Execution fidelity review
 
