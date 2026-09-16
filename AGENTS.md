@@ -10,7 +10,7 @@ Write all repository documentation and agent responses in plain language. Keep t
 
 ## Git changes
 
-Commit every approved repository change directly to `master`. Do not create branches or pull requests unless the Owner explicitly changes this rule.
+Outside separately started software Execution, commit approved repository changes directly to `master`; current documentation work creates no branches or pull requests. For separately started software Execution, the Owner-approved [milestone and work-packet branch model](docs/architecture.md#milestone-branches-and-product-integration) governs code delivery. Its [authorized merge rules](docs/architecture.md#authorized-integration-merges) permit reviewed packet-to-milestone and passing milestone-to-master merges without another Owner approval. This exception does not start Execution or bypass other prerequisites.
 
 ## Architecture documentation
 
