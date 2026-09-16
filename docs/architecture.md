@@ -1372,11 +1372,11 @@ If no role adequately covers a packet, the manager records the issue against tha
 
 The architect determines whether an existing role covers the work. If none does, it may create a role and starting context within the already confirmed scope and architectural boundaries. The service validates and saves the result and notifies the manager to reconsider the packet; unrelated work continues. This support assignment does not restart the architecture loop.
 
-A solution that changes scope, established responsibilities or the confirmed breakdown requires replanning under [replanning after re-registration](#replanning-after-re-registration). The support path's exact session/model selection, publication and version binding, review requirements and limits remain unresolved. It does not yet authorize bypassing confirmed-manifest or review rules to activate a new role.
+A solution that changes scope, established responsibilities or the confirmed breakdown requires replanning under [replanning after re-registration](#replanning-after-re-registration). In-scope role additions follow [support validation and publication](#support-validation-and-publication); they do not rewrite the confirmed breakdown.
 
 ### Work disposition before re-registration
 
-Determining that re-registration is required is separate from deciding whether current execution can continue. The architect identifies affected work and reasons and provides a recommendation; the manager adjusts pending work and the service enforces authorized stopping actions.
+Determining that re-registration is required is separate from deciding whether current execution can continue. The architect recommends a disposition with reasons and affected work. The service presents the four choices as a linked CLI decision for the Owner. The Development Manager adjusts pending work to the recorded choice; the service enforces authorized stopping actions. Work already identified as blocked remains ineligible while awaiting the answer. Choosing a disposition does not itself start re-registration or replanning.
 
 | Disposition | Effect |
 |---|---|
@@ -1387,7 +1387,66 @@ Determining that re-registration is required is separate from deciding whether c
 
 The fourth choice is available regardless of whether further queued work is viable; it does not require waiting until execution is blocked. Work already identified as unsafe or invalid to continue still requires an explicit stopping decision.
 
-Re-registration starts only once the project's existing idle conditions are satisfied, including resolved running work and pending external operations. Re-registration, the manual architecture loop, confirmation and explicit execution start remain separate steps. Finishing current work does not itself start any of them. Who authorizes the disposition, its CLI action, treatment of failed running work and the execution-activity closure needed to reach idle remain unresolved.
+For either finish-current-work disposition, the service prevents new packet starts. Already-started packets complete their normal lifecycle, including reviews, corrections and recovery permitted by the eventual Execution rules. This is not limited to letting the current agent process exit. There is no special failure policy, retry prohibition or additional retry question for this transition. The Development Manager remains available to track results and unresolved operations.
+
+The start restriction is saved with the execution activity and checked atomically when reserving a packet's first launch. Packets already reserved for launch at that decision are included in the recorded in-progress set; later stages for that set may continue. Queued packets without a reservation do not start. Restart preserves the restriction and membership. The existing lifecycle handles failures; failed or unresolved work is never marked complete merely to reach idle.
+
+Once this set has settled under the normal lifecycle and all associated runs, support work and pending external operations are resolved, the service ends the execution activity and releases its project reservation. Unstarted packets remain unfinished for replanning and are no longer queued or reserved for execution. The service records this transition and reports that the project is ready for re-registration. An unknown run status or unresolved operation prevents that report.
+
+The linked disposition action records request, project, execution activity, question and recommendation identities, expected activity version, selected choice, affected packet references and verified Owner identity. Stable choice values are `continue_unaffected`, `finish_safe_work`, `stop_affected_or_all` and `finish_current_for_replanning`, paired with the plain labels above. In one SQL transaction, validate the current recommendation and scope, save the choice and apply its pending-start restrictions. An identical replay returns the saved receipt; a stale or conflicting choice requires a refreshed decision. A written clarification alone does not authorize a stopping action. Process stopping is supervised and reconciled after that saved decision, never inside the transaction.
+
+Re-registration still uses its explicit entry and existing idle checks. Re-registration, manual architecture start, confirmation and explicit execution start remain separate steps. General Execution lifecycle and stop-operation contracts still require design; these transition rules do not supply missing review, correction or completion policy.
+
+### Architectural-support configuration and fallback
+
+The shared `/etc/maestro/agents.toml` uses `execution.architectural_support` for this bounded process. The following fields are relative to that table; its configuration and remaining allowances are snapshotted when a support assignment is created.
+
+| Field | Type and meaning |
+|---|---|
+| `architect.primary.tool`, `architect.backup.tool` | Required `codex` or `claude_code`. |
+| `architect.primary.model`, `architect.backup.model` | Required exact permitted model identifiers; no moving aliases or implicit model level. |
+| `fidelity_reviewer.primary.tool`, `fidelity_reviewer.backup.tool` | Required `codex` or `claude_code`, independently configured from the architect. |
+| `fidelity_reviewer.primary.model`, `fidelity_reviewer.backup.model` | Required exact permitted model identifiers. |
+| `architect.run_timeout_seconds`, `fidelity_reviewer.run_timeout_seconds` | Required positive integers; deliberately selected for this process, not inherited from registration. |
+| `maximum_fidelity_reviews` | Positive integer; default 2 completed reviews per support assignment. |
+| `recovery.automatic_recovery_attempts` | Nonnegative integer; default 2 per role assignment after its initial run, shared across its primary and backup routes. |
+
+Both role sections and their route fields are required; primary and backup must identify distinct tool/model pairs within each role. Unknown fields, invalid values or unavailable required runtime capabilities block affected support work with a clear error. Temporary primary-route unavailability is handled by fallback below, not mistaken for malformed configuration. Shared tool executable, permission and credential profiles remain under [adapter configuration](#adapter-configuration); agents do not receive service publication credentials.
+
+The service checks model support, permissions, structured responses and actual model identity before accepting a run's result. Backup use is an explicitly configured selection, never a silent substitution. The separate Development Manager model selected at execution start and coder-route registry are not changed by this support configuration.
+
+| Situation | Route handling |
+|---|---|
+| Primary unavailable, rate-limited or unable to provide the required capability before launch | Check and use the configured backup. A failed preflight without an agent launch does not consume a run-recovery attempt. |
+| Failure during active work | Apply cause-based recovery first. Any replacement must wait for confirmed stopping. Use a backup only when recovery evidence establishes the primary cannot continue appropriately and the backup can; preserve consumed allowances. |
+| Unsatisfactory assessment or failed fidelity review | Follow correction and review handling; do not switch models to obtain a different verdict. |
+| Neither route is usable, or original stopping is uncertain | Pause affected work and display the reason through the CLI. No concurrent replacement or invented third route. |
+
+A backup launch gets a new run and session identity linked to the prior run. It receives the same role assignment, exact source and artifact references, recorded decisions, verified progress and reason for switching. Unfinished output is diagnostic or draft evidence, not completed work. No failure, correction or review allowance restarts. A replacement launched for failure consumes the existing role-assignment recovery allowance; switching routes grants no additional attempts. Capacity-only continuation retains the shared context-management accounting.
+
+The support architect uses its own session for this support assignment; it does not resume the completed architecture loop as new authority. A reviewer uses a separate session and cannot have authored or corrected the reviewed role. Its backup must also be eligible. Common model/provider use does not make shared author history independent. Reviewer handoff preserves reviewed input identities and remaining allowance; prior verdicts or author conclusions are not supplied as instructions for a fresh review. A targeted correction check receives only its authorized correction scope and evidence.
+
+### Support validation and publication
+
+Selecting an existing unchanged role requires validation of applicability and exact references, not another review of its contents. A newly created role and starting context require independent fidelity review against the confirmed architecture and affected packet. The architect corrects material findings; wording preferences do not force rework.
+
+A valid completed review consumes one support review round. One pass is sufficient. Clarification, malformed output, technical failure and replay do not consume a completed-review round; technical failures retain recovery accounting. Review the role and starting context together, without another budget for each file. After a material amendment, recheck affected content and dependencies. At the configured limit, unresolved material issues keep the affected packet blocked and reach the Owner through the CLI; unrelated work continues. No automatic extra round, model switch or replacement assignment resets that limit.
+
+The service assigns the support identity and permitted source-local paths before drafting, using the existing `role-<role-title>.md` and `context.md` formats. The architect returns the role, starting context, packet coverage and rationale. It cannot replace an existing role's authority or move source boundaries through this path. Deterministic checks verify required headings, identities, exact inputs, hashes, path permissions and absence of conflicts.
+
+SQL owns the current support state, requests, questions, route history, review counts and active role bindings. Immutable UTF-8 JSON support records are published under `.maestro/execution/<execution-activity-id>/architectural-support/<support-id>/versions/<version>/` in the project's repository. Record identities are service-assigned, versions are positive integers, and coded references include plain subjects. The fixed files are `support.json`, `review.json` when a completed review exists, and `activation.json` when eligible. Each file carries `schema_version: 1`, project/activity/support identity, its version and exact input references. These are record contracts; executable validators remain implementation work.
+
+| Record | Required contents |
+|---|---|
+| `support.json` | Exact registration and confirmed-breakdown references, affected packet references, source commit, assignment/run identities, configuration hash, chosen primary/backup routes and switch reasons, disposition (`use_existing`, `create_role` or `replanning_required`), plain rationale, role/context path-and-hash inventory, and preserved verified progress references. |
+| `review.json` | Exact reviewed support version and inventory hashes, reviewed source/packet references, reviewer assignment/run and tool/model evidence, independence record, outcome (`APPROVE` or `REQUEST_CHANGES`), findings with impact and minimum correction, and completed-review count/limit. |
+| `activation.json` | Support version, exact role/context references, affected packet bindings, review reference for a new role or explicit unchanged-role validation evidence, and the publication-operation identity. |
+
+References to existing records use their established exact-reference formats. File inventories use repository-relative paths and SHA-256 hashes; published references include the exact Git commit. Files created in the same publication refer to one another by relative path and hash; the verified publication journal supplies their commit afterward, avoiding a self-referential commit field. The service publishes role/context files and eligible support records to the authorized project branch using wrapper checks and a durable publication journal. It verifies remote bytes before atomically recording the active support binding and notification in SQL. Lost acknowledgments reconcile the same intended bytes; conflicting content pauses without overwrite or duplicate activation.
+
+This binding supplements the confirmed breakdown for the named packets; it does not edit their records or the confirmed manifest. New assignments carry both the unchanged confirmed reference and the exact activated support reference. Before use, the service rechecks applicability, review coverage and hashes. Changed relevant inputs invalidate that binding for affected work. A source or responsibility change requiring a new breakdown uses re-registration instead.
+
+Only after required validation, review and publication verification does the service notify the Development Manager that the role is available. Partial drafts, an agent's completion claim or a successful review alone cannot dispatch a coder. No Owner approval is added for an in-scope role that satisfies this contract.
 
 ### Internal hooks
 
@@ -1488,6 +1547,6 @@ The following architectural mechanisms remain unresolved:
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
-| Execution policy | Initiation and work planning are defined under [Execution](#execution). Detailed request/result contracts, route configuration, support-assignment handling, stop authority and idle transition remain unresolved. Implementation-review authority, coding correction limits, merge authority and development completion remain provisional. |
+| Execution policy | Initiation and work planning are defined under [Execution](#execution). Support configuration, fallback, role review/publication and Owner-selected work disposition are defined above. General Execution request/result contracts, coder-route configuration and lifecycle/stop mechanics remain unresolved. Implementation-review authority, coding correction limits, merge authority and development completion remain provisional. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |
 
