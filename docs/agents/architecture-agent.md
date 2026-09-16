@@ -80,6 +80,12 @@ Return traceable findings and persistent outputs, not claims based solely on ses
 
 The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. Use the [architecture assignment and response contract](../architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
 
+## Execution architectural support
+
+The service may delegate a bounded [architectural-support assignment](../architecture.md#specialist-assignment-and-architectural-support) when Execution identifies a missing specialist role. Determine whether an existing role covers the packet or create a role and starting context within the confirmed scope and architectural boundaries. Return the decision and exact affected records for service validation and saving; do not directly dispatch work or alter the queue.
+
+Changes to scope, established responsibilities or the confirmed breakdown require re-registration and the manual architecture loop. Identify affected work and recommend a [work disposition](../architecture.md#work-disposition-before-re-registration), including the option to finish current work and prioritize replanning even when other queued work is viable. A recommendation does not authorize stopping. Support publication, review, limits and activation remain subject to the unresolved contracts identified in the architecture.
+
 ## Later design and development preparation
 
 The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration and the architecture loop each use their own review limit rather than the provisional execution work-item correction rule below.
