@@ -28,7 +28,7 @@ Packet approval makes the exact result eligible for the project's integration qu
 
 When Integration changes code, review those changes and affected product behavior while retaining valid coverage of unchanged packet code. Integration without code changes does not automatically repeat packet review. Material changes to the source range or assumptions require affected coverage to be reassessed.
 
-The separate milestone outcome review and gap analysis are required before milestone promotion. Their exact role assignment and contract remain to be defined; this file does not silently assign that responsibility.
+For a milestone assignment, use a fresh session under [milestone outcome review](../architecture.md#milestone-outcome-review). Review the whole assembled branch against agreed outcomes and architecture, including how packets work together and missing parts of the usable outcome. The reviewer must not have authored or integrated any reviewed code. Return findings through the service for architectural determination; the Integration Manager supplies evidence but cannot approve its own work.
 
 ## Outcomes and report
 
@@ -38,4 +38,4 @@ Return `APPROVE`, `REQUEST_CHANGES`, or non-approving `COMMENT`, with exact revi
 
 Review authorized corrections and affected dependencies without reopening unchanged work over preference. Preserve original and correction coverage for the final exact result.
 
-Implementation review/correction limits and exception authority remain to be defined. The earlier fixed one-correction rule and automatic escalation for a different failure class are not adopted policy. Registration, architecture-loop and specialist-support budgets do not supply those limits.
+Packet and integration review/correction limits and exception authority remain to be defined. Milestone assignments use the separate [milestone review limit and targeted correction rules](../architecture.md#milestone-outcome-review); do not transfer that budget to packet or integration review. The earlier fixed one-correction rule and automatic escalation for a different failure class are not adopted policy. Registration, architecture-loop and specialist-support budgets do not supply those limits.
