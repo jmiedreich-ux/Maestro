@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Mapping
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
 from maestro.foundation import Database, StorageSettings
 
@@ -27,10 +27,10 @@ from .authentication import (
 )
 from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamService
 from .http import MAX_REQUEST_BYTES, HTTPResponse
-from .projections import ProjectionReader
+from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
 from .registry import OperationRegistry
-from .requests import RequestRejection, RequestService
+from .requests import RequestService
 
 
 DEFAULT_CONFIG_PATH = Path("/etc/maestro/agents.toml")
@@ -198,23 +198,102 @@ class InstalledServiceApplication:
         body: bytes = b"",
     ) -> HTTPResponse | EventHTTPResponse:
         parsed = urlsplit(path)
-        if method == "GET" and parsed.path == "/api/v1/workspace":
-            try:
-                if parsed.query or parsed.fragment:
-                    raise RequestRejection(404, "not_found", "the API route was not found")
-                self.authenticator.authenticate_read(headers.get("Authorization"))
-                return HTTPResponse(
-                    200,
-                    self.projections.workspace().as_dict(),
-                    {"Content-Type": "application/json; charset=utf-8"},
-                )
-            except HTTPRejection as error:
-                response_headers = {"Content-Type": "application/json; charset=utf-8"}
-                response_headers.update(error.headers)
-                return HTTPResponse(error.status_code, error.as_body(), response_headers)
+        projection = self._projection_response(method, parsed, headers)
+        if projection is not None:
+            return projection
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
+
+    def _projection_response(
+        self,
+        method: str,
+        parsed: SplitResult,
+        headers: Mapping[str, str],
+    ) -> HTTPResponse | None:
+        if method != "GET":
+            return None
+        parts = parsed.path.split("/")
+        is_projection = parsed.path in {
+            "/api/v1/workspace",
+            "/api/v1/projects",
+            "/api/v1/attention",
+        } or (
+            len(parts) == 6
+            and parts[:4] == ["", "api", "v1", "projects"]
+            and parts[5] in {"activities", "conversation"}
+        ) or (
+            len(parts) == 5
+            and parts[:4] == ["", "api", "v1", "activities"]
+        ) or (
+            len(parts) == 8
+            and parts[:4] == ["", "api", "v1", "projects"]
+            and parts[5] == "activities"
+            and parts[7] in {"questions", "findings", "actions"}
+        )
+        if not is_projection:
+            return None
+        try:
+            if parsed.fragment:
+                raise ProjectionError("invalid_query", "URL fragments are unsupported")
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            before = _single_query(query, "before")
+            limit = _page_limit(query)
+            if parsed.path == "/api/v1/workspace":
+                _require_no_query(query)
+                result = self.projections.workspace().as_dict()
+            elif parsed.path == "/api/v1/projects":
+                result = self.projections.projects(before=before, limit=limit).as_dict()
+            elif parsed.path == "/api/v1/attention":
+                result = self.projections.attention(before=before, limit=limit).as_dict()
+            elif len(parts) == 6:
+                project_id = unquote(parts[4])
+                numeric_before = _numeric_cursor(before)
+                if parts[5] == "activities":
+                    result = self.projections.activities(
+                        project_id, before=numeric_before, limit=limit
+                    ).as_dict()
+                else:
+                    result = self.projections.conversation(
+                        project_id, before=numeric_before, limit=limit
+                    ).as_dict()
+            elif len(parts) == 5:
+                _require_no_query(query)
+                result = self.projections.activity(unquote(parts[4])).as_dict()
+            else:
+                project_id = unquote(parts[4])
+                activity_id = unquote(parts[6])
+                resource = parts[7]
+                reader = getattr(self.projections, resource)
+                result = reader(
+                    project_id,
+                    activity_id,
+                    before=before,
+                    limit=limit,
+                ).as_dict()
+            return HTTPResponse(
+                200,
+                result,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
+        except HTTPRejection as error:
+            response_headers = {"Content-Type": "application/json; charset=utf-8"}
+            response_headers.update(error.headers)
+            return HTTPResponse(error.status_code, error.as_body(), response_headers)
+        except ProjectionError as error:
+            status = 404 if isinstance(error, ProjectionNotFound) else 400
+            return HTTPResponse(
+                status,
+                {
+                    "error": {
+                        "code": error.code,
+                        "message": str(error),
+                        "fields": error.fields,
+                    }
+                },
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
 
 class InstalledServiceServer:
@@ -297,6 +376,46 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, RuntimeError, ValueError, sqlite3.Error) as error:
         print(f"Maestro service is not ready: {error}", file=sys.stderr)
         return 1
+
+
+def _single_query(query: Mapping[str, list[str]], name: str) -> str | None:
+    unknown = set(query) - {"before", "limit"}
+    if unknown:
+        raise ProjectionError(
+            "invalid_query", f"unsupported query field: {sorted(unknown)[0]}"
+        )
+    values = query.get(name)
+    if values is None:
+        return None
+    if len(values) != 1:
+        raise ProjectionError("invalid_query", f"{name} must be supplied once")
+    return values[0]
+
+
+def _page_limit(query: Mapping[str, list[str]]) -> int:
+    value = _single_query(query, "limit")
+    if value is None:
+        return 50
+    try:
+        return int(value)
+    except ValueError as error:
+        raise ProjectionError("invalid_query", "limit must be an integer") from error
+
+
+def _numeric_cursor(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError as error:
+        raise ProjectionError(
+            "invalid_cursor", "before cursor must be a positive integer"
+        ) from error
+
+
+def _require_no_query(query: Mapping[str, list[str]]) -> None:
+    if query:
+        raise ProjectionError("invalid_query", "this route does not accept a query")
 
 
 def _handler(application: InstalledServiceApplication) -> type[BaseHTTPRequestHandler]:
