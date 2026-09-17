@@ -1,6 +1,6 @@
 # Manual development milestones
 
-Version 2. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). These are manual draft contributions, not service-allocated milestone identities, final QA plans, runtime confirmation or authorization to start Execution.
+Version 3. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). These are manual draft contributions, not service-allocated milestone identities, final QA plans, runtime confirmation or authorization to start Execution.
 
 ## Ordering and integration boundary
 
@@ -10,7 +10,7 @@ The acceptance requirements below describe meaningful connected outcomes and ess
 
 ## Milestone QA plans and runtime binding
 
-Each milestone has a separate [manual QA plan](qa-plans/README.md) with procedures, expected results, evidence and cleanup. QA applies to the assembled milestone after its packet implementation, review and integration; packet checks remain separate. These manual plans are not yet catalog-bound runtime records. Each milestone requires a final bound QA plan before full breakdown confirmation. [QA resource preparation](qa-resources.md) identifies the missing operator catalog and access evidence. The requirements below supply journeys, expected results, data/evidence and failure boundaries, but intentionally do not invent environment/secret/network references, binding hashes, runnable setup commands or installed model selections. Those catalog-bound fields, exact run/check commands and artifact retention/cleanup/reset bindings must be completed against actual available resources. A missing required real path is UNTESTED and cannot pass, integrate as an accepted milestone or promote. Packet-level unit checks do not substitute for this milestone QA.
+Each milestone has a separate [manual QA plan](qa-plans/README.md) with procedures, expected results, evidence and cleanup. QA applies to the assembled milestone after its packet implementation, review and integration; packet checks remain separate. [QA resource preparation](qa-resources.md) records the verified operator repository, service App, agent tools, local models, network endpoints and isolated roots. These complete the concrete manual readiness inputs but are not service-validated catalog records. The assigned implementation packets must still deliver the service catalog consumer, final runtime QA-plan identities and binding hashes, exact setup/check commands, test Owner credential, artifact retention, cleanup/reset behavior and observed results before QA use. A missing required real path is UNTESTED and cannot pass, integrate as an accepted milestone or promote. Packet-level unit checks do not substitute for milestone QA.
 
 ## Common completion boundary
 
