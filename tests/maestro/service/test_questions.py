@@ -58,11 +58,14 @@ class LoseFirstResponseClient:
     def __init__(self, client: ServiceClient) -> None:
         self.client = client
         self.lost = False
+        self.before_submit = None
 
     def get_json(self, path: str, *, timeout: int = 15):
         return self.client.get_json(path, timeout=timeout)
 
     def submit(self, envelope):
+        if self.before_submit is not None:
+            self.before_submit()
         response = self.client.submit(envelope)
         if not self.lost:
             self.lost = True
@@ -239,7 +242,7 @@ class LinkedQuestionsTest(unittest.TestCase):
             item for item in workspace.attention if item.record_id == "question-one"
         )
         workspace.open_attention(attention.cursor)
-        rendered = TerminalRenderer().render(workspace, TerminalSize(120, 30))
+        rendered = TerminalRenderer().render(workspace, TerminalSize(200, 30))
         self.assertIn("Which source should the assessment use?", rendered)
         self.assertIn("Recommended: It matches the registered source.", rendered)
         self.assertEqual(("question",), workspace.extensions.input_names)
@@ -272,6 +275,13 @@ class LinkedQuestionsTest(unittest.TestCase):
         assert isinstance(response, dict)
         self.assertEqual("completed", response["receipt"]["status"])
         request_id = str(response["receipt"]["request_id"])
+        saved_rendering = TerminalRenderer().render(
+            workspace, TerminalSize(200, 30)
+        )
+        self.assertIn(f"Answer received — saved receipt {request_id}.", saved_rendering)
+        self.assertNotIn(
+            "choice", {target.kind for target in workspace.focus_targets()}
+        )
         delivered = self.recipient.effects[request_id]
         self.assertEqual("question-one", delivered.question_id)
         self.assertEqual("main", delivered.choice_id)
@@ -392,14 +402,35 @@ class LinkedQuestionsTest(unittest.TestCase):
             for index, target in enumerate(workspace.focus_targets())
             if target.kind == "editor"
         )
+        sending_renderings: list[str] = []
+        transport.before_submit = lambda: sending_renderings.append(
+            TerminalRenderer().render(workspace, TerminalSize(200, 30))
+        )
 
         with self.assertRaises(ConnectionUnavailable):
             workspace.handle_key("ENTER")
+        self.assertIn(
+            "Sending — waiting for save acknowledgment.", sending_renderings[0]
+        )
         self.assertEqual("Use main", workspace.input.text)
         self.assertEqual("main", workspace.input.choice_id)
+        failed_rendering = TerminalRenderer().render(
+            workspace, TerminalSize(200, 30)
+        )
+        self.assertIn("Not sent — Delivery not confirmed.", failed_rendering)
+        self.assertIn("choice", {target.kind for target in workspace.focus_targets()})
         response = workspace.handle_key("ENTER")
 
         self.assertEqual("request-uncertain", response["receipt"]["request_id"])
+        saved_rendering = TerminalRenderer().render(
+            workspace, TerminalSize(200, 30)
+        )
+        self.assertIn(
+            "Answer received — saved receipt request-uncertain.", saved_rendering
+        )
+        self.assertNotIn(
+            "choice", {target.kind for target in workspace.focus_targets()}
+        )
         self.assertEqual(["request-uncertain", "request-uncertain"], self.recipient.calls)
         self.assertEqual({"request-uncertain"}, set(self.recipient.effects))
         with self.database.read_connection() as connection:
@@ -418,6 +449,27 @@ class LinkedQuestionsTest(unittest.TestCase):
             ).fetchone()
         self.assertEqual((1, 1, 1, 1, 1), counts)
         self.assertEqual(("delivered", 2), delivery)
+
+    def test_real_workspace_renders_typed_stale_rejection(self) -> None:
+        self._publish()
+        workspace = Workspace(self.workspace_client)
+        QuestionsExtension().install(workspace.extensions)
+        workspace.refresh()
+        attention = next(
+            item for item in workspace.attention if item.record_id == "question-one"
+        )
+        workspace.open_attention(attention.cursor)
+        self.client.submit(self._envelope("request-other", "question-one"))
+        for character in "A late answer":
+            workspace.handle_key(character)
+
+        with self.assertRaises(ServiceError) as rejected:
+            workspace.handle_key("ENTER")
+
+        self.assertEqual(409, rejected.exception.status_code)
+        rendering = TerminalRenderer().render(workspace, TerminalSize(200, 30))
+        self.assertIn("Not sent — the expected version is stale.", rendering)
+        self.assertEqual("A late answer", workspace.input.text)
 
     def test_wrong_stale_and_late_answers_reject_without_inferring_silence(self) -> None:
         self._publish()

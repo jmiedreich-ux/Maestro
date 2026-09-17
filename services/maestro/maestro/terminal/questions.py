@@ -23,6 +23,8 @@ class AnswerInput(Protocol):
 class QuestionState(Protocol):
     selected_project_id: str | None
     selected_activity_id: str | None
+    selected_attention_detail: Mapping[str, object] | None
+    error: str | None
     input: AnswerInput
 
 
@@ -181,7 +183,8 @@ class QuestionInteraction:
         if self.pending is not None and not _same_answer(self.pending, proposed):
             reconciled = self._reconcile(context, self.pending)
             if reconciled is not None:
-                self._accepted(state)
+                receipt = _receipt(reconciled)
+                self._accepted(state, str(receipt["request_id"]))
                 return reconciled
             self.pending = None
         if self.pending is None:
@@ -195,24 +198,25 @@ class QuestionInteraction:
                 proposed.text,
                 proposed.choice_id,
             )
-        self.status = "Sending — waiting for save acknowledgment."
+        self._show_status(state, "Sending — waiting for save acknowledgment.")
         try:
             response = context.client.submit(self.pending.envelope)
         except ServiceError as error:
-            self.status = f"Not sent — {error}."
+            self._show_status(state, f"Not sent — {error}.")
             if error.status_code in {400, 404, 409}:
                 self.pending = None
             raise
         except TerminalConnectionError:
-            self.status = (
+            self._show_status(
+                state,
                 "Not sent — Delivery not confirmed. Retrying will not submit "
-                "your answer twice."
+                "your answer twice.",
             )
             raise
         receipt = _receipt(response)
         if receipt["request_id"] != self.pending.request_id:
             raise ValueError("service returned a receipt for another request")
-        self._accepted(state)
+        self._accepted(state, str(receipt["request_id"]))
         return response
 
     def retry(self, context: ExtensionContext) -> Mapping[str, object]:
@@ -229,12 +233,16 @@ class QuestionInteraction:
         except ServiceError as error:
             if error.status_code == 404 and error.code == "request_not_found":
                 return None
-            self.status = f"Not sent — previous delivery cannot be reconciled: {error}."
+            self._show_status(
+                _state(context),
+                f"Not sent — previous delivery cannot be reconciled: {error}.",
+            )
             raise
         except TerminalConnectionError:
-            self.status = (
+            self._show_status(
+                _state(context),
                 "Not sent — previous delivery cannot be reconciled; edited text "
-                "was not submitted."
+                "was not submitted.",
             )
             raise
         receipt = _receipt(response)
@@ -242,11 +250,49 @@ class QuestionInteraction:
             raise ValueError("service returned a receipt for another request")
         return response
 
-    def _accepted(self, state: QuestionState) -> None:
+    def _accepted(self, state: QuestionState, request_id: str) -> None:
+        self._show_status(
+            state,
+            f"Answer received — saved receipt {request_id}.",
+            remove_choices=True,
+        )
         state.input.clear()
         self.pending = None
         self.selected_choice_id = None
-        self.status = "Answer received — saved for the selected question."
+        if self.question is not None:
+            self.question = {
+                **self.question,
+                "status": "answer_received",
+                "choices": [],
+            }
+
+    def _show_status(
+        self,
+        state: QuestionState,
+        message: str,
+        *,
+        remove_choices: bool = False,
+    ) -> None:
+        self.status = message
+        detail = state.selected_attention_detail
+        if isinstance(detail, Mapping):
+            updated = dict(detail)
+            prompt = (
+                self.question.get("prompt")
+                if self.question is not None
+                else detail.get("prompt")
+            )
+            if isinstance(prompt, str) and prompt:
+                updated["prompt"] = f"{prompt}\n{message}"
+            else:
+                updated["prompt"] = message
+            if remove_choices:
+                updated["choices"] = []
+                updated["status"] = "answer_received"
+            state.selected_attention_detail = updated
+            state.error = None
+        else:
+            state.error = message
 
 
 class QuestionsExtension:
