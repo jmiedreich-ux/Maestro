@@ -14,6 +14,18 @@
 
 ## Where the discussion paused
 
+Latest decision: Maestro-wide [testing proportionality](../../docs/planning-guide/README.md#verification-expectations) and [scoped review rules](../../docs/architecture.md#project-wide-review-boundary) are recorded below. They apply to subsequent work across all processes; routine test or review expansion is not an objective. Existing QA-plan/setup status remains as recorded in the following checkpoint.
+
+## Proportionate testing and scoped review rules
+
+Owner decision, recorded in this conversation: “100s of tests should not be written for every single edge case - tests need to zone into the required output, more time should be spent towards coding the actual packet. This applies to all maestro.” The Owner then required all review kinds to remain in scope, recognized that nothing is perfect, and said limitations can be logged; “Ok write up” authorized recording both rules. Host message identifiers/precise timestamps are unavailable and not invented.
+
+Canonical testing policy: [Planning Guide verification expectations](../../docs/planning-guide/README.md#verification-expectations). Canonical review policy: [Architecture project-wide review boundary](../../docs/architecture.md#project-wide-review-boundary). AGENTS.md makes both Maestro-wide; common coder, implementation-review, fidelity-review and QA instructions link to them. No test-count target, new approval gate or additional review allowance is introduced. Non-blocking limitations neither prevent delivery nor create work automatically; required failure or missing verification cannot be disguised as a limitation.
+
+This is a focused write-up of explicit Owner direction, self-checked for fidelity, scope, links and nearby rules. No independent review is claimed for this small policy clarification; the workshop method does not require another full review of each conversational decision. Previous review coverage remains tied to its original snapshots; these new instructions govern subsequent work and do not retroactively certify it. No source implementation, test execution, installation, QA run or runtime configuration change occurred. The 42 packet definitions and seven QA runbooks are not rewritten or automatically enlarged.
+
+Publication intent: eight documentation/instruction/handoff files directly on master, expected parent 7a8d56bb8468b1b5d17c380eb4feceee9d00c852. Preserve unrelated paths and verify destination ref/tree/content hashes before reporting success. The manual breakdown's unresolved executable setup/resource bindings and exact confirmation remain unchanged; this policy update neither starts Execution nor reopens settled choices.
+
 Current status: seven [milestone QA procedure specifications](../../docs/planning/manual-architecture/qa-plans/README.md) are written, with 51 concrete checks, data/evidence requirements and cleanup/reset rules. The architect handles routine test design and technical preparation. Independent fidelity, completeness and consistency reviews passed within this manual-procedure scope; exact coverage follows. This is the latest checkpoint and supersedes older requests for the Owner to design or supply a catalog before drafting.
 
 No QA was run and no installation, protected resource, credential, repository setting or source implementation changed. Actual operator-provisioned availability and catalog bindings, approved bootstrap setup/commands and implemented tooling still need technical verification/binding before runtime plan publication/confirmation and use. Existing runtime gates are unchanged. Raise only a genuine unavailable resource, reserved decision or authority blocker; do not reopen the selected QA repository name or ask the Owner to design routine tests.

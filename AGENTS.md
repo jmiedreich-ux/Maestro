@@ -8,6 +8,10 @@ Never reference a milestone, decision, work packet, review, or other coded item 
 
 Write all repository documentation and agent responses in plain language. Keep them concise, direct, and limited to information that helps the reader act.
 
+## Proportionate testing and scoped reviews
+
+Across all Maestro work, apply the [verification expectations](docs/planning-guide/README.md#verification-expectations) and [project-wide review boundary](docs/architecture.md#project-wide-review-boundary). These rules cover every agent, process and review kind; process-specific authority and review limits still apply.
+
 ## Git changes
 
 Outside separately started software Execution, commit approved repository changes directly to `master`; current documentation work creates no branches or pull requests. For separately started software Execution, the Owner-approved [milestone and work-packet branch model](docs/architecture.md#milestone-branches-and-product-integration) governs code delivery. Its [authorized merge rules](docs/architecture.md#authorized-integration-merges) permit reviewed packet-to-milestone and passing milestone-to-master merges without another Owner approval. This exception does not start Execution or bypass other prerequisites.

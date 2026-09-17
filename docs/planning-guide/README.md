@@ -126,6 +126,8 @@ A narrower portion has an explicit description. An essential dependency cannot s
 
 ## Verification expectations
 
+These expectations apply throughout Maestro: planning, every work packet, implementation, integration, all review kinds and milestone QA. Verification focuses on the required output. Most development effort goes into implementing the packet, not constructing a large test suite.
+
 Verification is basic, meaningful, and proportionate:
 
 - Use real data and actual connected behavior. Fake data is used only when necessary, with the reason identified.
@@ -134,7 +136,9 @@ Verification is basic, meaningful, and proportionate:
 - Define expected interaction outcomes fully without requiring a separate test for each outcome.
 - Do not treat a passing fake-data test as proof of a real integration.
 
-Acceptance criteria specify results and necessary evidence. They do not require exhaustive test suites. The same verification expectations apply during Execution.
+Use the smallest meaningful set of checks that demonstrates the required output, main working path and essential failures. Do not write hundreds of tests to pursue every conceivable edge case, duplicate coverage or mirror the implementation. This is a proportionality rule, not a numerical cap that excuses missing required evidence. Add or broaden checks only for an explicit requirement, discovered defect or concrete in-scope risk, stating what the check establishes; stop once that evidence is sufficient.
+
+Acceptance criteria specify results and necessary evidence, not a test-count target or a separate test for every assertion. Milestone QA follows the same proportionate standard on the assembled milestone; it does not become packet-level QA. All reviews apply the [project-wide review boundary](../architecture.md#project-wide-review-boundary). Required connected paths still need real evidence; fewer tests do not justify fake success or bypassed behavior.
 
 ## Missing or contradictory information
 

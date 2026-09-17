@@ -24,6 +24,16 @@ The three functional areas are established. Execution behavior and authority are
 
 Registration is the entry process for Planning. After registration confirmation, the separately started [architecture loop](#architecture-loop) investigates the code and prepares development milestones and work packets.
 
+## Project-wide review boundary
+
+Every Maestro review is limited to its assigned scope and agreed requirements. This applies to documentation, decision fidelity, architectural completeness, consistency, registration, architecture breakdown, specialist support, packet implementation, integration changes and whole-milestone outcomes. A reviewer is not required to find something; a valid review may return no findings or pass with recorded non-blocking limitations.
+
+Require correction only for a concrete in-scope issue that prevents the required outcome or violates an agreed requirement. A risk is blocking only when its credible impact on the required outcome is explained. Each blocking finding identifies the controlling requirement, affected content or behavior, impact and minimum necessary correction. An opportunity to improve something is not by itself a blocker.
+
+Record non-blocking limitations and optional improvements in the existing review/result or handoff record, with their location, practical impact and why the required outcome is still satisfied. They do not prevent approval, integration or promotion, trigger another review round, or become implementation work automatically. A desired scope expansion follows the existing change authority. Required failed or unverified behavior cannot be relabeled as a limitation to obtain a pass.
+
+Reviews do not add requirements, demand perfection, reopen unchanged work over preference or expand tests to cover every conceivable edge case. Apply the [verification expectations](planning-guide/README.md#verification-expectations). Stop once the assigned requirements, necessary connections and proportionate evidence are covered. Necessary correction checks cover the correction and affected dependencies, retaining valid unaffected coverage. Existing independence, evidence, authority and process-specific review/recovery limits remain unchanged; logging a limitation grants no extra attempt or waiver.
+
 ## Components and responsibilities
 
 | Component | Responsibility |

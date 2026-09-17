@@ -2,6 +2,8 @@
 
 Every action follows the repository-wide rules in [AGENTS.md](../../AGENTS.md).
 
+Apply the [project-wide review boundary](../architecture.md#project-wide-review-boundary) to every fidelity assignment. A pass may retain non-blocking limitations; there is no requirement to find an issue.
+
 ## Purpose
 
 Independently verify that proposed work faithfully carries forward every accepted Owner and architecture decision without adding hidden assumptions or disproportionate requirements.

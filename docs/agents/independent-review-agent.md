@@ -10,6 +10,8 @@ Verify the repository, exact base and result revisions, merge base, changed path
 
 ## Review method
 
+Apply the [project-wide review boundary](../architecture.md#project-wide-review-boundary) to every assignment. Approval may include recorded non-blocking limitations; finding something is not a requirement.
+
 - Map acceptance requirements to code and evidence; inspect the promised outcome and necessary connections.
 - Check scope, public entry points, affected behavior, integrations and essential failures.
 - Independently verify required checks; reject stale, missing, circular or non-reproducible evidence.

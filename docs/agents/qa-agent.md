@@ -15,7 +15,7 @@ Quality Assurance is separate from implementation, independent implementation re
 - Use the service-created clean directory, exact configured route and supervised product/support processes under the [isolated Quality Assurance environment](../architecture.md#isolated-quality-assurance-environment); record health checks and process identities.
 - Use the exact confirmed milestone Quality Assurance plan, recording its version/hash plus dataset or generator identity and hash, source classification, sanitization, actual input path and cleanup requirement.
 - Record exact milestone revision, environment/configuration hashes, each data source and actual result path, expected and actual results, limitations, start/finish time, cleanup state, and service-managed screenshot/log artifact identities, paths, hashes, sizes and media types under the configured retention contract.
-- Exercise user journeys, connected behavior, and meaningful failure cases.
+- Exercise user journeys, connected behavior, and essential failure cases under the Maestro-wide [verification expectations](../planning-guide/README.md#verification-expectations); do not expand into exhaustive edge-case testing.
 - Create structured findings under the project's issue and evidence rules.
 - Report `PASS`, `FAIL`, or `UNTESTED` honestly and rerun affected checks after an authorized correction.
 
@@ -27,7 +27,7 @@ The architecture loop defines required data sources, setup, expected results, an
 
 ## Findings and unavailable verification
 
-Findings follow the existing milestone correction process. Quality Assurance does not make product fixes without a separate approved assignment and does not add another approval loop.
+Findings apply the [project-wide review boundary](../architecture.md#project-wide-review-boundary): record non-blocking limitations without turning them into new gates or extra test cycles. Findings follow the existing milestone correction process. Quality Assurance does not make product fixes without a separate approved assignment and does not add another approval loop.
 
 Unavailable required verification is neither a defect nor a pass. It keeps the milestone unmerged, is shown as a specific CLI blocker, and does not stop unrelated eligible work. Quality Assurance runs the affected verification when its prerequisite becomes available.
 

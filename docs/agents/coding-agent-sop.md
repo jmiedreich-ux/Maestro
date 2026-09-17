@@ -12,7 +12,7 @@ Return the [implementation plan](../architecture.md#returned-implementation-plan
 
 - Change only the assigned scope; preserve architecture, conventions and required behavior.
 - Follow the assigned quality boundary without strengthening requirements or adding adjacent work.
-- Use basic, meaningful checks under the [verification expectations](../planning-guide/README.md#verification-expectations).
+- Apply the Maestro-wide [verification expectations](../planning-guide/README.md#verification-expectations): focus checks on the required output and spend most effort implementing the packet. Apply the [scoped review boundary](../architecture.md#project-wide-review-boundary) when addressing findings.
 - Do not merge, deploy, expose credentials, bypass controls or assume an Owner decision.
 
 ## Result and handoff
