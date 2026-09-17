@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from maestro.foundation import Database, StorageSettings
@@ -25,13 +24,13 @@ from maestro.service.registry import OperationRegistry
 from maestro.service.requests import RequestService
 from maestro.terminal.connection import (
     ConnectionConfiguration,
+    ConnectionState,
     ConnectionUnavailable,
     ServiceClient,
     ServiceError,
 )
-from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
-from maestro.terminal.questions import QuestionInteraction, QuestionsExtension
-from maestro.terminal.workspace import InputBuffer
+from maestro.terminal.questions import QuestionsExtension
+from maestro.terminal.workspace import Workspace, WorkspaceError
 
 
 OWNER_TOKEN = "a" * 64
@@ -51,13 +50,6 @@ class RecordingRecipient:
         if self.interrupt_once:
             self.interrupt_once = False
             raise ConnectionError("recipient acknowledgement was interrupted")
-
-
-@dataclass
-class TerminalState:
-    selected_project_id: str | None
-    selected_activity_id: str | None
-    input: InputBuffer = field(default_factory=InputBuffer)
 
 
 class LoseFirstResponseClient:
@@ -194,29 +186,43 @@ class LinkedQuestionsTest(unittest.TestCase):
             "payload": {"text": text, "choice_id": choice_id},
         }
 
-    def test_terminal_renders_choices_saves_answer_and_links_follow_up(self) -> None:
+    def test_real_workspace_exposes_missing_answer_callback_before_service_path(
+        self,
+    ) -> None:
         self._publish()
-        state = TerminalState("project-one", "activity-one")
-        context = ExtensionContext(self.client, state)
-        extension = QuestionsExtension(
-            QuestionInteraction(request_id_factory=lambda: "request-answer-one")
-        )
-        registry = ExtensionRegistry()
-        extension.install(registry)
+        workspace = Workspace(self.client)
+        workspace.connection_state = ConnectionState.CONNECTED
+        workspace.selected_project_id = "project-one"
+        workspace.selected_activity_id = "activity-one"
+        extension = QuestionsExtension()
+        extension.install(workspace.extensions)
 
-        rendered = registry.render_view("question", context, "question-one")
+        rendered = workspace.open_extension_view("question", "question-one")
         self.assertIn("Which source should the assessment use?", rendered)
         self.assertIn("Recommended: It matches the registered source.", rendered)
         self.assertIn("Free-text answer is available.", rendered)
-        extension.interaction.choose(context, "main")
-        self.assertEqual("Use main", state.input.text)
+        self.assertEqual(("question",), workspace.extensions.command_names)
+        self.assertNotIn("choice", {target.kind for target in workspace.focus_targets()})
+        for character in "Use main\nUse the default branch head.":
+            workspace.handle_key(character)
+        self.assertEqual(
+            "Use main\nUse the default branch head.", workspace.input.text
+        )
         self.assertEqual({}, self.recipient.effects)
-        state.input.text += "\nUse the default branch head."
-        response = extension.interaction.submit(context)
+        with self.assertRaisesRegex(
+            WorkspaceError, "answer submission is not installed"
+        ):
+            workspace.handle_key("ENTER")
+
+        response = self.client.submit(
+            self._envelope(
+                "request-answer-one",
+                "question-one",
+                text="Use main\nUse the default branch head.",
+            )
+        )
 
         self.assertEqual("completed", response["receipt"]["status"])
-        self.assertEqual("", state.input.text)
-        self.assertIsNone(state.input.question_id)
         delivered = self.recipient.effects["request-answer-one"]
         self.assertEqual("question-one", delivered.question_id)
         self.assertEqual("main", delivered.choice_id)
@@ -270,7 +276,8 @@ class LinkedQuestionsTest(unittest.TestCase):
             original_question_id="question-one",
             previous_answer_id="request-answer-one",
         )
-        follow_up = extension.interaction.open(context, "question-follow-up")
+        workspace.input.clear()
+        follow_up = workspace.open_extension_view("question", "question-follow-up")
         self.assertIn(
             "Follow-up to question-one after answer request-answer-one", follow_up
         )
@@ -278,20 +285,12 @@ class LinkedQuestionsTest(unittest.TestCase):
     def test_lost_acknowledgment_and_interrupted_delivery_reconcile_once(self) -> None:
         self.recipient.interrupt_once = True
         self._publish()
-        state = TerminalState("project-one", "activity-one")
         client = LoseFirstResponseClient(self.client)
-        context = ExtensionContext(client, state)
-        interaction = QuestionInteraction(
-            request_id_factory=lambda: "request-uncertain"
-        )
-        interaction.open(context, "question-one")
-        interaction.choose(context, "main")
+        envelope = self._envelope("request-uncertain", "question-one")
 
         with self.assertRaises(ConnectionUnavailable):
-            interaction.submit(context)
-        self.assertIn("Delivery not confirmed", interaction.status or "")
-        self.assertEqual("Use main", state.input.text)
-        response = interaction.retry(context)
+            client.submit(envelope)
+        response = self.client.submit(envelope)
 
         self.assertEqual("request-uncertain", response["receipt"]["request_id"])
         self.assertEqual(["request-uncertain", "request-uncertain"], self.recipient.calls)
@@ -376,6 +375,13 @@ class LinkedQuestionsTest(unittest.TestCase):
             ).fetchone()
         self.assertEqual([("question-one", 1)], answers)
         self.assertEqual(("awaiting_answer", 1), silent)
+
+    def test_malformed_question_route_is_a_typed_http_rejection(self) -> None:
+        with self.assertRaises(ServiceError) as malformed:
+            self.client.get_json("/questions/question%2Fescaped")
+
+        self.assertEqual(400, malformed.exception.status_code)
+        self.assertEqual("invalid_request", malformed.exception.code)
 
 
 if __name__ == "__main__":

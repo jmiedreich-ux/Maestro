@@ -242,20 +242,12 @@ class QuestionsExtension:
     def install(self, registry: ExtensionRegistry) -> None:
         registry.register_view("question", self._view)
         registry.register_command("question", self._view)
-        registry.register_command("answer", self._answer)
 
     def _view(self, context: ExtensionContext, arguments: str) -> str:
         question_id = arguments.strip() or _state(context).input.question_id
         if question_id is None:
             return "No question selected."
         return self.interaction.open(context, question_id)
-
-    def _answer(self, context: ExtensionContext, arguments: str) -> object:
-        if arguments.strip():
-            _state(context).input.text = arguments
-            _state(context).input.cursor = len(arguments)
-        return self.interaction.submit(context)
-
 
 def _state(context: ExtensionContext) -> QuestionState:
     state = context.state

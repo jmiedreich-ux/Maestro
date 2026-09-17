@@ -16,6 +16,7 @@ from typing import Protocol
 from urllib.parse import unquote, urlsplit
 
 from maestro.foundation import (
+    ContractError,
     Database,
     DomainMigration,
     Transaction,
@@ -698,9 +699,19 @@ class QuestionHTTPApplication:
             if not encoded or "/" in encoded:
                 raise RequestRejection(404, "not_found", "the API route was not found")
             self._requests.authenticate_read(headers.get("Authorization"))
+            question_id = unquote(encoded)
+            try:
+                canonical_identifier(question_id, "question_id")
+            except (ContractError, TypeError) as error:
+                raise RequestRejection(
+                    400,
+                    "invalid_request",
+                    "question_id is not a canonical identifier",
+                    fields={"question_id": question_id},
+                ) from error
             return HTTPResponse(
                 200,
-                {"data": self._questions.question(unquote(encoded))},
+                {"data": self._questions.question(question_id)},
                 {"Content-Type": "application/json; charset=utf-8"},
             )
         except HTTPRejection as error:
