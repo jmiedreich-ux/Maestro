@@ -25,6 +25,7 @@ AGENT_USER = "maestro-agent"
 WORKSPACE_GROUP = "maestro-workspace"
 OWNER_TOKEN_NAME = "owner.token"
 UNIT_NAME = "maestro.service"
+SCHEMA_MANIFEST_NAME = ".bundles.sha256"
 
 
 class InstallationError(RuntimeError):
@@ -36,6 +37,7 @@ class Account:
     name: str
     uid: int
     gid: int
+    supplementary_gids: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -112,6 +114,7 @@ class Installation:
             raise InstallationError("service and agent user IDs must be distinct")
         if self.service.gid == self.agent.gid:
             raise InstallationError("service and agent primary groups must be distinct")
+        _validate_account_separation(self.operator, self.service, self.agent)
         if not self.service_executable.is_absolute():
             raise InstallationError("service executable path must be absolute")
         if self.production and (
@@ -147,12 +150,7 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
         if path.is_symlink():
             raise InstallationError(f"refusing linked installation target: {path}")
         _reject_linked_components(path, paths.root)
-    for source in configuration.schema_sources:
-        target = paths.schema_dir / source.parent.name / source.name
-        if target.exists() or target.is_symlink():
-            raise InstallationError(
-                f"schema bundle already exists: {source.parent.name}@{source.name}"
-            )
+    _preflight_schema_bundles(configuration.schema_sources, paths.schema_dir, replace)
 
     token = secrets.token_hex(32)
     digest = hashlib.sha256(token.encode("ascii")).hexdigest()
@@ -184,6 +182,8 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
     )
     paths.unit_file.parent.mkdir(parents=True, exist_ok=True)
 
+    _install_schema_bundles(configuration.schema_sources, paths.schema_dir, replace)
+
     storage_path = paths.data_dir / "maestro.sqlite3"
     service_config = _service_configuration(
         owner_id=configuration.owner_id,
@@ -213,7 +213,6 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
         configuration.operator.gid,
     )
     _atomic_write(paths.unit_file, unit, 0o644, 0, 0)
-    _copy_schema_bundles(configuration.schema_sources, paths.schema_dir)
     return digest
 
 
@@ -236,7 +235,7 @@ def discover_installed_schema_sources() -> tuple[Path, ...]:
     return tuple(sorted(set(sources)))
 
 
-def create_system_accounts() -> None:
+def create_system_accounts(operator: Account | None = None) -> None:
     """Create the fixed service, agent, and shared-workspace identities."""
     if os.geteuid() != 0:
         raise InstallationError("production installation must run as root")
@@ -245,6 +244,14 @@ def create_system_accounts() -> None:
     _ensure_group(WORKSPACE_GROUP)
     _ensure_user(SERVICE_USER, SERVICE_USER, "/var/lib/maestro")
     _ensure_user(AGENT_USER, AGENT_USER, "/nonexistent")
+    service = _account(SERVICE_USER)
+    agent = _account(AGENT_USER)
+    if operator is None:
+        if service.gid == agent.gid or service.uid == agent.uid:
+            raise InstallationError("service and agent identities are not separated")
+        _validate_account_separation(service, agent)
+    else:
+        _validate_account_separation(operator, service, agent)
     for user in (SERVICE_USER, AGENT_USER):
         subprocess.run(
             ["usermod", "--append", "--groups", WORKSPACE_GROUP, user],
@@ -319,7 +326,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise InstallationError("Owner identity is invalid")
             if not 1 <= arguments.port <= 65535:
                 raise InstallationError("service port must be between 1 and 65535")
-            create_system_accounts()
+            create_system_accounts(operator)
             service = _account(SERVICE_USER)
             agent = _account(AGENT_USER)
         operator_home = arguments.operator_home or Path(pwd.getpwnam(operator.name).pw_dir)
@@ -414,7 +421,34 @@ def _reject_linked_components(path: Path, root: Path) -> None:
             raise InstallationError(f"installation path contains a symbolic link: {current}")
 
 
-def _copy_schema_bundles(sources: Iterable[Path], destination: Path) -> None:
+def _preflight_schema_bundles(
+    sources: Iterable[Path], destination: Path, replace: bool
+) -> None:
+    sources = tuple(sources)
+    if replace:
+        _verify_schema_manifest(destination)
+        for source in sources:
+            target = destination / source.parent.name / source.name
+            if not target.is_dir() or target.is_symlink():
+                raise InstallationError(
+                    f"installed schema bundle is missing: {source.parent.name}@{source.name}"
+                )
+            if _file_digests(source) != _file_digests(target):
+                raise InstallationError(
+                    f"installed schema bundle conflicts: {source.parent.name}@{source.name}"
+                )
+        return
+    existing = tuple(destination.iterdir()) if destination.exists() else ()
+    if existing:
+        raise InstallationError("schema installation directory is not empty")
+
+
+def _install_schema_bundles(
+    sources: Iterable[Path], destination: Path, replace: bool
+) -> None:
+    if replace:
+        # Verification above established that every byte remains immutable.
+        return
     for source in sources:
         _validate_schema_source(source)
         name = source.parent.name
@@ -428,6 +462,8 @@ def _copy_schema_bundles(sources: Iterable[Path], destination: Path) -> None:
             if item.is_symlink():
                 raise InstallationError(f"schema bundle contains a symbolic link: {source}")
             os.chmod(item, 0o755 if item.is_dir() else 0o644)
+    manifest = _render_schema_manifest(destination)
+    _atomic_write(destination / SCHEMA_MANIFEST_NAME, manifest, 0o644, 0, 0)
 
 
 def _validate_schema_source(source: Path) -> None:
@@ -443,6 +479,48 @@ def _validate_schema_source(source: Path) -> None:
             raise InstallationError(f"schema bundle contains a symbolic link: {source}")
 
 
+def _file_digests(root: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for item in sorted(root.rglob("*")):
+        if item.is_symlink():
+            raise InstallationError(f"schema bundle contains a symbolic link: {root}")
+        if item.is_file():
+            result[item.relative_to(root).as_posix()] = hashlib.sha256(
+                item.read_bytes()
+            ).hexdigest()
+        elif not item.is_dir():
+            raise InstallationError(f"schema bundle contains a special file: {root}")
+    return result
+
+
+def _render_schema_manifest(destination: Path) -> str:
+    lines: list[str] = []
+    for item in sorted(destination.rglob("*")):
+        if item == destination / SCHEMA_MANIFEST_NAME:
+            continue
+        if item.is_symlink():
+            raise InstallationError(f"installed schemas contain a symbolic link: {item}")
+        if item.is_file():
+            relative = item.relative_to(destination).as_posix()
+            lines.append(f"{hashlib.sha256(item.read_bytes()).hexdigest()}  {relative}\n")
+        elif not item.is_dir():
+            raise InstallationError(f"installed schemas contain a special file: {item}")
+    return "".join(lines)
+
+
+def _verify_schema_manifest(destination: Path) -> None:
+    manifest = destination / SCHEMA_MANIFEST_NAME
+    if manifest.is_symlink() or not manifest.is_file():
+        raise InstallationError("installed schema manifest is missing")
+    try:
+        expected = manifest.read_text(encoding="ascii")
+    except (OSError, UnicodeDecodeError) as error:
+        raise InstallationError("installed schema manifest cannot be read") from error
+    observed = _render_schema_manifest(destination)
+    if expected != observed:
+        raise InstallationError("installed schema bundles conflict with their manifest")
+
+
 def _identifier(value: str) -> bool:
     return bool(value) and len(value) <= 128 and all(
         character.isalnum() or character in "._-" for character in value
@@ -451,7 +529,24 @@ def _identifier(value: str) -> bool:
 
 def _account(name: str) -> Account:
     entry = pwd.getpwnam(name)
-    return Account(name, entry.pw_uid, entry.pw_gid)
+    supplementary = frozenset(os.getgrouplist(name, entry.pw_gid)) - {entry.pw_gid}
+    return Account(name, entry.pw_uid, entry.pw_gid, supplementary)
+
+
+def _validate_account_separation(*accounts: Account) -> None:
+    for account in accounts:
+        for other in accounts:
+            if account == other:
+                continue
+            if account.uid == other.uid or account.gid == other.gid:
+                raise InstallationError(
+                    f"accounts {account.name} and {other.name} do not have distinct identities"
+                )
+            if other.gid in account.supplementary_gids:
+                raise InstallationError(
+                    f"account {account.name} is a supplementary member of "
+                    f"the protected {other.name} primary group"
+                )
 
 
 def _group_gid(name: str, *, fallback: int) -> int:

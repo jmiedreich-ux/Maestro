@@ -67,8 +67,11 @@ check, then restart the unit.
 
 Credential replacement is an explicit administrative reinstall with
 `--replace`; it writes a new Owner token and digest together, invalidating the
-old token. Preserve the protected new token before restarting. The installer
-never prints token contents.
+old token. Replacement verifies every installed schema byte against the
+protected manifest and the package copy before changing credentials. A missing
+or conflicting immutable bundle fails without rotating the credential; older
+manifested versions remain installed. Preserve the protected new token before
+restarting. The installer never prints token contents.
 
 ## Safe isolated installation tests
 

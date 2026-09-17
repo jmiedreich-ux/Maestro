@@ -114,6 +114,7 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertIn("ProtectHome=true", unit)
         self.assertNotIn("@", unit)
         self.assertTrue((self.paths.schema_dir / "sample" / "1" / "schema.json").is_file())
+        self.assertTrue((self.paths.schema_dir / installer.SCHEMA_MANIFEST_NAME).is_file())
 
         settings = load_settings(self.paths.config_file)
         self.assertEqual(self.paths.data_dir / "maestro.sqlite3", settings.storage.path)
@@ -243,6 +244,19 @@ class LinuxInstallationTest(unittest.TestCase):
         with self.assertRaises(installer.InstallationError):
             collapsed.validate()
 
+        supplementary = installer.Installation(
+            **{
+                **self.configuration.__dict__,
+                "agent": installer.Account(
+                    "maestro-agent", 1102, 1102, frozenset({1101})
+                ),
+            }
+        )
+        with self.assertRaisesRegex(
+            installer.InstallationError, "supplementary member.*maestro"
+        ):
+            supplementary.validate()
+
         self.assertEqual(
             1,
             installer.main(
@@ -255,6 +269,44 @@ class LinuxInstallationTest(unittest.TestCase):
             ),
         )
         self.assertFalse((self.root / "etc" / "maestro").exists())
+
+    def test_credential_replacement_preserves_and_verifies_immutable_schemas(self) -> None:
+        self.install()
+        installed_schema = self.paths.schema_dir / "sample" / "1" / "schema.json"
+        manifest = self.paths.schema_dir / installer.SCHEMA_MANIFEST_NAME
+        original_schema = installed_schema.read_bytes()
+        original_manifest = manifest.read_bytes()
+        original_inode = installed_schema.stat().st_ino
+
+        replacement_token = "b" * 64
+        with mock.patch.object(
+            installer.secrets, "token_hex", return_value=replacement_token
+        ):
+            installer.install(self.configuration, replace=True)
+
+        service_config = self.paths.config_file.read_text(encoding="utf-8")
+        self.assertEqual(replacement_token, self.paths.owner_token.read_text(encoding="ascii"))
+        self.assertIn(
+            hashlib.sha256(replacement_token.encode("ascii")).hexdigest(),
+            service_config,
+        )
+        self.assertNotIn(OWNER_TOKEN, service_config)
+        self.assertEqual(original_schema, installed_schema.read_bytes())
+        self.assertEqual(original_manifest, manifest.read_bytes())
+        self.assertEqual(original_inode, installed_schema.stat().st_ino)
+
+        self.schema_source.joinpath("schema.json").write_text(
+            '{"changed":true}', encoding="utf-8"
+        )
+        with self.assertRaisesRegex(installer.InstallationError, "conflicts"):
+            installer.install(self.configuration, replace=True)
+        self.assertEqual(replacement_token, self.paths.owner_token.read_text(encoding="ascii"))
+
+        self.schema_source.joinpath("schema.json").write_bytes(original_schema)
+        installed_schema.unlink()
+        with self.assertRaisesRegex(installer.InstallationError, "conflict|missing"):
+            installer.install(self.configuration, replace=True)
+        self.assertEqual(replacement_token, self.paths.owner_token.read_text(encoding="ascii"))
 
     def test_package_and_unit_publish_the_two_independent_entry_points(self) -> None:
         metadata = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
