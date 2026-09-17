@@ -15,6 +15,10 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "services" / "maestro"))
+
 from maestro.service.activities import ProjectRecord
 from maestro.service.main import (
     InstalledServiceServer,
@@ -33,7 +37,6 @@ from maestro.service.requests import RequestService
 
 
 OWNER_TOKEN = "a" * 64
-ROOT = Path(__file__).resolve().parents[3]
 INSTALLER_PATH = ROOT / "services" / "maestro" / "deploy" / "install.py"
 UNIT_PATH = ROOT / "services" / "maestro" / "deploy" / "maestro.service"
 PYPROJECT_PATH = ROOT / "services" / "maestro" / "pyproject.toml"
