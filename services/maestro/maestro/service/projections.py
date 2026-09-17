@@ -4,17 +4,11 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from typing import Iterable, Iterator
-
 from maestro.foundation import ContractError, Database, canonical_identifier
 
 
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 100
-_ENDED_ACTIVITY_STATES = frozenset({"cancelled", "completed", "failed"})
-_CLOSED_ATTENTION_STATES = frozenset(
-    {"answered", "cancelled", "closed", "dismissed", "resolved"}
-)
 
 
 class ProjectionError(ValueError):
@@ -56,24 +50,20 @@ class ProjectionResult:
 @dataclass(frozen=True)
 class WorkspaceSnapshot:
     projects: tuple[dict[str, object], ...]
-    activities: tuple[dict[str, object], ...]
-    questions: tuple[dict[str, object], ...]
-    findings: tuple[dict[str, object], ...]
-    conversation: tuple[dict[str, object], ...]
     attention: tuple[dict[str, object], ...]
     event_cursor: int
+    project_next_cursor: int | None
+    attention_next_cursor: str | None
 
     def as_dict(self) -> dict[str, object]:
         return {
             "data": {
                 "projects": [dict(item) for item in self.projects],
-                "activities": [dict(item) for item in self.activities],
-                "questions": [dict(item) for item in self.questions],
-                "findings": [dict(item) for item in self.findings],
-                "conversation": [dict(item) for item in self.conversation],
                 "attention": [dict(item) for item in self.attention],
             },
             "event_cursor": self.event_cursor,
+            "project_next_cursor": self.project_next_cursor,
+            "attention_next_cursor": self.attention_next_cursor,
         }
 
 
@@ -89,76 +79,49 @@ class ProjectionReader:
         with self.database.read_connection() as connection:
             connection.execute("BEGIN")
             event_cursor = _event_cursor(connection)
-            activity_rows = connection.execute(
-                """
-                SELECT rowid, activity_id, project_id, kind, subject, state,
-                       waiting_reason, started_at, ended_at, version
-                FROM service_activities
-                ORDER BY project_id, rowid
-                """
-            ).fetchall()
-            activities = tuple(_activity(row) for row in activity_rows)
-            question_rows = connection.execute(
-                """
-                SELECT question_id, project_id, activity_id, subject, prompt,
-                       requester, status, version
-                FROM service_questions
-                ORDER BY question_id
-                """
-            ).fetchall()
-            questions = tuple(_question(row) for row in question_rows)
-            finding_rows = connection.execute(
-                """
-                SELECT finding_id, project_id, activity_id, subject, detail,
-                       status, version
-                FROM service_findings
-                ORDER BY finding_id
-                """
-            ).fetchall()
-            findings = tuple(_finding(row) for row in finding_rows)
-            conversation_rows = connection.execute(
-                """
-                SELECT message_id, project_id, activity_id, source, kind,
-                       occurred_at, sequence
-                FROM service_conversation
-                ORDER BY sequence
-                """
-            ).fetchall()
-            conversation = tuple(_conversation_reference(row) for row in conversation_rows)
-            attention = tuple(
-                list(_question_attention(question_rows))
-                + list(_finding_attention(finding_rows))
+            projects, project_next_cursor = _project_page(
+                connection, before=None, limit=MAX_PAGE_SIZE
             )
-            attention_count: dict[str, int] = {}
-            for item in attention:
-                project_id = str(item["project_id"])
-                attention_count[project_id] = attention_count.get(project_id, 0) + 1
-
-            by_project: dict[str, list[sqlite3.Row | tuple[object, ...]]] = {}
-            for row in activity_rows:
-                by_project.setdefault(str(row[2]), []).append(row)
-            project_rows = connection.execute(
-                """
-                SELECT project_id, name, registration_status, version
-                FROM service_projects
-                ORDER BY name COLLATE NOCASE, project_id
-                """
-            ).fetchall()
-            projects = tuple(
-                _project_summary(row, by_project.get(str(row[0]), ()), attention_count)
-                for row in project_rows
+            attention, attention_next_cursor = _attention_page(
+                connection, before=None, limit=MAX_PAGE_SIZE
             )
-            projects = tuple(sorted(projects, key=_project_order))
 
         return WorkspaceSnapshot(
             projects=projects,
-            activities=activities,
-            questions=questions,
-            findings=findings,
-            conversation=conversation,
             attention=attention,
             event_cursor=event_cursor,
+            project_next_cursor=project_next_cursor,
+            attention_next_cursor=attention_next_cursor,
         )
+
+    def projects(
+        self,
+        *,
+        before: int | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> ProjectionPage:
+        before = _integer_cursor(before)
+        limit = _page_size(limit)
+        with self.database.read_connection() as connection:
+            connection.execute("BEGIN")
+            event_cursor = _event_cursor(connection)
+            items, next_cursor = _project_page(connection, before=before, limit=limit)
+        return ProjectionPage(items, event_cursor, next_cursor)
+
+    def attention(
+        self,
+        *,
+        before: str | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> ProjectionPage:
+        if before is not None:
+            before = _identifier(before, "before")
+        limit = _page_size(limit)
+        with self.database.read_connection() as connection:
+            connection.execute("BEGIN")
+            event_cursor = _event_cursor(connection)
+            items, next_cursor = _attention_page(connection, before=before, limit=limit)
+        return ProjectionPage(items, event_cursor, next_cursor)
 
     def activities(
         self,
@@ -222,22 +185,113 @@ class ProjectionReader:
                 """
                 SELECT question_id, project_id, activity_id, subject, prompt,
                        requester, status, version
-                FROM service_questions WHERE activity_id = ? ORDER BY question_id
+                FROM service_questions
+                WHERE activity_id = ? ORDER BY question_id DESC LIMIT ?
                 """,
-                (activity_id,),
+                (activity_id, MAX_PAGE_SIZE + 1),
             ).fetchall()
             findings = connection.execute(
                 """
                 SELECT finding_id, project_id, activity_id, subject, detail,
                        status, version
-                FROM service_findings WHERE activity_id = ? ORDER BY finding_id
+                FROM service_findings
+                WHERE activity_id = ? ORDER BY finding_id DESC LIMIT ?
                 """,
-                (activity_id,),
+                (activity_id, MAX_PAGE_SIZE + 1),
+            ).fetchall()
+            actions = connection.execute(
+                """
+                SELECT action_id, project_id, activity_id, kind, label, sequence
+                FROM service_activity_actions
+                WHERE activity_id = ? ORDER BY action_id DESC LIMIT ?
+                """,
+                (activity_id, MAX_PAGE_SIZE + 1),
             ).fetchall()
             data = _activity(row)
-            data["questions"] = [_question(question) for question in questions]
-            data["findings"] = [_finding(finding) for finding in findings]
+            data["questions"] = [
+                _question(question) for question in questions[:MAX_PAGE_SIZE]
+            ]
+            data["question_next_cursor"] = _next_identity(questions)
+            data["findings"] = [
+                _finding(finding) for finding in findings[:MAX_PAGE_SIZE]
+            ]
+            data["finding_next_cursor"] = _next_identity(findings)
+            data["available_actions"] = [
+                _action(action) for action in actions[:MAX_PAGE_SIZE]
+            ]
+            data["action_next_cursor"] = _next_identity(actions)
         return ProjectionResult(data, event_cursor)
+
+    def questions(
+        self,
+        project_id: str,
+        activity_id: str,
+        *,
+        before: str | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> ProjectionPage:
+        project_id = _identifier(project_id, "project_id")
+        activity_id = _identifier(activity_id, "activity_id")
+        if before is not None:
+            before = _identifier(before, "before")
+        limit = _page_size(limit)
+        with self.database.read_connection() as connection:
+            connection.execute("BEGIN")
+            event_cursor = _event_cursor(connection)
+            _require_activity(connection, project_id, activity_id)
+            boundary = "" if before is None else "AND question_id < ?"
+            parameters: tuple[object, ...] = (project_id, activity_id)
+            if before is not None:
+                parameters += (before,)
+            rows = connection.execute(
+                f"""
+                SELECT question_id, project_id, activity_id, subject, prompt,
+                       requester, status, version
+                FROM service_questions
+                WHERE project_id = ? AND activity_id = ? {boundary}
+                ORDER BY question_id DESC LIMIT ?
+                """,
+                parameters + (limit + 1,),
+            ).fetchall()
+            selected = rows[:limit]
+            items = tuple(_question(row) for row in selected)
+            next_cursor = _next_identity(rows, page_size=limit)
+        return ProjectionPage(items, event_cursor, next_cursor)
+
+    def actions(
+        self,
+        project_id: str,
+        activity_id: str,
+        *,
+        before: str | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+    ) -> ProjectionPage:
+        project_id = _identifier(project_id, "project_id")
+        activity_id = _identifier(activity_id, "activity_id")
+        if before is not None:
+            before = _identifier(before, "before")
+        limit = _page_size(limit)
+        with self.database.read_connection() as connection:
+            connection.execute("BEGIN")
+            event_cursor = _event_cursor(connection)
+            _require_activity(connection, project_id, activity_id)
+            boundary = "" if before is None else "AND action_id < ?"
+            parameters: tuple[object, ...] = (project_id, activity_id)
+            if before is not None:
+                parameters += (before,)
+            rows = connection.execute(
+                f"""
+                SELECT action_id, project_id, activity_id, kind, label, sequence
+                FROM service_activity_actions
+                WHERE project_id = ? AND activity_id = ? {boundary}
+                ORDER BY action_id DESC LIMIT ?
+                """,
+                parameters + (limit + 1,),
+            ).fetchall()
+            selected = rows[:limit]
+            items = tuple(_action(row) for row in selected)
+            next_cursor = _next_identity(rows, page_size=limit)
+        return ProjectionPage(items, event_cursor, next_cursor)
 
     def conversation(
         self,
@@ -362,31 +416,122 @@ def _require_activity(
         )
 
 
+def _project_page(
+    connection: sqlite3.Connection, *, before: int | None, limit: int
+) -> tuple[tuple[dict[str, object], ...], int | None]:
+    boundary = "" if before is None else "WHERE rowid < ?"
+    parameters: tuple[object, ...] = () if before is None else (before,)
+    rows = connection.execute(
+        f"""
+        SELECT rowid, project_id, name, registration_status, version,
+               (SELECT COUNT(*) FROM service_questions AS q
+                WHERE q.project_id = service_projects.project_id
+                  AND q.status IN ('awaiting_answer', 'clarification_required'))
+               +
+               (SELECT COUNT(*) FROM service_activity_actions AS aa
+                WHERE aa.project_id = service_projects.project_id
+                  AND aa.kind IN ('decision', 'recovery')) AS attention_count,
+               (SELECT COUNT(*) FROM service_activities AS a
+                WHERE a.project_id = service_projects.project_id
+                  AND a.state NOT IN ('cancelled', 'completed', 'failed'))
+                   AS current_activity_count
+        FROM service_projects {boundary}
+        ORDER BY rowid DESC LIMIT ?
+        """,
+        parameters + (limit + 1,),
+    ).fetchall()
+    selected = rows[:limit]
+    projects = tuple(_project_summary(connection, row) for row in selected)
+    projects = tuple(sorted(projects, key=_project_order))
+    next_cursor = int(selected[-1][0]) if len(rows) > limit and selected else None
+    return projects, next_cursor
+
+
 def _project_summary(
-    row: tuple[object, ...],
-    activity_rows: Iterable[tuple[object, ...]],
-    attention_count: dict[str, int],
+    connection: sqlite3.Connection, row: tuple[object, ...]
 ) -> dict[str, object]:
-    records = list(activity_rows)
-    current = [record for record in records if str(record[5]) not in _ENDED_ACTIVITY_STATES]
-    selected = current[-1] if current else (records[-1] if records else None)
-    project_id = str(row[0])
-    if len(current) > 1:
+    project_id = str(row[1])
+    current = connection.execute(
+        """
+        SELECT rowid, activity_id, state FROM service_activities
+        WHERE project_id = ? AND state NOT IN ('cancelled', 'completed', 'failed')
+        ORDER BY rowid DESC LIMIT 1
+        """,
+        (project_id,),
+    ).fetchall()
+    selected = current[0] if current else connection.execute(
+        """
+        SELECT rowid, activity_id, state FROM service_activities
+        WHERE project_id = ? ORDER BY rowid DESC LIMIT 1
+        """,
+        (project_id,),
+    ).fetchone()
+    current_count = int(row[6])
+    if current_count > 1:
         activity_id: str | None = None
         activity_state = "multiple"
     else:
         activity_id = None if selected is None else str(selected[1])
-        activity_state = "idle" if not current else str(selected[5])
+        activity_state = "idle" if not current else str(selected[2])
     return {
         "project_id": project_id,
-        "name": str(row[1]),
-        "registration_status": str(row[2]),
-        "version": int(row[3]),
+        "name": str(row[2]),
+        "registration_status": str(row[3]),
+        "version": int(row[4]),
         "activity_id": activity_id,
         "activity_state": activity_state,
-        "current_activity_count": len(current),
-        "attention_count": attention_count.get(project_id, 0),
+        "current_activity_count": current_count,
+        "attention_count": int(row[5]),
     }
+
+
+def _attention_page(
+    connection: sqlite3.Connection, *, before: str | None, limit: int
+) -> tuple[tuple[dict[str, object], ...], str | None]:
+    rows = connection.execute(
+        """
+        SELECT cursor, type, record_id, project_id, activity_id, subject, source
+        FROM (
+            SELECT 'question:' || question_id AS cursor,
+                   'question' AS type,
+                   question_id AS record_id,
+                   project_id,
+                   activity_id,
+                   subject,
+                   requester AS source
+            FROM service_questions
+            WHERE status IN ('awaiting_answer', 'clarification_required')
+            UNION ALL
+            SELECT kind || ':' || action_id AS cursor,
+                   kind AS type,
+                   action_id AS record_id,
+                   project_id,
+                   activity_id,
+                   label AS subject,
+                   'service' AS source
+            FROM service_activity_actions
+            WHERE kind IN ('decision', 'recovery')
+        )
+        WHERE (? IS NULL OR cursor < ?)
+        ORDER BY cursor DESC LIMIT ?
+        """,
+        (before, before, limit + 1),
+    ).fetchall()
+    selected = rows[:limit]
+    items = tuple(
+        {
+            "cursor": str(row[0]),
+            "type": str(row[1]),
+            "record_id": str(row[2]),
+            "project_id": str(row[3]),
+            "activity_id": str(row[4]),
+            "subject": str(row[5]),
+            "source": str(row[6]),
+        }
+        for row in selected
+    )
+    next_cursor = str(selected[-1][0]) if len(rows) > limit and selected else None
+    return items, next_cursor
 
 
 def _project_order(project: dict[str, object]) -> tuple[object, ...]:
@@ -438,6 +583,16 @@ def _finding(row: tuple[object, ...]) -> dict[str, object]:
     }
 
 
+def _action(row: tuple[object, ...]) -> dict[str, object]:
+    return {
+        "action_id": str(row[0]),
+        "project_id": str(row[1]),
+        "activity_id": str(row[2]),
+        "kind": str(row[3]),
+        "label": str(row[4]),
+    }
+
+
 def _conversation(row: tuple[object, ...]) -> dict[str, object]:
     return {
         "sequence": int(row[0]),
@@ -451,41 +606,11 @@ def _conversation(row: tuple[object, ...]) -> dict[str, object]:
     }
 
 
-def _conversation_reference(row: tuple[object, ...]) -> dict[str, object]:
-    return {
-        "message_id": str(row[0]),
-        "project_id": str(row[1]),
-        "activity_id": None if row[2] is None else str(row[2]),
-        "source": str(row[3]),
-        "kind": str(row[4]),
-        "occurred_at": str(row[5]),
-        "sequence": int(row[6]),
-    }
-
-
-def _question_attention(rows: list[tuple[object, ...]]) -> Iterator[dict[str, object]]:
-    for row in rows:
-        if str(row[6]) not in _CLOSED_ATTENTION_STATES:
-            yield {
-                "type": "question",
-                "question_id": str(row[0]),
-                "project_id": str(row[1]),
-                "activity_id": str(row[2]),
-                "subject": str(row[3]),
-                "requester": str(row[5]),
-            }
-
-
-def _finding_attention(rows: list[tuple[object, ...]]) -> Iterator[dict[str, object]]:
-    for row in rows:
-        if str(row[5]) not in _CLOSED_ATTENTION_STATES:
-            yield {
-                "type": "finding",
-                "finding_id": str(row[0]),
-                "project_id": str(row[1]),
-                "activity_id": str(row[2]),
-                "subject": str(row[3]),
-            }
+def _next_identity(
+    rows: list[tuple[object, ...]], *, page_size: int = MAX_PAGE_SIZE
+) -> str | None:
+    selected = rows[:page_size]
+    return str(selected[-1][0]) if len(rows) > page_size and selected else None
 
 
 def _identifier(value: str, field: str) -> str:
@@ -493,6 +618,16 @@ def _identifier(value: str, field: str) -> str:
         return canonical_identifier(value, field)
     except (ContractError, TypeError) as error:
         raise ProjectionError("invalid_context", str(error), field=field) from error
+
+
+def _integer_cursor(value: int | None) -> int | None:
+    if value is not None and (
+        isinstance(value, bool) or not isinstance(value, int) or value < 1
+    ):
+        raise ProjectionError(
+            "invalid_cursor", "before cursor must be a positive integer"
+        )
+    return value
 
 
 def _page_size(value: int) -> int:

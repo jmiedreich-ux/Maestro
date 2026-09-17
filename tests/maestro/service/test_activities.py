@@ -6,6 +6,7 @@ from pathlib import Path
 
 from maestro.foundation import Database, StorageSettings
 from maestro.service.activities import (
+    ActivityAction,
     ActivityRecord,
     ActivityRepository,
     ConversationRecord,
@@ -20,7 +21,11 @@ from maestro.service.authentication import (
     OwnerAuthenticator,
     token_digest,
 )
-from maestro.service.projections import ProjectionNotFound, ProjectionReader
+from maestro.service.projections import (
+    MAX_PAGE_SIZE,
+    ProjectionNotFound,
+    ProjectionReader,
+)
 from maestro.service.registry import (
     OperationHandler,
     OperationRegistry,
@@ -95,7 +100,7 @@ class ProjectActivityRecordsTest(unittest.TestCase):
                         activity_id,
                         "Missing source choice",
                         "The source must be selected before assessment.",
-                        "blocking",
+                        "informational",
                         1,
                     ),
                 ),
@@ -174,15 +179,9 @@ class ProjectActivityRecordsTest(unittest.TestCase):
         data = snapshot["data"]
         self.assertEqual("project-one", data["projects"][0]["project_id"])
         self.assertEqual("waiting", data["projects"][0]["activity_state"])
-        self.assertEqual(2, data["projects"][0]["attention_count"])
-        self.assertEqual("activity-one", data["activities"][0]["activity_id"])
+        self.assertEqual(1, data["projects"][0]["attention_count"])
         self.assertEqual(
-            "question-project-one", data["questions"][0]["question_id"]
-        )
-        self.assertEqual("finding-project-one", data["findings"][0]["finding_id"])
-        self.assertEqual(3, len(data["conversation"]))
-        self.assertEqual(
-            {"finding", "question"}, {item["type"] for item in data["attention"]}
+            {"question"}, {item["type"] for item in data["attention"]}
         )
 
         latest = self.reader.conversation("project-one", limit=2)
@@ -211,13 +210,17 @@ class ProjectActivityRecordsTest(unittest.TestCase):
         )
         with self.database.read_connection() as connection:
             self.assertEqual(
-                ("service_activities", 1, "service-activity-records-v1"),
+                [
+                    ("service_activities", 1, "service-activity-records-v1"),
+                    ("service_activities", 2, "service-activity-actions-v2"),
+                ],
                 connection.execute(
                     """
                     SELECT domain, version, identity FROM domain_migrations
                     WHERE domain = 'service_activities'
+                    ORDER BY version
                     """
-                ).fetchone(),
+                ).fetchall(),
             )
             self.assertEqual(
                 (1, 1, 1),
@@ -300,11 +303,10 @@ class ProjectActivityRecordsTest(unittest.TestCase):
                 )
 
         self.assertEqual("record_version_conflict", raised.exception.code)
-        snapshot = self.reader.workspace().as_dict()
-        activity = snapshot["data"]["activities"][0]
+        activity = self.reader.activity("activity-one").data
         self.assertEqual("working", activity["state"])
         self.assertEqual(2, activity["version"])
-        self.assertEqual(3, len(snapshot["data"]["conversation"]))
+        self.assertEqual(3, len(self.reader.conversation("project-one").data))
 
         with self.assertRaises(RequestRejection) as stale_command:
             stale = self.envelope("project-one", "activity-replacement")
@@ -312,6 +314,186 @@ class ProjectActivityRecordsTest(unittest.TestCase):
             stale["expected_version"] = 0
             self.service.submit(AUTHORIZATION, stale)
         self.assertEqual("version_conflict", stale_command.exception.code)
+
+    def test_attention_excludes_findings_and_exposes_paused_recovery_action(self) -> None:
+        self.service.submit(
+            AUTHORIZATION, self.envelope("project-one", "activity-one")
+        )
+        initial = self.reader.workspace().as_dict()["data"]
+        self.assertEqual(["question"], [item["type"] for item in initial["attention"]])
+
+        with self.database.transaction() as transaction:
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one",
+                    "project-one",
+                    "registration",
+                    "Register Project One",
+                    "paused",
+                    2,
+                    "Publication failed",
+                    available_actions=(
+                        ActivityAction(
+                            "retry-activity", "Retry activity", "recovery"
+                        ),
+                    ),
+                ),
+                expected_record_version=1,
+            )
+
+        snapshot = self.reader.workspace().as_dict()["data"]
+        self.assertEqual(
+            {"question", "recovery"},
+            {item["type"] for item in snapshot["attention"]},
+        )
+        self.assertNotIn("finding", {item["type"] for item in snapshot["attention"]})
+        detail = self.reader.activity("activity-one").data
+        self.assertEqual("paused", detail["state"])
+        self.assertEqual(
+            {
+                "action_id": "retry-activity",
+                "project_id": "project-one",
+                "activity_id": "activity-one",
+                "kind": "recovery",
+                "label": "Retry activity",
+            },
+            detail["available_actions"][0],
+        )
+
+    def test_workspace_and_activity_detail_are_bounded_with_continuations(self) -> None:
+        self.service.submit(
+            AUTHORIZATION, self.envelope("project-one", "activity-one")
+        )
+        excess = MAX_PAGE_SIZE + 5
+        with self.database.transaction() as transaction:
+            for number in range(MAX_PAGE_SIZE + 1):
+                self.records.create_project(
+                    transaction,
+                    ProjectRecord(
+                        f"project-bulk-{number:03d}",
+                        f"Bulk project {number:03d}",
+                        "registered",
+                        1,
+                    ),
+                )
+            for number in range(excess):
+                self.records.create_question(
+                    transaction,
+                    QuestionRecord(
+                        f"question-bulk-{number:03d}",
+                        "project-one",
+                        "activity-one",
+                        f"Question {number:03d}",
+                        "Provide an answer",
+                        "registration-architect",
+                        "awaiting_answer",
+                        1,
+                    ),
+                )
+                self.records.create_finding(
+                    transaction,
+                    FindingRecord(
+                        f"finding-bulk-{number:03d}",
+                        "project-one",
+                        "activity-one",
+                        f"Finding {number:03d}",
+                        "Informational evidence",
+                        "informational",
+                        1,
+                    ),
+                )
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one",
+                    "project-one",
+                    "registration",
+                    "Register Project One",
+                    "paused",
+                    2,
+                    "Recovery required",
+                    available_actions=tuple(
+                        ActivityAction(
+                            f"retry-{number:03d}",
+                            f"Retry step {number:03d}",
+                            "recovery",
+                        )
+                        for number in range(excess)
+                    ),
+                ),
+                expected_record_version=1,
+            )
+
+        workspace = self.reader.workspace()
+        self.assertEqual(MAX_PAGE_SIZE, len(workspace.projects))
+        self.assertEqual(MAX_PAGE_SIZE, len(workspace.attention))
+        self.assertIsNotNone(workspace.project_next_cursor)
+        self.assertIsNotNone(workspace.attention_next_cursor)
+        self.assertEqual(
+            {"projects", "attention"}, set(workspace.as_dict()["data"])
+        )
+        remaining_projects = self.reader.projects(
+            before=workspace.project_next_cursor, limit=MAX_PAGE_SIZE
+        )
+        self.assertEqual(2, len(remaining_projects.data))
+        self.assertTrue(
+            {item["project_id"] for item in workspace.projects}.isdisjoint(
+                item["project_id"] for item in remaining_projects.data
+            )
+        )
+        next_attention = self.reader.attention(
+            before=workspace.attention_next_cursor, limit=MAX_PAGE_SIZE
+        )
+        final_attention = self.reader.attention(
+            before=next_attention.next_cursor, limit=MAX_PAGE_SIZE
+        )
+        attention_ids = {
+            item["cursor"]
+            for item in workspace.attention
+            + next_attention.data
+            + final_attention.data
+        }
+        self.assertEqual((excess + 1) + excess, len(attention_ids))
+
+        detail = self.reader.activity("activity-one").data
+        self.assertEqual(MAX_PAGE_SIZE, len(detail["questions"]))
+        self.assertEqual(MAX_PAGE_SIZE, len(detail["findings"]))
+        self.assertEqual(MAX_PAGE_SIZE, len(detail["available_actions"]))
+        self.assertIsNotNone(detail["question_next_cursor"])
+        self.assertIsNotNone(detail["finding_next_cursor"])
+        self.assertIsNotNone(detail["action_next_cursor"])
+
+        older_questions = self.reader.questions(
+            "project-one",
+            "activity-one",
+            before=detail["question_next_cursor"],
+        )
+        older_findings = self.reader.findings(
+            "project-one",
+            "activity-one",
+            before=detail["finding_next_cursor"],
+        )
+        older_actions = self.reader.actions(
+            "project-one",
+            "activity-one",
+            before=detail["action_next_cursor"],
+        )
+        self.assertGreater(len(older_questions.data), 0)
+        self.assertGreater(len(older_findings.data), 0)
+        self.assertGreater(len(older_actions.data), 0)
+        self.assertEqual(
+            excess + 1,
+            len(detail["questions"]) + len(older_questions.data),
+        )
+        self.assertEqual(
+            excess + 1,
+            len(detail["findings"]) + len(older_findings.data),
+        )
+        self.assertEqual(
+            excess,
+            len(detail["available_actions"]) + len(older_actions.data),
+        )
 
 
 if __name__ == "__main__":

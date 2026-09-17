@@ -107,6 +107,30 @@ ACTIVITY_RECORDS_MIGRATION = DomainMigration(
     ),
 )
 
+ACTIVITY_ACTIONS_MIGRATION = DomainMigration(
+    domain="service_activities",
+    version=2,
+    identity="service-activity-actions-v2",
+    statements=(
+        """
+        CREATE TABLE service_activity_actions(
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_id TEXT NOT NULL UNIQUE,
+            activity_id TEXT NOT NULL
+                REFERENCES service_activities(activity_id) ON DELETE CASCADE,
+            project_id TEXT NOT NULL
+                REFERENCES service_projects(project_id) ON DELETE RESTRICT,
+            kind TEXT NOT NULL CHECK(kind IN ('action', 'decision', 'recovery')),
+            label TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX service_activity_actions_context
+            ON service_activity_actions(project_id, activity_id, sequence)
+        """,
+    ),
+)
+
 
 class ActivityRecordError(ValueError):
     """A typed domain rejection that leaves the caller's transaction intact."""
@@ -144,6 +168,14 @@ class ActivityRecord:
     waiting_reason: str | None = None
     started_at: str | None = None
     ended_at: str | None = None
+    available_actions: tuple[ActivityAction, ...] = ()
+
+
+@dataclass(frozen=True)
+class ActivityAction:
+    action_id: str
+    label: str
+    kind: str = "action"
 
 
 @dataclass(frozen=True)
@@ -188,6 +220,7 @@ class ActivityRepository:
             raise TypeError("activity repository requires the service Database")
         self.database = database
         self.database.registry.register(ACTIVITY_RECORDS_MIGRATION)
+        self.database.registry.register(ACTIVITY_ACTIONS_MIGRATION)
         self.database.initialize()
 
     def create_project(self, transaction: Transaction, record: ProjectRecord) -> None:
@@ -256,6 +289,7 @@ class ActivityRepository:
                 record.version,
             ),
         )
+        self._replace_actions(transaction, record)
 
     def update_activity(
         self,
@@ -297,6 +331,7 @@ class ActivityRepository:
                 record.activity_id,
                 expected_record_version,
             )
+        self._replace_actions(transaction, record)
 
     def create_question(self, transaction: Transaction, record: QuestionRecord) -> None:
         _question(record)
@@ -536,6 +571,30 @@ class ActivityRepository:
             )
 
     @staticmethod
+    def _replace_actions(transaction: Transaction, record: ActivityRecord) -> None:
+        transaction.execute(
+            "DELETE FROM service_activity_actions WHERE activity_id = ?",
+            (record.activity_id,),
+        )
+        transaction.executemany(
+            """
+            INSERT INTO service_activity_actions(
+                action_id, activity_id, project_id, kind, label
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            tuple(
+                (
+                    action.action_id,
+                    record.activity_id,
+                    record.project_id,
+                    action.kind,
+                    action.label,
+                )
+                for action in record.available_actions
+            ),
+        )
+
+    @staticmethod
     def _raise_version_or_missing(
         transaction: Transaction,
         table: str,
@@ -588,6 +647,19 @@ def _activity(record: ActivityRecord) -> None:
         _text(record.started_at, "activity started_at")
     if record.ended_at is not None:
         _text(record.ended_at, "activity ended_at")
+    if not isinstance(record.available_actions, tuple):
+        raise ValueError("available actions must be a tuple")
+    seen: set[str] = set()
+    for action in record.available_actions:
+        if not isinstance(action, ActivityAction):
+            raise TypeError("available activity action is invalid")
+        canonical_identifier(action.action_id, "action_id")
+        _text(action.label, "action label")
+        if action.kind not in {"action", "decision", "recovery"}:
+            raise ValueError("activity action kind is invalid")
+        if action.action_id in seen:
+            raise ValueError("activity action identities must be unique")
+        seen.add(action.action_id)
     positive_version(record.version, "activity version")
 
 
