@@ -1,0 +1,32 @@
+[Unit]
+Description=Maestro persistent coordination service
+After=local-fs.target
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+UMask=0077
+WorkingDirectory=@DATA_DIR@
+ExecStart=@SERVICE_EXECUTABLE@ --config @CONFIG_FILE@
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=@DATA_DIR@
+
+[Install]
+WantedBy=multi-user.target
