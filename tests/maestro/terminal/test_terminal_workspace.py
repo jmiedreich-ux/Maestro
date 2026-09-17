@@ -29,6 +29,7 @@ from maestro.service.events import (
     EventStreamService,
 )
 from maestro.service.projections import (
+    MAX_PAGE_SIZE,
     ProjectionError,
     ProjectionNotFound,
     ProjectionReader,
@@ -62,6 +63,7 @@ class ProjectionServer:
     def __init__(self, reader: ProjectionReader, authenticator: OwnerAuthenticator) -> None:
         self.reader = reader
         self.authenticator = authenticator
+        self.paths: list[str] = []
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -103,11 +105,22 @@ class ProjectionServer:
         self.server.server_close()
 
     def dispatch(self, path: str) -> dict[str, object]:
+        self.paths.append(path)
         parsed = urlsplit(path)
         if parsed.path == "/api/v1/workspace":
             return self.reader.workspace().as_dict()
         parts = parsed.path.split("/")
         query = parse_qs(parsed.query)
+        if parsed.path == "/api/v1/projects":
+            return self.reader.projects(
+                before=query.get("before", [None])[0],
+                limit=int(query.get("limit", [50])[0]),
+            ).as_dict()
+        if parsed.path == "/api/v1/attention":
+            return self.reader.attention(
+                before=query.get("before", [None])[0],
+                limit=int(query.get("limit", [50])[0]),
+            ).as_dict()
         if len(parts) == 6 and parts[:4] == ["", "api", "v1", "projects"]:
             project_id = unquote(parts[4])
             if parts[5] == "activities":
@@ -270,6 +283,62 @@ class TerminalWorkspaceTest(unittest.TestCase):
             TerminalRenderer().render(workspace, TerminalSize(79, 24)),
         )
 
+    def test_workspace_follows_bounded_project_and_attention_pages(self) -> None:
+        self.create_project("project-one", "Project One")
+        with self.database.transaction() as transaction:
+            for number in range(MAX_PAGE_SIZE + 5):
+                self.records.create_project(
+                    transaction,
+                    ProjectRecord(
+                        f"project-page-{number:03d}",
+                        f"Page project {number:03d}",
+                        "registered",
+                        1,
+                    ),
+                )
+                self.records.create_question(
+                    transaction,
+                    QuestionRecord(
+                        f"question-page-{number:03d}",
+                        "project-one",
+                        "activity-project-one",
+                        f"Question {number:03d}",
+                        "Choose a value",
+                        "registration-architect",
+                        "awaiting_answer",
+                        1,
+                    ),
+                )
+
+        workspace = Workspace(self.client)
+        workspace.refresh()
+
+        self.assertEqual(MAX_PAGE_SIZE + 6, len(workspace.projects))
+        self.assertEqual(MAX_PAGE_SIZE + 7, len(workspace.attention))
+        self.assertTrue(
+            any(
+                path.startswith("/api/v1/projects?before=")
+                for path in self.projection_server.paths
+            )
+        )
+        self.assertTrue(
+            any(
+                path.startswith("/api/v1/attention?before=")
+                for path in self.projection_server.paths
+            )
+        )
+        oldest = next(
+            item
+            for item in workspace.attention
+            if item.record_id == "question-page-000"
+        )
+        workspace.open_attention(oldest.cursor)
+        self.assertEqual("Question 000", workspace.selected_attention_detail["subject"])
+        self.assertIn(
+            "Question: Question 000",
+            TerminalRenderer().render(workspace, TerminalSize(100, 30)),
+        )
+
     def test_attention_input_keys_switch_and_disconnect_preserve_only_visible_context(self) -> None:
         self.create_project("project-one", "Project One")
         self.create_project("project-two", "Project Two")
@@ -289,6 +358,10 @@ class TerminalWorkspaceTest(unittest.TestCase):
         )
         workspace.open_attention(question.cursor)
         self.assertEqual("question-project-one", workspace.input.question_id)
+        self.assertIn(
+            "Question: Which source should be used?",
+            TerminalRenderer().render(workspace, TerminalSize(100, 30)),
+        )
         workspace.input.insert("draft answer")
         workspace.select_project("project-two")
         self.assertEqual("", workspace.input.text)
@@ -337,6 +410,13 @@ class TerminalWorkspaceTest(unittest.TestCase):
         workspace.load_earlier_messages()
         initial_cursor = workspace.event_cursor
         workspace.scroll_messages(-3)
+        before = [
+            line
+            for line in TerminalRenderer()
+            .render(workspace, TerminalSize(100, 30))
+            .splitlines()
+            if line.startswith(("service:", "architect:"))
+        ]
 
         event_server = EventStreamHTTPServer(
             EventStreamHTTPApplication(EventStreamService(self.database, self.authenticator))
@@ -369,11 +449,26 @@ class TerminalWorkspaceTest(unittest.TestCase):
         self.assertTrue(workspace.new_messages)
         self.assertEqual(56, len(workspace.messages))
         self.assertIn("message-new", [item.message_id for item in workspace.messages])
-        self.assertIn(
-            "New messages", TerminalRenderer().render(workspace, TerminalSize(100, 30))
-        )
+        after_render = TerminalRenderer().render(workspace, TerminalSize(100, 30))
+        after = [
+            line
+            for line in after_render.splitlines()
+            if line.startswith(("service:", "architect:"))
+        ]
+        self.assertEqual(before, after)
+        self.assertIn("New messages", after_render)
         workspace.scroll_to_latest()
         self.assertFalse(workspace.new_messages)
+
+        workspace.handle_event_error(
+            ServiceError(
+                409,
+                "event_cursor_unavailable",
+                "the event cursor is unavailable; load a fresh snapshot",
+            )
+        )
+        self.assertFalse(workspace.stale)
+        self.assertIsNone(workspace.error)
 
     def test_empty_failure_and_malformed_data_never_look_like_success(self) -> None:
         empty = Workspace(self.client)
@@ -412,6 +507,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         registry.register_command("registration", command)
         registry.register_view("registration", command)
         registry.register_action("retry", command)
+        registry.register_action("recovery", command)
         with self.assertRaisesRegex(ValueError, "already registered"):
             registry.register_command("/registration", command)
         workspace = Workspace(self.client, extensions=registry)
@@ -420,17 +516,137 @@ class TerminalWorkspaceTest(unittest.TestCase):
 
         self.assertEqual("opened", workspace.run_command("registration", "latest"))
         context = ExtensionContext(self.client, workspace)
-        self.assertEqual("opened", registry.render_view("registration", context, "view"))
+        self.assertEqual("opened", workspace.open_extension_view("registration", "view"))
+        self.assertIn(
+            "opened", TerminalRenderer().render(workspace, TerminalSize(100, 30))
+        )
         self.assertEqual("opened", registry.invoke_action("retry", context, "now"))
         self.assertEqual(self.client, seen[0][0])
         self.assertEqual("project-one", seen[0][1])
         self.assertFalse(hasattr(context, "database"))
         with self.assertRaises(KeyError):
             workspace.run_command("not-installed")
+        recovery = next(item for item in workspace.attention if item.type == "recovery")
+        workspace.open_attention(recovery.cursor)
+        self.assertEqual("Retry activity", workspace.selected_attention_detail["label"])
+        self.assertEqual("action", workspace.focused_target.kind)
+        self.assertEqual("opened", workspace.handle_key("ENTER"))
+        self.assertEqual(f"retry-project-one", seen[-1][2])
+
+        calls_before_disconnect = len(seen)
+        workspace.handle_connection_status(
+            ConnectionStatus(
+                ConnectionState.DISCONNECTED,
+                self.projection_server.service_url,
+                "offline",
+                retry_in_seconds=1,
+            )
+        )
+        for operation in (
+            lambda: workspace.run_command("registration"),
+            lambda: workspace.open_extension_view("registration"),
+            lambda: workspace.invoke_action("retry"),
+        ):
+            with self.assertRaisesRegex(WorkspaceError, "disconnected or stale"):
+                operation()
+        self.assertEqual(calls_before_disconnect, len(seen))
+
+        workspace.handle_connection_status(
+            ConnectionStatus(
+                ConnectionState.CONNECTED,
+                self.projection_server.service_url,
+                "connected",
+            )
+        )
         workspace.input.text = "ordinary conversation"
         workspace.input.cursor = len(workspace.input.text)
         with self.assertRaisesRegex(WorkspaceError, "accepts commands"):
             workspace.submit_input()
+
+    def test_keyboard_focus_navigation_and_enter_activate_only_focused_target(self) -> None:
+        self.create_project("project-one", "Project One")
+        self.create_project("project-two", "Project Two")
+        with self.database.transaction() as transaction:
+            self.records.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-project-two-extra",
+                    "project-two",
+                    "architecture",
+                    "Plan Project Two",
+                    "working",
+                    1,
+                ),
+            )
+        workspace = Workspace(self.client)
+        workspace.refresh()
+
+        self.assertEqual("project", workspace.focused_target.kind)
+        first_project = workspace.focused_target.identity
+        workspace.handle_key("SHIFT+TAB")
+        self.assertEqual(first_project, workspace.focused_target.identity)
+        workspace.handle_key("DOWN")
+        second_project = workspace.focused_target.identity
+        self.assertNotEqual(first_project, second_project)
+        workspace.handle_key("ENTER")
+        self.assertEqual(second_project, workspace.selected_project_id)
+        self.assertEqual("editor", workspace.focused_target.kind)
+
+        activity_indexes = [
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "activity"
+        ]
+        self.assertEqual(2, len(activity_indexes))
+        workspace.focus = activity_indexes[1]
+        selected_activity = workspace.focused_target.identity
+        workspace.handle_key("ENTER")
+        self.assertEqual(selected_activity, workspace.selected_activity_id)
+
+        load_index = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "control"
+            and target.identity == "load-earlier"
+        )
+        workspace.focus = load_index
+        self.assertEqual(50, len(workspace.messages))
+        workspace.handle_key("ENTER")
+        self.assertEqual(55, len(workspace.messages))
+        workspace.focus = len(workspace.focus_targets()) - 1
+
+        workspace.handle_key("/")
+        workspace.handle_key("p")
+        workspace.handle_key("r")
+        workspace.handle_key("o")
+        workspace.handle_key("j")
+        workspace.handle_key("e")
+        workspace.handle_key("c")
+        workspace.handle_key("t")
+        workspace.handle_key("s")
+        workspace.handle_key("ENTER")
+        self.assertEqual(View.PROJECTS, workspace.view)
+        self.assertEqual("", workspace.input.text)
+
+        workspace.view = View.ATTENTION
+        workspace.focus = 0
+        attention_cursor = workspace.focused_target.identity
+        workspace.handle_key("ENTER")
+        self.assertEqual(attention_cursor, workspace.selected_attention)
+
+        workspace.selected_attention_detail = {
+            "choices": [
+                {"choice_id": "choice-one", "label": "Use the pinned source"}
+            ]
+        }
+        choice_index = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "choice"
+        )
+        workspace.focus = choice_index
+        workspace.handle_key("ENTER")
+        self.assertEqual("Use the pinned source", workspace.input.text)
 
 
 if __name__ == "__main__":

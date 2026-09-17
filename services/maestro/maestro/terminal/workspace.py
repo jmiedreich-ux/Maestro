@@ -12,6 +12,7 @@ from .connection import (
     ConnectionState,
     ConnectionStatus,
     SSEEvent,
+    ServiceError,
     TerminalConnectionError,
 )
 from .extensions import ExtensionContext, ExtensionRegistry
@@ -34,6 +35,14 @@ class View(str, Enum):
     CONVERSATION = "conversation"
     ATTENTION = "attention"
     FINDINGS = "findings"
+    EXTENSION = "extension"
+
+
+@dataclass(frozen=True)
+class FocusTarget:
+    kind: str
+    identity: str
+    label: str
 
 
 @dataclass(frozen=True)
@@ -175,17 +184,28 @@ class Workspace:
     focus: int = 0
     detail_open: bool = False
     detail_reading_offset: int = 0
+    selected_attention_detail: Mapping[str, object] | None = None
+    extension_view_name: str | None = None
+    extension_view_content: object | None = None
 
     def refresh(self) -> None:
         """Load a cursor-consistent snapshot, preserving still-valid selection."""
         try:
             response = self.client.workspace()
             data = _object(response.get("data"), "workspace data")
-            projects = tuple(Project.parse(item) for item in _list(data, "projects"))
-            attention = tuple(
-                AttentionItem.parse(item) for item in _list(data, "attention")
-            )
             cursor = _integer(response, "event_cursor", minimum=0)
+            projects = self._complete_projects(
+                tuple(Project.parse(item) for item in _list(data, "projects")),
+                _optional_cursor(response, "project_next_cursor"),
+                cursor,
+            )
+            attention = self._complete_attention(
+                tuple(
+                    AttentionItem.parse(item) for item in _list(data, "attention")
+                ),
+                _optional_cursor(response, "attention_next_cursor"),
+                cursor,
+            )
         except (
             TerminalConnectionError,
             WorkspaceError,
@@ -201,6 +221,7 @@ class Workspace:
         self.connection_state = ConnectionState.CONNECTED
         self.stale = False
         self.error = None
+        self._bound_focus()
         if self.selected_project_id not in {item.project_id for item in projects}:
             self._clear_project_context()
         elif self.selected_project_id is not None:
@@ -216,6 +237,7 @@ class Workspace:
                 self.stale = True
 
     def select_project(self, project_id: str) -> None:
+        self._require_online()
         if project_id not in {item.project_id for item in self.projects}:
             raise WorkspaceError("selected project is not in the workspace")
         if project_id != self.selected_project_id:
@@ -231,8 +253,10 @@ class Workspace:
         self.selected_project_id = project_id
         self.view = View.CONVERSATION
         self._load_selected_project(preserve_activity=False)
+        self._focus_editor()
 
     def select_activity(self, activity_id: str) -> None:
+        self._require_online()
         activity = next(
             (item for item in self.activities if item.activity_id == activity_id), None
         )
@@ -244,8 +268,12 @@ class Workspace:
         self.activity_detail = self._read_data(
             f"/activities/{_segment(activity_id)}", "activity detail"
         )
+        self.selected_attention = None
+        self.selected_attention_detail = None
+        self._focus_editor()
 
     def open_attention(self, cursor: str) -> None:
+        self._require_online()
         item = next((entry for entry in self.attention if entry.cursor == cursor), None)
         if item is None:
             raise WorkspaceError("attention item is no longer available")
@@ -255,11 +283,33 @@ class Workspace:
         self.selected_attention = cursor
         if item.type == "question":
             self.input.question_id = item.record_id
+            self.selected_attention_detail = _find_detail(
+                self.activity_detail, "questions", "question_id", item.record_id
+            ) or {
+                "question_id": item.record_id,
+                "subject": item.subject,
+                "requester": item.source,
+            }
         else:
             self.input.question_id = None
+            self.selected_attention_detail = _find_detail(
+                self.activity_detail,
+                "available_actions",
+                "action_id",
+                item.record_id,
+            ) or {
+                "action_id": item.record_id,
+                "kind": item.type,
+                "label": item.subject,
+            }
         self.view = View.CONVERSATION
+        if item.type in {"decision", "recovery"}:
+            self._focus_target("action", item.record_id)
+        else:
+            self._focus_editor()
 
     def load_earlier_messages(self) -> bool:
+        self._require_online()
         if self.selected_project_id is None or self.conversation_cursor is None:
             return False
         response = self.client.get_json(
@@ -284,6 +334,7 @@ class Workspace:
             return
         was_bottom = self.at_bottom
         old_messages = {message.message_id for message in self.messages}
+        anchor = self._reading_anchor()
         self.refresh()
         if self.error is not None:
             return
@@ -294,8 +345,22 @@ class Workspace:
         if has_new and not was_bottom:
             self.at_bottom = False
             self.new_messages = True
+            self._restore_reading_anchor(anchor)
         elif was_bottom:
             self.scroll_to_latest()
+
+    def handle_event_error(self, error: TerminalConnectionError) -> None:
+        """Recover an unavailable durable cursor only by loading a fresh snapshot."""
+        if isinstance(error, ServiceError) and error.code == "event_cursor_unavailable":
+            self.refresh()
+            return
+        self.handle_connection_status(
+            ConnectionStatus(
+                ConnectionState.DISCONNECTED,
+                "service",
+                str(error),
+            )
+        )
 
     def handle_connection_status(self, status: ConnectionStatus) -> None:
         self.connection_state = status.state
@@ -334,25 +399,96 @@ class Workspace:
     def handle_key(self, key: str) -> object | None:
         normalized = key.upper()
         if normalized == "TAB":
-            self.focus += 1
+            self._move_focus(1, same_kind=False)
         elif normalized == "SHIFT+TAB":
-            self.focus = max(0, self.focus - 1)
+            self._move_focus(-1, same_kind=False)
         elif normalized == "UP":
-            self.scroll_messages(-1)
+            if not self._move_focus(-1, same_kind=True):
+                self.scroll_messages(-1)
         elif normalized == "DOWN":
-            self.scroll_messages(1)
+            if not self._move_focus(1, same_kind=True):
+                self.scroll_messages(1)
         elif normalized == "ESCAPE":
             self.detail_open = False
             self.detail_reading_offset = 0
         elif normalized == "SHIFT+ENTER":
-            self.input.insert("\n")
+            if self._editor_focused():
+                self.input.insert("\n")
         elif normalized == "BACKSPACE":
-            self.input.backspace()
+            if self._editor_focused():
+                self.input.backspace()
         elif normalized == "ENTER":
-            return self.submit_input()
-        elif len(key) == 1:
+            return self.activate_focused()
+        elif len(key) == 1 and self._editor_focused():
             self.input.insert(key)
         return None
+
+    @property
+    def focused_target(self) -> FocusTarget | None:
+        targets = self.focus_targets()
+        if not targets:
+            return None
+        self.focus = min(max(0, self.focus), len(targets) - 1)
+        return targets[self.focus]
+
+    def focus_targets(self) -> tuple[FocusTarget, ...]:
+        targets: list[FocusTarget] = []
+        if self.view == View.PROJECTS:
+            targets.extend(
+                FocusTarget("project", item.project_id, item.name)
+                for item in self.projects
+            )
+        elif self.view == View.ATTENTION:
+            targets.extend(
+                FocusTarget("attention", item.cursor, item.subject)
+                for item in self.attention
+            )
+        elif self.view == View.CONVERSATION:
+            if len(self.activities) > 1:
+                targets.extend(
+                    FocusTarget("activity", item.activity_id, item.subject)
+                    for item in self.activities
+                )
+            if self.conversation_cursor is not None:
+                targets.append(
+                    FocusTarget("control", "load-earlier", "Load earlier messages")
+                )
+            if self.new_messages:
+                targets.append(FocusTarget("control", "new-messages", "New messages"))
+            targets.extend(self._choice_targets())
+            action = self._selected_action_target()
+            if action is not None:
+                targets.append(action)
+        targets.append(FocusTarget("editor", "input", "Input"))
+        return tuple(targets)
+
+    def activate_focused(self) -> object | None:
+        target = self.focused_target
+        if target is None:
+            return None
+        if target.kind == "project":
+            self.select_project(target.identity)
+            return None
+        if target.kind == "activity":
+            self.select_activity(target.identity)
+            return None
+        if target.kind == "attention":
+            self.open_attention(target.identity)
+            return None
+        if target.kind == "choice":
+            self.input.text = target.label
+            self.input.cursor = len(target.label)
+            return None
+        if target.kind == "action":
+            return self.invoke_selected_action()
+        if target.kind == "control" and target.identity == "load-earlier":
+            return self.load_earlier_messages()
+        if target.kind == "control" and target.identity == "new-messages":
+            self.scroll_to_latest()
+            return None
+        if target.kind == "editor":
+            return self.submit_input()
+        raise WorkspaceError("focused terminal control is unavailable")
 
     def submit_input(self) -> object | None:
         text = self.input.text
@@ -373,20 +509,113 @@ class Workspace:
         name = command.casefold()
         if name == "projects":
             self.view = View.PROJECTS
+            self.focus = 0
             return None
         if name == "attention":
             self.view = View.ATTENTION
+            self.focus = 0
             return None
         if name == "findings":
             if self.selected_activity_id is None:
                 raise WorkspaceError("select an activity before opening findings")
             self.view = View.FINDINGS
+            self.focus = 0
             return None
         if name == "help":
             return ("projects", "attention", "findings") + self.extensions.command_names
+        self._require_online()
         return self.extensions.invoke_command(
             name, ExtensionContext(self.client, self), arguments
         )
+
+    def open_extension_view(self, name: str, arguments: str = "") -> object:
+        self._require_online()
+        content = self.extensions.render_view(
+            name, ExtensionContext(self.client, self), arguments
+        )
+        self.extension_view_name = name
+        self.extension_view_content = content
+        self.view = View.EXTENSION
+        self.focus = 0
+        return content
+
+    def invoke_action(self, name: str, arguments: str = "") -> object:
+        self._require_online()
+        return self.extensions.invoke_action(
+            name, ExtensionContext(self.client, self), arguments
+        )
+
+    def invoke_selected_action(self) -> object:
+        item = next(
+            (
+                entry
+                for entry in self.attention
+                if entry.cursor == self.selected_attention
+                and entry.type in {"decision", "recovery"}
+            ),
+            None,
+        )
+        if item is None:
+            raise WorkspaceError("no recovery or decision action is selected")
+        return self.invoke_action(item.type, item.record_id)
+
+    def _require_online(self) -> None:
+        if self.connection_state != ConnectionState.CONNECTED or self.stale:
+            raise WorkspaceError(
+                "service command is unavailable while disconnected or stale"
+            )
+
+    def _complete_projects(
+        self,
+        initial: tuple[Project, ...],
+        cursor: str | None,
+        event_cursor: int,
+    ) -> tuple[Project, ...]:
+        items = list(initial)
+        seen_cursors: set[str] = set()
+        seen_ids = {item.project_id for item in initial}
+        while cursor is not None:
+            if cursor in seen_cursors:
+                raise WorkspaceError("project pagination cursor repeated")
+            seen_cursors.add(cursor)
+            response = self.client.get_json(
+                f"/projects?before={urllib.parse.quote(cursor, safe='')}&limit=100"
+            )
+            _same_event_cursor(response, event_cursor)
+            page = tuple(Project.parse(item) for item in _list(response, "data"))
+            if any(item.project_id in seen_ids for item in page):
+                raise WorkspaceError("project pagination repeated an entry")
+            items.extend(page)
+            seen_ids.update(item.project_id for item in page)
+            cursor = _optional_cursor(response, "next_cursor")
+        return tuple(items)
+
+    def _complete_attention(
+        self,
+        initial: tuple[AttentionItem, ...],
+        cursor: str | None,
+        event_cursor: int,
+    ) -> tuple[AttentionItem, ...]:
+        items = list(initial)
+        seen_cursors: set[str] = set()
+        seen_ids = {item.cursor for item in initial}
+        while cursor is not None:
+            if cursor in seen_cursors:
+                raise WorkspaceError("attention pagination cursor repeated")
+            seen_cursors.add(cursor)
+            response = self.client.get_json(
+                f"/attention?before={urllib.parse.quote(cursor, safe='')}&limit=100"
+            )
+            _same_event_cursor(response, event_cursor)
+            page = tuple(
+                AttentionItem.parse(item) for item in _list(response, "data")
+            )
+            if any(item.cursor in seen_ids for item in page):
+                raise WorkspaceError("attention pagination repeated an entry")
+            items.extend(page)
+            seen_ids.update(item.cursor for item in page)
+            cursor = _optional_cursor(response, "next_cursor")
+        return tuple(items)
 
     def _load_selected_project(self, *, preserve_activity: bool) -> None:
         assert self.selected_project_id is not None
@@ -444,16 +673,98 @@ class Workspace:
         path = f"/projects/{_segment(self.selected_project_id)}/conversation?limit=50"
         return path if before is None else f"{path}&before={before}"
 
+    def _reading_anchor(self) -> str | None:
+        if self.at_bottom or not self.messages:
+            return None
+        end = max(0, len(self.messages) - self.conversation_offset)
+        if end == 0:
+            return self.messages[0].message_id
+        return self.messages[end - 1].message_id
+
+    def _restore_reading_anchor(self, message_id: str | None) -> None:
+        if message_id is None:
+            return
+        for index, message in enumerate(self.messages):
+            if message.message_id == message_id:
+                self.conversation_offset = len(self.messages) - index - 1
+                return
+
+    def _choice_targets(self) -> tuple[FocusTarget, ...]:
+        detail = self.selected_attention_detail
+        choices = None if detail is None else detail.get("choices")
+        if not isinstance(choices, list):
+            return ()
+        targets: list[FocusTarget] = []
+        for index, choice in enumerate(choices):
+            if isinstance(choice, str) and choice:
+                targets.append(FocusTarget("choice", str(index), choice))
+            elif isinstance(choice, Mapping):
+                label = choice.get("label")
+                identity = choice.get("choice_id", choice.get("id", index))
+                if isinstance(label, str) and label:
+                    targets.append(FocusTarget("choice", str(identity), label))
+        return tuple(targets)
+
+    def _selected_action_target(self) -> FocusTarget | None:
+        item = next(
+            (
+                entry
+                for entry in self.attention
+                if entry.cursor == self.selected_attention
+                and entry.type in {"decision", "recovery"}
+            ),
+            None,
+        )
+        if item is None:
+            return None
+        return FocusTarget("action", item.record_id, item.subject)
+
+    def _move_focus(self, step: int, *, same_kind: bool) -> bool:
+        targets = self.focus_targets()
+        if not targets:
+            self.focus = 0
+            return False
+        self._bound_focus()
+        if not same_kind:
+            self.focus = min(max(0, self.focus + step), len(targets) - 1)
+            return True
+        kind = targets[self.focus].kind
+        candidate = self.focus + step
+        if 0 <= candidate < len(targets) and targets[candidate].kind == kind:
+            self.focus = candidate
+            return True
+        return kind in {"project", "activity", "attention", "choice"}
+
+    def _editor_focused(self) -> bool:
+        target = self.focused_target
+        return target is not None and target.kind == "editor"
+
+    def _focus_editor(self) -> None:
+        self._focus_target("editor", "input")
+
+    def _focus_target(self, kind: str, identity: str) -> None:
+        for index, target in enumerate(self.focus_targets()):
+            if target.kind == kind and target.identity == identity:
+                self.focus = index
+                return
+        self._bound_focus()
+
+    def _bound_focus(self) -> None:
+        targets = self.focus_targets()
+        self.focus = min(max(0, self.focus), max(0, len(targets) - 1))
+
     def _clear_project_context(self) -> None:
         self.selected_project_id = None
         self.selected_activity_id = None
         self.selected_attention = None
+        self.selected_attention_detail = None
         self.activities = ()
         self.messages = ()
         self.activity_detail = None
         self.conversation_cursor = None
         self.input.clear()
         self.view = View.PROJECTS
+        self.focus = 0
 
 
 def _message_page(
@@ -468,6 +779,36 @@ def _message_page(
     ):
         raise WorkspaceError("conversation next_cursor must be an integer or null")
     return messages, cursor_value, _integer(response, "event_cursor", minimum=0)
+
+
+def _find_detail(
+    detail: Mapping[str, object] | None,
+    collection: str,
+    identity_name: str,
+    identity: str,
+) -> Mapping[str, object] | None:
+    values = None if detail is None else detail.get(collection)
+    if not isinstance(values, list):
+        return None
+    for value in values:
+        if isinstance(value, Mapping) and value.get(identity_name) == identity:
+            return value
+    return None
+
+
+def _optional_cursor(value: Mapping[str, object], name: str) -> str | None:
+    result = value.get(name)
+    if result is None:
+        return None
+    if not isinstance(result, str) or not result:
+        raise WorkspaceError(f"{name} must be nonempty text or null")
+    return result
+
+
+def _same_event_cursor(value: Mapping[str, object], expected: int) -> None:
+    observed = _integer(value, "event_cursor", minimum=0)
+    if observed != expected:
+        raise WorkspaceError("workspace changed while loading its remaining pages")
 
 
 def _object(value: object, label: str) -> Mapping[str, object]:

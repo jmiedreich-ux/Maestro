@@ -34,6 +34,8 @@ class TerminalRenderer:
             lines.extend(self._attention(workspace))
         elif workspace.view == View.FINDINGS:
             lines.extend(self._findings(workspace))
+        elif workspace.view == View.EXTENSION:
+            lines.extend(self._extension(workspace))
         else:
             lines.extend(self._conversation(workspace, size.rows))
         lines.extend(self._input(workspace))
@@ -58,12 +60,13 @@ class TerminalRenderer:
             return ["No projects registered", "[Register project]"]
         lines = ["Projects"]
         for project in workspace.projects:
+            focus = _focus(workspace, "project", project.project_id)
             attention = (
                 f" | attention: {project.attention_count}"
                 if project.attention_count else ""
             )
             lines.append(
-                f"  {project.name} | {project.registration_status} | "
+                f"{focus} {project.name} | {project.registration_status} | "
                 f"{project.activity_state}{attention}"
             )
         return lines
@@ -75,8 +78,10 @@ class TerminalRenderer:
         lines = ["Attention"]
         names = {project.project_id: project.name for project in workspace.projects}
         for item in workspace.attention:
+            focus = _focus(workspace, "attention", item.cursor)
             lines.append(
-                f"  {names.get(item.project_id, item.project_id)} | {item.subject} "
+                f"{focus} {names.get(item.project_id, item.project_id)} | "
+                f"{item.subject} "
                 f"| {item.source} | {item.type}"
             )
         return lines
@@ -109,21 +114,56 @@ class TerminalRenderer:
         )
         if activity is None and len(workspace.activities) > 1:
             lines.append("Select an activity")
+            for candidate in workspace.activities:
+                focus = _focus(workspace, "activity", candidate.activity_id)
+                lines.append(f"{focus} {candidate.subject} | {candidate.state}")
         elif activity is not None:
             waiting = (
                 f" — {activity.waiting_reason}" if activity.waiting_reason else ""
             )
             lines.append(f"{activity.subject} | {activity.state}{waiting}")
+        detail = workspace.selected_attention_detail
+        if detail is not None:
+            prompt = detail.get("prompt")
+            label = detail.get("label")
+            subject = detail.get("subject")
+            if isinstance(prompt, str):
+                lines.append(f"Question: {prompt}")
+            elif isinstance(label, str):
+                lines.append(f"Action: {label}")
+            elif isinstance(subject, str):
+                lines.append(f"Question: {subject}")
+            for target in workspace.focus_targets():
+                if target.kind in {"choice", "action"}:
+                    lines.append(
+                        f"{_focus(workspace, target.kind, target.identity)} "
+                        f"{target.label}"
+                    )
         if workspace.conversation_cursor is not None:
-            lines.append("Load earlier messages")
+            lines.append(
+                f"{_focus(workspace, 'control', 'load-earlier')} "
+                "Load earlier messages"
+            )
         available = max(1, rows - 9)
         end = max(0, len(workspace.messages) - workspace.conversation_offset)
         start = max(0, end - available)
         for message in workspace.messages[start:end]:
             lines.append(f"{message.source}: {message.text}")
         if workspace.new_messages:
-            lines.append("New messages")
+            lines.append(
+                f"{_focus(workspace, 'control', 'new-messages')} New messages"
+            )
         return lines
+
+    @staticmethod
+    def _extension(workspace: Workspace) -> list[str]:
+        title = workspace.extension_view_name or "Extension"
+        content = workspace.extension_view_content
+        if isinstance(content, str):
+            rendered = content.splitlines() or [""]
+        else:
+            rendered = [str(content)]
+        return [title] + rendered
 
     @staticmethod
     def _input(workspace: Workspace) -> list[str]:
@@ -134,4 +174,13 @@ class TerminalRenderer:
         else:
             context = "No project selected — commands only"
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
-        return [f"Input | {context}"] + [f"> {line}" for line in text_lines]
+        focus = _focus(workspace, "editor", "input")
+        return [f"{focus} Input | {context}"] + [f"> {line}" for line in text_lines]
+
+
+def _focus(workspace: Workspace, kind: str, identity: str) -> str:
+    target = workspace.focused_target
+    return ">" if target is not None and (target.kind, target.identity) == (
+        kind,
+        identity,
+    ) else " "

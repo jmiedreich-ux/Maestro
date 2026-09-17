@@ -53,6 +53,14 @@ class ExtensionRegistry:
     def command_names(self) -> tuple[str, ...]:
         return tuple(sorted(self._commands))
 
+    @property
+    def view_names(self) -> tuple[str, ...]:
+        return tuple(sorted(self._views))
+
+    @property
+    def action_names(self) -> tuple[str, ...]:
+        return tuple(sorted(self._actions))
+
     def invoke_command(
         self, name: str, context: ExtensionContext, arguments: str = ""
     ) -> object:
