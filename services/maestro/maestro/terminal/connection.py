@@ -259,6 +259,7 @@ class ServiceClient:
     ) -> None:
         self.configuration = configuration
         self._opener = opener or urllib.request.build_opener(_NoRedirectHandler())
+        self._event_response: BinaryIO | None = None
 
     def workspace(self, *, connect_timeout: bool = False) -> Mapping[str, object]:
         timeout = CONNECT_TIMEOUT_SECONDS if connect_timeout else REQUEST_TIMEOUT_SECONDS
@@ -297,7 +298,14 @@ class ServiceClient:
         response = self._open(
             "GET", "/events", None, EVENT_SILENCE_TIMEOUT_SECONDS, headers
         )
+        self._event_response = response
         return _event_iterator(response, last_event_id=last_event_id)
+
+    def close_event_stream(self) -> None:
+        response = self._event_response
+        self._event_response = None
+        if response is not None:
+            response.close()
 
     def _json_request(
         self, method: str, path: str, body: bytes | None, timeout: int
@@ -447,6 +455,9 @@ class TerminalConnection:
         """Reload settings and notify consumers when service context must clear."""
         with self._attempt_lock:
             previous_url = self.configuration.service_url
+            close_events = getattr(self.client, "close_event_stream", None)
+            if close_events is not None:
+                close_events()
             self.configuration = load_configuration(
                 environ=self._environ, home=self._home
             )
@@ -471,6 +482,9 @@ class TerminalConnection:
         """Cancel pending retry work without affecting the service."""
         with self._attempt_lock:
             self._cancel_scheduled_locked()
+            close_events = getattr(self.client, "close_event_stream", None)
+            if close_events is not None:
+                close_events()
 
     def _schedule_retry_locked(self, message: str) -> None:
         if self._retry_index is None:
@@ -576,7 +590,7 @@ def _event_iterator(
             while True:
                 try:
                     raw = response.readline()
-                except (TimeoutError, OSError) as error:
+                except (TimeoutError, OSError, ValueError) as error:
                     raise ConnectionUnavailable(
                         f"event stream was interrupted: {error}"
                     ) from error
