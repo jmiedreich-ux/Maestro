@@ -46,6 +46,7 @@ No other repository write is permitted by this record.
 | `services/maestro/maestro/terminal/questions.py` | Python | Assigned behavior and integration contract |
 | `services/maestro/maestro/terminal/extensions.py` | Python | Minimal generic extension input/choice provider hook for linked questions |
 | `services/maestro/maestro/terminal/workspace.py` | Python | Minimal generic workspace routing to that provider hook |
+| `services/maestro/maestro/service/main.py` | Python | Minimal installed-service composition of linked-question publication, reads, and answer delivery |
 
 Non-JSON deliverables use schema reference null. JSON process schemas implement the named architecture definitions and installation mapping, not a private alternate format. No optional hidden output or broad directory permission is inferred.
 
