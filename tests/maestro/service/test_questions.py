@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -13,6 +14,11 @@ from maestro.service.authentication import (
     token_digest,
 )
 from maestro.service.http import RequestHTTPServer
+from maestro.service.main import (
+    InstalledServiceApplication,
+    InstalledServiceServer,
+    ServiceSettings,
+)
 from maestro.service.questions import (
     AnswerChoice,
     DeliveredAnswer,
@@ -130,7 +136,7 @@ class LinkedQuestionsTest(unittest.TestCase):
                 owner_id="owner-local", token_sha256=token_digest(OWNER_TOKEN)
             )
         )
-        registry = OperationRegistry((self.questions.operation_handler,))
+        registry = OperationRegistry(self.questions.operation_handlers)
         requests = RequestService(self.database, authenticator, registry)
         boundary = QuestionRequestService(requests, self.questions)
         self.server = RequestHTTPServer(
@@ -229,6 +235,40 @@ class LinkedQuestionsTest(unittest.TestCase):
             "question_id": question_id,
             "expected_version": expected_version,
             "payload": {"text": text, "choice_id": choice_id},
+        }
+
+    @staticmethod
+    def _publish_envelope(
+        request_id: str = "request-publish",
+        *,
+        question_id: str = "question-published",
+        project_id: str | None = "project-one",
+        activity_id: str | None = "activity-one",
+    ) -> dict[str, object]:
+        return {
+            "request_id": request_id,
+            "operation": "question.publish",
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "question_id": question_id,
+            "expected_version": 0,
+            "payload": {
+                "subject": "Choose a source",
+                "prompt": "Which source should be used?",
+                "requester": "generic-process",
+                "recipient": "generic-process",
+                "choices": [
+                    {
+                        "choice_id": "main",
+                        "label": "Use main",
+                        "tradeoff": "Uses the current default branch.",
+                        "recommendation_reason": "Matches the registered source.",
+                    }
+                ],
+                "allow_free_text": True,
+                "original_question_id": None,
+                "previous_answer_id": None,
+            },
         }
 
     def test_real_workspace_selects_choice_and_submits_with_clarification(self) -> None:
@@ -541,6 +581,152 @@ class LinkedQuestionsTest(unittest.TestCase):
 
         self.assertEqual(400, malformed.exception.status_code)
         self.assertEqual("invalid_request", malformed.exception.code)
+
+    def test_publish_parser_rejects_missing_context_and_malformed_choices(self) -> None:
+        with self.assertRaises(ServiceError) as missing:
+            self.client.submit(
+                self._publish_envelope(
+                    "request-publish-missing",
+                    project_id=None,
+                    activity_id=None,
+                )
+            )
+        self.assertEqual(400, missing.exception.status_code)
+        self.assertEqual("invalid_request", missing.exception.code)
+
+        malformed = self._publish_envelope("request-publish-malformed")
+        payload = malformed["payload"]
+        assert isinstance(payload, dict)
+        choices = payload["choices"]
+        assert isinstance(choices, list)
+        choice = choices[0]
+        assert isinstance(choice, dict)
+        choice["unknown"] = True
+        with self.assertRaises(ServiceError) as rejected:
+            self.client.submit(malformed)
+        self.assertEqual(400, rejected.exception.status_code)
+        self.assertEqual("invalid_request", rejected.exception.code)
+
+
+class InstalledQuestionCompositionTest(unittest.TestCase):
+    def test_installed_public_api_publishes_reads_answers_and_reconciles(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        workspace_root = root / "workspaces"
+        workspace_root.mkdir()
+        settings = ServiceSettings(
+            storage=StorageSettings(path=root / "maestro.sqlite3"),
+            owner=OwnerAuthenticationSettings(
+                owner_id="owner-local", token_sha256=token_digest(OWNER_TOKEN)
+            ),
+            workspace_root=workspace_root,
+        )
+        application = InstalledServiceApplication(settings)
+        with application.database.transaction() as transaction:
+            application.activities.create_project(
+                transaction,
+                ProjectRecord("project-installed", "Installed project", "ready", 1),
+            )
+            application.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-installed",
+                    "project-installed",
+                    "generic",
+                    "Ask a generic question",
+                    "waiting",
+                    1,
+                ),
+            )
+
+        server = InstalledServiceServer(application, "127.0.0.1", 0)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        def stop() -> None:
+            server.shutdown()
+            thread.join()
+
+        self.addCleanup(stop)
+        host, port = server.address
+        config = root / "config"
+        config.mkdir(mode=0o700)
+        token = config / "owner.token"
+        token.write_text(OWNER_TOKEN, encoding="ascii")
+        token.chmod(0o600)
+        client = ServiceClient(
+            ConnectionConfiguration(
+                f"http://{host}:{port}", token, config / "cli.toml"
+            )
+        )
+        publish = LinkedQuestionsTest._publish_envelope(
+            project_id="project-installed",
+            activity_id="activity-installed",
+        )
+
+        missing_activity = LinkedQuestionsTest._publish_envelope(
+            "request-publish-missing-activity",
+            question_id="question-missing-activity",
+            project_id="project-installed",
+            activity_id="activity-missing",
+        )
+        with self.assertRaises(ServiceError) as missing:
+            client.submit(missing_activity)
+        self.assertEqual(404, missing.exception.status_code)
+        self.assertEqual("activity_not_found", missing.exception.code)
+
+        published = client.submit(publish)
+        question = client.get_json("/questions/question-published")["data"]
+        answer = {
+            "request_id": "request-installed-answer",
+            "operation": "question.answer",
+            "project_id": "project-installed",
+            "activity_id": "activity-installed",
+            "question_id": "question-published",
+            "expected_version": 1,
+            "payload": {"text": "Use main", "choice_id": "main"},
+        }
+        lost_response = LoseFirstResponseClient(client)
+        with self.assertRaises(ConnectionUnavailable):
+            lost_response.submit(answer)
+        reconciled = client.get_json("/requests/request-installed-answer")
+        retried = client.submit(answer)
+        invalid_follow_up = LinkedQuestionsTest._publish_envelope(
+            "request-invalid-follow-up",
+            question_id="question-invalid-follow-up",
+            project_id="project-installed",
+            activity_id="activity-installed",
+        )
+        follow_up_payload = invalid_follow_up["payload"]
+        assert isinstance(follow_up_payload, dict)
+        follow_up_payload["original_question_id"] = "question-published"
+        follow_up_payload["previous_answer_id"] = "answer-missing"
+        with self.assertRaises(ServiceError) as invalid_link:
+            client.submit(invalid_follow_up)
+
+        self.assertEqual("completed", published["receipt"]["status"])
+        self.assertEqual("question-published", question["question_id"])
+        self.assertEqual("awaiting_answer", question["status"])
+        self.assertEqual(reconciled, retried)
+        self.assertEqual("pending", retried["receipt"]["result"]["delivery_status"])
+        self.assertEqual(409, invalid_link.exception.status_code)
+        self.assertEqual("invalid_question_link", invalid_link.exception.code)
+        with application.database.read_connection() as connection:
+            counts = connection.execute(
+                """
+                SELECT
+                  (SELECT COUNT(*) FROM service_questions),
+                  (SELECT COUNT(*) FROM service_question_answers),
+                  (SELECT COUNT(*) FROM request_receipts),
+                  (SELECT COUNT(*) FROM outbox_events)
+                """
+            ).fetchone()
+            delivery = connection.execute(
+                "SELECT state, attempts FROM service_question_deliveries"
+            ).fetchone()
+        self.assertEqual((1, 1, 2, 2), counts)
+        self.assertEqual(("pending", 0), delivery)
 
 
 if __name__ == "__main__":

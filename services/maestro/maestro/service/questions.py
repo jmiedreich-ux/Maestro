@@ -24,7 +24,12 @@ from maestro.foundation import (
     positive_version,
 )
 
-from .activities import ActivityRepository, ConversationRecord, QuestionRecord
+from .activities import (
+    ActivityRepository,
+    ConversationRecord,
+    QuestionRecord,
+    RecordReferenceError,
+)
 from .authentication import HTTPRejection
 from .http import HTTPResponse, RequestHTTPApplication
 from .registry import OperationHandler, OperationResult, PreparedOperation
@@ -172,6 +177,120 @@ class QuestionService:
     @property
     def operation_handler(self) -> OperationHandler:
         return OperationHandler("question.answer", self.prepare_answer)
+
+    @property
+    def publish_operation_handler(self) -> OperationHandler:
+        return OperationHandler("question.publish", self.prepare_publish)
+
+    @property
+    def operation_handlers(self) -> tuple[OperationHandler, ...]:
+        return (self.publish_operation_handler, self.operation_handler)
+
+    def prepare_publish(self, request: RequestEnvelope) -> PreparedOperation:
+        if (
+            request.project_id is None
+            or request.activity_id is None
+            or request.question_id is None
+        ):
+            raise ValueError(
+                "question.publish requires project, activity, and question context"
+            )
+        if request.expected_version != 0:
+            raise ValueError("question.publish expected_version must be zero")
+        required = {
+            "subject",
+            "prompt",
+            "requester",
+            "recipient",
+            "choices",
+            "allow_free_text",
+            "original_question_id",
+            "previous_answer_id",
+        }
+        if set(request.payload) != required:
+            raise ValueError("question.publish payload fields do not match the contract")
+        choices_value = request.payload["choices"]
+        if not isinstance(choices_value, list):
+            raise ValueError("question.publish choices must be a list")
+        choices: list[AnswerChoice] = []
+        choice_fields = {
+            "choice_id",
+            "label",
+            "tradeoff",
+            "recommendation_reason",
+        }
+        for value in choices_value:
+            if not isinstance(value, Mapping) or set(value) != choice_fields:
+                raise ValueError(
+                    "question.publish choice fields do not match the contract"
+                )
+            choices.append(
+                AnswerChoice(
+                    choice_id=value["choice_id"],  # type: ignore[arg-type]
+                    label=value["label"],  # type: ignore[arg-type]
+                    tradeoff=value["tradeoff"],  # type: ignore[arg-type]
+                    recommendation_reason=value["recommendation_reason"],  # type: ignore[arg-type]
+                )
+            )
+        question = LinkedQuestion(
+            question_id=request.question_id,
+            project_id=request.project_id,
+            activity_id=request.activity_id,
+            subject=request.payload["subject"],  # type: ignore[arg-type]
+            prompt=request.payload["prompt"],  # type: ignore[arg-type]
+            requester=request.payload["requester"],  # type: ignore[arg-type]
+            recipient=request.payload["recipient"],  # type: ignore[arg-type]
+            choices=tuple(choices),
+            allow_free_text=request.payload["allow_free_text"],  # type: ignore[arg-type]
+            original_question_id=request.payload["original_question_id"],  # type: ignore[arg-type]
+            previous_answer_id=request.payload["previous_answer_id"],  # type: ignore[arg-type]
+        )
+        self._validate_question(question)
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            if next_version != 1:
+                raise RequestRejection(
+                    409,
+                    "question_already_exists",
+                    "the question identity is already in use",
+                    fields={"question_id": question.question_id},
+                )
+            try:
+                self.publish(transaction, question)
+            except RecordReferenceError as error:
+                status = 404 if error.code.endswith("_not_found") else 409
+                raise RequestRejection(
+                    status,
+                    error.code,
+                    str(error),
+                    fields=error.fields,
+                ) from error
+            except ValueError as error:
+                raise RequestRejection(
+                    409,
+                    "invalid_question_link",
+                    str(error),
+                    fields={"question_id": question.question_id},
+                ) from error
+            return OperationResult(
+                data={
+                    "question_id": question.question_id,
+                    "question_status": (
+                        "clarification_required"
+                        if question.original_question_id is not None
+                        else "awaiting_answer"
+                    ),
+                },
+                project_id=question.project_id,
+                activity_id=question.activity_id,
+            )
+
+        return PreparedOperation(
+            entity_id=question.question_id,
+            event_type="question.published",
+            event_data={"question_id": question.question_id},
+            apply=apply,
+        )
 
     def publish(self, transaction: Transaction, question: LinkedQuestion) -> None:
         """Publish a visible question and its answer contract atomically."""
