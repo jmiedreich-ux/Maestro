@@ -1,6 +1,6 @@
 # Manual development milestones
 
-Version 3. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). These are manual draft contributions, not service-allocated milestone identities, final QA plans, runtime confirmation or authorization to start Execution.
+Confirmed version 4. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). The Owner confirmed all seven development milestones and their 42 packets on 2026-09-17. These remain manual planning contributions, not service-allocated milestone identities, runtime QA-plan confirmation or authorization to start Execution.
 
 ## Ordering and integration boundary
 
