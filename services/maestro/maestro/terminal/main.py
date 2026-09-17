@@ -52,6 +52,7 @@ class TerminalApplication:
         self._stopping = threading.Event()
         self._event_generation = 0
         self._explicit_connect = False
+        self._exit_warning_text: str | None = None
         self.connection.subscribe(self._handle_status)
 
     def run(self) -> int:
@@ -77,39 +78,58 @@ class TerminalApplication:
 
         try:
             command_candidate: str | None = ""
-            with _terminal_input(self.input):
-                for key in _keys(self.input):
-                    if len(key) == 1:
-                        if command_candidate == "" and key == "/":
-                            command_candidate = "/"
-                        elif (
-                            command_candidate is not None
-                            and command_candidate.startswith("/")
-                        ):
-                            command_candidate += key
+            bracketed_paste = all(
+                getattr(stream, "isatty", lambda: False)()
+                for stream in (self.input, self.output)
+            )
+            if bracketed_paste:
+                self.output.write("\x1b[?2004h")
+                self.output.flush()
+            try:
+                with _terminal_input(self.input):
+                    for key in _keys(self.input):
+                        if key == "PASTE_END":
+                            command_candidate = ""
+                            continue
+                        if len(key) == 1:
+                            if command_candidate == "" and key == "/":
+                                command_candidate = "/"
+                            elif (
+                                command_candidate is not None
+                                and command_candidate.startswith("/")
+                            ):
+                                command_candidate += key
+                            else:
+                                command_candidate = None
+                        elif key == "BACKSPACE" and command_candidate:
+                            command_candidate = command_candidate[:-1]
+                        elif key != "ENTER":
+                            command_candidate = ""
+                        if key == "ENTER":
+                            command = command_candidate or ""
+                            command_candidate = ""
                         else:
-                            command_candidate = None
-                    elif key == "BACKSPACE" and command_candidate:
-                        command_candidate = command_candidate[:-1]
-                    elif key != "ENTER":
-                        command_candidate = ""
-                    if key == "ENTER":
-                        command = command_candidate or ""
-                        command_candidate = ""
-                    else:
-                        command = ""
-                    if key == "ENTER" and self._local_command(command):
-                        if self._stopping.is_set():
-                            return 0
-                        continue
-                    try:
-                        with self._lock:
-                            self.workspace.handle_key(key)
-                            self._render_locked()
-                    except (TerminalConnectionError, WorkspaceError, ValueError) as error:
-                        with self._lock:
-                            self.workspace.error = str(error)
-                            self._render_locked()
+                            command = ""
+                        if key == "ENTER" and self._local_command(command):
+                            if self._stopping.is_set():
+                                return 0
+                            continue
+                        try:
+                            with self._lock:
+                                self.workspace.handle_key(key)
+                                self._render_locked()
+                        except (
+                            TerminalConnectionError,
+                            WorkspaceError,
+                            ValueError,
+                        ) as error:
+                            with self._lock:
+                                self.workspace.error = str(error)
+                                self._render_locked()
+            finally:
+                if bracketed_paste:
+                    self.output.write("\x1b[?2004l")
+                    self.output.flush()
             return 0
         finally:
             self._stopping.set()
@@ -120,18 +140,26 @@ class TerminalApplication:
         command = command.strip()
         if command not in {"/exit", "/help", "/retry"}:
             return False
+        self._remove_local_command(command)
         if command == "/exit":
+            unsent = self.workspace.input.text
+            if unsent and self._exit_warning_text != unsent:
+                self._exit_warning_text = unsent
+                self._write(
+                    "Unsent text remains. Enter /exit again to discard it and exit."
+                )
+                self._render()
+                return True
             self.workspace.input.clear()
             self._stopping.set()
             self._write("Exiting Maestro; service work continues.")
             return True
+        self._exit_warning_text = None
         if command == "/help":
-            self.workspace.input.clear()
             self.output.write(OFFLINE_HELP)
             self.output.flush()
             self._render()
             return True
-        self.workspace.input.clear()
         try:
             self._explicit_connect = True
             self.connection.retry_now()
@@ -142,6 +170,15 @@ class TerminalApplication:
         finally:
             self._explicit_connect = False
         return True
+
+    def _remove_local_command(self, command: str) -> None:
+        text = self.workspace.input.text
+        if not text.endswith(command):
+            return
+        self.workspace.input.text = text[: -len(command)]
+        self.workspace.input.cursor = min(
+            self.workspace.input.cursor, len(self.workspace.input.text)
+        )
 
     def _handle_status(self, status: ConnectionStatus) -> None:
         retry = (
@@ -257,13 +294,48 @@ def _keys(stream: TextIO):
             yield "BACKSPACE"
         elif character == "\x1b":
             suffix = stream.read(2)
-            yield {
-                "[A": "UP",
-                "[B": "DOWN",
-                "[Z": "SHIFT+TAB",
-            }.get(suffix, "ESCAPE")
+            if suffix == "[2":
+                remainder = stream.read(3)
+                if remainder == "00~":
+                    yield from _paste_keys(stream)
+                else:
+                    yield "ESCAPE"
+            elif suffix == "[1" and stream.read(4) == "3;2u":
+                yield "SHIFT+ENTER"
+            else:
+                yield {
+                    "[A": "UP",
+                    "[B": "DOWN",
+                    "[Z": "SHIFT+TAB",
+                }.get(suffix, "ESCAPE")
         else:
             yield character
+
+
+def _paste_keys(stream: TextIO):
+    terminator = "\x1b[201~"
+    content = ""
+    while True:
+        character = stream.read(1)
+        if character == "":
+            break
+        content += character
+        if content.endswith(terminator):
+            content = content[: -len(terminator)]
+            break
+    index = 0
+    while index < len(content):
+        value = content[index]
+        if value == "\r":
+            if index + 1 < len(content) and content[index + 1] == "\n":
+                index += 1
+            yield "SHIFT+ENTER"
+        elif value == "\n":
+            yield "SHIFT+ENTER"
+        else:
+            yield value
+        index += 1
+    yield "PASTE_END"
 
 
 def main(

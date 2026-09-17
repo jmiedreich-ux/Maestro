@@ -4,6 +4,7 @@ import io
 import tempfile
 import threading
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 
 from maestro.foundation import StorageSettings
@@ -32,10 +33,12 @@ class AnswerClient:
         *,
         lose_first_answer: bool = False,
         stale_first_answer: bool = False,
+        before_events: Callable[[], None] | None = None,
     ) -> None:
         self.client = ServiceClient(configuration)
         self.lose_first_answer = lose_first_answer
         self.stale_first_answer = stale_first_answer
+        self.before_events = before_events
 
     def workspace(self, *, connect_timeout: bool = False):
         return self.client.workspace(connect_timeout=connect_timeout)
@@ -44,6 +47,9 @@ class AnswerClient:
         return self.client.get_json(path, timeout=timeout)
 
     def events(self, last_event_id: str | None = None):
+        if self.before_events is not None:
+            callback, self.before_events = self.before_events, None
+            callback()
         return self.client.events(last_event_id)
 
     def close_event_stream(self) -> None:
@@ -166,7 +172,9 @@ class InstalledTerminalEntryTest(unittest.TestCase):
             lambda configuration: AnswerClient(
                 configuration, lose_first_answer=True
             ),
-            "\t/attention\n\nUse the published source\n\n/exit\n",
+            "\t/attention\n\n"
+            "\x1b[200~Use the published source\nwith supporting detail\x1b[201~"
+            "\n\n/exit\n",
         )
 
         self.assertIn("Maestro | No project selected | connected", output)
@@ -179,7 +187,52 @@ class InstalledTerminalEntryTest(unittest.TestCase):
             answer = connection.execute(
                 "SELECT text FROM service_question_answers"
             ).fetchone()
-        self.assertEqual(("Use the published source",), answer)
+        self.assertEqual(
+            ("Use the published source\nwith supporting detail",), answer
+        )
+
+    def test_entrypoint_warns_before_discarding_unsent_pasted_text(self) -> None:
+        output = self.run_terminal(
+            lambda configuration: AnswerClient(
+                configuration, before_events=self.publish_additional_question
+            ),
+            "\t/attention\n\n"
+            "\x1b[200~Unsent first line\nUnsent second line\x1b[201~"
+            "/exit\n/exit\n",
+        )
+
+        warning = "Unsent text remains. Enter /exit again to discard it and exit."
+        self.assertIn(warning, output)
+        self.assertLess(output.index(warning), output.index("service work continues"))
+        self.assertIn("Unsent first line", output)
+        self.assertIn("Unsent second line", output)
+        with self.application.database.read_connection() as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM service_question_answers"
+            ).fetchone()
+        self.assertEqual((0,), count)
+
+    def publish_additional_question(self) -> None:
+        self.seed.submit(
+            {
+                "request_id": "publish-additional-question",
+                "operation": "question.publish",
+                "project_id": "project-terminal",
+                "activity_id": "activity-terminal",
+                "question_id": "question-additional",
+                "expected_version": 0,
+                "payload": {
+                    "subject": "Additional question",
+                    "prompt": "This update exercises the terminal event stream.",
+                    "requester": "generic-process",
+                    "recipient": "generic-process",
+                    "choices": [],
+                    "allow_free_text": True,
+                    "original_question_id": None,
+                    "previous_answer_id": None,
+                },
+            }
+        )
 
     def test_entrypoint_renders_stale_answer_failure_without_rerouting(self) -> None:
         output = self.run_terminal(
