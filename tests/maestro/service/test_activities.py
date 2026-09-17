@@ -377,6 +377,21 @@ class ProjectActivityRecordsTest(unittest.TestCase):
                         1,
                     ),
                 )
+            self.records.create_project(
+                transaction,
+                ProjectRecord("project-working", "Z Working", "registered", 1),
+            )
+            self.records.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-working",
+                    "project-working",
+                    "execution",
+                    "Working activity",
+                    "working",
+                    1,
+                ),
+            )
             for number in range(excess):
                 self.records.create_question(
                     transaction,
@@ -428,6 +443,7 @@ class ProjectActivityRecordsTest(unittest.TestCase):
         workspace = self.reader.workspace()
         self.assertEqual(MAX_PAGE_SIZE, len(workspace.projects))
         self.assertEqual(MAX_PAGE_SIZE, len(workspace.attention))
+        self.assertEqual("project-one", workspace.projects[0]["project_id"])
         self.assertIsNotNone(workspace.project_next_cursor)
         self.assertIsNotNone(workspace.attention_next_cursor)
         self.assertEqual(
@@ -436,11 +452,17 @@ class ProjectActivityRecordsTest(unittest.TestCase):
         remaining_projects = self.reader.projects(
             before=workspace.project_next_cursor, limit=MAX_PAGE_SIZE
         )
-        self.assertEqual(2, len(remaining_projects.data))
-        self.assertTrue(
-            {item["project_id"] for item in workspace.projects}.isdisjoint(
-                item["project_id"] for item in remaining_projects.data
-            )
+        self.assertEqual(3, len(remaining_projects.data))
+        project_ids = [
+            item["project_id"]
+            for item in workspace.projects + remaining_projects.data
+        ]
+        self.assertEqual(len(project_ids), len(set(project_ids)))
+        self.assertEqual(
+            ["project-one"]
+            + ["project-working"]
+            + [f"project-bulk-{number:03d}" for number in range(MAX_PAGE_SIZE + 1)],
+            project_ids,
         )
         next_attention = self.reader.attention(
             before=workspace.attention_next_cursor, limit=MAX_PAGE_SIZE

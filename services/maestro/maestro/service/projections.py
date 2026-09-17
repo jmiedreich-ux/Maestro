@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import sqlite3
 from dataclasses import dataclass
+
 from maestro.foundation import ContractError, Database, canonical_identifier
 
 
@@ -52,7 +55,7 @@ class WorkspaceSnapshot:
     projects: tuple[dict[str, object], ...]
     attention: tuple[dict[str, object], ...]
     event_cursor: int
-    project_next_cursor: int | None
+    project_next_cursor: str | None
     attention_next_cursor: str | None
 
     def as_dict(self) -> dict[str, object]:
@@ -97,15 +100,17 @@ class ProjectionReader:
     def projects(
         self,
         *,
-        before: int | None = None,
+        before: str | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
     ) -> ProjectionPage:
-        before = _integer_cursor(before)
+        project_cursor = _decode_project_cursor(before)
         limit = _page_size(limit)
         with self.database.read_connection() as connection:
             connection.execute("BEGIN")
             event_cursor = _event_cursor(connection)
-            items, next_cursor = _project_page(connection, before=before, limit=limit)
+            items, next_cursor = _project_page(
+                connection, before=project_cursor, limit=limit
+            )
         return ProjectionPage(items, event_cursor, next_cursor)
 
     def attention(
@@ -417,33 +422,65 @@ def _require_activity(
 
 
 def _project_page(
-    connection: sqlite3.Connection, *, before: int | None, limit: int
-) -> tuple[tuple[dict[str, object], ...], int | None]:
-    boundary = "" if before is None else "WHERE rowid < ?"
-    parameters: tuple[object, ...] = () if before is None else (before,)
+    connection: sqlite3.Connection,
+    *,
+    before: tuple[int, str, str] | None,
+    limit: int,
+) -> tuple[tuple[dict[str, object], ...], str | None]:
+    boundary = ""
+    parameters: tuple[object, ...] = ()
+    if before is not None:
+        priority, name, project_id = before
+        boundary = """
+            WHERE priority > ?
+               OR (priority = ? AND name COLLATE NOCASE > ?)
+               OR (priority = ? AND name = ? COLLATE NOCASE AND project_id > ?)
+        """
+        parameters = (priority, priority, name, priority, name, project_id)
     rows = connection.execute(
         f"""
+        WITH summaries AS (
+            SELECT rowid, project_id, name, registration_status, version,
+                   (SELECT COUNT(*) FROM service_questions AS q
+                    WHERE q.project_id = service_projects.project_id
+                      AND q.status IN (
+                          'awaiting_answer', 'clarification_required'
+                      ))
+                   +
+                   (SELECT COUNT(*) FROM service_activity_actions AS aa
+                    WHERE aa.project_id = service_projects.project_id
+                      AND aa.kind IN ('decision', 'recovery')) AS attention_count,
+                   (SELECT COUNT(*) FROM service_activities AS a
+                    WHERE a.project_id = service_projects.project_id
+                      AND a.state NOT IN ('cancelled', 'completed', 'failed'))
+                       AS current_activity_count
+            FROM service_projects
+        ), ranked AS (
+            SELECT *,
+                   CASE
+                       WHEN attention_count > 0 THEN 0
+                       WHEN current_activity_count > 0 THEN 1
+                       ELSE 2
+                   END AS priority
+            FROM summaries
+        )
         SELECT rowid, project_id, name, registration_status, version,
-               (SELECT COUNT(*) FROM service_questions AS q
-                WHERE q.project_id = service_projects.project_id
-                  AND q.status IN ('awaiting_answer', 'clarification_required'))
-               +
-               (SELECT COUNT(*) FROM service_activity_actions AS aa
-                WHERE aa.project_id = service_projects.project_id
-                  AND aa.kind IN ('decision', 'recovery')) AS attention_count,
-               (SELECT COUNT(*) FROM service_activities AS a
-                WHERE a.project_id = service_projects.project_id
-                  AND a.state NOT IN ('cancelled', 'completed', 'failed'))
-                   AS current_activity_count
-        FROM service_projects {boundary}
-        ORDER BY rowid DESC LIMIT ?
+               attention_count, current_activity_count, priority
+        FROM ranked {boundary}
+        ORDER BY priority, name COLLATE NOCASE, project_id
+        LIMIT ?
         """,
         parameters + (limit + 1,),
     ).fetchall()
     selected = rows[:limit]
     projects = tuple(_project_summary(connection, row) for row in selected)
-    projects = tuple(sorted(projects, key=_project_order))
-    next_cursor = int(selected[-1][0]) if len(rows) > limit and selected else None
+    next_cursor = (
+        _encode_project_cursor(
+            int(selected[-1][7]), str(selected[-1][2]), str(selected[-1][1])
+        )
+        if len(rows) > limit and selected
+        else None
+    )
     return projects, next_cursor
 
 
@@ -534,16 +571,6 @@ def _attention_page(
     return items, next_cursor
 
 
-def _project_order(project: dict[str, object]) -> tuple[object, ...]:
-    if int(project["attention_count"]) > 0:
-        group = 0
-    elif int(project["current_activity_count"]) > 0:
-        group = 1
-    else:
-        group = 2
-    return (group, str(project["name"]).casefold(), str(project["project_id"]))
-
-
 def _activity(row: tuple[object, ...]) -> dict[str, object]:
     return {
         "activity_id": str(row[1]),
@@ -620,14 +647,45 @@ def _identifier(value: str, field: str) -> str:
         raise ProjectionError("invalid_context", str(error), field=field) from error
 
 
-def _integer_cursor(value: int | None) -> int | None:
-    if value is not None and (
-        isinstance(value, bool) or not isinstance(value, int) or value < 1
+def _encode_project_cursor(priority: int, name: str, project_id: str) -> str:
+    encoded = json.dumps(
+        [priority, name, project_id],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    token = base64.urlsafe_b64encode(encoded).decode("ascii").rstrip("=")
+    return f"project-page.{token}"
+
+
+def _decode_project_cursor(value: str | None) -> tuple[int, str, str] | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.startswith("project-page."):
+        raise ProjectionError("invalid_cursor", "project cursor is invalid")
+    token = value.removeprefix("project-page.")
+    try:
+        padding = "=" * (-len(token) % 4)
+        decoded = base64.b64decode(
+            token + padding, altchars=b"-_", validate=True
+        ).decode("utf-8")
+        cursor = json.loads(decoded)
+    except (ValueError, UnicodeError, json.JSONDecodeError) as error:
+        raise ProjectionError("invalid_cursor", "project cursor is invalid") from error
+    if (
+        not isinstance(cursor, list)
+        or len(cursor) != 3
+        or isinstance(cursor[0], bool)
+        or cursor[0] not in {0, 1, 2}
+        or not isinstance(cursor[1], str)
+        or not cursor[1]
+        or not isinstance(cursor[2], str)
     ):
-        raise ProjectionError(
-            "invalid_cursor", "before cursor must be a positive integer"
-        )
-    return value
+        raise ProjectionError("invalid_cursor", "project cursor is invalid")
+    try:
+        project_id = canonical_identifier(cursor[2], "project cursor identity")
+    except ContractError as error:
+        raise ProjectionError("invalid_cursor", "project cursor is invalid") from error
+    return int(cursor[0]), cursor[1], project_id
 
 
 def _page_size(value: int) -> int:
