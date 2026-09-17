@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Protocol
 
 from maestro.service.authentication import (
     CredentialProtectionError,
@@ -94,9 +94,23 @@ class SSEEvent:
     data: object
 
 
+class ScheduledCall(Protocol):
+    def cancel(self) -> None: ...
+
+
+Scheduler = Callable[[float, Callable[[], None]], ScheduledCall]
+
+
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
         return None
+
+
+def _schedule_timer(delay: float, callback: Callable[[], None]) -> ScheduledCall:
+    timer = threading.Timer(delay, callback)
+    timer.daemon = True
+    timer.start()
+    return timer
 
 
 def load_configuration(
@@ -176,21 +190,49 @@ def validate_service_url(value: str) -> str:
 
 def load_owner_credential(path: Path) -> str:
     """Read a protected installation credential without retaining file contents."""
+    if not path.is_absolute():
+        raise CredentialError("Owner credential path must be absolute")
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        directory_descriptor = os.open(
+            path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        )
         try:
-            details = os.fstat(descriptor)
-            if not stat.S_ISREG(details.st_mode):
-                raise CredentialError("Owner credential path is not a regular file")
-            if stat.S_IMODE(details.st_mode) != 0o600:
-                raise CredentialError("Owner credential file must have mode 0600")
-            if hasattr(os, "getuid") and details.st_uid != os.getuid():
+            directory_details = os.fstat(directory_descriptor)
+            if not stat.S_ISDIR(directory_details.st_mode):
+                raise CredentialError("Owner credential directory is not a directory")
+            if stat.S_IMODE(directory_details.st_mode) & 0o077:
                 raise CredentialError(
-                    "Owner credential file must be owned by the operator"
+                    "Owner credential directory must be private to the operator"
                 )
-            token_bytes = os.read(descriptor, 65)
+            if (
+                hasattr(os, "getuid")
+                and directory_details.st_uid != os.getuid()
+            ):
+                raise CredentialError(
+                    "Owner credential directory must be owned by the operator"
+                )
+            descriptor = os.open(
+                path.name,
+                os.O_RDONLY | os.O_NOFOLLOW,
+                dir_fd=directory_descriptor,
+            )
+            try:
+                details = os.fstat(descriptor)
+                if not stat.S_ISREG(details.st_mode):
+                    raise CredentialError(
+                        "Owner credential path is not a regular file"
+                    )
+                if stat.S_IMODE(details.st_mode) != 0o600:
+                    raise CredentialError("Owner credential file must have mode 0600")
+                if hasattr(os, "getuid") and details.st_uid != os.getuid():
+                    raise CredentialError(
+                        "Owner credential file must be owned by the operator"
+                    )
+                token_bytes = os.read(descriptor, 65)
+            finally:
+                os.close(descriptor)
         finally:
-            os.close(descriptor)
+            os.close(directory_descriptor)
     except CredentialError:
         raise
     except OSError as error:
@@ -263,7 +305,13 @@ class ServiceClient:
         response = self._open(method, path, body, timeout, {"Accept": "application/json"})
         with response:
             try:
-                value = json.loads(response.read().decode("utf-8"))
+                response_body = response.read()
+            except (TimeoutError, OSError) as error:
+                raise ConnectionUnavailable(
+                    f"service response was interrupted: {error}"
+                ) from error
+            try:
+                value = json.loads(response_body.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError) as error:
                 raise ServiceError(
                     502, "invalid_response", "service returned invalid JSON"
@@ -322,10 +370,12 @@ class TerminalConnection:
         environ: Mapping[str, str] | None = None,
         home: Path | None = None,
         client_factory: Callable[[ConnectionConfiguration], ServiceClient] = ServiceClient,
+        scheduler: Scheduler = _schedule_timer,
     ) -> None:
         self._environ = environ
         self._home = home
         self._client_factory = client_factory
+        self._scheduler = scheduler
         self.configuration = load_configuration(environ=environ, home=home)
         self.client = client_factory(self.configuration)
         self.status = ConnectionStatus(
@@ -337,6 +387,8 @@ class TerminalConnection:
         self._was_connected = False
         self._retry_index: int | None = None
         self._attempt_lock = threading.RLock()
+        self._scheduled_call: ScheduledCall | None = None
+        self._retry_generation = 0
 
     def subscribe(self, listener: Callable[[ConnectionStatus], None]) -> None:
         self._listeners.append(listener)
@@ -362,7 +414,7 @@ class TerminalConnection:
                 self._publish(ConnectionState.UNAVAILABLE, str(error))
                 raise
             self._was_connected = True
-            self._retry_index = None
+            self._cancel_scheduled_locked()
             self._publish(ConnectionState.CONNECTED, "connected")
             return workspace
 
@@ -370,12 +422,13 @@ class TerminalConnection:
         """Record an established connection loss and schedule the bounded retry."""
         with self._attempt_lock:
             if not self._was_connected:
-                self._retry_index = None
+                self._cancel_scheduled_locked()
                 self._publish(ConnectionState.UNAVAILABLE, reason)
                 return None
-            self._retry_index = 0 if self._retry_index is None else self._retry_index
+            self._cancel_scheduled_locked()
+            self._retry_index = 0
             delay = RECONNECT_DELAYS_SECONDS[self._retry_index]
-            self._publish(ConnectionState.DISCONNECTED, reason, retry_in_seconds=delay)
+            self._schedule_retry_locked(reason)
             return delay
 
     def automatic_retry(self) -> Mapping[str, object]:
@@ -383,20 +436,12 @@ class TerminalConnection:
         with self._attempt_lock:
             if self._retry_index is None:
                 raise RuntimeError("no automatic retry is scheduled")
-            attempted_index = self._retry_index
-            try:
-                return self.connect()
-            except TerminalConnectionError:
-                self._retry_index = min(
-                    attempted_index + 1, len(RECONNECT_DELAYS_SECONDS) - 1
-                )
-                delay = RECONNECT_DELAYS_SECONDS[self._retry_index]
-                self._publish(
-                    ConnectionState.DISCONNECTED,
-                    self.status.message,
-                    retry_in_seconds=delay,
-                )
-                raise
+            retry_index = self._retry_index
+            self._cancel_scheduled_locked()
+            self._retry_index = retry_index
+            return self._attempt_automatic_retry_locked(
+                self._retry_generation, retry_index
+            )
 
     def reload_configuration(self) -> bool:
         """Reload settings and notify consumers when service context must clear."""
@@ -418,9 +463,64 @@ class TerminalConnection:
     def retry_now(self) -> Mapping[str, object]:
         """Cancel scheduled retry, reload configuration and connect immediately."""
         with self._attempt_lock:
-            self._retry_index = None
+            self._cancel_scheduled_locked()
             self.reload_configuration()
             return self.connect()
+
+    def close(self) -> None:
+        """Cancel pending retry work without affecting the service."""
+        with self._attempt_lock:
+            self._cancel_scheduled_locked()
+
+    def _schedule_retry_locked(self, message: str) -> None:
+        if self._retry_index is None:
+            return
+        retry_index = self._retry_index
+        generation = self._retry_generation
+        delay = RECONNECT_DELAYS_SECONDS[retry_index]
+        self._publish(
+            ConnectionState.DISCONNECTED,
+            message,
+            retry_in_seconds=delay,
+        )
+        self._scheduled_call = self._scheduler(
+            delay,
+            lambda: self._run_scheduled_retry(generation, retry_index),
+        )
+
+    def _run_scheduled_retry(self, generation: int, retry_index: int) -> None:
+        with self._attempt_lock:
+            if (
+                generation != self._retry_generation
+                or retry_index != self._retry_index
+            ):
+                return
+            self._scheduled_call = None
+            try:
+                self._attempt_automatic_retry_locked(generation, retry_index)
+            except TerminalConnectionError:
+                return
+
+    def _attempt_automatic_retry_locked(
+        self, generation: int, retry_index: int
+    ) -> Mapping[str, object]:
+        try:
+            return self.connect()
+        except TerminalConnectionError:
+            if generation != self._retry_generation:
+                raise
+            self._retry_index = min(
+                retry_index + 1, len(RECONNECT_DELAYS_SECONDS) - 1
+            )
+            self._schedule_retry_locked(self.status.message)
+            raise
+
+    def _cancel_scheduled_locked(self) -> None:
+        self._retry_generation += 1
+        if self._scheduled_call is not None:
+            self._scheduled_call.cancel()
+            self._scheduled_call = None
+        self._retry_index = None
 
     def _publish(
         self,

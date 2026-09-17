@@ -47,27 +47,32 @@ class TerminalApplication:
                 "Retry connection with /retry. Local /help and /exit remain available."
             )
 
-        for raw_line in self.input:
-            command = raw_line.strip()
-            if command == "/exit":
-                self._write("Exiting Maestro; service work continues.")
-                return 0
-            if command == "/help":
-                self.output.write(OFFLINE_HELP)
-                self.output.flush()
-                continue
-            if command == "/retry":
-                try:
-                    self.connection.retry_now()
-                except TerminalConnectionError:
-                    self._write("Retry failed; no previous command or answer was replayed.")
-                continue
-            if not command:
-                continue
-            self._write(
-                "That command is unavailable in the connection workspace. Use /help."
-            )
-        return 0
+        try:
+            for raw_line in self.input:
+                command = raw_line.strip()
+                if command == "/exit":
+                    self._write("Exiting Maestro; service work continues.")
+                    return 0
+                if command == "/help":
+                    self.output.write(OFFLINE_HELP)
+                    self.output.flush()
+                    continue
+                if command == "/retry":
+                    try:
+                        self.connection.retry_now()
+                    except TerminalConnectionError:
+                        self._write(
+                            "Retry failed; no previous command or answer was replayed."
+                        )
+                    continue
+                if not command:
+                    continue
+                self._write(
+                    "That command is unavailable in the connection workspace. Use /help."
+                )
+            return 0
+        finally:
+            self.connection.close()
 
     def _show_status(self, status: ConnectionStatus) -> None:
         retry = (
