@@ -103,8 +103,8 @@ class DurableRequestTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        path = Path(self.temporary.name) / "maestro.sqlite3"
-        self.database = Database(StorageSettings(path=path), [ANSWER_MIGRATION])
+        self.path = Path(self.temporary.name) / "maestro.sqlite3"
+        self.database = Database(StorageSettings(path=self.path), [ANSWER_MIGRATION])
         authenticator = OwnerAuthenticator(
             OwnerAuthenticationSettings(
                 owner_id="owner-local", token_sha256=token_digest(OWNER_TOKEN)
@@ -299,6 +299,20 @@ class DurableRequestTest(unittest.TestCase):
             self.application.handle(
                 "GET", "/api/v1/requests/request-one", authorization
             )
+
+    def test_real_invalid_database_is_a_typed_503(self) -> None:
+        for suffix in ("-wal", "-shm"):
+            sidecar = Path(f"{self.path}{suffix}")
+            if sidecar.exists():
+                sidecar.unlink()
+        self.path.write_bytes(b"not a sqlite database" * 100)
+
+        status, body, _headers = self.request(
+            "GET", "/requests/request-missing"
+        )
+
+        self.assertEqual(503, status)
+        self.assertEqual("service_unavailable", body["error"]["code"])
 
     def test_reused_id_with_different_content_and_stale_version_are_409(self) -> None:
         self.request("POST", "/requests", self.envelope())

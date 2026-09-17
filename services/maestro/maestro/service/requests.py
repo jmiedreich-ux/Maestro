@@ -291,7 +291,7 @@ class RequestService:
                     },
                 ) from error
             raise
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             if not _is_storage_unavailable(error):
                 raise
             raise _unavailable() from error
@@ -339,7 +339,7 @@ class RequestService:
                 "the saved request receipt is unavailable",
                 fields={"request_id": request_id},
             ) from error
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             if not _is_storage_unavailable(error):
                 raise
             raise _unavailable() from error
@@ -373,7 +373,7 @@ def _resolved_context(
     return submitted if submitted is not None else created
 
 
-def _is_storage_unavailable(error: sqlite3.OperationalError) -> bool:
+def _is_storage_unavailable(error: sqlite3.DatabaseError) -> bool:
     code = getattr(error, "sqlite_errorcode", None)
     if isinstance(code, int):
         base_code = code & 0xFF
