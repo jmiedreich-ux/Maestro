@@ -1,6 +1,6 @@
 # Manual work-packet specification rules
 
-Version 1. These rules and the 42 linked packet records expand the Owner-confirmed manual planning scope. They are authoring specifications, not runtime assignments, implementation permission or a confirmed architecture output set.
+Version 2. These rules and the 42 linked packet records expand the Owner-confirmed manual planning scope. They are authoring specifications, not runtime assignments, implementation permission or a confirmed architecture output set.
 
 ## Exact inputs and authority
 
@@ -72,4 +72,4 @@ The assurance level is proportionate main-journey and essential-failure coverage
 
 ## Open full-breakdown boundary
 
-Operator test-resource catalog and actual access/model configuration are not available here. [QA resource preparation](qa-resources.md) preserves those limits. Milestone sections specify acceptance requirements, not fabricated executable QA plans. A final plan still needs actual selected references, binding provenance, exact setup/support commands, data/source hashes, artifacts and cleanup/reset conditions. This packet set does not clear that boundary.
+Operator test-resource catalog and actual access/model configuration are not available here. [QA resource preparation](qa-resources.md) preserves those limits. Milestone sections and [seven manual QA plans](qa-plans/README.md) specify concrete acceptance procedures, not fabricated executable QA bindings. The architect owns routine test/setup design; operator-only provisioning remains separate. A final plan still needs actual selected references, binding provenance, exact setup/support commands, data/source hashes, artifacts and cleanup/reset conditions. This packet set does not clear that boundary.

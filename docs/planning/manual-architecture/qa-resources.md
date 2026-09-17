@@ -1,6 +1,6 @@
 # Maestro manual architecture — QA resource preparation
 
-Resource preparation, version 2. The Owner has selected the QA repository name below. Repository creation, provisioning, access and the verified test-resource catalog remain unverified; this name choice does not authorize running tests.
+Resource preparation, version 3. The Owner has selected the QA repository name below. Repository creation, provisioning, access and the verified test-resource catalog remain unverified; this name choice does not authorize running tests.
 
 ## Why this input is needed
 
@@ -26,9 +26,11 @@ For each provided environment: unique name, `classification: test`, non-secret v
 
 For manual planning, retain an operator-supplied non-secret description with provenance and clearly label its evidence level; do not call it a service-validated `qa-catalog.json` or use an invented hash. If live Maestro is later used, its service must collect, validate and bind the actual snapshot through the defined assignment contract. Any mismatch then blocks import/use instead of silently translating a manual proposal into runtime authority.
 
-## Work that can proceed without it
+## Manual planning and remaining binding work
 
-Investigating and structuring source, defining packet scopes and dependency edges, identifying needed setup tooling, and specifying which real journeys require evidence can proceed. Self-contained deterministic tests can be specified without external names. The final selected setup commands, environment/secret/network references and binding evidence for non-self-contained milestone QA cannot be completed until the catalog is available.
+The architect owns routine QA design and setup requirements. Seven [milestone QA procedure specifications](qa-plans/README.md) now define real journeys, expected results, essential failures, data lineage, artifacts, cleanup and reset. Their shared rules distinguish manual planning assumptions from actual runtime resource selections; the Owner is not being asked to design tests or assemble a catalog as a condition of drafting.
+
+The operator still owns protected provisioning and actual availability. Exact setup command/script hashes, environment/secret/network selections and binding evidence must be supplied and validated before affected runtime QA-plan publication/confirmation, then rechecked before use. Writing manual plans with assumptions neither creates a validated catalog nor waives that gate. Missing setup tooling is explicit implementation/dependency work, not improvised by QA.
 
 ## Confirmed repository name
 
@@ -40,4 +42,4 @@ This resolves the name choice only. It does not establish that the repository ex
 
 ## Remaining setup evidence
 
-Repository setup/access and the operator's non-secret test-resource catalog remain outstanding before affected QA plans can be finalized. Existing deferred credential verification on the AI box remains deferred; no request for secret values is made. Detailed packet preparation can continue without reopening the settled repository name.
+Repository setup/access and the operator's non-secret test-resource catalog remain outstanding before affected QA plans can be finalized. Existing deferred credential verification on the AI box remains deferred; no request for secret values is made. Manual QA procedures are written without reopening the settled repository name. The architect/implementation team completes technical binding work and raises only an unavailable resource, missing authority or genuinely reserved decision.

@@ -1,6 +1,6 @@
 # Manual development milestones
 
-Version 1. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). These are manual draft contributions, not service-allocated milestone identities, final QA plans, runtime confirmation or authorization to start Execution.
+Version 2. Integration and acceptance requirements for the [packet index](work-breakdown.md), governed by [common packet rules](packet-rules.md). These are manual draft contributions, not service-allocated milestone identities, final QA plans, runtime confirmation or authorization to start Execution.
 
 ## Ordering and integration boundary
 
@@ -8,15 +8,17 @@ The seven milestones below have a delivery dependency on the preceding milestone
 
 The acceptance requirements below describe meaningful connected outcomes and essential failures, not a fixed worker schedule. For the initial product bootstrap, absent later-domain operations remain explicitly unavailable rather than blocking core service health or being represented by fake success. Building these capabilities does not assume that unfinished Maestro can already orchestrate its own development. This manual plan supplies no authorization or replacement runtime workflow for doing so.
 
-## QA plans still required
+## Milestone QA plans and runtime binding
 
-Each milestone requires a separate final QA plan before full breakdown confirmation. [QA resource preparation](qa-resources.md) identifies the missing operator catalog and access evidence. The requirements below supply journeys, expected results, data/evidence and failure boundaries, but intentionally do not invent environment/secret/network references, binding hashes, runnable setup commands or installed model selections. Those catalog-bound fields, exact run/check commands and artifact retention/cleanup/reset bindings must be completed against actual available resources. A missing required real path is UNTESTED and cannot pass, integrate as an accepted milestone or promote. Packet-level unit checks do not substitute for this milestone QA.
+Each milestone has a separate [manual QA plan](qa-plans/README.md) with procedures, expected results, evidence and cleanup. QA applies to the assembled milestone after its packet implementation, review and integration; packet checks remain separate. These manual plans are not yet catalog-bound runtime records. Each milestone requires a final bound QA plan before full breakdown confirmation. [QA resource preparation](qa-resources.md) identifies the missing operator catalog and access evidence. The requirements below supply journeys, expected results, data/evidence and failure boundaries, but intentionally do not invent environment/secret/network references, binding hashes, runnable setup commands or installed model selections. Those catalog-bound fields, exact run/check commands and artifact retention/cleanup/reset bindings must be completed against actual available resources. A missing required real path is UNTESTED and cannot pass, integrate as an accepted milestone or promote. Packet-level unit checks do not substitute for this milestone QA.
 
 ## Common completion boundary
 
 Each milestone needs all allocated packet implementations and independent reviews, exact integrated revisions, passing assembled QA for its claimed contribution, retained evidence and resolved in-scope material gaps under existing limits. Promotion follows the architecture's eligibility and authorized merge rules; no new Owner merge-approval gate is added. Project declarations remain the authority for complete outcomes. Early milestones supply partial contributions where a declaration requires later domains; only the final outcome reconciliation can claim every selected declaration complete. Nothing here records executed checks.
 
 ## Connected service and workspace
+
+QA procedure: [Connected service and workspace](qa-plans/service-workspace.md).
 
 Usable contribution: Installed, authenticated workspace and durable service primitives. Opening an empty project list is useful here; live Registration questions and later process views are accepted only with their producer milestones.
 
@@ -50,6 +52,8 @@ Meet the common completion boundary for this contribution. Record exact candidat
 
 ## Supervised shared processes
 
+QA procedure: [Supervised shared processes](qa-plans/supervised-processes.md).
+
 Usable contribution: Real supervised agent assignments using shared installed process policy, with durable session continuation. This is infrastructure acceptance, not proof that a future domain process is complete.
 
 Integration dependency: [Connected service and workspace](#connected-service-and-workspace).
@@ -77,6 +81,8 @@ Approved installed routes, isolated worktree and a bounded actual task with obse
 Meet the common completion boundary for this contribution. Record exact candidate/review/QA evidence and any unavailable required path. No packet count, generated result or unbound QA proposal is evidence of this milestone passing.
 
 ## Confirmed registration and history
+
+QA procedure: [Confirmed registration and history](qa-plans/registration-history.md).
 
 Usable contribution: A person can register, confirm, update and recover a project through the connected CLI while preserving exact source, approval and history.
 
@@ -106,6 +112,8 @@ Meet the common completion boundary for this contribution. Record exact candidat
 
 ## Confirmed development planning
 
+QA procedure: [Confirmed development planning](qa-plans/development-planning.md).
+
 Usable contribution: The confirmed registration can produce investigated structure, specialist guidance and a reviewed, published, exactly confirmed development breakdown through the architecture process.
 
 Integration dependency: [Confirmed registration and history](#confirmed-registration-and-history).
@@ -134,6 +142,8 @@ A small generated test project, actual test catalog and separately selected arch
 Meet the common completion boundary for this contribution. Record exact candidate/review/QA evidence and any unavailable required path. No packet count, generated result or unbound QA proposal is evidence of this milestone passing.
 
 ## Independently reviewed packet delivery
+
+QA procedure: [Independently reviewed packet delivery](qa-plans/packet-delivery.md).
 
 Usable contribution: Separately started Execution delivers exact packet revisions with implementation plans and actual non-author semantic review; lifecycle controls are usable throughout.
 
@@ -165,6 +175,8 @@ Meet the common completion boundary for this contribution. Record exact candidat
 
 ## Integrated code and dependency delivery
 
+QA procedure: [Integrated code and dependency delivery](qa-plans/integration-dependencies.md).
+
 Usable contribution: Reviewed work is integrated in the declared order and required dependency deliveries and missing-specialist support reach their consumers without bypassing scope.
 
 Integration dependency: [Independently reviewed packet delivery](#independently-reviewed-packet-delivery).
@@ -190,6 +202,8 @@ At least two real eligible packet revisions plus a declared dependency and a con
 Meet the common completion boundary for this contribution. Record exact candidate/review/QA evidence and any unavailable required path. No packet count, generated result or unbound QA proposal is evidence of this milestone passing.
 
 ## Verified milestone completion
+
+QA procedure: [Verified milestone completion](qa-plans/milestone-completion.md).
 
 Usable contribution: Assembled milestones undergo genuine isolated QA, bounded gap correction and authorized promotion; all included outcome evidence is evaluated before completed Execution is published.
 
