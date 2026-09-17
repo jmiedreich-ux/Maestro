@@ -25,8 +25,10 @@ from maestro.foundation import (
 )
 
 from .activities import (
+    ActivityRecord,
     ActivityRepository,
     ConversationRecord,
+    ProjectRecord,
     QuestionRecord,
     RecordReferenceError,
 )
@@ -183,8 +185,109 @@ class QuestionService:
         return OperationHandler("question.publish", self.prepare_publish)
 
     @property
+    def bootstrap_operation_handler(self) -> OperationHandler:
+        return OperationHandler("project.bootstrap", self.prepare_bootstrap)
+
+    @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
-        return (self.publish_operation_handler, self.operation_handler)
+        return (
+            self.bootstrap_operation_handler,
+            self.publish_operation_handler,
+            self.operation_handler,
+        )
+
+    def prepare_bootstrap(self, request: RequestEnvelope) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None:
+            raise ValueError("project.bootstrap requires project and activity context")
+        if request.question_id is not None:
+            raise ValueError("project.bootstrap does not accept question context")
+        if request.expected_version != 0:
+            raise ValueError("project.bootstrap expected_version must be zero")
+        if set(request.payload) != {"project_name", "activity_subject"}:
+            raise ValueError(
+                "project.bootstrap payload requires project_name and activity_subject"
+            )
+        if request.project_id == request.activity_id:
+            raise ValueError("project and activity identities must be distinct")
+        project_name = request.payload["project_name"]
+        activity_subject = request.payload["activity_subject"]
+        if not isinstance(project_name, str) or not project_name.strip():
+            raise ValueError("project_name must be nonempty text")
+        if not isinstance(activity_subject, str) or not activity_subject.strip():
+            raise ValueError("activity_subject must be nonempty text")
+
+        project = ProjectRecord(
+            request.project_id,
+            project_name,
+            "unregistered",
+            1,
+        )
+        activity = ActivityRecord(
+            request.activity_id,
+            request.project_id,
+            "generic",
+            activity_subject,
+            "waiting",
+            1,
+        )
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            if next_version != 1:
+                raise RequestRejection(
+                    409,
+                    "project_already_exists",
+                    "the project identity is already in use",
+                    fields={"project_id": project.project_id},
+                )
+            if transaction.execute(
+                "SELECT 1 FROM service_projects WHERE project_id = ?",
+                (project.project_id,),
+            ).fetchone() is not None:
+                raise RequestRejection(
+                    409,
+                    "project_already_exists",
+                    "the project identity is already in use",
+                    fields={"project_id": project.project_id},
+                )
+            if transaction.execute(
+                "SELECT 1 FROM service_activities WHERE activity_id = ?",
+                (activity.activity_id,),
+            ).fetchone() is not None or transaction.current_version(
+                activity.activity_id
+            ) != 0:
+                raise RequestRejection(
+                    409,
+                    "activity_already_exists",
+                    "the activity identity is already in use",
+                    fields={"activity_id": activity.activity_id},
+                )
+            self.records.create_project(transaction, project)
+            self.records.create_activity(transaction, activity)
+            transaction.execute(
+                "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
+                (activity.activity_id, activity.version),
+            )
+            return OperationResult(
+                data={
+                    "project_id": project.project_id,
+                    "activity_id": activity.activity_id,
+                    "registration_status": project.registration_status,
+                    "activity_kind": activity.kind,
+                    "activity_state": activity.state,
+                },
+                project_id=project.project_id,
+                activity_id=activity.activity_id,
+            )
+
+        return PreparedOperation(
+            entity_id=project.project_id,
+            event_type="project.bootstrapped",
+            event_data={
+                "project_id": project.project_id,
+                "activity_id": activity.activity_id,
+            },
+            apply=apply,
+        )
 
     def prepare_publish(self, request: RequestEnvelope) -> PreparedOperation:
         if (

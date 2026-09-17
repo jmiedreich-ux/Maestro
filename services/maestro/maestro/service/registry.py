@@ -12,6 +12,7 @@ from maestro.foundation import Transaction, canonical_identifier
 APPROVED_OPERATIONS = frozenset(
     {
         "registration.start",
+        "project.bootstrap",
         "question.publish",
         "question.answer",
         "registration.confirm",
