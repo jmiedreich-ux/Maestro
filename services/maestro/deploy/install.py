@@ -250,13 +250,24 @@ def create_system_accounts(operator: Account | None = None) -> None:
         if service.gid == agent.gid or service.uid == agent.uid:
             raise InstallationError("service and agent identities are not separated")
         _validate_account_separation(service, agent)
+        protected_primary_gids = {service.gid, agent.gid}
     else:
         _validate_account_separation(operator, service, agent)
+        protected_primary_gids = {operator.gid, service.gid, agent.gid}
+    workspace_gid = grp.getgrnam(WORKSPACE_GROUP).gr_gid
+    if workspace_gid in protected_primary_gids:
+        raise InstallationError(
+            "shared workspace group aliases a protected account primary group"
+        )
     for user in (SERVICE_USER, AGENT_USER):
         subprocess.run(
             ["usermod", "--append", "--groups", WORKSPACE_GROUP, user],
             check=True,
         )
+    final_accounts = (_account(SERVICE_USER), _account(AGENT_USER))
+    if operator is not None:
+        final_accounts = (operator, *final_accounts)
+    _validate_account_separation(*final_accounts)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -283,8 +294,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--service-gid", type=int)
     parser.add_argument("--agent-uid", type=int)
     parser.add_argument("--agent-gid", type=int)
+    parser.add_argument(
+        "--verify-installed-host",
+        action="store_true",
+        help="read-only check for required real installed-host evidence",
+    )
     arguments = parser.parse_args(argv)
     try:
+        if arguments.verify_installed_host:
+            return verify_installed_host(arguments.operator_user)
         if arguments.staged_test:
             if arguments.root == Path("/"):
                 raise InstallationError("staged tests require an isolated --root")
@@ -354,6 +372,88 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (InstallationError, KeyError, OSError, subprocess.CalledProcessError) as error:
         print(f"Maestro installation failed: {error}", file=sys.stderr)
         return 1
+
+
+def verify_installed_host(operator_name: str | None) -> int:
+    """Report unavailable real-host proof as non-passing, without mutation."""
+    reasons: list[str] = []
+    operator: Account | None = None
+    operator_home: Path | None = None
+    if not operator_name:
+        reasons.append("--operator-user is required for Owner credential checks")
+    else:
+        try:
+            operator = _account(operator_name)
+            operator_home = Path(pwd.getpwnam(operator_name).pw_dir)
+        except KeyError:
+            reasons.append(f"operator account does not exist: {operator_name}")
+            operator = None
+            operator_home = None
+
+    try:
+        service = _account(SERVICE_USER)
+        agent = _account(AGENT_USER)
+        accounts = (service, agent) if operator is None else (operator, service, agent)
+        _validate_account_separation(*accounts)
+    except (KeyError, InstallationError) as error:
+        reasons.append(f"separated installed identities unavailable: {error}")
+        agent = None
+
+    required = (
+        Path("/opt/maestro/bin/maestro-service"),
+        Path("/etc/maestro/agents.toml"),
+        Path("/var/lib/maestro/maestro.sqlite3"),
+        Path("/etc/systemd/system/maestro.service"),
+    )
+    for path in required:
+        if not path.exists():
+            reasons.append(f"installed path is unavailable: {path}")
+    if operator_home is not None:
+        token = operator_home / ".config" / "maestro" / OWNER_TOKEN_NAME
+        if not token.exists():
+            reasons.append(f"Owner credential is unavailable: {token}")
+
+    for check in ("is-enabled", "is-active"):
+        try:
+            result = subprocess.run(
+                ["systemctl", check, "--quiet", UNIT_NAME],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            reasons.append(f"systemd {check} check unavailable: {error}")
+        else:
+            if result.returncode != 0:
+                reasons.append(f"systemd unit is not {check.removeprefix('is-')}")
+
+    if os.geteuid() != 0:
+        reasons.append(
+            "actual agent denial checks require root on an approved disposable host"
+        )
+    elif agent is not None and operator_home is not None:
+        protected = (
+            Path("/etc/maestro/agents.toml"),
+            Path("/var/lib/maestro/maestro.sqlite3"),
+            operator_home / ".config" / "maestro" / OWNER_TOKEN_NAME,
+        )
+        for path in protected:
+            denial = subprocess.run(
+                ["runuser", "--user", agent.name, "--", "test", "!", "-r", str(path)],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+            if denial.returncode != 0:
+                reasons.append(f"agent read denial was not established: {path}")
+
+    reasons.append(
+        "package entry, boot and controlled crash/restart, terminal-exit persistence, "
+        "and durable-request restart observations require an approved disposable host"
+    )
+    for reason in reasons:
+        print(f"UNTESTED: {reason}", file=sys.stderr)
+    return 2
 
 
 def _service_configuration(

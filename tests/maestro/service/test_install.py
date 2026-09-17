@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import sqlite3
 import stat
@@ -12,6 +13,7 @@ import tomllib
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import redirect_stderr
 from pathlib import Path
 from unittest import mock
 
@@ -286,6 +288,7 @@ class LinuxInstallationTest(unittest.TestCase):
 
         service_config = self.paths.config_file.read_text(encoding="utf-8")
         self.assertEqual(replacement_token, self.paths.owner_token.read_text(encoding="ascii"))
+
         self.assertIn(
             hashlib.sha256(replacement_token.encode("ascii")).hexdigest(),
             service_config,
@@ -307,6 +310,20 @@ class LinuxInstallationTest(unittest.TestCase):
         with self.assertRaisesRegex(installer.InstallationError, "conflict|missing"):
             installer.install(self.configuration, replace=True)
         self.assertEqual(replacement_token, self.paths.owner_token.read_text(encoding="ascii"))
+
+    def test_installed_host_verifier_reports_unavailable_evidence_as_nonpassing(self) -> None:
+        output = io.StringIO()
+        completed = installer.subprocess.CompletedProcess([], 1, b"", b"unavailable")
+        with (
+            mock.patch.object(installer, "_account", side_effect=KeyError("missing")),
+            mock.patch.object(installer.subprocess, "run", return_value=completed),
+            redirect_stderr(output),
+        ):
+            result = installer.verify_installed_host(None)
+        self.assertEqual(2, result)
+        self.assertIn("UNTESTED:", output.getvalue())
+        self.assertIn("--operator-user is required", output.getvalue())
+        self.assertIn("controlled crash/restart", output.getvalue())
 
     def test_package_and_unit_publish_the_two_independent_entry_points(self) -> None:
         metadata = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))

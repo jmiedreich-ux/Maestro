@@ -73,6 +73,20 @@ or conflicting immutable bundle fails without rotating the credential; older
 manifested versions remain installed. Preserve the protected new token before
 restarting. The installer never prints token contents.
 
+Run the read-only installed-host preflight before claiming host evidence:
+
+```text
+/opt/maestro/bin/python /opt/maestro/share/maestro/deploy/install.py \
+  --verify-installed-host --operator-user OPERATOR
+```
+
+Unavailable accounts, paths, systemd state, or identity-switch authority are
+printed as `UNTESTED`, and the command exits 2. The preflight deliberately also
+reports package entry, boot and controlled crash/restart, terminal-exit
+persistence, and durable-request restart as `UNTESTED`: those observations
+require the approved disposable-host procedure below and cannot be replaced by
+a staged directory or a user unit running as the operator.
+
 ## Safe isolated installation tests
 
 Automated tests must use `--staged-test` with a newly created absolute `--root`
