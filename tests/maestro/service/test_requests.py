@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import tempfile
 import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
 from maestro.foundation import Database, DomainMigration, StorageSettings
 from maestro.service.authentication import (
@@ -70,6 +72,33 @@ def answer_handler(request) -> PreparedOperation:
     )
 
 
+def intake_handler(request) -> PreparedOperation:
+    if request.project_id is not None or request.activity_id is not None:
+        raise ValueError("registration.start requires empty project and activity context")
+
+    def apply(_transaction, _next_version: int) -> OperationResult:
+        return OperationResult(
+            data={"created": True},
+            project_id="project-created",
+            activity_id="registration-created",
+        )
+
+    return PreparedOperation(
+        entity_id="registration-intake",
+        event_type="registration.started",
+        event_data={"source": "intake"},
+        apply=apply,
+    )
+
+
+class FailingReceiptProbe:
+    def __init__(self, error: BaseException) -> None:
+        self.error = error
+
+    def find(self, _request_id: str):
+        raise self.error
+
+
 class DurableRequestTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -82,10 +111,14 @@ class DurableRequestTest(unittest.TestCase):
             )
         )
         registry = OperationRegistry(
-            (OperationHandler("question.answer", answer_handler),)
+            (
+                OperationHandler("question.answer", answer_handler),
+                OperationHandler("registration.start", intake_handler),
+            )
         )
-        service = RequestService(self.database, authenticator, registry)
-        self.server = RequestHTTPServer(RequestHTTPApplication(service))
+        self.service = RequestService(self.database, authenticator, registry)
+        self.application = RequestHTTPApplication(self.service)
+        self.server = RequestHTTPServer(self.application)
         self.server.start()
         self.addCleanup(self.server.close)
         host, port = self.server.address
@@ -162,14 +195,25 @@ class DurableRequestTest(unittest.TestCase):
             ).fetchone()
             saved = connection.execute(
                 """
-                SELECT r.actor_id, r.resulting_version, s.status, e.type
+                SELECT r.actor_id, r.resulting_version, s.status, e.type,
+                       e.project_id, e.activity_id
                 FROM request_receipts AS r
                 JOIN service_request_results AS s USING(request_id)
                 JOIN outbox_events AS e ON e.event_id = s.event_id
                 """
             ).fetchone()
         self.assertEqual(("question-one", 1, "The saved answer"), answer)
-        self.assertEqual(("owner-local", 1, "completed", "question.answered"), saved)
+        self.assertEqual(
+            (
+                "owner-local",
+                1,
+                "completed",
+                "question.answered",
+                "project-one",
+                "activity-one",
+            ),
+            saved,
+        )
 
     def test_lost_response_reconciles_and_retry_does_not_repeat_effect(self) -> None:
         # The caller deliberately discards the committed POST response, as after a
@@ -196,6 +240,65 @@ class DurableRequestTest(unittest.TestCase):
                 )
             )
         self.assertEqual((1, 1, 1, 1), counts)
+
+    def test_created_context_is_bound_to_event_after_callback(self) -> None:
+        envelope = {
+            "request_id": "request-intake",
+            "operation": "registration.start",
+            "project_id": None,
+            "activity_id": None,
+            "question_id": None,
+            "expected_version": None,
+            "payload": {},
+        }
+        status, submitted, _headers = self.request("POST", "/requests", envelope)
+
+        self.assertEqual(200, status)
+        self.assertEqual("project-created", submitted["receipt"]["project_id"])
+        self.assertEqual(
+            "registration-created", submitted["receipt"]["activity_id"]
+        )
+        with self.database.read_connection() as connection:
+            event_context = connection.execute(
+                "SELECT project_id, activity_id FROM outbox_events"
+            ).fetchone()
+        self.assertEqual(
+            ("project-created", "registration-created"), event_context
+        )
+
+    def test_storage_unavailability_is_503_but_programming_errors_escape(self) -> None:
+        authorization = {"Authorization": f"Bearer {OWNER_TOKEN}"}
+        with mock.patch.object(
+            self.database,
+            "commit_command",
+            side_effect=sqlite3.OperationalError("database is locked"),
+        ):
+            submit_status, submit_error, _headers = self.request(
+                "POST", "/requests", self.envelope()
+            )
+
+        self.assertEqual(503, submit_status)
+        self.assertEqual(
+            "service_unavailable", submit_error["error"]["code"]
+        )
+
+        self.service._receipts = FailingReceiptProbe(  # type: ignore[assignment]
+            sqlite3.OperationalError("database is locked")
+        )
+        unavailable = self.application.handle(
+            "GET", "/api/v1/requests/request-one", authorization
+        )
+
+        self.assertEqual(503, unavailable.status_code)
+        self.assertEqual("service_unavailable", unavailable.body["error"]["code"])
+
+        self.service._receipts = FailingReceiptProbe(  # type: ignore[assignment]
+            sqlite3.OperationalError("no such table: programmer_typo")
+        )
+        with self.assertRaisesRegex(sqlite3.OperationalError, "programmer_typo"):
+            self.application.handle(
+                "GET", "/api/v1/requests/request-one", authorization
+            )
 
     def test_reused_id_with_different_content_and_stale_version_are_409(self) -> None:
         self.request("POST", "/requests", self.envelope())

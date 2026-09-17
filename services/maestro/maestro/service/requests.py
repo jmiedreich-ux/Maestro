@@ -12,7 +12,9 @@ from maestro.foundation import (
     Command,
     ContractError,
     Database,
+    DatabaseError,
     Event,
+    StorageConfigurationError,
     VersionConflictError,
     canonical_identifier,
     canonical_json,
@@ -133,6 +135,76 @@ class RequestEnvelope:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+class _DeferredEvent:
+    """Bind callback-created context before the foundation saves the event."""
+
+    def __init__(
+        self,
+        *,
+        event_id: str,
+        occurred_at: str,
+        project_id: str | None,
+        activity_id: str | None,
+        event_type: str,
+        data: Mapping[str, object],
+    ) -> None:
+        self._submitted_project_id = project_id
+        self._submitted_activity_id = activity_id
+        self._event_values = {
+            "schema_version": 1,
+            "event_id": event_id,
+            "occurred_at": occurred_at,
+            "type": event_type,
+            "data": data,
+        }
+        self._event = Event(
+            project_id=project_id,
+            activity_id=activity_id,
+            **self._event_values,
+        )
+
+    def bind(self, result: OperationResult) -> None:
+        project_id = _resolved_context(
+            "project_id", self._submitted_project_id, result.project_id
+        )
+        activity_id = _resolved_context(
+            "activity_id", self._submitted_activity_id, result.activity_id
+        )
+        self._event = Event(
+            project_id=project_id,
+            activity_id=activity_id,
+            **self._event_values,
+        )
+
+    @property
+    def schema_version(self) -> int:
+        return self._event.schema_version
+
+    @property
+    def event_id(self) -> str:
+        return self._event.event_id
+
+    @property
+    def occurred_at(self) -> str:
+        return self._event.occurred_at
+
+    @property
+    def project_id(self) -> str | None:
+        return self._event.project_id
+
+    @property
+    def activity_id(self) -> str | None:
+        return self._event.activity_id
+
+    @property
+    def type(self) -> str:
+        return self._event.type
+
+    @property
+    def data(self) -> Mapping[str, object]:
+        return self._event.data
+
+
 class RequestService:
     """The authenticated application boundary for POST and GET request routes."""
 
@@ -180,13 +252,12 @@ class RequestService:
             expected_version=effective_expected_version,
             content_digest=digest,
         )
-        event = Event(
-            schema_version=1,
+        event = _DeferredEvent(
             event_id=event_id,
             occurred_at=_utc_now(),
             project_id=request.project_id,
             activity_id=request.activity_id,
-            type=prepared.event_type,
+            event_type=prepared.event_type,
             data=prepared.event_data,
         )
 
@@ -194,13 +265,16 @@ class RequestService:
             result = prepared.apply(transaction, next_version)
             if not isinstance(result, OperationResult):
                 raise RegistryError("operation callback returned an invalid result")
+            event.bind(result)
             ReceiptRepository.save_result(
                 transaction, request.request_id, event_id, result
             )
             return result
 
         try:
-            committed, result = self._database.commit_command(command, event, apply)
+            committed, result = self._database.commit_command(  # type: ignore[arg-type]
+                command, event, apply
+            )
         except (VersionConflictError, sqlite3.IntegrityError) as error:
             raced = self._find_receipt(request.request_id)
             if raced is not None:
@@ -217,6 +291,12 @@ class RequestService:
                     },
                 ) from error
             raise
+        except sqlite3.OperationalError as error:
+            if not _is_storage_unavailable(error):
+                raise
+            raise _unavailable() from error
+        except (DatabaseError, StorageConfigurationError) as error:
+            raise _unavailable() from error
         return RequestReceipt(
             request_id=committed.request_id,
             status=result.status,
@@ -259,6 +339,12 @@ class RequestService:
                 "the saved request receipt is unavailable",
                 fields={"request_id": request_id},
             ) from error
+        except sqlite3.OperationalError as error:
+            if not _is_storage_unavailable(error):
+                raise
+            raise _unavailable() from error
+        except (DatabaseError, StorageConfigurationError) as error:
+            raise _unavailable() from error
 
     @staticmethod
     def _reconcile(saved: tuple[RequestReceipt, str], digest: str) -> RequestReceipt:
@@ -277,6 +363,49 @@ def _optional_identifier(value: object, field: str) -> str | None:
     if value is None:
         return None
     return canonical_identifier(value, field)  # type: ignore[arg-type]
+
+
+def _resolved_context(
+    field: str, submitted: str | None, created: str | None
+) -> str | None:
+    if submitted is not None and created is not None and submitted != created:
+        raise RegistryError(f"operation result {field} conflicts with request context")
+    return submitted if submitted is not None else created
+
+
+def _is_storage_unavailable(error: sqlite3.OperationalError) -> bool:
+    code = getattr(error, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        base_code = code & 0xFF
+        return base_code in {
+            sqlite3.SQLITE_BUSY,
+            sqlite3.SQLITE_LOCKED,
+            sqlite3.SQLITE_READONLY,
+            sqlite3.SQLITE_IOERR,
+            sqlite3.SQLITE_CORRUPT,
+            sqlite3.SQLITE_FULL,
+            sqlite3.SQLITE_CANTOPEN,
+            sqlite3.SQLITE_NOTADB,
+        }
+    message = str(error).casefold()
+    return message in {
+        "database is locked",
+        "database table is locked",
+        "attempt to write a readonly database",
+        "disk i/o error",
+        "database or disk is full",
+        "unable to open database file",
+        "database disk image is malformed",
+        "file is not a database",
+    }
+
+
+def _unavailable() -> RequestRejection:
+    return RequestRejection(
+        503,
+        "service_unavailable",
+        "request storage is temporarily unavailable",
+    )
 
 
 def _invalid(message: str, *fields: str) -> RequestRejection:
