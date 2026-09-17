@@ -271,6 +271,28 @@ class LinkedQuestionsTest(unittest.TestCase):
             },
         }
 
+    @staticmethod
+    def _bootstrap_envelope(
+        request_id: str = "request-bootstrap",
+        *,
+        project_id: str = "project-installed",
+        activity_id: str = "activity-installed",
+        project_name: str = "Installed project",
+        activity_subject: str = "Ask a generic question",
+    ) -> dict[str, object]:
+        return {
+            "request_id": request_id,
+            "operation": "project.bootstrap",
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "question_id": None,
+            "expected_version": 0,
+            "payload": {
+                "project_name": project_name,
+                "activity_subject": activity_subject,
+            },
+        }
+
     def test_real_workspace_selects_choice_and_submits_with_clarification(self) -> None:
         self._publish()
         workspace = Workspace(self.workspace_client)
@@ -623,23 +645,6 @@ class InstalledQuestionCompositionTest(unittest.TestCase):
             workspace_root=workspace_root,
         )
         application = InstalledServiceApplication(settings)
-        with application.database.transaction() as transaction:
-            application.activities.create_project(
-                transaction,
-                ProjectRecord("project-installed", "Installed project", "ready", 1),
-            )
-            application.activities.create_activity(
-                transaction,
-                ActivityRecord(
-                    "activity-installed",
-                    "project-installed",
-                    "generic",
-                    "Ask a generic question",
-                    "waiting",
-                    1,
-                ),
-            )
-
         server = InstalledServiceServer(application, "127.0.0.1", 0)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -660,6 +665,40 @@ class InstalledQuestionCompositionTest(unittest.TestCase):
                 f"http://{host}:{port}", token, config / "cli.toml"
             )
         )
+        bootstrap = LinkedQuestionsTest._bootstrap_envelope()
+        bootstrapped = client.submit(bootstrap)
+        duplicate = client.submit(bootstrap)
+
+        conflicting = LinkedQuestionsTest._bootstrap_envelope(
+            project_name="Conflicting project name"
+        )
+        with self.assertRaises(ServiceError) as conflict:
+            client.submit(conflicting)
+
+        stale = LinkedQuestionsTest._bootstrap_envelope("request-bootstrap-stale")
+        with self.assertRaises(ServiceError) as stale_result:
+            client.submit(stale)
+
+        invalid_context = LinkedQuestionsTest._bootstrap_envelope(
+            "request-bootstrap-context",
+            project_id="project-invalid-context",
+            activity_id="activity-invalid-context",
+        )
+        invalid_context["question_id"] = "question-not-allowed"
+        with self.assertRaises(ServiceError) as context:
+            client.submit(invalid_context)
+
+        partial = LinkedQuestionsTest._bootstrap_envelope(
+            "request-bootstrap-partial",
+            project_id="project-must-roll-back",
+            activity_id="activity-installed",
+            project_name="Must roll back",
+        )
+        with self.assertRaises(ServiceError) as collision:
+            client.submit(partial)
+
+        workspace = client.get_json("/workspace")["data"]
+        project = workspace["projects"][0]
         publish = LinkedQuestionsTest._publish_envelope(
             project_id="project-installed",
             activity_id="activity-installed",
@@ -705,6 +744,22 @@ class InstalledQuestionCompositionTest(unittest.TestCase):
         with self.assertRaises(ServiceError) as invalid_link:
             client.submit(invalid_follow_up)
 
+        self.assertEqual(bootstrapped, duplicate)
+        bootstrap_result = bootstrapped["receipt"]["result"]
+        self.assertEqual("unregistered", bootstrap_result["registration_status"])
+        self.assertEqual("generic", bootstrap_result["activity_kind"])
+        self.assertEqual("waiting", bootstrap_result["activity_state"])
+        self.assertEqual("project-installed", project["project_id"])
+        self.assertEqual("Installed project", project["name"])
+        self.assertEqual("activity-installed", project["activity_id"])
+        self.assertEqual(409, conflict.exception.status_code)
+        self.assertEqual("request_content_conflict", conflict.exception.code)
+        self.assertEqual(409, stale_result.exception.status_code)
+        self.assertEqual("version_conflict", stale_result.exception.code)
+        self.assertEqual(400, context.exception.status_code)
+        self.assertEqual("invalid_request", context.exception.code)
+        self.assertEqual(409, collision.exception.status_code)
+        self.assertEqual("activity_already_exists", collision.exception.code)
         self.assertEqual("completed", published["receipt"]["status"])
         self.assertEqual("question-published", question["question_id"])
         self.assertEqual("awaiting_answer", question["status"])
@@ -716,6 +771,8 @@ class InstalledQuestionCompositionTest(unittest.TestCase):
             counts = connection.execute(
                 """
                 SELECT
+                  (SELECT COUNT(*) FROM service_projects),
+                  (SELECT COUNT(*) FROM service_activities),
                   (SELECT COUNT(*) FROM service_questions),
                   (SELECT COUNT(*) FROM service_question_answers),
                   (SELECT COUNT(*) FROM request_receipts),
@@ -725,7 +782,7 @@ class InstalledQuestionCompositionTest(unittest.TestCase):
             delivery = connection.execute(
                 "SELECT state, attempts FROM service_question_deliveries"
             ).fetchone()
-        self.assertEqual((1, 1, 2, 2), counts)
+        self.assertEqual((1, 1, 1, 1, 3, 3), counts)
         self.assertEqual(("pending", 0), delivery)
 
 
