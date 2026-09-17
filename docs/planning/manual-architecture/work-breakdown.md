@@ -1,6 +1,6 @@
 # Maestro manual architecture — work breakdown
 
-Draft version 3. The Owner-confirmed manual registration covers 18 project outcomes. This index expands that scope into 42 proposed coding packets and seven development milestones. It is not a runtime assignment, a complete confirmed architecture breakdown or permission to start implementation.
+Confirmed version 4. The Owner-confirmed manual registration covers 18 project outcomes. This index expands that scope into 42 confirmed coding packets and seven confirmed development milestones. It is planning input, not a runtime assignment or permission to start implementation.
 
 ## Controlling records
 
@@ -102,6 +102,8 @@ This table identifies contributing packets, not delivered outcomes. Read the com
 | [SVC-PM4 — Run and recover assigned agents](https://github.com/jmiedreich-ux/Maestro/blob/182bf4290ef2960d4691a7f41315ebf71d5bf85c/docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents) | [Agent route preflight](work-packets/agent-routes.md); [Agent workspace and transport](work-packets/agent-transport.md); [Durable supervision](work-packets/supervision.md); [Session and context continuity](work-packets/sessions.md) |
 | [SVC-PM5 — Apply shared process definitions](https://github.com/jmiedreich-ux/Maestro/blob/182bf4290ef2960d4691a7f41315ebf71d5bf85c/docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions) | [Shared process policy](work-packets/process-policy.md); [Agent route preflight](work-packets/agent-routes.md) |
 
-## Remaining full-breakdown work
+## Owner confirmation and implementation boundary
 
-The seven manual milestone QA procedures are specified and the concrete operator QA resources are verified. Runtime conversion, service validation, setup scripts and test results remain assigned implementation work, not missing manual design. The 42 packet specifications and seven development milestones retain their completed independent review coverage. Exact Owner confirmation is now required before considering this manual architecture breakdown confirmed. Confirmation does not import runtime records or start Execution. Current discussion, publication and review coverage remain in the handoff.
+The Owner confirmed this exact seven-development-milestone, 42-packet breakdown by replying **“confirmed”** immediately after it was presented from master commit `6f2d1cba06d94f826e45a2b3aa9d04365d0a02a9`. Recorded on 2026-09-17. A host message identifier and precise timestamp are unavailable and are not invented.
+
+The seven manual milestone QA procedures are specified and the concrete operator QA resources are verified. Runtime conversion, service validation, setup scripts and test results remain assigned implementation work, not missing manual design. The earlier independent packet and QA-plan reviews retain their recorded scope and limits. Confirmation does not import runtime records, prove implementation or start Execution. Current discussion, publication and review coverage remain in the handoff.
