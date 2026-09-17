@@ -26,8 +26,9 @@ from .authentication import (
     OwnerAuthenticator,
 )
 from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamService
-from .http import MAX_REQUEST_BYTES, HTTPResponse, RequestHTTPApplication
+from .http import MAX_REQUEST_BYTES, HTTPResponse
 from .projections import ProjectionReader
+from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
 from .registry import OperationRegistry
 from .requests import RequestRejection, RequestService
 
@@ -168,11 +169,17 @@ class InstalledServiceApplication:
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
         self.authenticator = OwnerAuthenticator(settings.owner)
-        self.requests = RequestService(
-            self.database, self.authenticator, OperationRegistry()
+        self.questions = QuestionService(self.database)
+        base_requests = RequestService(
+            self.database,
+            self.authenticator,
+            OperationRegistry(self.questions.operation_handlers),
         )
+        self.requests = QuestionRequestService(base_requests, self.questions)
         self.projections = ProjectionReader(self.database)
-        self.request_application = RequestHTTPApplication(self.requests)
+        self.request_application = QuestionHTTPApplication(
+            self.requests, self.questions
+        )
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
