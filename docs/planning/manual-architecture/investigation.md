@@ -1,6 +1,6 @@
 # Maestro manual architecture — code investigation
 
-Status: source-supported preparation, version 1. No implementation or installed verification has been performed.
+Status: source-supported preparation, version 2. No implementation or installed verification has been performed.
 
 ## Accepted inputs and authority
 
@@ -45,4 +45,4 @@ The draft [work map](work-breakdown.md) assigns the changes and missing capabili
 
 ## Evidence still required
 
-Implementation must establish actual service installation, Owner authentication, current tables/schemas, real tool/model identity, source and publication access, restart behavior, real reviewer decisions and connected acceptance. No old test count or source comment supplies that evidence. The detailed development records and QA plans remain unfinished; these foundations are not an approved implementation input.
+Implementation must establish actual service installation, Owner authentication, current tables/schemas, real tool/model identity, source and publication access, restart behavior, real reviewer decisions and connected acceptance. No old test count or source comment supplies that evidence. The [packet specifications](work-breakdown.md) expand these findings into proposed implementation boundaries. Final catalog-bound QA plans remain unfinished; these foundations are not an approved implementation input.

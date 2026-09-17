@@ -1,6 +1,6 @@
 # Maestro manual architecture — project structure
 
-Draft version 1, based on [the pinned investigation](investigation.md). This is the manual counterpart of the runtime project-structure record. It changes no product behavior and moves no source.
+Draft version 2, based on [the pinned investigation](investigation.md). This is the manual counterpart of the runtime project-structure record. It changes no product behavior and moves no source.
 
 ## Current and intended locations
 
@@ -32,7 +32,7 @@ No shared module is extracted merely because two names look similar. Extract onl
 
 ## Planned ancillary paths
 
-`services/maestro/pyproject.toml` retains packaging ownership; installed schema resources are added through explicit packets alongside their authoritative `docs/schemas/` definitions. Proposed deployment files belong in `services/maestro/deploy/`; QA scripts in `services/maestro/qa/`; new tests in `tests/maestro/<area>/`. None of those scripts/tests/units is claimed to exist.
+`services/maestro/pyproject.toml` retains packaging ownership; installed schema resources are added through explicit packets alongside their authoritative source definitions (`docs/schemas/` for Registration/Architecture; `schemas/execution.schema.json` for Execution). Proposed deployment files belong in `services/maestro/deploy/`; QA scripts in `services/maestro/qa/`; new tests in `tests/maestro/<area>/`. None of those scripts/tests/units is claimed to exist.
 
 Top-level historical modules remain current until their consuming packet supplies replacement entry points and caller/import verification. No history, installed database or old code is silently deleted. New production entry points must not call synthetic execution or the historical mechanical-approval loop.
 
@@ -40,8 +40,8 @@ Top-level historical modules remain current until their consuming packet supplie
 
 The architect owns each role and its starting context. During separately authorized Execution, that specialist may maintain only its assigned context and optional memory, using the expected current version and recorded evidence. A conflict returns for reconciliation rather than overwriting another role's knowledge. Role creation dispatches no worker.
 
-Each role uses the required template headings, governing repository rules, exact assigned paths, verification and escalation boundaries. An implementation assignment supplies the source revision, allowed files, returned plan, route and deadlines; this document supplies none of those operational authorizations.
+Each context uses `Verified facts`, `Source references` and `Knowledge gaps`, with evidence limits stated explicitly. Each role uses the required template headings, governing repository rules, exact assigned paths, verification and escalation boundaries. An implementation assignment supplies the source revision, allowed files, returned plan, route and deadlines; this document supplies none of those operational authorizations.
 
 ## Review and continuation
 
-These foundations and the draft work map will be included in the required full architecture-breakdown reviews. No full breakdown, QA catalog or Owner-confirmed architecture version is declared here. Finish per-packet records, milestone integration/completion criteria and catalog-bound QA plans before that review/confirmation checkpoint.
+These foundations and the draft work map will be included in the required full architecture-breakdown reviews. No full breakdown, QA catalog or Owner-confirmed architecture version is declared here. [Packet specifications](work-breakdown.md) and [milestone integration requirements](development-milestones.md) now define the draft delivery allocation. Finish catalog-bound QA plans before the full-content review/confirmation checkpoint.
