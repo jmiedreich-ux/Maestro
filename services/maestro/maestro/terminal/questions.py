@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .connection import ServiceError, TerminalConnectionError
-from .extensions import ExtensionContext, ExtensionRegistry
+from .extensions import ExtensionContext, ExtensionRegistry, InputSubmission
 
 
 class AnswerInput(Protocol):
@@ -141,7 +141,12 @@ class QuestionInteraction:
         self.selected_choice_id = choice_id
         self.status = "Choice filled; Send or Enter submits it."
 
-    def submit(self, context: ExtensionContext) -> Mapping[str, object]:
+    def submit(
+        self,
+        context: ExtensionContext,
+        *,
+        choice_id: str | None = None,
+    ) -> Mapping[str, object]:
         state = _state(context)
         question = self.question
         if question is None or state.input.question_id is None:
@@ -153,6 +158,17 @@ class QuestionInteraction:
             raise ValueError("selected project changed before answer submission")
         if state.selected_activity_id != question["activity_id"]:
             raise ValueError("selected activity changed before answer submission")
+        if choice_id is not None:
+            choice_id = _identifier(choice_id, "choice_id")
+            choices = question["choices"]
+            assert isinstance(choices, list)
+            if not any(
+                isinstance(choice, Mapping)
+                and choice.get("choice_id") == choice_id
+                for choice in choices
+            ):
+                raise ValueError("selected choice is not available")
+        self.selected_choice_id = choice_id
         proposed = PendingAnswer(
             request_id="",
             project_id=str(question["project_id"]),
@@ -202,7 +218,7 @@ class QuestionInteraction:
     def retry(self, context: ExtensionContext) -> Mapping[str, object]:
         if self.pending is None:
             raise ValueError("no unconfirmed answer is available to retry")
-        return self.submit(context)
+        return self.submit(context, choice_id=self.pending.choice_id)
 
     def _reconcile(
         self, context: ExtensionContext, pending: PendingAnswer
@@ -240,14 +256,26 @@ class QuestionsExtension:
         self.interaction = interaction or QuestionInteraction()
 
     def install(self, registry: ExtensionRegistry) -> None:
-        registry.register_view("question", self._view)
-        registry.register_command("question", self._view)
+        registry.register_input("question", self._open_input, self._submit_input)
 
-    def _view(self, context: ExtensionContext, arguments: str) -> str:
-        question_id = arguments.strip() or _state(context).input.question_id
-        if question_id is None:
-            return "No question selected."
-        return self.interaction.open(context, question_id)
+    def _open_input(
+        self, context: ExtensionContext, question_id: str
+    ) -> Mapping[str, object]:
+        self.interaction.open(context, question_id)
+        assert self.interaction.question is not None
+        return dict(self.interaction.question)
+
+    def _submit_input(
+        self, context: ExtensionContext, submission: InputSubmission
+    ) -> object:
+        state = _state(context)
+        if state.input.text != submission.text:
+            raise ValueError("question input changed before submission")
+        return self.interaction.submit(
+            context,
+            choice_id=submission.selection_id,
+        )
+
 
 def _state(context: ExtensionContext) -> QuestionState:
     state = context.state

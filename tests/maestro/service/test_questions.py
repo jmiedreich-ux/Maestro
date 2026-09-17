@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from maestro.foundation import Database, StorageSettings
 from maestro.service.activities import ActivityRecord, ActivityRepository, ProjectRecord
@@ -20,17 +21,18 @@ from maestro.service.questions import (
     QuestionRequestService,
     QuestionService,
 )
+from maestro.service.projections import ProjectionReader
 from maestro.service.registry import OperationRegistry
 from maestro.service.requests import RequestService
 from maestro.terminal.connection import (
     ConnectionConfiguration,
-    ConnectionState,
     ConnectionUnavailable,
     ServiceClient,
     ServiceError,
 )
-from maestro.terminal.questions import QuestionsExtension
-from maestro.terminal.workspace import Workspace, WorkspaceError
+from maestro.terminal.questions import QuestionInteraction, QuestionsExtension
+from maestro.terminal.rendering import TerminalRenderer, TerminalSize
+from maestro.terminal.workspace import Workspace
 
 
 OWNER_TOKEN = "a" * 64
@@ -68,6 +70,44 @@ class LoseFirstResponseClient:
         return response
 
 
+class WorkspaceQuestionClient:
+    """Connect real Workspace reads to projections and question HTTP routes."""
+
+    def __init__(
+        self,
+        reader: ProjectionReader,
+        client: ServiceClient | LoseFirstResponseClient,
+    ) -> None:
+        self.reader = reader
+        self.client = client
+
+    def workspace(self, *, connect_timeout: bool = False):
+        return self.reader.workspace().as_dict()
+
+    def get_json(self, path: str, *, timeout: int = 15):
+        parsed = urlsplit(path)
+        if parsed.path.startswith(("/questions/", "/requests/")):
+            return self.client.get_json(path, timeout=timeout)
+        parts = parsed.path.split("/")
+        query = parse_qs(parsed.query)
+        if len(parts) == 4 and parts[1] == "projects":
+            project_id = unquote(parts[2])
+            if parts[3] == "activities":
+                return self.reader.activities(project_id).as_dict()
+            if parts[3] == "conversation":
+                before = query.get("before", [None])[0]
+                return self.reader.conversation(
+                    project_id,
+                    before=None if before is None else int(before),
+                ).as_dict()
+        if len(parts) == 3 and parts[1] == "activities":
+            return self.reader.activity(unquote(parts[2])).as_dict()
+        raise AssertionError(f"unexpected Workspace read path: {path}")
+
+    def submit(self, envelope):
+        return self.client.submit(envelope)
+
+
 class LinkedQuestionsTest(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -81,6 +121,7 @@ class LinkedQuestionsTest(unittest.TestCase):
             self.database, {"registration-process": self.recipient}
         )
         self.records = ActivityRepository(self.database)
+        self.reader = ProjectionReader(self.database)
         authenticator = OwnerAuthenticator(
             OwnerAuthenticationSettings(
                 owner_id="owner-local", token_sha256=token_digest(OWNER_TOKEN)
@@ -105,6 +146,7 @@ class LinkedQuestionsTest(unittest.TestCase):
                 f"http://{host}:{port}", token, config / "cli.toml"
             )
         )
+        self.workspace_client = WorkspaceQuestionClient(self.reader, self.client)
         self._create_project("project-one", "activity-one", "Project One")
         self._create_project("project-two", "activity-two", "Project Two")
 
@@ -186,44 +228,51 @@ class LinkedQuestionsTest(unittest.TestCase):
             "payload": {"text": text, "choice_id": choice_id},
         }
 
-    def test_real_workspace_exposes_missing_answer_callback_before_service_path(
-        self,
-    ) -> None:
+    def test_real_workspace_selects_choice_and_submits_with_clarification(self) -> None:
         self._publish()
-        workspace = Workspace(self.client)
-        workspace.connection_state = ConnectionState.CONNECTED
-        workspace.selected_project_id = "project-one"
-        workspace.selected_activity_id = "activity-one"
+        workspace = Workspace(self.workspace_client)
         extension = QuestionsExtension()
         extension.install(workspace.extensions)
+        workspace.refresh()
 
-        rendered = workspace.open_extension_view("question", "question-one")
+        attention = next(
+            item for item in workspace.attention if item.record_id == "question-one"
+        )
+        workspace.open_attention(attention.cursor)
+        rendered = TerminalRenderer().render(workspace, TerminalSize(120, 30))
         self.assertIn("Which source should the assessment use?", rendered)
         self.assertIn("Recommended: It matches the registered source.", rendered)
-        self.assertIn("Free-text answer is available.", rendered)
-        self.assertEqual(("question",), workspace.extensions.command_names)
-        self.assertNotIn("choice", {target.kind for target in workspace.focus_targets()})
-        for character in "Use main\nUse the default branch head.":
+        self.assertEqual(("question",), workspace.extensions.input_names)
+
+        choice_index = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "choice" and target.identity == "main"
+        )
+        workspace.focus = choice_index
+        workspace.handle_key("ENTER")
+        self.assertEqual("main", workspace.input.choice_id)
+        self.assertEqual("Use main", workspace.input.text)
+        editor_index = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "editor"
+        )
+        workspace.focus = editor_index
+        workspace.handle_key("SHIFT+ENTER")
+        for character in "Use the default branch head.":
             workspace.handle_key(character)
         self.assertEqual(
             "Use main\nUse the default branch head.", workspace.input.text
         )
         self.assertEqual({}, self.recipient.effects)
-        with self.assertRaisesRegex(
-            WorkspaceError, "answer submission is not installed"
-        ):
-            workspace.handle_key("ENTER")
+        response = workspace.handle_key("ENTER")
 
-        response = self.client.submit(
-            self._envelope(
-                "request-answer-one",
-                "question-one",
-                text="Use main\nUse the default branch head.",
-            )
-        )
-
+        self.assertIsInstance(response, dict)
+        assert isinstance(response, dict)
         self.assertEqual("completed", response["receipt"]["status"])
-        delivered = self.recipient.effects["request-answer-one"]
+        request_id = str(response["receipt"]["request_id"])
+        delivered = self.recipient.effects[request_id]
         self.assertEqual("question-one", delivered.question_id)
         self.assertEqual("main", delivered.choice_id)
         self.assertEqual(
@@ -274,23 +323,81 @@ class LinkedQuestionsTest(unittest.TestCase):
         self._publish(
             "question-follow-up",
             original_question_id="question-one",
-            previous_answer_id="request-answer-one",
+            previous_answer_id=request_id,
         )
-        workspace.input.clear()
-        follow_up = workspace.open_extension_view("question", "question-follow-up")
-        self.assertIn(
-            "Follow-up to question-one after answer request-answer-one", follow_up
+        workspace.refresh()
+        follow_up = next(
+            item
+            for item in workspace.attention
+            if item.record_id == "question-follow-up"
         )
+        workspace.open_attention(follow_up.cursor)
+        assert workspace.selected_attention_detail is not None
+        self.assertEqual(
+            "question-one",
+            workspace.selected_attention_detail["original_question_id"],
+        )
+        self.assertEqual(
+            request_id, workspace.selected_attention_detail["previous_answer_id"]
+        )
+
+    def test_real_workspace_submits_ordinary_free_text_without_choice(self) -> None:
+        self._publish(
+            "question-two", project_id="project-two", activity_id="activity-two"
+        )
+        workspace = Workspace(self.workspace_client)
+        QuestionsExtension().install(workspace.extensions)
+        workspace.refresh()
+        attention = next(
+            item for item in workspace.attention if item.record_id == "question-two"
+        )
+        workspace.open_attention(attention.cursor)
+
+        for character in "Use the release branch":
+            workspace.handle_key(character)
+        response = workspace.handle_key("ENTER")
+
+        self.assertIsInstance(response, dict)
+        assert isinstance(response, dict)
+        request_id = str(response["receipt"]["request_id"])
+        delivered = self.recipient.effects[request_id]
+        self.assertEqual("Use the release branch", delivered.text)
+        self.assertIsNone(delivered.choice_id)
+        self.assertEqual("", workspace.input.text)
+        self.assertIsNone(workspace.input.question_id)
 
     def test_lost_acknowledgment_and_interrupted_delivery_reconcile_once(self) -> None:
         self.recipient.interrupt_once = True
         self._publish()
-        client = LoseFirstResponseClient(self.client)
-        envelope = self._envelope("request-uncertain", "question-one")
+        transport = LoseFirstResponseClient(self.client)
+        workspace = Workspace(WorkspaceQuestionClient(self.reader, transport))
+        extension = QuestionsExtension(
+            QuestionInteraction(request_id_factory=lambda: "request-uncertain")
+        )
+        extension.install(workspace.extensions)
+        workspace.refresh()
+        attention = next(
+            item for item in workspace.attention if item.record_id == "question-one"
+        )
+        workspace.open_attention(attention.cursor)
+        choice_index = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "choice" and target.identity == "main"
+        )
+        workspace.focus = choice_index
+        workspace.handle_key("ENTER")
+        workspace.focus = next(
+            index
+            for index, target in enumerate(workspace.focus_targets())
+            if target.kind == "editor"
+        )
 
         with self.assertRaises(ConnectionUnavailable):
-            client.submit(envelope)
-        response = self.client.submit(envelope)
+            workspace.handle_key("ENTER")
+        self.assertEqual("Use main", workspace.input.text)
+        self.assertEqual("main", workspace.input.choice_id)
+        response = workspace.handle_key("ENTER")
 
         self.assertEqual("request-uncertain", response["receipt"]["request_id"])
         self.assertEqual(["request-uncertain", "request-uncertain"], self.recipient.calls)

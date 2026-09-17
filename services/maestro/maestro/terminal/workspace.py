@@ -15,7 +15,7 @@ from .connection import (
     ServiceError,
     TerminalConnectionError,
 )
-from .extensions import ExtensionContext, ExtensionRegistry
+from .extensions import ExtensionContext, ExtensionRegistry, InputSubmission
 
 
 class WorkspaceError(ValueError):
@@ -43,6 +43,7 @@ class FocusTarget:
     kind: str
     identity: str
     label: str
+    value: str | None = None
 
 
 @dataclass(frozen=True)
@@ -141,11 +142,15 @@ class InputBuffer:
     text: str = ""
     cursor: int = 0
     question_id: str | None = None
+    extension_name: str | None = None
+    choice_id: str | None = None
 
     def clear(self) -> None:
         self.text = ""
         self.cursor = 0
         self.question_id = None
+        self.extension_name = None
+        self.choice_id = None
 
     def insert(self, value: str) -> None:
         self.text = self.text[: self.cursor] + value + self.text[self.cursor :]
@@ -280,16 +285,28 @@ class Workspace:
             self.select_activity(item.activity_id)
         self.selected_attention = cursor
         if item.type == "question":
+            if self.input.question_id != item.record_id:
+                self.input.clear()
             self.input.question_id = item.record_id
-            self.selected_attention_detail = _find_detail(
-                self.activity_detail, "questions", "question_id", item.record_id
-            ) or {
-                "question_id": item.record_id,
-                "subject": item.subject,
-                "requester": item.source,
-            }
+            if item.type in self.extensions.input_names:
+                self.input.extension_name = item.type
+                self.selected_attention_detail = dict(
+                    self.extensions.open_input(
+                        item.type,
+                        ExtensionContext(self.client, self),
+                        item.record_id,
+                    )
+                )
+            else:
+                self.selected_attention_detail = _find_detail(
+                    self.activity_detail, "questions", "question_id", item.record_id
+                ) or {
+                    "question_id": item.record_id,
+                    "subject": item.subject,
+                    "requester": item.source,
+                }
         else:
-            self.input.question_id = None
+            self.input.clear()
             self.selected_attention_detail = _find_detail(
                 self.activity_detail,
                 "available_actions",
@@ -472,8 +489,10 @@ class Workspace:
             self.open_attention(target.identity)
             return None
         if target.kind == "choice":
-            self.input.text = target.label
-            self.input.cursor = len(target.label)
+            value = target.label if target.value is None else target.value
+            self.input.text = value
+            self.input.cursor = len(value)
+            self.input.choice_id = target.identity
             return None
         if target.kind == "action":
             return self.invoke_activity_action(target.identity)
@@ -494,6 +513,13 @@ class Workspace:
             if self.input.question_id is None:
                 raise WorkspaceError(
                     "input accepts commands until a question is selected"
+                )
+            if self.input.extension_name in self.extensions.input_names:
+                self._require_online()
+                return self.extensions.submit_input(
+                    self.input.extension_name,
+                    ExtensionContext(self.client, self),
+                    InputSubmission(text, self.input.choice_id),
                 )
             raise WorkspaceError("answer submission is not installed in this workspace")
         command, _, arguments = text[1:].partition(" ")
@@ -812,7 +838,16 @@ class Workspace:
                 label = choice.get("label")
                 identity = choice.get("choice_id", choice.get("id", index))
                 if isinstance(label, str) and label:
-                    targets.append(FocusTarget("choice", str(identity), label))
+                    display = label
+                    tradeoff = choice.get("tradeoff")
+                    recommendation = choice.get("recommendation_reason")
+                    if isinstance(tradeoff, str) and tradeoff:
+                        display += f" — {tradeoff}"
+                    if isinstance(recommendation, str) and recommendation:
+                        display += f" — Recommended: {recommendation}"
+                    targets.append(
+                        FocusTarget("choice", str(identity), display, label)
+                    )
         return tuple(targets)
 
     def _activity_action_targets(self) -> tuple[FocusTarget, ...]:
