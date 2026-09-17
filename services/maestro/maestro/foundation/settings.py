@@ -35,7 +35,7 @@ class StorageSettings:
         if raw_path == ":memory:" or raw_path.startswith("file:"):
             raise StorageConfigurationError("in-memory and URI SQLite storage are unsupported")
 
-        normalized = Path(raw_path).expanduser()
+        normalized = Path(raw_path)
         if not normalized.is_absolute():
             raise StorageConfigurationError("storage.path must be absolute")
         object.__setattr__(self, "path", normalized)

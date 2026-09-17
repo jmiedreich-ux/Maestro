@@ -194,10 +194,12 @@ class Database:
             transaction.execute(
                 """
                 INSERT INTO outbox_events(
-                    event_id, occurred_at, project_id, activity_id, type, data_json
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    schema_version, event_id, occurred_at, project_id, activity_id,
+                    type, data_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    event.schema_version,
                     event.event_id,
                     event.occurred_at,
                     event.project_id,
@@ -381,6 +383,7 @@ _FOUNDATION_SCHEMA = (
     """
     CREATE TABLE IF NOT EXISTS outbox_events(
         sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        schema_version INTEGER NOT NULL CHECK(schema_version = 1),
         event_id TEXT NOT NULL UNIQUE,
         occurred_at TEXT NOT NULL,
         project_id TEXT,

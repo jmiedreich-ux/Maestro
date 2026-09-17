@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _DOMAIN = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
+EVENT_SCHEMA_VERSION = 1
 
 
 class ContractError(ValueError):
@@ -113,6 +114,7 @@ class Command:
 class Event:
     """An event written to the outbox as part of a command transaction."""
 
+    schema_version: int
     event_id: str
     occurred_at: str
     type: str
@@ -121,6 +123,8 @@ class Event:
     activity_id: str | None = None
 
     def __post_init__(self) -> None:
+        if isinstance(self.schema_version, bool) or self.schema_version != EVENT_SCHEMA_VERSION:
+            raise ContractError("event schema_version must be 1")
         canonical_identifier(self.event_id, "event_id")
         canonical_identifier(self.type, "event type")
         if self.project_id is not None:

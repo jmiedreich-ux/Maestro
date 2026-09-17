@@ -9,6 +9,7 @@ from pathlib import Path
 
 from maestro.foundation import (
     Command,
+    ContractError,
     Database,
     DomainMigration,
     Event,
@@ -49,6 +50,7 @@ def command(request_id: str, entity_id: str, expected_version: int = 0) -> Comma
 
 def event(event_id: str, value: str) -> Event:
     return Event(
+        schema_version=1,
         event_id=event_id,
         occurred_at="2026-09-17T12:34:56.000000Z",
         project_id="project-one",
@@ -96,13 +98,13 @@ class StoreTest(unittest.TestCase):
                 "SELECT widget_id, version, value FROM widgets"
             ).fetchone()
             saved_event = connection.execute(
-                "SELECT event_id, type, data_json FROM outbox_events"
+                "SELECT schema_version, event_id, type, data_json FROM outbox_events"
             ).fetchone()
 
         self.assertEqual(("widget-one", 1), receipt)
         self.assertEqual(("widget-one", 1, "saved"), widget)
         self.assertEqual(
-            ("event-one", "widget.changed", '{"value":"saved"}'), saved_event
+            (1, "event-one", "widget.changed", '{"value":"saved"}'), saved_event
         )
 
     def test_failed_effect_rolls_back_receipt_effect_and_event(self) -> None:
@@ -202,6 +204,8 @@ class StoreTest(unittest.TestCase):
         with self.assertRaises(StorageConfigurationError):
             StorageSettings(path=Path("relative.sqlite3"))
         with self.assertRaises(StorageConfigurationError):
+            StorageSettings(path=Path("~/maestro.sqlite3"))
+        with self.assertRaises(StorageConfigurationError):
             StorageSettings(engine="postgres", path=self.path)
         with self.assertRaises(StorageConfigurationError):
             StorageSettings(path=Path(":memory:"))
@@ -222,6 +226,20 @@ class StoreTest(unittest.TestCase):
             Database(StorageSettings(path=legacy_path)).initialize()
         observed = sqlite3.connect(legacy_path).execute("SELECT value FROM legacy").fetchone()
         self.assertEqual(("preserved",), observed)
+
+    def test_event_schema_version_rejects_unsupported_values(self) -> None:
+        for unsupported_version in (0, 2, True):
+            with self.subTest(schema_version=unsupported_version):
+                with self.assertRaisesRegex(ContractError, "schema_version"):
+                    Event(
+                        schema_version=unsupported_version,
+                        event_id="event-invalid",
+                        occurred_at="2026-09-17T12:34:56.000000Z",
+                        project_id=None,
+                        activity_id=None,
+                        type="widget.changed",
+                        data={},
+                    )
 
     def test_migrations_are_ordered_and_conflicting_identities_are_rejected(self) -> None:
         alpha = DomainMigration(
