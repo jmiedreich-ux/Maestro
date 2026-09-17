@@ -7,8 +7,8 @@ Draft version 3. The Owner-confirmed manual registration covers 18 project outco
 - [Common packet rules](packet-rules.md): exact baseline, authority, common interfaces, file ownership, execution requirements and completion evidence. Incorporated into every packet.
 - [Development milestones](development-milestones.md): allocation, delivery order, connected acceptance requirements and outcome completion boundary.
 - [Investigation](investigation.md) and [project structure](project-structure.md): inspected evidence and source boundaries.
-- [Seven milestone QA plans](qa-plans/README.md): assembled checks, expected results, test data, evidence and cleanup; manual assumptions and unresolved runtime bindings are explicit.
-- [QA resource preparation](qa-resources.md): settled QA repository name and outstanding catalog/setup evidence.
+- [Seven milestone QA plans](qa-plans/README.md): assembled checks, expected results, test data, evidence and cleanup; verified operator bindings and remaining implementation-time runtime conversion are explicit.
+- [QA resource preparation](qa-resources.md): verified QA repository, service App, installed agent routes, local models, isolated roots and remaining service/setup implementation.
 
 Each linked packet is the canonical specification for its purpose, required inputs, architecture/outcome references, dependencies, exact outputs, execution requirements, success criteria and verification command. This index intentionally does not duplicate those fields.
 
@@ -104,4 +104,4 @@ This table identifies contributing packets, not delivered outcomes. Read the com
 
 ## Remaining full-breakdown work
 
-The seven manual milestone QA procedures are specified. Complete their runtime conversion/bindings using actual non-secret operator configuration and approved setup/access; this is architect/implementation work, not a request for the Owner to design a resource catalog. Complete the required full-content review coverage and obtain exact Owner confirmation before considering the architecture breakdown confirmed. This packet-specification expansion neither imports runtime records nor starts Execution. Current discussion/publication and review coverage are retained in the existing handoff, not duplicated here.
+The seven manual milestone QA procedures are specified and the concrete operator QA resources are verified. Runtime conversion, service validation, setup scripts and test results remain assigned implementation work, not missing manual design. The 42 packet specifications and seven development milestones retain their completed independent review coverage. Exact Owner confirmation is now required before considering this manual architecture breakdown confirmed. Confirmation does not import runtime records or start Execution. Current discussion, publication and review coverage remain in the handoff.
