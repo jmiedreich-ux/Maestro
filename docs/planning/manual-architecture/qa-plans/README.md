@@ -1,6 +1,6 @@
 # Milestone QA plans
 
-Version 1. Manual planning specifications for the seven [development milestones](../development-milestones.md). These plans describe the checks to perform on each assembled milestone. They record no test run, installed resource, passing result or runtime QA-plan identity.
+Version 2. Manual planning specifications for the seven [development milestones](../development-milestones.md). These plans describe the checks to perform on each assembled milestone. They record no test run, installed resource, passing result or runtime QA-plan identity.
 
 ## Plans and timing
 
@@ -22,7 +22,7 @@ The accepted manual registration is candidate version 1 at `4953aa555b9e5da5b734
 
 The architect owns test design, routine technical choices, traceability, setup requirements and tooling specifications. The operator alone provisions protected resources/credentials and confirms actual availability. The Owner need not design tests or assemble a catalog in order for this manual drafting to proceed. No resource creation, purchase, installation, network widening, credential extraction or destructive operation is authorized by writing these plans.
 
-Use an isolated Linux test environment on the AI box, a separate test service account/data root and Owner credential, and the already selected repository name `jmiedreich-ux/Maestro-qa`. These are requirements/assumptions, not verified availability. Test repository visibility, access/profile, host isolation, supported exact tools/models, environment/secret/network catalog names and installed paths remain unknown. Never infer public visibility, create a repository or test against Maestro product master.
+Use the verified private `jmiedreich-ux/Maestro-qa` repository through the `Maestro Coordinator` GitHub App and the owner-only isolated roots recorded in [QA resource preparation](../qa-resources.md). Codex, Claude Code, Qwen CLI and the exact local Ollama models listed there are available. The isolated Maestro test service identity, test Owner credential, implemented catalog consumer and runnable setup/check tooling remain implementation prerequisites. Never test against Maestro product master.
 
 [Project QA bindings](../../../architecture.md#project-quality-assurance-bindings) remains controlling: before runtime plan publication/confirmation the service must supply the validated non-secret catalog and snapshot hash; selections must be authorized test bindings. The manual runbooks here may be prepared with explicit assumptions, but are not catalog-bound executable records. This distinction does not defer the runtime binding gate until after confirmation or waive it before testing.
 
@@ -93,4 +93,4 @@ The architect/implementation team completes these technical steps; the Owner is 
 - Replace manual setup/check descriptions with approved versioned script references/hashes or exact argument arrays, including support health/port rules and actual data generator/input hashes. These scripts are not written by this documentation change.
 - Validate the producer schema/inventory, acquire the applicable full-content review coverage and exact Owner confirmation before using the plans as runtime inputs; recheck current resource authorization before setup/use.
 
-This checklist records genuine unresolved binding/tooling work. It is not evidence that the full architecture breakdown is ready for confirmation and does not reopen the already settled QA repository name.
+This checklist records implementation-time runtime conversion and tooling work. The verified operator bindings complete the manual readiness input; they do not establish an installed service, executable runtime QA plans or passing QA. The already settled QA repository decision is not reopened.
