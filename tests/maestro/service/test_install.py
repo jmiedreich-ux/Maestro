@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import importlib.util
 import io
 import json
@@ -36,6 +37,7 @@ from maestro.service.registry import (
     PreparedOperation,
 )
 from maestro.service.requests import RequestService
+from maestro.terminal.connection import TerminalConnection
 
 
 OWNER_TOKEN = "a" * 64
@@ -159,7 +161,31 @@ class LinuxInstallationTest(unittest.TestCase):
 
             response = self._workspace(first)
             self.assertEqual("project-saved", response["data"]["projects"][0]["project_id"])
-            # Closing the HTTP/terminal-side session leaves the service listener alive.
+            self.paths.cli_config.write_text(
+                f'service_url = "{first}"\n'
+                f'owner_credential_file = "{self.paths.owner_token}"\n',
+                encoding="utf-8",
+            )
+            self.paths.cli_config.chmod(0o600)
+            metadata = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
+            module_name, function_name = metadata["project"]["scripts"]["maestro"].split(":")
+            terminal_entry = getattr(importlib.import_module(module_name), function_name)
+            output = io.StringIO()
+            self.assertEqual(
+                0,
+                terminal_entry(
+                    argv=[],
+                    connection_factory=lambda: TerminalConnection(
+                        environ={
+                            "XDG_CONFIG_HOME": str(self.operator_home / ".config")
+                        }
+                    ),
+                    input_stream=io.StringIO("/exit\n"),
+                    output_stream=output,
+                ),
+            )
+            self.assertIn("service work continues", output.getvalue())
+            # The installed terminal entry disconnected; service work remains reachable.
             self.assertEqual(200, self._workspace(first)["status"])
         finally:
             self._stop_server()
@@ -317,6 +343,7 @@ class LinuxInstallationTest(unittest.TestCase):
         with (
             mock.patch.object(installer, "_account", side_effect=KeyError("missing")),
             mock.patch.object(installer.subprocess, "run", return_value=completed),
+            mock.patch.object(installer.Path, "exists", return_value=False),
             redirect_stderr(output),
         ):
             result = installer.verify_installed_host(None)
@@ -330,7 +357,7 @@ class LinuxInstallationTest(unittest.TestCase):
         scripts = metadata["project"]["scripts"]
         data_files = metadata["tool"]["setuptools"]["data-files"]
         package_data = metadata["tool"]["setuptools"]["package-data"]
-        self.assertEqual("maestro.cli:main", scripts["maestro"])
+        self.assertEqual("maestro.terminal.main:main", scripts["maestro"])
         self.assertEqual("maestro.service.main:main", scripts["maestro-service"])
         self.assertIn("deploy/maestro.service", data_files["share/maestro/deploy"])
         self.assertIn("**/*.json", package_data["maestro"])
