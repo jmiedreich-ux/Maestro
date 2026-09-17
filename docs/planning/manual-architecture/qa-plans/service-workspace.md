@@ -14,7 +14,7 @@ Execute the shared setup sequence and record the exact installed candidate, plan
 
 ## Test inputs and real entry paths
 
-Fresh isolated test installation and empty database; two distinct test request identities; a generic linked-question input delivered through the implemented service interface. This input tests infrastructure only; real two-project Registration evidence is required later.
+Fresh isolated test installation and empty database; an independent fixture producer creates varied generic project/activity/question data through the public service interface, then a separate QA run uses two distinct test request identities and a linked-question input. The producer records only its generated lineage; it does not inspect or tailor data to QA assertions. This input tests infrastructure only; real two-project Registration evidence is required later.
 
 Record actual input hashes/lineage and sanitization classification under the shared data rules. Use the real public path named in each check; capture failures as well as successes. Data preparation must not insert the expected result into internal state.
 
