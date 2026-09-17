@@ -14,7 +14,17 @@
 
 ## Where the discussion paused
 
-Latest decision: Maestro-wide [testing proportionality](../../docs/planning-guide/README.md#verification-expectations) and [scoped review rules](../../docs/architecture.md#project-wide-review-boundary) are recorded below. They apply to subsequent work across all processes; routine test or review expansion is not an objective. Existing QA-plan/setup status remains as recorded in the following checkpoint.
+The concrete manual QA resource readiness check is complete. The private `jmiedreich-ux/Maestro-qa` repository exists with default branch `main`. Live GitHub App authentication verified that `Maestro Coordinator` (App ID `4746601`, installation ID `157167451`) can access it. The App key is stored only in the owner-only local QA secret root; no secret value is recorded in GitHub.
+
+The Linux AI box has Codex CLI `0.154.0`, Claude Code `2.1.270`, Qwen CLI `0.22.3`, and local Ollama API `0.32.15` with the exact model inventory recorded in [QA resource preparation](../../docs/planning/manual-architecture/qa-resources.md). Owner-only environment, worktree, artifact and secret roots are prepared under the local Maestro workspace. The non-secret operator binding hash is also recorded there.
+
+Publication sequence: QA resource preparation commit `156fc150091438476ebf9d986db37d42427badf2`; work-breakdown readiness commit `5cdb76924b0f8503036b20db9dfd9211319f585b`; development-milestone binding commit `991fca4386fd111d5d087f05aa7258f973c5cdcf`; QA shared-rules binding commit `79256469cda51ac22cb4d0152241c9728baf20ab`. All documentation changes were made directly on `master`; no documentation repository was cloned.
+
+The verified operator bindings close the manual readiness gap. Remaining service installation, catalog ingestion, test Owner credential, executable scripts, runtime QA-plan records and observed results are outputs of the existing implementation packets, not missing manual design. Earlier independent packet and QA-plan review coverage remains bounded to its recorded snapshots; this resource-evidence update does not claim a new full review.
+
+No implementation or QA run has started. The next action is exact Owner confirmation of the seven plainly named development milestones and their 42 work packets. Confirmation does not start Execution.
+
+The Maestro-wide [testing proportionality](../../docs/planning-guide/README.md#verification-expectations) and [scoped review rules](../../docs/architecture.md#project-wide-review-boundary) remain controlling.
 
 ## Proportionate testing and scoped review rules
 
