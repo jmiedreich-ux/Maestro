@@ -124,13 +124,49 @@ class ProjectionServer:
         if len(parts) == 6 and parts[:4] == ["", "api", "v1", "projects"]:
             project_id = unquote(parts[4])
             if parts[5] == "activities":
-                return self.reader.activities(project_id).as_dict()
+                before = query.get("before", [None])[0]
+                return self.reader.activities(
+                    project_id,
+                    before=None if before is None else int(before),
+                    limit=int(query.get("limit", [50])[0]),
+                ).as_dict()
             if parts[5] == "conversation":
                 before = query.get("before", [None])[0]
                 return self.reader.conversation(
                     project_id,
                     before=None if before is None else int(before),
                     limit=int(query.get("limit", [50])[0]),
+                ).as_dict()
+        if (
+            len(parts) == 8
+            and parts[:4] == ["", "api", "v1", "projects"]
+            and parts[5] == "activities"
+        ):
+            project_id = unquote(parts[4])
+            activity_id = unquote(parts[6])
+            resource = parts[7]
+            before = query.get("before", [None])[0]
+            limit = int(query.get("limit", [50])[0])
+            if resource == "questions":
+                return self.reader.questions(
+                    project_id,
+                    activity_id,
+                    before=before,
+                    limit=limit,
+                ).as_dict()
+            if resource == "findings":
+                return self.reader.findings(
+                    project_id,
+                    activity_id,
+                    before=before,
+                    limit=limit,
+                ).as_dict()
+            if resource == "actions":
+                return self.reader.actions(
+                    project_id,
+                    activity_id,
+                    before=before,
+                    limit=limit,
                 ).as_dict()
         if len(parts) == 5 and parts[:4] == ["", "api", "v1", "activities"]:
             return self.reader.activity(unquote(parts[4])).as_dict()
@@ -333,11 +369,129 @@ class TerminalWorkspaceTest(unittest.TestCase):
             if item.record_id == "question-page-000"
         )
         workspace.open_attention(oldest.cursor)
-        self.assertEqual("Question 000", workspace.selected_attention_detail["subject"])
+        self.assertEqual(
+            "Choose a value", workspace.selected_attention_detail["prompt"]
+        )
         self.assertIn(
-            "Question: Question 000",
+            "Question: Choose a value",
             TerminalRenderer().render(workspace, TerminalSize(100, 30)),
         )
+
+    def test_activity_and_detail_continuations_preserve_older_current_context(self) -> None:
+        self.create_project("project-one", "Project One")
+        with self.database.transaction() as transaction:
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-project-one",
+                    "project-one",
+                    "registration",
+                    "Register Project One",
+                    "waiting",
+                    2,
+                    "Owner answer required",
+                    available_actions=(
+                        ActivityAction(
+                            "retry-project-one", "Retry activity", "recovery"
+                        ),
+                    )
+                    + tuple(
+                        ActivityAction(
+                            f"action-detail-{number:03d}",
+                            f"Detailed action {number:03d}",
+                        )
+                        for number in range(MAX_PAGE_SIZE + 5)
+                    ),
+                ),
+                expected_record_version=1,
+            )
+            for number in range(55):
+                self.records.create_activity(
+                    transaction,
+                    ActivityRecord(
+                        f"activity-completed-{number:03d}",
+                        "project-one",
+                        "architecture",
+                        f"Completed activity {number:03d}",
+                        "completed",
+                        1,
+                    ),
+                )
+            for number in range(MAX_PAGE_SIZE + 5):
+                self.records.create_question(
+                    transaction,
+                    QuestionRecord(
+                        f"question-detail-{number:03d}",
+                        "project-one",
+                        "activity-project-one",
+                        f"Detailed question {number:03d}",
+                        f"Actual prompt {number:03d}",
+                        "registration-architect",
+                        "awaiting_answer",
+                        1,
+                    ),
+                )
+                self.records.create_finding(
+                    transaction,
+                    FindingRecord(
+                        f"finding-detail-{number:03d}",
+                        "project-one",
+                        "activity-project-one",
+                        f"Detailed finding {number:03d}",
+                        f"Actual finding detail {number:03d}",
+                        "open",
+                        1,
+                    ),
+                )
+
+        workspace = Workspace(self.client)
+        workspace.refresh()
+        workspace.select_project("project-one")
+
+        self.assertEqual(56, len(workspace.activities))
+        self.assertEqual("activity-project-one", workspace.selected_activity_id)
+        self.assertTrue(
+            any(
+                path.startswith(
+                    "/api/v1/projects/project-one/activities?before="
+                )
+                for path in self.projection_server.paths
+            )
+        )
+        detail = workspace.activity_detail
+        self.assertEqual(MAX_PAGE_SIZE + 6, len(detail["questions"]))
+        self.assertEqual(MAX_PAGE_SIZE + 6, len(detail["findings"]))
+        self.assertEqual(MAX_PAGE_SIZE + 6, len(detail["available_actions"]))
+        question = next(
+            item
+            for item in detail["questions"]
+            if item["question_id"] == "question-detail-000"
+        )
+        self.assertEqual("Actual prompt 000", question["prompt"])
+        finding = next(
+            item
+            for item in detail["findings"]
+            if item["finding_id"] == "finding-detail-000"
+        )
+        self.assertEqual("Actual finding detail 000", finding["detail"])
+        self.assertIn(
+            "action-detail-000",
+            {item["action_id"] for item in detail["available_actions"]},
+        )
+        for resource in ("questions", "findings", "actions"):
+            self.assertTrue(
+                any(
+                    f"/activities/activity-project-one/{resource}?before=" in path
+                    for path in self.projection_server.paths
+                )
+            )
+        attention = next(
+            item
+            for item in workspace.attention
+            if item.record_id == "question-detail-000"
+        )
+        workspace.open_attention(attention.cursor)
+        self.assertEqual("Actual prompt 000", workspace.selected_attention_detail["prompt"])
 
     def test_attention_input_keys_switch_and_disconnect_preserve_only_visible_context(self) -> None:
         self.create_project("project-one", "Project One")

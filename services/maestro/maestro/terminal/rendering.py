@@ -134,11 +134,17 @@ class TerminalRenderer:
             elif isinstance(subject, str):
                 lines.append(f"Question: {subject}")
             for target in workspace.focus_targets():
-                if target.kind in {"choice", "action"}:
+                if target.kind == "choice":
                     lines.append(
                         f"{_focus(workspace, target.kind, target.identity)} "
                         f"{target.label}"
                     )
+        for target in workspace.focus_targets():
+            if target.kind == "action":
+                lines.append(
+                    f"{_focus(workspace, target.kind, target.identity)} "
+                    f"{target.label}"
+                )
         if workspace.conversation_cursor is not None:
             lines.append(
                 f"{_focus(workspace, 'control', 'load-earlier')} "

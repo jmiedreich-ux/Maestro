@@ -265,9 +265,7 @@ class Workspace:
         if activity_id != self.selected_activity_id:
             self.input.clear()
         self.selected_activity_id = activity_id
-        self.activity_detail = self._read_data(
-            f"/activities/{_segment(activity_id)}", "activity detail"
-        )
+        self.activity_detail = self._read_activity_detail(activity_id)
         self.selected_attention = None
         self.selected_attention_detail = None
         self._focus_editor()
@@ -456,9 +454,7 @@ class Workspace:
             if self.new_messages:
                 targets.append(FocusTarget("control", "new-messages", "New messages"))
             targets.extend(self._choice_targets())
-            action = self._selected_action_target()
-            if action is not None:
-                targets.append(action)
+            targets.extend(self._activity_action_targets())
         targets.append(FocusTarget("editor", "input", "Input"))
         return tuple(targets)
 
@@ -480,7 +476,7 @@ class Workspace:
             self.input.cursor = len(target.label)
             return None
         if target.kind == "action":
-            return self.invoke_selected_action()
+            return self.invoke_activity_action(target.identity)
         if target.kind == "control" and target.identity == "load-earlier":
             return self.load_earlier_messages()
         if target.kind == "control" and target.identity == "new-messages":
@@ -557,7 +553,18 @@ class Workspace:
         )
         if item is None:
             raise WorkspaceError("no recovery or decision action is selected")
-        return self.invoke_action(item.type, item.record_id)
+        return self.invoke_activity_action(item.record_id)
+
+    def invoke_activity_action(self, action_id: str) -> object:
+        action = _find_detail(
+            self.activity_detail, "available_actions", "action_id", action_id
+        )
+        if action is None:
+            raise WorkspaceError("activity action is no longer available")
+        kind = action.get("kind")
+        if not isinstance(kind, str) or not kind:
+            raise WorkspaceError("activity action kind is unavailable")
+        return self.invoke_action(kind, action_id)
 
     def _require_online(self) -> None:
         if self.connection_state != ConnectionState.CONNECTED or self.stale:
@@ -626,6 +633,11 @@ class Workspace:
         activities = tuple(
             Activity.parse(item) for item in _list(activities_response, "data")
         )
+        activities = self._complete_activities(
+            activities,
+            _optional_integer_cursor(activities_response, "next_cursor"),
+            _integer(activities_response, "event_cursor", minimum=0),
+        )
         for activity in activities:
             if activity.project_id != self.selected_project_id:
                 raise WorkspaceError("service returned an activity for another project")
@@ -655,18 +667,116 @@ class Workspace:
             self.conversation_cursor = cursor
         self.event_cursor = max(self.event_cursor, event_cursor)
         if self.selected_activity_id is not None:
-            self.activity_detail = self._read_data(
-                f"/activities/{_segment(self.selected_activity_id)}", "activity detail"
+            self.activity_detail = self._read_activity_detail(
+                self.selected_activity_id
             )
         else:
             self.activity_detail = None
 
-    def _read_data(self, path: str, label: str) -> Mapping[str, object]:
-        response = self.client.get_json(path)
-        self.event_cursor = max(
-            self.event_cursor, _integer(response, "event_cursor", minimum=0)
+    def _complete_activities(
+        self,
+        initial: tuple[Activity, ...],
+        cursor: int | None,
+        event_cursor: int,
+    ) -> tuple[Activity, ...]:
+        assert self.selected_project_id is not None
+        items = list(initial)
+        seen_cursors: set[int] = set()
+        seen_ids = {item.activity_id for item in initial}
+        if len(seen_ids) != len(initial):
+            raise WorkspaceError("activity page repeated an entry")
+        encoded = _segment(self.selected_project_id)
+        while cursor is not None:
+            if cursor in seen_cursors:
+                raise WorkspaceError("activity pagination cursor repeated")
+            seen_cursors.add(cursor)
+            response = self.client.get_json(
+                f"/projects/{encoded}/activities?before={cursor}&limit=50"
+            )
+            _same_event_cursor(response, event_cursor)
+            page = tuple(Activity.parse(item) for item in _list(response, "data"))
+            page_ids = [item.activity_id for item in page]
+            if len(set(page_ids)) != len(page_ids) or any(
+                identity in seen_ids for identity in page_ids
+            ):
+                raise WorkspaceError("activity pagination repeated an entry")
+            items.extend(page)
+            seen_ids.update(page_ids)
+            cursor = _optional_integer_cursor(response, "next_cursor")
+        return tuple(items)
+
+    def _read_activity_detail(self, activity_id: str) -> Mapping[str, object]:
+        response = self.client.get_json(f"/activities/{_segment(activity_id)}")
+        event_cursor = _integer(response, "event_cursor", minimum=0)
+        self.event_cursor = max(self.event_cursor, event_cursor)
+        detail = dict(_object(response.get("data"), "activity detail"))
+        assert self.selected_project_id is not None
+        routes = (
+            ("questions", "question_next_cursor", "question_id"),
+            ("findings", "finding_next_cursor", "finding_id"),
+            ("available_actions", "action_next_cursor", "action_id"),
         )
-        return _object(response.get("data"), label)
+        for collection, cursor_name, identity_name in routes:
+            initial = detail.get(collection)
+            if not isinstance(initial, list):
+                raise WorkspaceError(f"{collection} must be a list")
+            detail[collection] = self._complete_activity_details(
+                activity_id,
+                collection,
+                identity_name,
+                initial,
+                _optional_cursor(detail, cursor_name),
+                event_cursor,
+            )
+            detail[cursor_name] = None
+        return detail
+
+    def _complete_activity_details(
+        self,
+        activity_id: str,
+        collection: str,
+        identity_name: str,
+        initial: list[object],
+        cursor: str | None,
+        event_cursor: int,
+    ) -> list[object]:
+        assert self.selected_project_id is not None
+        items = list(initial)
+        seen_ids = {_detail_identity(item, identity_name) for item in items}
+        if len(seen_ids) != len(items):
+            raise WorkspaceError(f"{collection} page repeated an entry")
+        seen_cursors: set[str] = set()
+        resource = "actions" if collection == "available_actions" else collection
+        project = _segment(self.selected_project_id)
+        activity = _segment(activity_id)
+        while cursor is not None:
+            if cursor in seen_cursors:
+                raise WorkspaceError(f"{resource} pagination cursor repeated")
+            seen_cursors.add(cursor)
+            response = self.client.get_json(
+                f"/projects/{project}/activities/{activity}/{resource}"
+                f"?before={urllib.parse.quote(cursor, safe='')}&limit=100"
+            )
+            _same_event_cursor(response, event_cursor)
+            page = _list(response, "data")
+            page_ids = [_detail_identity(item, identity_name) for item in page]
+            if len(set(page_ids)) != len(page_ids) or any(
+                identity in seen_ids for identity in page_ids
+            ):
+                raise WorkspaceError(f"{resource} pagination repeated an entry")
+            for item in page:
+                value = _object(item, f"{resource} entry")
+                if (
+                    value.get("project_id") != self.selected_project_id
+                    or value.get("activity_id") != activity_id
+                ):
+                    raise WorkspaceError(
+                        f"{resource} pagination returned another activity context"
+                    )
+            items.extend(page)
+            seen_ids.update(page_ids)
+            cursor = _optional_cursor(response, "next_cursor")
+        return items
 
     def _conversation_path(self, *, before: int | None = None) -> str:
         assert self.selected_project_id is not None
@@ -705,19 +815,22 @@ class Workspace:
                     targets.append(FocusTarget("choice", str(identity), label))
         return tuple(targets)
 
-    def _selected_action_target(self) -> FocusTarget | None:
-        item = next(
-            (
-                entry
-                for entry in self.attention
-                if entry.cursor == self.selected_attention
-                and entry.type in {"decision", "recovery"}
-            ),
-            None,
+    def _activity_action_targets(self) -> tuple[FocusTarget, ...]:
+        values = (
+            None
+            if self.activity_detail is None
+            else self.activity_detail.get("available_actions")
         )
-        if item is None:
-            return None
-        return FocusTarget("action", item.record_id, item.subject)
+        if not isinstance(values, list):
+            return ()
+        targets: list[FocusTarget] = []
+        for value in values:
+            if isinstance(value, Mapping):
+                action_id = value.get("action_id")
+                label = value.get("label")
+                if isinstance(action_id, str) and isinstance(label, str):
+                    targets.append(FocusTarget("action", action_id, label))
+        return tuple(targets)
 
     def _move_focus(self, step: int, *, same_kind: bool) -> bool:
         targets = self.focus_targets()
@@ -803,6 +916,22 @@ def _optional_cursor(value: Mapping[str, object], name: str) -> str | None:
     if not isinstance(result, str) or not result:
         raise WorkspaceError(f"{name} must be nonempty text or null")
     return result
+
+
+def _optional_integer_cursor(
+    value: Mapping[str, object], name: str
+) -> int | None:
+    result = value.get(name)
+    if result is None:
+        return None
+    if isinstance(result, bool) or not isinstance(result, int) or result < 1:
+        raise WorkspaceError(f"{name} must be a positive integer or null")
+    return result
+
+
+def _detail_identity(value: object, name: str) -> str:
+    item = _object(value, "activity detail entry")
+    return _text(item, name)
 
 
 def _same_event_cursor(value: Mapping[str, object], expected: int) -> None:
