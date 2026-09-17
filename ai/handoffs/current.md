@@ -14,6 +14,8 @@
 
 ## Where the discussion paused
 
+The Owner selected `jmiedreich-ux/Maestro-qa` as the dedicated disposable QA repository name. See [QA repository name confirmation](#qa-repository-name-confirmation) and the [updated resource plan](../../docs/planning/manual-architecture/qa-resources.md#confirmed-repository-name). The name question is resolved; earlier pending-name passages below are historical. Repository creation, visibility, permissions and test-resource provisioning remain unverified. Continue detailed packet specifications without reopening this choice; the complete breakdown still requires QA plans, independent review and exact Owner confirmation.
+
 The Owner-confirmed manual registration baseline is recorded in [the exact receipt](#manual-registration-owner-confirmation). The first manual architecture preparation draft is now saved: [source investigation](../../docs/planning/manual-architecture/investigation.md), [project structure](../../docs/planning/manual-architecture/project-structure.md), [42-contribution work map and seven development milestone groups](../../docs/planning/manual-architecture/work-breakdown.md), and [QA resource proposal](../../docs/planning/manual-architecture/qa-resources.md).
 
 Seven source-area specialist roles and starting contexts are defined under the proposed Python package areas. Product source remains unchanged. The work map covers all 18 confirmed project outcomes but is not a full packet specification, reviewed architecture version or approved implementation input. See [manual architecture preparation checkpoint](#manual-architecture-preparation-checkpoint) for remaining work and the test-resource input. No service, model, product test, installation or software Execution was run.
@@ -2346,3 +2348,13 @@ Routine packet-detail work can continue independently of that resource input. On
 No full architecture-breakdown review is claimed or consumed for this unfinished draft. Its investigation, structure, role/context files, decisions, complete packets/milestones and completed QA plans must be frozen together for the required separate independent fidelity, completeness and consistency passes before exact Owner confirmation. Prior manual-registration reviews and earlier architectural coverage remain intact; this preparation does not rerun them or reset runtime budgets.
 
 Publication intent: add only these 18 planning/role/context documents and update this existing handoff on authorized master, with expected parent `7416c25a2c7365435676c4b4d3a06307b4a280dc`. Preserve original code, governing architecture, declarations and accepted candidate. Verify remote destination and bytes after publication; local files or uploaded blobs alone are not publication. No next operational action is scheduled.
+
+## QA repository name confirmation
+
+Recorded 2026-09-17. The Owner replied **“Yes”** immediately after the assistant proposed `jmiedreich-ux/Maestro-qa` for disposable GitHub QA and asked **“Shall we use that repository name?”** This exact conversational adjacency is the available decision locator; no host message identifier or precise timestamp is supplied.
+
+The canonical decision and authority limits are in [QA resource preparation, version 2](../../docs/planning/manual-architecture/qa-resources.md#confirmed-repository-name). Only the repository name is settled. No repository was created, no access or catalog verified, no credentials requested, and no development-breakdown confirmation or QA/Execution start inferred.
+
+This small decision update changes only the resource preparation document and this handoff. All 18 registered outcomes, the existing 42-contribution draft, seven proposed milestone groups and prior review budgets remain unchanged. The full architecture breakdown is still unfinished and has not consumed an independent review round. Under the workshop method, this conversational answer is retained for the later full checkpoint rather than separately reviewed as a new architectural subject.
+
+Publication starts from master `20cc4dce7c60fab874c20f1661411ed7d2d04809`; verify destination revision and exact bytes after the write. Next preparation: complete detailed packet records and milestone/QA specifications, retaining unavailable test-resource evidence explicitly. Name confirmation is not resource provisioning.
