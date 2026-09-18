@@ -154,7 +154,7 @@ class AgentRoutePreflight:
         selections: RoleSelections,
         requirements: Mapping[str, RouteRequirements],
     ) -> ResolvedRoleRoutes:
-        """Minimal real caller for the shared process provider's route contract."""
+        """Resolve process roles without reinterpreting its request-operation routes."""
         if not isinstance(provider, ProcessProvider) or provider.name != snapshot.process_name:
             raise AgentRouteError("process_mismatch", "process provider does not match the activity")
         if not isinstance(selections, RoleSelections):
@@ -169,13 +169,6 @@ class AgentRoutePreflight:
             or agent_session.get("reviewer_role") != "fidelity_reviewer"
         ):
             raise AgentRouteError("process_mismatch", "activity role definitions are unsupported")
-        allowed_routes = frozenset(provider.routes)
-        for selection in (selections.architect, selections.fidelity_reviewer):
-            if selection.tool not in allowed_routes:
-                raise AgentRouteError(
-                    "route_not_permitted",
-                    f"selected tool is not declared by process {provider.name}: {selection.tool}",
-                )
         return ResolvedRoleRoutes(
             architect=self.resolve(
                 "architect", selections.architect, requirements["architect"]

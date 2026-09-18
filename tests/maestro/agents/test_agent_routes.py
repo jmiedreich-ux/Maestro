@@ -164,7 +164,7 @@ class AgentRouteTests(unittest.TestCase):
             bundle_reference="registration-process@1",
             validator=lambda definition: None,
             handlers={section: {policy: lambda snapshot: None} for section, policy in policies.items()},
-            routes=("codex", "claude_code"),
+            routes=("registration.start",),
             required_outputs=("registration_package",),
         )
         registry = ProcessHandlerRegistry()
@@ -346,22 +346,23 @@ class AgentRouteTests(unittest.TestCase):
             verify_running_identity(second, old_identity)
         self.assertEqual(caught.exception.code, "identity_mismatch")
 
-    def test_process_route_and_both_explicit_selections_are_required(self) -> None:
-        restricted = replace(self.provider, routes=("codex",))
-        with self.assertRaises(AgentRouteError) as caught:
-            self.preflight.resolve_process_roles(
-                restricted,
-                self.snapshot,
-                RoleSelections(
-                    ToolModelSelection("codex", CODEX_MODEL),
-                    ToolModelSelection("claude_code", CLAUDE_MODEL),
-                ),
-                self.requirements,
-            )
-        self.assertEqual(caught.exception.code, "route_not_permitted")
-        self.assertEqual(self.codex_inspector.calls, [])
-        self.assertEqual(self.claude_inspector.calls, [])
+    def test_process_operation_routes_do_not_mask_explicit_tool_selections(self) -> None:
+        self.assertEqual(self.provider.routes, ("registration.start",))
+        resolved = self.preflight.resolve_process_roles(
+            self.provider,
+            self.snapshot,
+            RoleSelections(
+                ToolModelSelection("codex", CODEX_MODEL),
+                ToolModelSelection("claude_code", CLAUDE_MODEL),
+            ),
+            self.requirements,
+        )
+        self.assertEqual(resolved.architect.tool, "codex")
+        self.assertEqual(resolved.fidelity_reviewer.tool, "claude_code")
+        self.assertEqual(len(self.codex_inspector.calls), 1)
+        self.assertEqual(len(self.claude_inspector.calls), 1)
 
+    def test_both_explicit_selections_are_required(self) -> None:
         with self.assertRaises(AgentRouteError) as caught:
             RoleSelections(ToolModelSelection("codex", CODEX_MODEL), None)  # type: ignore[arg-type]
         self.assertEqual(caught.exception.code, "missing_selection")
