@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import stat
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -39,6 +40,84 @@ class WorkspacePaths:
 
 
 @dataclass(frozen=True)
+class ServiceProfileBinding:
+    """Selected route profile mapped to the supported tool's minimal auth files."""
+
+    tool: str
+    credential_profile: str
+    settings_profile: str
+    service_home: Path
+
+    def __post_init__(self) -> None:
+        if self.tool not in {"codex", "claude_code"}:
+            raise WorkspaceError("invalid_profile", "profile tool is unsupported")
+        canonical_identifier(self.credential_profile, "credential_profile")
+        canonical_identifier(self.settings_profile, "settings_profile")
+        root = Path(self.service_home)
+        if not root.is_absolute() or not root.is_dir() or root.is_symlink():
+            raise WorkspaceError("invalid_profile", "service profile home is unsafe or unavailable")
+        object.__setattr__(self, "service_home", root)
+
+    def validate_selection(
+        self, tool: str, credential_profile: str, settings_profile: str
+    ) -> None:
+        if (
+            tool != self.tool
+            or credential_profile != self.credential_profile
+            or settings_profile != self.settings_profile
+        ):
+            raise WorkspaceError("profile_mismatch", "runtime profile does not match selected route")
+
+    def mounts(self) -> tuple[tuple[Path, PurePosixPath], ...]:
+        layouts = {
+            "codex": ((".codex/auth.json", ".codex/auth.json"),),
+            "claude_code": (
+                (".claude.json", ".claude.json"),
+                (".claude/.credentials.json", ".claude/.credentials.json"),
+            ),
+        }
+        owner = self.service_home.stat().st_uid
+        result: list[tuple[Path, PurePosixPath]] = []
+        for source_name, target_name in layouts[self.tool]:
+            source = self.service_home / source_name
+            current = self.service_home
+            for part in PurePosixPath(source_name).parent.parts:
+                current /= part
+                try:
+                    directory = current.lstat()
+                except FileNotFoundError as error:
+                    raise WorkspaceError(
+                        "profile_unavailable", f"required {self.tool} profile directory is unavailable"
+                    ) from error
+                if (
+                    not stat.S_ISDIR(directory.st_mode)
+                    or current.is_symlink()
+                    or directory.st_uid != owner
+                    or stat.S_IMODE(directory.st_mode) & 0o002
+                ):
+                    raise WorkspaceError(
+                        "unsafe_profile", f"required {self.tool} profile directory is unsafe"
+                    )
+            try:
+                metadata = source.lstat()
+            except FileNotFoundError as error:
+                raise WorkspaceError(
+                    "profile_unavailable", f"required {self.tool} credential file is unavailable"
+                ) from error
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or source.is_symlink()
+                or metadata.st_uid != owner
+                or stat.S_IMODE(metadata.st_mode) & 0o077
+            ):
+                raise WorkspaceError(
+                    "unsafe_profile", f"required {self.tool} credential file is unsafe"
+                )
+            result.append((source, PurePosixPath(target_name)))
+        return tuple(result)
+
+
+@dataclass(frozen=True)
 class PreparedWorkspace:
     project_id: str
     activity_id: str
@@ -50,7 +129,12 @@ class PreparedWorkspace:
     isolation_executable: Path
     workspace_root: Path
 
-    def isolated_command(self, tool_arguments: Sequence[str]) -> tuple[str, ...]:
+    def isolated_command(
+        self,
+        tool_arguments: Sequence[str],
+        *,
+        profile: ServiceProfileBinding | None = None,
+    ) -> tuple[str, ...]:
         if (
             not isinstance(tool_arguments, (tuple, list))
             or not tool_arguments
@@ -61,6 +145,15 @@ class PreparedWorkspace:
         if not executable.is_absolute() or not executable.is_file():
             raise WorkspaceError("invalid_launch", "tool executable must be an installed absolute path")
         run = self.paths.root
+        home = self.paths.scratch / "home"
+        config_home = home / ".config"
+        home.mkdir(mode=0o700, exist_ok=True)
+        config_home.mkdir(mode=0o700, exist_ok=True)
+        if home.is_symlink() or config_home.is_symlink():
+            raise WorkspaceError("unsafe_profile", "isolated profile home is unsafe")
+        profile_mounts = () if profile is None else profile.mounts()
+        for _, target in profile_mounts:
+            home.joinpath(*target.parent.parts).mkdir(parents=True, exist_ok=True, mode=0o700)
         directories = _path_chain(self.workspace_root, run)
         arguments: list[str] = [
             str(self.isolation_executable),
@@ -73,6 +166,7 @@ class PreparedWorkspace:
             "--unshare-cgroup",
             "--cap-drop",
             "ALL",
+            "--clearenv",
             "--tmpfs",
             "/",
             "--proc",
@@ -107,6 +201,27 @@ class PreparedWorkspace:
                 "--bind",
                 str(self.paths.scratch),
                 str(self.paths.scratch),
+                "--setenv",
+                "HOME",
+                str(home),
+                "--setenv",
+                "XDG_CONFIG_HOME",
+                str(config_home),
+                "--setenv",
+                "PATH",
+                "/usr/bin:/bin",
+            )
+        )
+        for source, target in profile_mounts:
+            arguments.extend(
+                (
+                    "--ro-bind",
+                    str(source),
+                    str(home.joinpath(*target.parts)),
+                )
+            )
+        arguments.extend(
+            (
                 "--chdir",
                 str(run),
                 "--",

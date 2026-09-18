@@ -15,7 +15,7 @@ from .transport import (
     decode_json_object,
     validate_transport_context,
 )
-from .workspaces import PreparedWorkspace
+from .workspaces import PreparedWorkspace, ServiceProfileBinding
 
 
 class ClaudeTransport:
@@ -24,8 +24,9 @@ class ClaudeTransport:
         route: ResolvedAgentRoute,
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
+        profile: ServiceProfileBinding,
     ) -> TransportLaunch:
-        validate_transport_context("claude_code", route, assignment, workspace)
+        validate_transport_context("claude_code", route, assignment, workspace, profile)
         arguments = (
             route.executable,
             "--print",
@@ -42,7 +43,7 @@ class ClaudeTransport:
         )
         return TransportLaunch(
             arguments,
-            workspace.isolated_command(arguments),
+            workspace.isolated_command(arguments, profile=profile),
             str(workspace.paths.root),
         )
 

@@ -13,7 +13,7 @@ from maestro.foundation import ContractError, canonical_identifier, canonical_js
 from maestro.service.questions import AnswerChoice, LinkedQuestion
 
 from .preflight import ResolvedAgentRoute, RunningToolIdentity, verify_running_identity
-from .workspaces import PreparedWorkspace, WorkspaceError
+from .workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspaceError
 
 
 _COMMIT = re.compile(r"[0-9a-f]{40}\Z")
@@ -252,6 +252,7 @@ def validate_transport_context(
     route: ResolvedAgentRoute,
     assignment: AgentAssignment,
     workspace: PreparedWorkspace,
+    profile: ServiceProfileBinding,
 ) -> None:
     expected_role = {
         "architect": "project_architect",
@@ -268,6 +269,19 @@ def validate_transport_context(
         raise TransportError("workspace_mismatch", "workspace does not match the assignment")
     if workspace.assignment_sha256 != hashlib.sha256(assignment.to_bytes()).hexdigest():
         raise TransportError("workspace_mismatch", "workspace assignment bytes differ")
+    try:
+        if (
+            profile.service_home.stat().st_uid != workspace.workspace_root.stat().st_uid
+            or profile.service_home == workspace.workspace_root
+            or profile.service_home.is_relative_to(workspace.workspace_root)
+        ):
+            raise WorkspaceError("unsafe_profile", "profile is not owned outside the workspace")
+        profile.validate_selection(
+            route.tool, route.credential_profile, route.settings_profile
+        )
+        profile.mounts()
+    except WorkspaceError as error:
+        raise TransportError(error.code, str(error), **error.fields) from error
     if assignment.role == "fidelity_reviewer":
         _verify_reviewer_inputs(assignment, workspace)
 

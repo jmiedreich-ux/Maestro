@@ -21,7 +21,7 @@ from maestro.agents.transport import (
     RegistrationResponseValidator,
     TransportError,
 )
-from maestro.agents.workspaces import WorkspaceError, WorkspaceManager
+from maestro.agents.workspaces import ServiceProfileBinding, WorkspaceError, WorkspaceManager
 from maestro.service.questions import LinkedQuestion
 
 
@@ -68,6 +68,16 @@ class AgentTransportTests(unittest.TestCase):
         self.isolation_plan_only = self._script("isolation-plan-only", "#!/bin/sh\nexit 99\n")
         self.codex_executable = self._script("codex", "#!/bin/sh\nexit 0\n")
         self.claude_executable = self._script("claude", "#!/bin/sh\nexit 0\n")
+        self.service_home = self.root / "service-home"
+        (self.service_home / ".codex").mkdir(parents=True)
+        (self.service_home / ".claude").mkdir()
+        for relative in (
+            ".codex/auth.json",
+            ".claude.json",
+            ".claude/.credentials.json",
+        ):
+            path = self.service_home / relative
+            path.touch(mode=0o600)
         registry = AgentRouteRegistry.from_mapping(
             {
                 "codex": {
@@ -186,6 +196,14 @@ class AgentTransportTests(unittest.TestCase):
             inputs={} if inputs is None else inputs,
         )
 
+    def _profile(self, route):
+        return ServiceProfileBinding(
+            route.tool,
+            route.credential_profile,
+            route.settings_profile,
+            self.service_home,
+        )
+
     def _base_response(self, assignment, result="completed"):
         return {
             "contract_version": 1,
@@ -225,7 +243,9 @@ class AgentTransportTests(unittest.TestCase):
         response["assessment"] = self._reference("output/assessment.json", assessment)
         self._write_codex_server(response, candidate, assessment, self.codex_route)
 
-        conversation = CodexTransport().open(self.codex_route, assignment, workspace)
+        conversation = CodexTransport().open(
+            self.codex_route, assignment, workspace, self._profile(self.codex_route)
+        )
         self.assertEqual((str(self.codex_executable), "app-server"), conversation.launch.tool_arguments)
         process = subprocess.Popen(
             conversation.launch.tool_arguments,
@@ -270,6 +290,9 @@ class AgentTransportTests(unittest.TestCase):
                 conversation.launch.isolated_arguments[2:],
             )),
         )
+        self.assertIn(str(self.service_home / ".codex/auth.json"), conversation.launch.isolated_arguments)
+        self.assertNotIn(str(self.service_home / ".claude.json"), conversation.launch.isolated_arguments)
+        self.assertIn("--clearenv", conversation.launch.isolated_arguments)
 
     def test_claude_actual_print_mode_returns_linked_clarification(self) -> None:
         assignment = self._assignment("project_architect", "run-claude")
@@ -296,7 +319,12 @@ class AgentTransportTests(unittest.TestCase):
         ]
         self._write_claude(response, self.claude_architect_route)
         transport = ClaudeTransport()
-        launch = transport.launch(self.claude_architect_route, assignment, workspace)
+        launch = transport.launch(
+            self.claude_architect_route,
+            assignment,
+            workspace,
+            self._profile(self.claude_architect_route),
+        )
         completed = subprocess.run(
             launch.tool_arguments,
             cwd=launch.cwd,
@@ -321,6 +349,52 @@ class AgentTransportTests(unittest.TestCase):
         self.assertEqual("main", question.choices[0].choice_id)
         self.assertIn("--json-schema", launch.tool_arguments)
         self.assertIn("dontAsk", launch.tool_arguments)
+        self.assertIn(str(self.service_home / ".claude.json"), launch.isolated_arguments)
+        self.assertIn(
+            str(self.service_home / ".claude/.credentials.json"), launch.isolated_arguments
+        )
+        self.assertNotIn(str(self.service_home / ".codex/auth.json"), launch.isolated_arguments)
+
+    def test_profile_binding_rejects_mismatch_missing_and_unsafe_files(self) -> None:
+        assignment = self._assignment("project_architect", "run-profile-rejections")
+        workspace = self._workspace(assignment)
+        mismatch = ServiceProfileBinding(
+            "codex",
+            self.codex_route.credential_profile,
+            self.codex_route.settings_profile,
+            self.service_home,
+        )
+        with self.assertRaises(TransportError) as caught:
+            ClaudeTransport().launch(
+                self.claude_architect_route, assignment, workspace, mismatch
+            )
+        self.assertEqual("profile_mismatch", caught.exception.code)
+
+        missing_home = self.root / "missing-profile"
+        missing_home.mkdir()
+        missing = ServiceProfileBinding(
+            "codex",
+            self.codex_route.credential_profile,
+            self.codex_route.settings_profile,
+            missing_home,
+        )
+        with self.assertRaises(TransportError) as caught:
+            CodexTransport().open(self.codex_route, assignment, workspace, missing)
+        self.assertEqual("profile_unavailable", caught.exception.code)
+
+        unsafe_home = self.root / "unsafe-profile"
+        (unsafe_home / ".codex").mkdir(parents=True)
+        unsafe_auth = unsafe_home / ".codex/auth.json"
+        unsafe_auth.touch(mode=0o644)
+        unsafe = ServiceProfileBinding(
+            "codex",
+            self.codex_route.credential_profile,
+            self.codex_route.settings_profile,
+            unsafe_home,
+        )
+        with self.assertRaises(TransportError) as caught:
+            CodexTransport().open(self.codex_route, assignment, workspace, unsafe)
+        self.assertEqual("unsafe_profile", caught.exception.code)
 
     def test_reviewer_has_separate_read_only_source_and_exact_assigned_artifacts(self) -> None:
         candidate = b'{"candidate":1}\n'
@@ -345,7 +419,12 @@ class AgentTransportTests(unittest.TestCase):
         response["review_outcome"] = "APPROVE"
         self._write_claude(response, self.claude_reviewer_route)
         transport = ClaudeTransport()
-        launch = transport.launch(self.claude_reviewer_route, assignment, workspace)
+        launch = transport.launch(
+            self.claude_reviewer_route,
+            assignment,
+            workspace,
+            self._profile(self.claude_reviewer_route),
+        )
         raw = subprocess.run(
             launch.tool_arguments, cwd=launch.cwd, check=True, stdout=subprocess.PIPE
         ).stdout
@@ -379,7 +458,10 @@ class AgentTransportTests(unittest.TestCase):
         missing_workspace = self._workspace(missing_assignment)
         with self.assertRaises(TransportError) as caught:
             ClaudeTransport().launch(
-                self.claude_reviewer_route, missing_assignment, missing_workspace
+                self.claude_reviewer_route,
+                missing_assignment,
+                missing_workspace,
+                self._profile(self.claude_reviewer_route),
             )
         self.assertEqual("invalid_assignment", caught.exception.code)
 
@@ -392,7 +474,10 @@ class AgentTransportTests(unittest.TestCase):
         )
         with self.assertRaises(TransportError) as caught:
             ClaudeTransport().launch(
-                self.claude_reviewer_route, wrong_hash_assignment, wrong_hash_workspace
+                self.claude_reviewer_route,
+                wrong_hash_assignment,
+                wrong_hash_workspace,
+                self._profile(self.claude_reviewer_route),
             )
         self.assertEqual("artifact_mismatch", caught.exception.code)
 
@@ -409,7 +494,10 @@ class AgentTransportTests(unittest.TestCase):
         )
         with self.assertRaises(TransportError) as caught:
             ClaudeTransport().launch(
-                self.claude_reviewer_route, outside_assignment, outside_workspace
+                self.claude_reviewer_route,
+                outside_assignment,
+                outside_workspace,
+                self._profile(self.claude_reviewer_route),
             )
         self.assertEqual("artifact_out_of_scope", caught.exception.code)
 
@@ -520,6 +608,8 @@ from pathlib import Path
 Path("output/candidate.json").write_bytes({candidate!r})
 Path("output/assessment.json").write_bytes({assessment!r})
 response = {response!r}
+progress = dict(response)
+progress["summary"] = "Schema-constrained progress update."
 for line in __import__("sys").stdin:
     message = json.loads(line)
     if message.get("method") == "initialized":
@@ -537,6 +627,7 @@ for line in __import__("sys").stdin:
     elif request_id == 4:
         output = [
             {{"jsonrpc":"2.0","id":4,"result":{{"turn":{{"id":"turn-one"}}}}}},
+            {{"jsonrpc":"2.0","method":"item/completed","params":{{"completedAtMs":1,"threadId":"thread-one","turnId":"turn-one","item":{{"id":"progress-one","type":"agentMessage","text":json.dumps(progress,separators=(",",":"))}}}}}},
             {{"jsonrpc":"2.0","method":"item/completed","params":{{"completedAtMs":1,"threadId":"thread-one","turnId":"turn-one","item":{{"id":"item-one","type":"agentMessage","text":json.dumps(response,separators=(",",":"))}}}}}},
             {{"jsonrpc":"2.0","method":"turn/completed","params":{{"threadId":"thread-one","turn":{{"id":"turn-one","status":"completed"}}}}}},
         ]

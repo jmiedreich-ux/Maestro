@@ -15,7 +15,7 @@ from .transport import (
     decode_json_object,
     validate_transport_context,
 )
-from .workspaces import PreparedWorkspace
+from .workspaces import PreparedWorkspace, ServiceProfileBinding
 
 
 class CodexTransport:
@@ -24,9 +24,10 @@ class CodexTransport:
         route: ResolvedAgentRoute,
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
+        profile: ServiceProfileBinding,
     ) -> "CodexConversation":
-        validate_transport_context("codex", route, assignment, workspace)
-        return CodexConversation(route, assignment, workspace)
+        validate_transport_context("codex", route, assignment, workspace, profile)
+        return CodexConversation(route, assignment, workspace, profile)
 
 
 class CodexConversation:
@@ -37,6 +38,7 @@ class CodexConversation:
         route: ResolvedAgentRoute,
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
+        profile: ServiceProfileBinding,
     ) -> None:
         self.route = route
         self.assignment = assignment
@@ -58,7 +60,7 @@ class CodexConversation:
         tool_arguments = (route.executable, "app-server")
         self.launch = TransportLaunch(
             tool_arguments,
-            workspace.isolated_command(tool_arguments),
+            workspace.isolated_command(tool_arguments, profile=profile),
             str(workspace.paths.root),
             (_line(initial),),
         )
@@ -169,8 +171,9 @@ class CodexConversation:
                 item = params.get("item")
                 if not isinstance(item, Mapping) or item.get("type") != "agentMessage":
                     return ()
-                if self._response is not None:
-                    raise TransportError("protocol_error", "Codex returned multiple final messages")
+                # App-server reports schema-constrained progress and the terminal
+                # response through the same item type. Only the last completed
+                # agent message at turn completion is the final response.
                 self._response = decode_json_object(item.get("text"))
                 return ()
             if method == "turn/completed":
