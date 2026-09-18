@@ -62,10 +62,6 @@ class AgentTransportTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.repository, self.commit = self._repository()
-        # This executable makes the deterministic tests inspect a launch plan only.
-        # A separate host check exercises real bubblewrap and is reported as UNTESTED
-        # when the test host denies user namespaces.
-        self.isolation_plan_only = self._script("isolation-plan-only", "#!/bin/sh\nexit 99\n")
         codex_install = self.root / "codex-install"
         codex_install.mkdir()
         self.installed_codex = self._script("codex-install/codex", "#!/bin/sh\nexit 0\n")
@@ -140,7 +136,7 @@ class AgentTransportTests(unittest.TestCase):
         )
         (self.root / "workspaces").mkdir()
         self.manager = WorkspaceManager(
-            self.root / "workspaces", isolation_executable=self.isolation_plan_only
+            self.root / "workspaces"
         )
         self.validator = RegistrationResponseValidator()
 
@@ -295,25 +291,35 @@ class AgentTransportTests(unittest.TestCase):
         )
         self.assertEqual("completed", validated.result)
         self.assertEqual(response["candidate"]["sha256"], validated.candidate.sha256)
-        self.assertIn("--tmpfs", conversation.launch.isolated_arguments)
-        self.assertIn(str(self.root / "workspaces"), conversation.launch.isolated_arguments)
+        self.assertEqual(
+            (
+                "/usr/bin/sudo",
+                "-n",
+                "/usr/local/libexec/maestro-agent-egress",
+                "codex",
+                assignment.run_id,
+            ),
+            conversation.launch.isolated_arguments[:5],
+        )
+        self.assertIn("--tmpfs", conversation.launch.sandbox_arguments)
+        self.assertIn(str(self.root / "workspaces"), conversation.launch.sandbox_arguments)
         self.assertNotIn(
             ("--ro-bind", "/", "/"),
             tuple(zip(
-                conversation.launch.isolated_arguments,
-                conversation.launch.isolated_arguments[1:],
-                conversation.launch.isolated_arguments[2:],
+                conversation.launch.sandbox_arguments,
+                conversation.launch.sandbox_arguments[1:],
+                conversation.launch.sandbox_arguments[2:],
             )),
         )
-        self.assertIn(str(self.service_home / ".codex/auth.json"), conversation.launch.isolated_arguments)
-        self.assertIn(str(self.codex_companion), conversation.launch.isolated_arguments)
-        separator = conversation.launch.isolated_arguments.index("--")
+        self.assertIn(str(self.service_home / ".codex/auth.json"), conversation.launch.sandbox_arguments)
+        self.assertIn(str(self.codex_companion), conversation.launch.sandbox_arguments)
+        separator = conversation.launch.sandbox_arguments.index("--")
         self.assertEqual(
-            str(self.installed_codex), conversation.launch.isolated_arguments[separator + 1]
+            str(self.installed_codex), conversation.launch.sandbox_arguments[separator + 1]
         )
-        self.assertNotIn(str(self.codex_executable), conversation.launch.isolated_arguments)
-        self.assertNotIn(str(self.service_home / ".claude.json"), conversation.launch.isolated_arguments)
-        self.assertIn("--clearenv", conversation.launch.isolated_arguments)
+        self.assertNotIn(str(self.codex_executable), conversation.launch.sandbox_arguments)
+        self.assertNotIn(str(self.service_home / ".claude.json"), conversation.launch.sandbox_arguments)
+        self.assertIn("--clearenv", conversation.launch.sandbox_arguments)
 
     def test_claude_actual_print_mode_returns_linked_clarification(self) -> None:
         assignment = self._assignment("project_architect", "run-claude")
@@ -370,11 +376,21 @@ class AgentTransportTests(unittest.TestCase):
         self.assertEqual("main", question.choices[0].choice_id)
         self.assertIn("--json-schema", launch.tool_arguments)
         self.assertIn("dontAsk", launch.tool_arguments)
-        self.assertIn(str(self.service_home / ".claude.json"), launch.isolated_arguments)
-        self.assertIn(
-            str(self.service_home / ".claude/.credentials.json"), launch.isolated_arguments
+        self.assertEqual(
+            (
+                "/usr/bin/sudo",
+                "-n",
+                "/usr/local/libexec/maestro-agent-egress",
+                "claude_code",
+                assignment.run_id,
+            ),
+            launch.isolated_arguments[:5],
         )
-        self.assertNotIn(str(self.service_home / ".codex/auth.json"), launch.isolated_arguments)
+        self.assertIn(str(self.service_home / ".claude.json"), launch.sandbox_arguments)
+        self.assertIn(
+            str(self.service_home / ".claude/.credentials.json"), launch.sandbox_arguments
+        )
+        self.assertNotIn(str(self.service_home / ".codex/auth.json"), launch.sandbox_arguments)
 
     def test_profile_binding_rejects_mismatch_missing_and_unsafe_files(self) -> None:
         assignment = self._assignment("project_architect", "run-profile-rejections")
@@ -416,6 +432,19 @@ class AgentTransportTests(unittest.TestCase):
         with self.assertRaises(TransportError) as caught:
             CodexTransport().open(self.codex_route, assignment, workspace, unsafe)
         self.assertEqual("unsafe_profile", caught.exception.code)
+
+    def test_egress_launch_rejects_invalid_route_or_sandbox(self) -> None:
+        assignment = self._assignment("project_architect", "run-egress-rejection")
+        workspace = self._workspace(assignment)
+        sandbox = workspace.isolated_command(
+            (self.codex_route.executable, "app-server"), profile=self._profile(self.codex_route)
+        )
+        with self.assertRaises(WorkspaceError) as caught:
+            workspace.egress_command("other-tool", sandbox)
+        self.assertEqual("invalid_launch", caught.exception.code)
+        with self.assertRaises(WorkspaceError) as caught:
+            workspace.egress_command("codex", ("/usr/bin/bwrap", "--clearenv"))
+        self.assertEqual("invalid_launch", caught.exception.code)
 
     def test_reviewer_has_separate_read_only_source_and_exact_assigned_artifacts(self) -> None:
         candidate = b'{"candidate":1}\n'
@@ -460,8 +489,8 @@ class AgentTransportTests(unittest.TestCase):
         self.assertEqual("APPROVE", validated.review_outcome)
         self.assertNotEqual(workspace.paths.root, self.root / "workspaces/project-one/activity-one/runs/run-codex")
         self.assertEqual(0o440, workspace.paths.input.joinpath("candidate.json").stat().st_mode & 0o777)
-        input_bind = launch.isolated_arguments.index(str(workspace.paths.input))
-        self.assertEqual("--ro-bind", launch.isolated_arguments[input_bind - 1])
+        input_bind = launch.sandbox_arguments.index(str(workspace.paths.input))
+        self.assertEqual("--ro-bind", launch.sandbox_arguments[input_bind - 1])
 
     def test_reviewer_artifacts_reject_wrong_bytes_or_non_input_path_before_launch(self) -> None:
         candidate = b'{"candidate":1}\n'

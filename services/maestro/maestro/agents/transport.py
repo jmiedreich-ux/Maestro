@@ -245,6 +245,7 @@ class TransportLaunch:
     isolated_arguments: tuple[str, ...]
     cwd: str
     initial_stdin: tuple[bytes, ...] = ()
+    sandbox_arguments: tuple[str, ...] = ()
 
 
 def validate_transport_context(

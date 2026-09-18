@@ -41,10 +41,12 @@ class ClaudeTransport:
             "--permission-mode",
             "dontAsk",
         )
+        sandbox_arguments = workspace.isolated_command(arguments, profile=profile)
         return TransportLaunch(
             arguments,
-            workspace.isolated_command(arguments, profile=profile),
+            workspace.egress_command(route.tool, sandbox_arguments),
             str(workspace.paths.root),
+            sandbox_arguments=sandbox_arguments,
         )
 
     def decode(

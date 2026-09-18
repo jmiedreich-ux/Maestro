@@ -11,13 +11,16 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Mapping, Sequence
 
-from maestro.foundation import canonical_identifier
+from maestro.foundation import ContractError, canonical_identifier
 from maestro.git_repository import GitRepositoryError, ReadOnlyGitRepository
 
 
 _COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 MAX_INPUT_SET_BYTES = 64 * 1024 * 1024
+_BWRAP = Path("/usr/bin/bwrap")
+_EGRESS_LAUNCHER = Path("/usr/local/libexec/maestro-agent-egress")
+_SUDO = Path("/usr/bin/sudo")
 
 
 class WorkspaceError(ValueError):
@@ -234,6 +237,43 @@ class PreparedWorkspace:
             )
         )
         return tuple(arguments)
+
+    def egress_command(
+        self, route_tool: str, isolated_arguments: Sequence[str]
+    ) -> tuple[str, ...]:
+        """Bind an isolated launch to the installed root-supervised egress guard."""
+        if route_tool not in {"codex", "claude_code"}:
+            raise WorkspaceError("invalid_launch", "agent route tool is unsupported")
+        try:
+            canonical_identifier(self.run_id, "run_id")
+            isolation_executable = self.isolation_executable.resolve(strict=True)
+        except (ContractError, OSError, RuntimeError) as error:
+            raise WorkspaceError("invalid_launch", "isolated launch identity is invalid") from error
+        if isolation_executable != _BWRAP:
+            raise WorkspaceError(
+                "isolation_unavailable",
+                "root-supervised egress requires the installed Bubblewrap executable",
+            )
+        if (
+            not isinstance(isolated_arguments, (tuple, list))
+            or not isolated_arguments
+            or any(not isinstance(value, str) or not value for value in isolated_arguments)
+            or isolated_arguments[0] != str(_BWRAP)
+            or "--" not in isolated_arguments
+        ):
+            raise WorkspaceError("invalid_launch", "isolated command is invalid for egress control")
+        if not _SUDO.is_file() or not os.access(_SUDO, os.X_OK):
+            raise WorkspaceError("isolation_unavailable", "noninteractive service elevation is unavailable")
+        if not _EGRESS_LAUNCHER.is_file() or not os.access(_EGRESS_LAUNCHER, os.X_OK):
+            raise WorkspaceError("isolation_unavailable", "root-supervised egress launcher is unavailable")
+        return (
+            str(_SUDO),
+            "-n",
+            str(_EGRESS_LAUNCHER),
+            route_tool,
+            self.run_id,
+            *isolated_arguments,
+        )
 
     def verify_restrictions(self) -> None:
         """Detect any mutation of immutable paths before accepting a response."""

@@ -58,11 +58,13 @@ class CodexConversation:
             },
         )
         tool_arguments = (route.executable, "app-server")
+        sandbox_arguments = workspace.isolated_command(tool_arguments, profile=profile)
         self.launch = TransportLaunch(
             tool_arguments,
-            workspace.isolated_command(tool_arguments, profile=profile),
+            workspace.egress_command(route.tool, sandbox_arguments),
             str(workspace.paths.root),
             (_line(initial),),
+            sandbox_arguments,
         )
 
     def receive(self, raw: bytes | str) -> tuple[bytes, ...]:
