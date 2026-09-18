@@ -27,6 +27,11 @@ CODEX_MODEL = "openai/gpt-5.6-codex-2026-09-01"
 CLAUDE_MODEL = "anthropic/claude-opus-4-1-20260805"
 CODEX_ALIAS = "openai/gpt-latest"
 CAPABILITIES = ("approved_network", "code_edit", "local_command", "repository_search")
+CODEX_DESTINATIONS = (
+    {"hostname": "api.openai.com", "port": 443},
+    {"hostname": "chatgpt.com", "port": 443},
+)
+CLAUDE_DESTINATIONS = ({"hostname": "api.anthropic.com", "port": 443},)
 
 
 class RecordingInspector:
@@ -54,12 +59,14 @@ class AgentRouteTests(unittest.TestCase):
                     "credential_profile": "credential-codex",
                     "settings_profile": "settings-codex",
                     "allowed_model_ids": [CODEX_MODEL, CODEX_ALIAS],
+                    "permitted_destinations": list(CODEX_DESTINATIONS),
                 },
                 "claude_code": {
                     "executable": str(self.claude_executable),
                     "credential_profile": "credential-claude",
                     "settings_profile": "settings-claude",
                     "allowed_model_ids": [CLAUDE_MODEL],
+                    "permitted_destinations": list(CLAUDE_DESTINATIONS),
                 },
             }
         )
@@ -199,6 +206,13 @@ class AgentRouteTests(unittest.TestCase):
 
         self.assertEqual(resolved.architect.requested_model_id, CODEX_MODEL)
         self.assertEqual(resolved.architect.provider, "openai")
+        self.assertEqual(
+            tuple(
+                (destination.hostname, destination.port)
+                for destination in resolved.architect.permitted_destinations
+            ),
+            (("api.openai.com", 443), ("chatgpt.com", 443)),
+        )
         self.assertEqual(resolved.fidelity_reviewer.requested_model_id, CLAUDE_MODEL)
         self.assertEqual(resolved.fidelity_reviewer.provider, "anthropic")
         self.assertNotEqual(
@@ -346,6 +360,33 @@ class AgentRouteTests(unittest.TestCase):
             verify_running_identity(second, old_identity)
         self.assertEqual(caught.exception.code, "identity_mismatch")
 
+    def test_destination_change_produces_a_new_configuration_identity(self) -> None:
+        first = self.preflight.resolve(
+            "architect",
+            ToolModelSelection("codex", CODEX_MODEL),
+            self.requirements["architect"],
+        )
+        self.routes = AgentRouteRegistry.from_mapping(
+            {
+                "codex": {
+                    "executable": str(self.codex_executable),
+                    "credential_profile": "credential-codex",
+                    "settings_profile": "settings-codex",
+                    "allowed_model_ids": [CODEX_MODEL, CODEX_ALIAS],
+                    "permitted_destinations": [
+                        {"hostname": "api.openai.com", "port": 8443}
+                    ],
+                }
+            }
+        )
+        second = self._preflight().resolve(
+            "architect",
+            ToolModelSelection("codex", CODEX_MODEL),
+            self.requirements["architect"],
+        )
+        self.assertNotEqual(first.configuration_hash, second.configuration_hash)
+        self.assertEqual(second.permitted_destinations[0].port, 8443)
+
     def test_process_operation_routes_do_not_mask_explicit_tool_selections(self) -> None:
         self.assertEqual(self.provider.routes, ("registration.start",))
         resolved = self.preflight.resolve_process_roles(
@@ -376,6 +417,7 @@ class AgentRouteTests(unittest.TestCase):
                         "credential_profile": "credential-codex",
                         "settings_profile": "settings-codex",
                         "allowed_model_ids": [CODEX_MODEL],
+                        "permitted_destinations": list(CODEX_DESTINATIONS),
                         "default_model": CODEX_MODEL,
                     }
                 }
@@ -385,6 +427,67 @@ class AgentRouteTests(unittest.TestCase):
         with self.assertRaises(AgentRouteError) as caught:
             ToolModelSelection("qwen", "qwen/model")
         self.assertEqual(caught.exception.code, "unsupported_tool")
+
+    def test_destination_policy_rejects_absent_empty_wildcard_and_malformed_entries(self) -> None:
+        base = {
+            "executable": str(self.codex_executable),
+            "credential_profile": "credential-codex",
+            "settings_profile": "settings-codex",
+            "allowed_model_ids": [CODEX_MODEL],
+            "permitted_destinations": list(CODEX_DESTINATIONS),
+        }
+        cases = (
+            (
+                {
+                    key: value
+                    for key, value in base.items()
+                    if key != "permitted_destinations"
+                },
+                "missing_field",
+            ),
+            ({**base, "permitted_destinations": []}, "invalid_configuration"),
+            (
+                {**base, "permitted_destinations": [{"hostname": "*.openai.com", "port": 443}]},
+                "invalid_configuration",
+            ),
+            (
+                {**base, "permitted_destinations": [{"hostname": "API.OPENAI.COM", "port": 443}]},
+                "invalid_configuration",
+            ),
+            (
+                {
+                    **base,
+                    "permitted_destinations": [
+                        {"hostname": "https://api.openai.com", "port": 443}
+                    ],
+                },
+                "invalid_configuration",
+            ),
+            (
+                {**base, "permitted_destinations": [{"hostname": "api.openai.com", "port": True}]},
+                "invalid_configuration",
+            ),
+            (
+                {**base, "permitted_destinations": [{"hostname": "api.openai.com", "port": 0}]},
+                "invalid_configuration",
+            ),
+            (
+                {
+                    **base,
+                    "permitted_destinations": [
+                        CODEX_DESTINATIONS[0],
+                        CODEX_DESTINATIONS[0],
+                    ],
+                },
+                "invalid_configuration",
+            ),
+        )
+        for configuration, code in cases:
+            with self.subTest(configuration=configuration), self.assertRaises(
+                AgentRouteError
+            ) as caught:
+                AgentRouteRegistry.from_mapping({"codex": configuration})
+            self.assertEqual(caught.exception.code, code)
 
 
 if __name__ == "__main__":
