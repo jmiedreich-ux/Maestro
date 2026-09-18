@@ -372,7 +372,7 @@ class AgentRouteTests(unittest.TestCase):
                     "executable": str(self.codex_executable),
                     "credential_profile": "credential-codex",
                     "settings_profile": "settings-codex",
-                    "allowed_model_ids": [CODEX_MODEL],
+                    "allowed_model_ids": [CODEX_MODEL, CODEX_ALIAS],
                     "permitted_destinations": [
                         {"hostname": "api.openai.com", "port": 8443}
                     ],
