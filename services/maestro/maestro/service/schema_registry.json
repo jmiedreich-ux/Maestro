@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "bundles": {
+    "architecture-loop@1": {
+      "path": "schemas/architecture-loop/1",
+      "schema": "schema.json",
+      "definition": "processDefinition",
+      "files": ["schema.json"]
+    },
+    "registration-process@1": {
+      "path": "schemas/registration-process/1",
+      "schema": "schema.json",
+      "definition": "processDefinition",
+      "files": ["schema.json"]
+    }
+  }
+}
