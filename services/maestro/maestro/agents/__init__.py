@@ -13,6 +13,7 @@ from .preflight import (
 from .routes import (
     AgentRouteError,
     AgentRouteRegistry,
+    PermittedDestination,
     RoleSelections,
     RouteRequirements,
     ToolModelSelection,
@@ -26,6 +27,7 @@ __all__ = [
     "AgentRoutePreflight",
     "AgentRouteRegistry",
     "InstalledAdapter",
+    "PermittedDestination",
     "ResolvedAgentRoute",
     "ResolvedRoleRoutes",
     "RoleSelections",

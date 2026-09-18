@@ -13,6 +13,7 @@ from maestro.service.processes import ProcessProvider, ProcessSnapshot
 from .routes import (
     AgentRouteError,
     AgentRouteRegistry,
+    PermittedDestination,
     RoleSelections,
     RouteRequirements,
     ToolModelSelection,
@@ -96,6 +97,7 @@ class ResolvedAgentRoute:
     location: str
     capabilities: tuple[str, ...]
     context_limit_tokens: int
+    permitted_destinations: tuple[PermittedDestination, ...]
     configuration_hash: str
 
 
@@ -233,6 +235,7 @@ class AgentRoutePreflight:
             location=adapter.location,
             capabilities=tuple(sorted(adapter.capabilities)),
             context_limit_tokens=context_limit,
+            permitted_destinations=route.permitted_destinations,
             configuration_hash=configuration_hash,
         )
 
@@ -353,6 +356,9 @@ def _configuration_hash(
             "credential_profile": route.credential_profile,
             "executable": str(route.executable),
             "location": adapter.location,
+            "permitted_destinations": [
+                destination.as_dict() for destination in route.permitted_destinations
+            ],
             "provider": adapter.provider,
             "settings_profile": route.settings_profile,
             "settings_fingerprint": settings_fingerprint,

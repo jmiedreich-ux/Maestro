@@ -10,9 +10,16 @@ from typing import Mapping
 
 
 _REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
+_HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 _SUPPORTED_TOOLS = frozenset({"codex", "claude_code"})
 _TOOL_FIELDS = frozenset(
-    {"executable", "credential_profile", "settings_profile", "allowed_model_ids"}
+    {
+        "executable",
+        "credential_profile",
+        "settings_profile",
+        "allowed_model_ids",
+        "permitted_destinations",
+    }
 )
 
 
@@ -23,6 +30,27 @@ class AgentRouteError(ValueError):
         super().__init__(message)
         self.code = code
         self.fields = dict(fields)
+
+
+@dataclass(frozen=True)
+class PermittedDestination:
+    hostname: str
+    port: int
+
+    def __post_init__(self) -> None:
+        hostname = _hostname(self.hostname)
+        if (
+            isinstance(self.port, bool)
+            or not isinstance(self.port, int)
+            or not 1 <= self.port <= 65535
+        ):
+            raise AgentRouteError(
+                "invalid_configuration", "permitted destination port must be from 1 through 65535"
+            )
+        object.__setattr__(self, "hostname", hostname)
+
+    def as_dict(self) -> dict[str, object]:
+        return {"hostname": self.hostname, "port": self.port}
 
 
 @dataclass(frozen=True)
@@ -82,6 +110,7 @@ class ToolRoute:
     credential_profile: str
     settings_profile: str
     allowed_model_ids: tuple[str, ...]
+    permitted_destinations: tuple[PermittedDestination, ...]
 
     def __post_init__(self) -> None:
         if not isinstance(self.tool, str) or self.tool not in _SUPPORTED_TOOLS:
@@ -94,6 +123,8 @@ class ToolRoute:
         if not models:
             raise AgentRouteError("invalid_configuration", "allowed_model_ids cannot be empty")
         object.__setattr__(self, "allowed_model_ids", models)
+        destinations = _destinations(self.permitted_destinations)
+        object.__setattr__(self, "permitted_destinations", destinations)
 
     @property
     def executable_available(self) -> bool:
@@ -157,12 +188,32 @@ class AgentRouteRegistry:
                 raise AgentRouteError(
                     "invalid_configuration", f"tools.{tool}.allowed_model_ids cannot be empty"
                 )
+            raw_destinations = raw["permitted_destinations"]
+            if not isinstance(raw_destinations, list):
+                raise AgentRouteError(
+                    "invalid_configuration",
+                    f"tools.{tool}.permitted_destinations must be a list",
+                )
+            destinations: list[PermittedDestination] = []
+            for destination in raw_destinations:
+                if not isinstance(destination, Mapping) or set(destination) != {
+                    "hostname",
+                    "port",
+                }:
+                    raise AgentRouteError(
+                        "invalid_configuration",
+                        f"tools.{tool}.permitted_destinations entry is invalid",
+                    )
+                destinations.append(
+                    PermittedDestination(destination["hostname"], destination["port"])
+                )
             routes[tool] = ToolRoute(
                 tool,
                 Path(executable),
                 credential,
                 settings,
                 normalized_models,
+                tuple(destinations),
             )
         return cls(routes)
 
@@ -211,4 +262,29 @@ def _unique_references(values: object, field: str) -> tuple[str, ...]:
     normalized = tuple(_reference(value, field) for value in values)
     if len(set(normalized)) != len(normalized):
         raise AgentRouteError("invalid_requirements", f"duplicate {field} value")
+    return normalized
+
+
+def _hostname(value: object) -> str:
+    if not isinstance(value, str) or not value or len(value) > 253 or value.endswith("."):
+        raise AgentRouteError("invalid_configuration", "permitted destination hostname is invalid")
+    labels = value.split(".")
+    if len(labels) < 2 or any(_HOST_LABEL.fullmatch(label) is None for label in labels):
+        raise AgentRouteError(
+            "invalid_configuration",
+            "permitted destination hostname must be exact lowercase DNS without wildcards",
+        )
+    return value
+
+
+def _destinations(values: object) -> tuple[PermittedDestination, ...]:
+    if not isinstance(values, tuple) or not values:
+        raise AgentRouteError(
+            "invalid_configuration", "permitted_destinations must be a nonempty tuple"
+        )
+    if any(not isinstance(value, PermittedDestination) for value in values):
+        raise AgentRouteError("invalid_configuration", "permitted destination is invalid")
+    normalized = tuple(sorted(values, key=lambda value: (value.hostname, value.port)))
+    if len(set(normalized)) != len(normalized):
+        raise AgentRouteError("invalid_configuration", "permitted destination is duplicated")
     return normalized
