@@ -94,12 +94,18 @@ class AgentTransportTests(unittest.TestCase):
                     "credential_profile": "credential-codex",
                     "settings_profile": "settings-codex",
                     "allowed_model_ids": [CODEX_MODEL],
+                    "permitted_destinations": [
+                        {"hostname": "chatgpt.com", "port": 443}
+                    ],
                 },
                 "claude_code": {
                     "executable": str(self.claude_executable),
                     "credential_profile": "credential-claude",
                     "settings_profile": "settings-claude",
                     "allowed_model_ids": [CLAUDE_MODEL],
+                    "permitted_destinations": [
+                        {"hostname": "api.anthropic.com", "port": 443}
+                    ],
                 },
             }
         )
