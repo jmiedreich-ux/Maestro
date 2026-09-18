@@ -268,6 +268,38 @@ def validate_transport_context(
         raise TransportError("workspace_mismatch", "workspace does not match the assignment")
     if workspace.assignment_sha256 != hashlib.sha256(assignment.to_bytes()).hexdigest():
         raise TransportError("workspace_mismatch", "workspace assignment bytes differ")
+    if assignment.role == "fidelity_reviewer":
+        _verify_reviewer_inputs(assignment, workspace)
+
+
+def _verify_reviewer_inputs(
+    assignment: AgentAssignment,
+    workspace: PreparedWorkspace,
+) -> None:
+    required = {"candidate", "reviewed_assessment"}
+    if set(assignment.assigned_artifacts) != required:
+        raise TransportError(
+            "invalid_assignment",
+            "reviewer assignment must declare exact candidate and assessment artifacts",
+        )
+    try:
+        workspace.verify_restrictions()
+        for field in sorted(required):
+            reference = assignment.assigned_artifacts[field]
+            path = PurePosixPath(reference.path)
+            if not path.parts or path.parts[0] != "input":
+                raise TransportError(
+                    "artifact_out_of_scope",
+                    f"reviewer {field} must be under immutable input",
+                )
+            artifact = workspace.resolve_artifact(reference.path, allow_input=True)
+            if hashlib.sha256(artifact.read_bytes()).hexdigest() != reference.sha256:
+                raise TransportError(
+                    "artifact_mismatch",
+                    f"reviewer {field} does not match its declared hash",
+                )
+    except WorkspaceError as error:
+        raise TransportError(error.code, str(error), **error.fields) from error
 
 
 class RegistrationResponseValidator:

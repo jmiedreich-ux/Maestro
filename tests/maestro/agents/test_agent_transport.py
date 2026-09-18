@@ -62,7 +62,10 @@ class AgentTransportTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
         self.repository, self.commit = self._repository()
-        self.bwrap = self._script("bwrap", "#!/bin/sh\nexit 99\n")
+        # This executable makes the deterministic tests inspect a launch plan only.
+        # A separate host check exercises real bubblewrap and is reported as UNTESTED
+        # when the test host denies user namespaces.
+        self.isolation_plan_only = self._script("isolation-plan-only", "#!/bin/sh\nexit 99\n")
         self.codex_executable = self._script("codex", "#!/bin/sh\nexit 0\n")
         self.claude_executable = self._script("claude", "#!/bin/sh\nexit 0\n")
         registry = AgentRouteRegistry.from_mapping(
@@ -111,7 +114,9 @@ class AgentTransportTests(unittest.TestCase):
             requirements,
         )
         (self.root / "workspaces").mkdir()
-        self.manager = WorkspaceManager(self.root / "workspaces", isolation_executable=self.bwrap)
+        self.manager = WorkspaceManager(
+            self.root / "workspaces", isolation_executable=self.isolation_plan_only
+        )
         self.validator = RegistrationResponseValidator()
 
     def tearDown(self) -> None:
@@ -357,6 +362,56 @@ class AgentTransportTests(unittest.TestCase):
         self.assertEqual(0o440, workspace.paths.input.joinpath("candidate.json").stat().st_mode & 0o777)
         input_bind = launch.isolated_arguments.index(str(workspace.paths.input))
         self.assertEqual("--ro-bind", launch.isolated_arguments[input_bind - 1])
+
+    def test_reviewer_artifacts_reject_wrong_bytes_or_non_input_path_before_launch(self) -> None:
+        candidate = b'{"candidate":1}\n'
+        assessment = b'{"assessment":1}\n'
+        references = {
+            "candidate": ArtifactReference.from_mapping(
+                self._reference("input/candidate.json", candidate), "candidate"
+            ),
+            "reviewed_assessment": ArtifactReference.from_mapping(
+                self._reference("input/assessment.json", assessment), "reviewed_assessment"
+            ),
+        }
+
+        missing_assignment = self._assignment("fidelity_reviewer", "run-reviewer-missing")
+        missing_workspace = self._workspace(missing_assignment)
+        with self.assertRaises(TransportError) as caught:
+            ClaudeTransport().launch(
+                self.claude_reviewer_route, missing_assignment, missing_workspace
+            )
+        self.assertEqual("invalid_assignment", caught.exception.code)
+
+        wrong_hash_assignment = self._assignment(
+            "fidelity_reviewer", "run-reviewer-wrong", assigned_artifacts=references
+        )
+        wrong_hash_workspace = self._workspace(
+            wrong_hash_assignment,
+            {"candidate.json": b"wrong bytes\n", "assessment.json": assessment},
+        )
+        with self.assertRaises(TransportError) as caught:
+            ClaudeTransport().launch(
+                self.claude_reviewer_route, wrong_hash_assignment, wrong_hash_workspace
+            )
+        self.assertEqual("artifact_mismatch", caught.exception.code)
+
+        outside = dict(references)
+        outside["candidate"] = ArtifactReference.from_mapping(
+            self._reference("output/candidate.json", candidate), "candidate"
+        )
+        outside_assignment = self._assignment(
+            "fidelity_reviewer", "run-reviewer-outside", assigned_artifacts=outside
+        )
+        outside_workspace = self._workspace(
+            outside_assignment,
+            {"candidate.json": candidate, "assessment.json": assessment},
+        )
+        with self.assertRaises(TransportError) as caught:
+            ClaudeTransport().launch(
+                self.claude_reviewer_route, outside_assignment, outside_workspace
+            )
+        self.assertEqual("artifact_out_of_scope", caught.exception.code)
 
     def test_malformed_stale_owner_action_and_out_of_scope_artifact_are_rejected(self) -> None:
         assignment = self._assignment("project_architect", "run-invalid")
