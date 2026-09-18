@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import time
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from maestro.agents.recovery import RecoveryReconciler
 from maestro.agents.supervisor import (
@@ -16,6 +18,8 @@ from maestro.agents.supervisor import (
     LocalProcessUnits,
     OperationIdentity,
     SupervisionError,
+    SystemdUserUnits,
+    UnitIdentity,
 )
 
 
@@ -40,6 +44,7 @@ class DurableSupervisionTest(unittest.TestCase):
         self.assertGreater(running.pid or 0, 0)
         self.assertTrue(running.boot_id)
         self.assertTrue(running.start_identity)
+        self.assertTrue(running.invocation_id)
         for _ in range(30):
             record = self.supervisor.poll(self.identity)
             if record.state == "completed":
@@ -69,7 +74,7 @@ class DurableSupervisionTest(unittest.TestCase):
         assert saved is not None
         self.assertEqual("launch_uncertain", saved.state)
         first = RecoveryReconciler(self.journal, self.units).reconcile(self.identity)
-        self.assertEqual("recovery_required", first.status)
+        self.assertEqual("blocked", first.status)
         self.assertFalse(first.replacement_permitted)
         self.assertEqual(0, first.allowance_change)
         with self.assertRaisesRegex(SupervisionError, "already has a launch record"):
@@ -123,6 +128,35 @@ class DurableSupervisionTest(unittest.TestCase):
         self.assertEqual(0, decision.allowance_change)
         self.units.stop(identity.unit_name)
 
+    def test_verified_inactive_invocation_completes_but_unknown_or_mismatched_identity_blocks(self) -> None:
+        self.supervisor.launch(self.request("exit 0"))
+        for _ in range(20):
+            if self.supervisor.poll(self.identity).state == "completed":
+                break
+            time.sleep(0.02)
+        completed = RecoveryReconciler(self.journal, self.units).reconcile(self.identity)
+        self.assertEqual("terminal", completed.status)
+        self.assertEqual("exit_0", completed.reason)
+        self.assertEqual("completed", self.journal.get(self.identity.key).state)
+
+        unknown_identity = OperationIdentity("project-one", "activity-one", "assignment-two", "run-two")
+        self.supervisor.launch(LaunchRequest(unknown_identity, ("/bin/sh", "-c", "sleep 5"), str(self.root), 5, 1))
+        saved = self.journal.get(unknown_identity.key)
+        assert saved is not None
+
+        class MismatchedUnits(LocalProcessUnits):
+            def inspect(self, unit_name):
+                observed = super().inspect(unit_name)
+                return None if observed is None else replace(observed, invocation_id="different-invocation")
+
+        mismatched = MismatchedUnits()
+        mismatched._units = self.units._units
+        mismatched._identities = self.units._identities
+        decision = RecoveryReconciler(self.journal, mismatched).reconcile(unknown_identity)
+        self.assertEqual("blocked", decision.status)
+        self.assertEqual("identity_mismatch", decision.reason)
+        self.units.stop(unknown_identity.unit_name)
+
     def test_heartbeat_is_durable_and_prevents_stall_until_its_own_deadline(self) -> None:
         self.supervisor.launch(self.request("sleep 5", timeout=5, stall=0.08))
         time.sleep(0.04)
@@ -135,6 +169,35 @@ class DurableSupervisionTest(unittest.TestCase):
         saved = self.journal.get(self.identity.key)
         assert saved is not None
         self.assertEqual("terminal", saved.events[-1]["kind"])
+
+
+class SystemdUserUnitsTest(unittest.TestCase):
+    def test_uses_derived_user_bus_and_retains_completed_unit(self) -> None:
+        controller = SystemdUserUnits(systemd_run="systemd-run-test", systemctl="systemctl-test")
+        identity = OperationIdentity("project-one", "activity-one", "assignment-one", "run-one")
+        request = LaunchRequest(identity, ("/bin/true",), "/tmp", 5, 1)
+        observed = UnitIdentity(identity.unit_name, 123, "boot", "start", "invocation", True, False)
+        with patch("maestro.agents.supervisor.subprocess.Popen") as popen, patch.object(controller, "inspect", return_value=observed):
+            process = popen.return_value
+            process.poll.return_value = None
+            controller.launch(request)
+        arguments = popen.call_args.args[0]
+        environment = popen.call_args.kwargs["env"]
+        self.assertNotIn("--collect", arguments)
+        self.assertIn("--property=RemainAfterExit=yes", arguments)
+        self.assertEqual(f"/run/user/{os.getuid()}", environment["XDG_RUNTIME_DIR"])
+        self.assertEqual(f"unix:path=/run/user/{os.getuid()}/bus", environment["DBUS_SESSION_BUS_ADDRESS"])
+
+    def test_inspection_persists_systemd_invocation_id_and_uses_derived_bus(self) -> None:
+        controller = SystemdUserUnits(systemctl="systemctl-test")
+        output = "MainPID=123\nActiveState=active\nControlGroup=/user.slice/test\nInvocationID=invocation\n"
+        with patch("maestro.agents.supervisor.subprocess.run") as run, patch("maestro.agents.supervisor._boot_id", return_value="boot"), patch("maestro.agents.supervisor._proc_start_identity", return_value="start"):
+            run.return_value.returncode = 0
+            run.return_value.stdout = output
+            observed = controller.inspect("maestro-agent-run-one.service")
+        assert observed is not None
+        self.assertEqual("invocation", observed.invocation_id)
+        self.assertEqual(f"/run/user/{os.getuid()}", run.call_args.kwargs["env"]["XDG_RUNTIME_DIR"])
 
 
 if __name__ == "__main__":

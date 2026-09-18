@@ -35,10 +35,8 @@ class RecoveryReconciler:
             if observed.active:
                 return RecoveryDecision(operation, "running", "same_unit_identity")
             if observed.cgroup_empty:
-                self.journal.save(replace(record, state="recovery_required", terminal_reason="unit_ended"))
-                return RecoveryDecision(operation, "recovery_required", "unit_ended")
-        if observed is not None and observed.active:
-            self.journal.save(replace(record, state="stop_unconfirmed", terminal_reason="identity_mismatch"))
-            return RecoveryDecision(operation, "blocked", "identity_mismatch")
-        self.journal.save(replace(record, state="recovery_required", terminal_reason="launch_or_run_interrupted"))
-        return RecoveryDecision(operation, "recovery_required", "launch_or_run_interrupted")
+                self.journal.save(replace(record, state="completed", terminal_reason="unit_ended"))
+                return RecoveryDecision(operation, "terminal", "unit_ended")
+        reason = "identity_unknown" if observed is None else "identity_mismatch"
+        self.journal.save(replace(record, state="stop_unconfirmed", terminal_reason=reason))
+        return RecoveryDecision(operation, "blocked", reason)

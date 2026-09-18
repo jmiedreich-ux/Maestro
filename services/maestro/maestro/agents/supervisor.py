@@ -14,6 +14,7 @@ import signal
 import subprocess
 import threading
 import time
+import uuid
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Callable, Mapping, Protocol, Sequence
@@ -87,10 +88,19 @@ class UnitIdentity:
     pid: int
     boot_id: str
     start_identity: str
+    invocation_id: str
     active: bool
     cgroup_empty: bool
 
     def matches(self, saved: "RunRecord") -> bool:
+        invocation_matches = bool(self.invocation_id) and self.invocation_id == saved.invocation_id
+        if not invocation_matches:
+            return False
+        # systemd clears MainPID after an invocation exits.  Its InvocationID
+        # remains attached to the retained transient unit, so that is the
+        # durable proof for a known, empty completed invocation.
+        if not self.active and self.cgroup_empty:
+            return self.unit_name == saved.unit_name and self.boot_id == saved.boot_id
         return (
             self.unit_name == saved.unit_name
             and self.pid == saved.pid
@@ -127,6 +137,7 @@ class RunRecord:
     pid: int | None = None
     boot_id: str | None = None
     start_identity: str | None = None
+    invocation_id: str | None = None
     last_activity_monotonic: float | None = None
     terminal_reason: str | None = None
     events: tuple[Mapping[str, object], ...] = ()
@@ -209,11 +220,18 @@ class SystemdUserUnits:
     def launch(self, request: LaunchRequest) -> ManagedUnit:
         unit = request.identity.unit_name
         arguments = (
-            self.systemd_run, "--user", "--unit", unit, "--collect", "--quiet", "--pipe",
+            self.systemd_run, "--user", "--unit", unit, "--quiet", "--pipe",
             "--property=KillMode=control-group", "--property=TimeoutStopSec=30s",
-            "--property=SendSIGKILL=yes", f"--working-directory={request.cwd}", "--", *request.command,
+            "--property=SendSIGKILL=yes", "--property=RemainAfterExit=yes",
+            f"--working-directory={request.cwd}", "--", *request.command,
         )
-        process = subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            arguments,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self._user_bus_environment(),
+        )
         deadline = time.monotonic() + 5
         observed: UnitIdentity | None = None
         while time.monotonic() < deadline:
@@ -228,8 +246,11 @@ class SystemdUserUnits:
 
     def inspect(self, unit_name: str) -> UnitIdentity | None:
         completed = subprocess.run(
-            (self.systemctl, "--user", "show", unit_name, "--property=MainPID", "--property=ActiveState", "--property=ControlGroup"),
-            capture_output=True, text=True, check=False,
+            (
+                self.systemctl, "--user", "show", unit_name,
+                "--property=MainPID", "--property=ActiveState", "--property=ControlGroup", "--property=InvocationID",
+            ),
+            capture_output=True, text=True, check=False, env=self._user_bus_environment(),
         )
         if completed.returncode != 0:
             return None
@@ -238,15 +259,28 @@ class SystemdUserUnits:
             pid = int(fields.get("MainPID", "0"))
         except ValueError:
             return None
-        active = fields.get("ActiveState") in {"active", "activating", "deactivating"}
+        active = pid > 0 and fields.get("ActiveState") in {"active", "activating", "deactivating"}
+        invocation_id = fields.get("InvocationID", "")
         if pid <= 0:
-            return UnitIdentity(unit_name, 0, _boot_id(), "", active, self._cgroup_empty(fields.get("ControlGroup", "")))
-        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), active, self._cgroup_empty(fields.get("ControlGroup", "")))
+            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
+        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
 
     def stop(self, unit_name: str) -> None:
-        completed = subprocess.run((self.systemctl, "--user", "stop", unit_name), capture_output=True, text=True, check=False)
+        completed = subprocess.run(
+            (self.systemctl, "--user", "stop", unit_name),
+            capture_output=True, text=True, check=False, env=self._user_bus_environment(),
+        )
         if completed.returncode != 0:
             raise SupervisionError("stop_failed", "systemd did not accept the stop request")
+
+    @staticmethod
+    def _user_bus_environment() -> dict[str, str]:
+        """Address this UID's user manager even from a system service."""
+        runtime_dir = f"/run/user/{os.getuid()}"
+        environment = dict(os.environ)
+        environment["XDG_RUNTIME_DIR"] = runtime_dir
+        environment["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={runtime_dir}/bus"
+        return environment
 
     @staticmethod
     def _cgroup_empty(control_group: str) -> bool:
@@ -263,12 +297,12 @@ class LocalProcessUnits:
 
     def __init__(self) -> None:
         self._units: dict[str, subprocess.Popen[bytes]] = {}
-        self._identities: dict[str, tuple[str, str]] = {}
+        self._identities: dict[str, tuple[str, str, str]] = {}
 
     def launch(self, request: LaunchRequest) -> ManagedUnit:
         process = subprocess.Popen(request.command, cwd=request.cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
         self._units[request.identity.unit_name] = process
-        self._identities[request.identity.unit_name] = (_boot_id(), _proc_start_identity(process.pid))
+        self._identities[request.identity.unit_name] = (_boot_id(), _proc_start_identity(process.pid), uuid.uuid4().hex)
         return ManagedUnit(self._inspect(request.identity.unit_name), process, process.stdout, process.stderr)
 
     def inspect(self, unit_name: str) -> UnitIdentity | None:
@@ -279,12 +313,13 @@ class LocalProcessUnits:
     def _inspect(self, unit_name: str) -> UnitIdentity:
         process = self._units[unit_name]
         active = process.poll() is None
-        boot_id, start_identity = self._identities[unit_name]
+        boot_id, start_identity, invocation_id = self._identities[unit_name]
         return UnitIdentity(
             unit_name,
             process.pid,
             boot_id,
             start_identity,
+            invocation_id,
             active,
             _process_group_empty(process.pid),
         )
@@ -345,7 +380,7 @@ class AgentSupervisor:
                 raise
             raise SupervisionError("launch_unconfirmed", "agent launch was not acknowledged") from error
         unit = managed.identity
-        if not unit.active or unit.pid <= 0 or not unit.start_identity:
+        if not unit.active or unit.pid <= 0 or not unit.start_identity or not unit.invocation_id:
             self._save(replace(intent, state="launch_uncertain", events=(*intent.events, self._event("launch_unconfirmed"))))
             raise SupervisionError("launch_unconfirmed", "agent launch identity was not confirmed")
         running = replace(
@@ -354,6 +389,7 @@ class AgentSupervisor:
             pid=unit.pid,
             boot_id=unit.boot_id,
             start_identity=unit.start_identity,
+            invocation_id=unit.invocation_id,
             last_activity_monotonic=self.clock(),
             events=(*intent.events, self._event("launch_confirmed", pid=unit.pid)),
         )
@@ -375,6 +411,14 @@ class AgentSupervisor:
         if unit is None or not unit.matches(record):
             return self._terminal(record, "stop_unconfirmed", "identity_unknown")
         if not unit.active and unit.cgroup_empty:
+            # Retained systemd units keep the pipe endpoint open after their
+            # main process exits.  The empty, identity-matched control group
+            # is already the completion proof; release that exited unit so
+            # the adapter pipes can close without starting a replacement.
+            try:
+                self.units.stop(record.unit_name)
+            except Exception:
+                return self._terminal(record, "stop_unconfirmed", "completed_unit_release_failed")
             self._join_readers(identity.key)
             record = self._required(identity)
             managed = self._managed.get(identity.key)
@@ -528,4 +572,4 @@ def _record_from_mapping(value: object) -> RunRecord:
     identity = value["identity"]
     if not isinstance(identity, Mapping):
         raise ValueError("identity is invalid")
-    return RunRecord(OperationIdentity(**identity), str(value["unit_name"]), tuple(value["command"]), str(value["cwd"]), float(value["timeout_seconds"]), float(value["stall_seconds"]), str(value["state"]), float(value["launched_monotonic"]), None if value.get("pid") is None else int(value["pid"]), value.get("boot_id"), value.get("start_identity"), None if value.get("last_activity_monotonic") is None else float(value["last_activity_monotonic"]), value.get("terminal_reason"), tuple(value.get("events", ())))
+    return RunRecord(OperationIdentity(**identity), str(value["unit_name"]), tuple(value["command"]), str(value["cwd"]), float(value["timeout_seconds"]), float(value["stall_seconds"]), str(value["state"]), float(value["launched_monotonic"]), None if value.get("pid") is None else int(value["pid"]), value.get("boot_id"), value.get("start_identity"), value.get("invocation_id"), None if value.get("last_activity_monotonic") is None else float(value["last_activity_monotonic"]), value.get("terminal_reason"), tuple(value.get("events", ())))
