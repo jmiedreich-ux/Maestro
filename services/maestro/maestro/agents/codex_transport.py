@@ -65,12 +65,20 @@ class CodexConversation:
 
     def receive(self, raw: bytes | str) -> tuple[bytes, ...]:
         message = decode_json_object(raw)
+        if "method" in message and self.state in {"initialize", "models", "thread", "turn"}:
+            # The installed app server may interleave lifecycle/status notifications
+            # before the correlated response that advances this conversation.
+            return ()
         if self.state == "initialize":
             result = self._expect_result(message, 1)
-            server = result.get("serverInfo")
-            if not isinstance(server, Mapping):
+            user_agent = result.get("userAgent")
+            if (
+                not isinstance(user_agent, str)
+                or not user_agent
+                or self.route.tool_version not in user_agent
+            ):
                 raise TransportError("identity_unverified", "Codex server identity is missing")
-            self._server_version = _identifier(server.get("version"), "tool version")
+            self._server_version = self.route.tool_version
             self.state = "models"
             return (
                 _line({"jsonrpc": "2.0", "method": "initialized", "params": {}}),
@@ -169,12 +177,10 @@ class CodexConversation:
                 if params.get("threadId") != self.thread_id:
                     raise TransportError("stale_output", "Codex event belongs to another thread")
                 turn = params.get("turn")
-                if (
-                    not isinstance(turn, Mapping)
-                    or turn.get("id") != self.turn_id
-                    or turn.get("status") != "completed"
-                ):
+                if not isinstance(turn, Mapping) or turn.get("id") != self.turn_id:
                     raise TransportError("stale_output", "Codex event belongs to another turn")
+                if turn.get("status") != "completed":
+                    raise TransportError("tool_failure", "Codex turn did not complete successfully")
                 if self._response is None or self._identity is None:
                     raise TransportError("missing_output", "Codex turn completed without structured output")
                 self.state = "completed"
@@ -194,7 +200,7 @@ class CodexConversation:
 
     @staticmethod
     def _expect_result(message: Mapping[str, Any], request_id: int) -> Mapping[str, Any]:
-        if message.get("jsonrpc") != "2.0" or message.get("id") != request_id:
+        if message.get("jsonrpc") not in {None, "2.0"} or message.get("id") != request_id:
             raise TransportError("protocol_error", "Codex response correlation is invalid")
         if "error" in message:
             raise TransportError("tool_failure", "Codex app server returned an error")

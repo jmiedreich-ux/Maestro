@@ -499,6 +499,7 @@ class AgentTransportTests(unittest.TestCase):
                 "subtype": "init",
                 "session_id": "session-one",
                 "model": route.requested_model_id,
+                "claude_code_version": route.tool_version,
                 "permissionMode": "dontAsk",
             },
             {"type": "result", "is_error": False, "structured_output": response},
@@ -525,9 +526,12 @@ for line in __import__("sys").stdin:
         continue
     request_id = message["id"]
     if request_id == 1:
-        output = [{{"jsonrpc":"2.0","id":1,"result":{{"serverInfo":{{"name":"codex","version":"1.2.3"}}}}}}]
+        output = [{{"jsonrpc":"2.0","id":1,"result":{{"userAgent":"codex/{route.tool_version} (Linux)"}}}}]
     elif request_id == 2:
-        output = [{{"jsonrpc":"2.0","id":2,"result":{{"data":[{{"id":{route.requested_model_id!r},"model":{route.requested_model_id!r}}}]}}}}]
+        output = [
+            {{"method":"remoteControl/status/changed","params":{{"status":"unavailable"}}}},
+            {{"id":2,"result":{{"data":[{{"id":{route.requested_model_id!r},"model":{route.requested_model_id!r}}}]}}}},
+        ]
     elif request_id == 3:
         output = [{{"jsonrpc":"2.0","id":3,"result":{{"thread":{{"id":"thread-one"}},"model":{route.requested_model_id!r},"modelProvider":{route.provider!r}}}}}]
     elif request_id == 4:

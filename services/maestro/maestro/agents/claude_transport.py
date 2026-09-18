@@ -76,11 +76,14 @@ class ClaudeTransport:
                 model = _text(event.get("model"), "model")
                 if model != route.requested_model_id:
                     raise TransportError("identity_unverified", "Claude started a different model")
+                version = _text(event.get("claude_code_version"), "claude_code_version")
+                if version != route.tool_version:
+                    raise TransportError("identity_unverified", "Claude tool version differs")
                 identity = RunningToolIdentity(
                     "tool_metadata",
                     route.provider,
                     model,
-                    route.tool_version,
+                    version,
                     route.configuration_hash,
                 )
             elif event_type == "result":
