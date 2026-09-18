@@ -450,6 +450,11 @@ def _path_chain(root: Path, leaf: Path) -> tuple[Path, ...]:
 
 
 def _runtime_paths(executable: Path) -> tuple[Path, ...]:
+    tool_companions: tuple[Path, ...] = ()
+    if executable.name == "codex":
+        companion = executable.with_name("codex-code-mode-host")
+        if companion.is_file() and os.access(companion, os.X_OK):
+            tool_companions = (companion,)
     candidates = (
         Path("/usr"),
         Path("/bin"),
@@ -461,6 +466,7 @@ def _runtime_paths(executable: Path) -> tuple[Path, ...]:
         Path("/etc/nsswitch.conf"),
         Path("/etc/passwd"),
         executable,
+        *tool_companions,
     )
     result: list[Path] = []
     for path in candidates:

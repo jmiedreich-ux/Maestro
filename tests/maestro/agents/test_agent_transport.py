@@ -67,6 +67,9 @@ class AgentTransportTests(unittest.TestCase):
         # when the test host denies user namespaces.
         self.isolation_plan_only = self._script("isolation-plan-only", "#!/bin/sh\nexit 99\n")
         self.codex_executable = self._script("codex", "#!/bin/sh\nexit 0\n")
+        self.codex_companion = self._script(
+            "codex-code-mode-host", "#!/bin/sh\nexit 0\n"
+        )
         self.claude_executable = self._script("claude", "#!/bin/sh\nexit 0\n")
         self.service_home = self.root / "service-home"
         (self.service_home / ".codex").mkdir(parents=True)
@@ -291,6 +294,7 @@ class AgentTransportTests(unittest.TestCase):
             )),
         )
         self.assertIn(str(self.service_home / ".codex/auth.json"), conversation.launch.isolated_arguments)
+        self.assertIn(str(self.codex_companion), conversation.launch.isolated_arguments)
         self.assertNotIn(str(self.service_home / ".claude.json"), conversation.launch.isolated_arguments)
         self.assertIn("--clearenv", conversation.launch.isolated_arguments)
 
