@@ -32,6 +32,8 @@ class ContextReading:
     observed_at: float
     source: str
     def __post_init__(self) -> None:
+        if not isinstance(self.segment_id, str) or not self.segment_id or not isinstance(self.source, str) or not self.source:
+            raise MeasurementError("context provenance is invalid")
         if self.quality not in {"reported", "estimated", "unavailable"}:
             raise MeasurementError("measurement quality is invalid")
         if self.limit_tokens is not None and self.limit_tokens <= 0:
@@ -71,8 +73,14 @@ class UsageMeasurement:
     quality: str
     source: str
     def __post_init__(self) -> None:
+        if not isinstance(self.session_id, str) or not self.session_id or not isinstance(self.source_event_id, str) or not self.source_event_id or not isinstance(self.source, str) or not self.source:
+            raise MeasurementError("usage provenance is invalid")
         if self.quality not in {"reported", "estimated", "unavailable"} or self.active_seconds < 0:
             raise MeasurementError("usage measurement is invalid")
         if any(value is not None and value < 0 for value in (self.input_tokens, self.output_tokens)):
             raise MeasurementError("token measurement is invalid")
 
+    @property
+    def provenance_key(self) -> tuple[str, str, str]:
+        """Stable producer event identity used for durable retry deduplication."""
+        return (self.session_id, self.source, self.source_event_id)
