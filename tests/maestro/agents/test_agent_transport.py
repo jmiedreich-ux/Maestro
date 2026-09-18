@@ -66,10 +66,16 @@ class AgentTransportTests(unittest.TestCase):
         # A separate host check exercises real bubblewrap and is reported as UNTESTED
         # when the test host denies user namespaces.
         self.isolation_plan_only = self._script("isolation-plan-only", "#!/bin/sh\nexit 99\n")
-        self.codex_executable = self._script("codex", "#!/bin/sh\nexit 0\n")
+        codex_install = self.root / "codex-install"
+        codex_install.mkdir()
+        self.installed_codex = self._script("codex-install/codex", "#!/bin/sh\nexit 0\n")
         self.codex_companion = self._script(
-            "codex-code-mode-host", "#!/bin/sh\nexit 0\n"
+            "codex-install/codex-code-mode-host", "#!/bin/sh\nexit 0\n"
         )
+        launcher_directory = self.root / "bin"
+        launcher_directory.mkdir()
+        self.codex_executable = launcher_directory / "codex"
+        self.codex_executable.symlink_to(self.installed_codex)
         self.claude_executable = self._script("claude", "#!/bin/sh\nexit 0\n")
         self.service_home = self.root / "service-home"
         (self.service_home / ".codex").mkdir(parents=True)
@@ -295,6 +301,11 @@ class AgentTransportTests(unittest.TestCase):
         )
         self.assertIn(str(self.service_home / ".codex/auth.json"), conversation.launch.isolated_arguments)
         self.assertIn(str(self.codex_companion), conversation.launch.isolated_arguments)
+        separator = conversation.launch.isolated_arguments.index("--")
+        self.assertEqual(
+            str(self.installed_codex), conversation.launch.isolated_arguments[separator + 1]
+        )
+        self.assertNotIn(str(self.codex_executable), conversation.launch.isolated_arguments)
         self.assertNotIn(str(self.service_home / ".claude.json"), conversation.launch.isolated_arguments)
         self.assertIn("--clearenv", conversation.launch.isolated_arguments)
 

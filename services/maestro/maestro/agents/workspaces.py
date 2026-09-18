@@ -144,6 +144,11 @@ class PreparedWorkspace:
         executable = Path(tool_arguments[0])
         if not executable.is_absolute() or not executable.is_file():
             raise WorkspaceError("invalid_launch", "tool executable must be an installed absolute path")
+        try:
+            executable = executable.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise WorkspaceError("invalid_launch", "tool executable cannot be resolved") from error
+        canonical_arguments = (str(executable), *tool_arguments[1:])
         run = self.paths.root
         home = self.paths.scratch / "home"
         config_home = home / ".config"
@@ -225,7 +230,7 @@ class PreparedWorkspace:
                 "--chdir",
                 str(run),
                 "--",
-                *tool_arguments,
+                *canonical_arguments,
             )
         )
         return tuple(arguments)
