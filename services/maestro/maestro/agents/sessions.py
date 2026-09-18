@@ -55,6 +55,22 @@ class AgentSession:
     continuation_required: bool = False
     usage_provenance: tuple[UsageMeasurement, ...] = ()
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.session_id, str) or not self.session_id:
+            raise ValueError("session identifier is invalid")
+        if not isinstance(self.operation, OperationIdentity):
+            raise ValueError("operation identity is invalid")
+        if not isinstance(self.tool, str) or not self.tool or not isinstance(self.provider_session_id, str) or not self.provider_session_id:
+            raise ValueError("session route is invalid")
+        if self.state not in {"idle", "active", "lost"} or not isinstance(self.segment_id, str) or not self.segment_id:
+            raise ValueError("session state is invalid")
+        if self.checkpoint is not None and not isinstance(self.checkpoint, Checkpoint):
+            raise ValueError("checkpoint is invalid")
+        if self.reading is not None and not isinstance(self.reading, ContextReading):
+            raise ValueError("context reading is invalid")
+        if not isinstance(self.usage_provenance, tuple) or any(not isinstance(item, UsageMeasurement) for item in self.usage_provenance):
+            raise ValueError("usage provenance is invalid")
+
     @property
     def operation_id(self) -> str:
         return self.operation.key
@@ -180,7 +196,15 @@ class SessionManager:
             if session.state == "lost" or reading.segment_id != session.segment_id:
                 raise SessionError("stale_measurement", "context reading is from another or lost segment")
             classification = reading.classification(self.policy, now=now)
-            self._save_locked(replace(session, reading=reading, continuation_required=classification == "handoff"))
+            # A handoff is a durable safety latch.  A later warning/normal
+            # sample belongs to the same exhausted provider session and must
+            # never make that session runnable again.  Only _replace_locked,
+            # after a verified checkpoint, clears it for a distinct provider.
+            self._save_locked(replace(
+                session,
+                reading=reading,
+                continuation_required=session.continuation_required or classification == "handoff",
+            ))
             return classification
 
     def checkpoint(self, session_id: str, checkpoint: Checkpoint) -> AgentSession:
@@ -248,15 +272,29 @@ def _encode(session: AgentSession) -> dict[str, object]:
 def _decode(value: object) -> AgentSession:
     if not isinstance(value, dict):
         raise ValueError
-    decoded = dict(value)
-    if isinstance(decoded.get("operation"), dict):
-        decoded["operation"] = OperationIdentity(**decoded["operation"])
-    if isinstance(decoded.get("checkpoint"), dict):
-        decoded["checkpoint"] = Checkpoint(**decoded["checkpoint"])
-    if isinstance(decoded.get("reading"), dict):
-        decoded["reading"] = ContextReading(**decoded["reading"])
-    provenance = decoded.get("usage_provenance", ())
-    if not isinstance(provenance, list):
-        raise ValueError
-    decoded["usage_provenance"] = tuple(UsageMeasurement(**item) if isinstance(item, dict) else item for item in provenance)
-    return AgentSession(**decoded)
+    try:
+        decoded = dict(value)
+        operation = decoded.get("operation")
+        if not isinstance(operation, dict):
+            raise ValueError("operation identity is missing")
+        decoded["operation"] = OperationIdentity(**operation)
+
+        checkpoint = decoded.get("checkpoint")
+        if checkpoint is not None:
+            if not isinstance(checkpoint, dict):
+                raise ValueError("checkpoint is malformed")
+            decoded["checkpoint"] = Checkpoint(**checkpoint)
+
+        reading = decoded.get("reading")
+        if reading is not None:
+            if not isinstance(reading, dict):
+                raise ValueError("context reading is malformed")
+            decoded["reading"] = ContextReading(**reading)
+
+        provenance = decoded.get("usage_provenance", ())
+        if not isinstance(provenance, list) or any(not isinstance(item, dict) for item in provenance):
+            raise ValueError("usage provenance is malformed")
+        decoded["usage_provenance"] = tuple(UsageMeasurement(**item) for item in provenance)
+        return AgentSession(**decoded)
+    except (KeyError, TypeError, ValueError, SessionError) as error:
+        raise ValueError("session persistence is malformed") from error
