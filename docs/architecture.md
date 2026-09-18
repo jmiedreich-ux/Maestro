@@ -189,6 +189,8 @@ Registration intake collects separate, explicit tool and exact model/version cho
 
 Before launch, the service checks model selection, authentication, and structured-output support using the credentials and configuration assigned to the run. This check does not read project sources. Its result records the tool version, account/provider, model, and configuration hash. A change to credentials, configuration, or tool version invalidates the check. The service also checks the model identity reported by the running tool. Missing or different identity prevents result acceptance and produces a specific integration failure. Agent-written text is not evidence of model identity.
 
+Each installed route also names a non-secret settings profile with a nonempty, exact permitted-destination list. Every destination records the HTTPS hostname and port used by that provider route; wildcards and implicit destinations are invalid. The route configuration hash includes this list, so a changed destination policy invalidates preflight and cannot be substituted during a run. Credentials remain a separate service-only profile and are never written into this settings record.
+
 Automatic model substitution is disabled in the effective tool configuration. A refusal remains a refusal; a different model is not used to bypass it. If the installed tool cannot enforce the selected identifier or supply the required evidence, that route is unavailable until corrected. The service does not silently weaken this requirement. [Claude model configuration](https://code.claude.com/docs/en/model-config) documents aliases and fallback; the selected settings must prevent those switches.
 
 #### Tool transport
