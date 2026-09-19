@@ -7,6 +7,7 @@ import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from typing import Callable, Mapping
 
 from .credentials import validate_branch
 
@@ -61,7 +62,11 @@ def _environment() -> dict[str, str]:
     return environment
 
 
-def run_git(*arguments: str, cwd: str | None = None) -> subprocess.CompletedProcess[bytes]:
+def run_git(
+    *arguments: str,
+    cwd: str | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[bytes]:
     """Run one fixed Git argument array without prompts or ambient config."""
     result = subprocess.run(
         ["git", "--no-pager", *arguments],
@@ -69,7 +74,7 @@ def run_git(*arguments: str, cwd: str | None = None) -> subprocess.CompletedProc
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=_environment(),
+        env=_environment() | ({} if environment is None else dict(environment)),
         check=False,
     )
     return result
@@ -78,7 +83,14 @@ def run_git(*arguments: str, cwd: str | None = None) -> subprocess.CompletedProc
 class RemoteGitReader:
     """Reads named files at an observed remote branch head without a write operation."""
 
-    def snapshot(self, remote: str, branch: str, paths: tuple[str, ...]) -> RemoteSnapshot:
+    def snapshot(
+        self,
+        remote: str,
+        branch: str,
+        paths: tuple[str, ...],
+        *,
+        command: Callable[..., subprocess.CompletedProcess[bytes]] = run_git,
+    ) -> RemoteSnapshot:
         if not isinstance(remote, str) or not remote or "\x00" in remote:
             raise GitReadError("remote must be nonempty text")
         branch = validate_branch(branch)
@@ -86,7 +98,7 @@ class RemoteGitReader:
         if len(set(paths)) != len(paths):
             raise GitReadError("requested repository paths must be unique")
         reference = f"refs/heads/{branch}"
-        listed = run_git("ls-remote", "--exit-code", remote, reference)
+        listed = command("ls-remote", "--exit-code", remote, reference)
         if listed.returncode != 0:
             detail = listed.stderr.decode("utf-8", "replace").strip()
             raise GitReadError(f"cannot read remote branch {branch}: {detail or 'unavailable'}")
@@ -99,19 +111,19 @@ class RemoteGitReader:
             raise GitReadError("remote returned an unexpected branch reference")
 
         with tempfile.TemporaryDirectory(prefix="maestro-git-read-") as temporary:
-            initialized = run_git("init", "--bare", "--quiet", temporary)
+            initialized = command("init", "--bare", "--quiet", temporary)
             if initialized.returncode != 0:
                 raise GitReadError("cannot prepare local Git reader")
-            fetched = run_git("-C", temporary, "fetch", "--no-tags", "--quiet", remote, head)
+            fetched = command("-C", temporary, "fetch", "--no-tags", "--quiet", remote, head)
             if fetched.returncode != 0:
                 raise GitReadError("cannot fetch observed remote commit")
             files: dict[str, bytes | None] = {}
             for path in paths:
-                shown = run_git("-C", temporary, "show", f"{head}:{path}")
+                shown = command("-C", temporary, "show", f"{head}:{path}")
                 if shown.returncode == 0:
                     files[path] = shown.stdout
                     continue
-                entry = run_git("-C", temporary, "ls-tree", "--name-only", head, "--", path)
+                entry = command("-C", temporary, "ls-tree", "--name-only", head, "--", path)
                 if entry.returncode == 0 and not entry.stdout:
                     files[path] = None
                     continue

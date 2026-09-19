@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import fnmatch
+import os
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Callable, Mapping
 
 
 class RepositoryCredentialError(ValueError):
@@ -94,6 +97,88 @@ class AuthorizedRepository:
     branch: str
     profile_name: str
     credential_reference: str
+
+
+@dataclass(frozen=True)
+class ServiceGitRoute:
+    """One operator-owned Git endpoint for an authorized repository profile."""
+
+    repository: str
+    credential_reference: str
+    remote: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "repository", normalize_repository(self.repository))
+        _name(self.credential_reference, "credential_reference")
+        if not isinstance(self.remote, str) or not self.remote or "\x00" in self.remote:
+            raise RepositoryCredentialError("service Git remote must be nonempty text")
+
+
+class BoundGitTransport:
+    """A short-lived privileged Git route; its credential is never journaled."""
+
+    def __init__(self, remote: str, credential: str) -> None:
+        self.remote = remote
+        self._credential = credential
+        self._temporary: str | None = None
+
+    def __enter__(self) -> "BoundGitTransport":
+        directory = tempfile.mkdtemp(prefix="maestro-git-credential-")
+        askpass = os.path.join(directory, "askpass")
+        with open(askpass, "w", encoding="utf-8") as stream:
+            stream.write(
+                "#!/bin/sh\n"
+                "case \"$1\" in *Username*) printf '%s\\n' x-access-token ;; *) "
+                "printf '%s\\n' \"$MAESTRO_GIT_TRANSPORT_TOKEN\" ;; esac\n"
+            )
+        os.chmod(askpass, 0o700)
+        self._temporary = directory
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        directory, self._temporary = self._temporary, None
+        if directory is not None:
+            shutil.rmtree(directory, ignore_errors=True)
+        self._credential = ""
+
+    def environment(self) -> dict[str, str]:
+        if self._temporary is None or not self._credential:
+            raise RepositoryCredentialError("privileged Git transport is not active")
+        return {
+            "GIT_ASKPASS": os.path.join(self._temporary, "askpass"),
+            "GIT_TERMINAL_PROMPT": "0",
+            "MAESTRO_GIT_TRANSPORT_TOKEN": self._credential,
+        }
+
+
+class ServiceGitTransport:
+    """Bind a configured remote to one profile and resolve its secret only at use."""
+
+    def __init__(
+        self,
+        routes: tuple[ServiceGitRoute, ...],
+        resolve_credential: Callable[[str], str],
+    ) -> None:
+        self._routes = {route.repository: route for route in routes}
+        if len(self._routes) != len(routes) or not self._routes:
+            raise RepositoryCredentialError("service Git routes must be unique and nonempty")
+        self._resolve_credential = resolve_credential
+
+    def remote_for(self, authorization: AuthorizedRepository) -> str:
+        route = self._routes.get(authorization.repository)
+        if route is None or route.credential_reference != authorization.credential_reference:
+            raise RepositoryCredentialError("no matching privileged Git route is configured")
+        return route.remote
+
+    def bind(self, authorization: AuthorizedRepository) -> BoundGitTransport:
+        remote = self.remote_for(authorization)
+        try:
+            credential = self._resolve_credential(authorization.credential_reference)
+        except Exception as error:
+            raise RepositoryCredentialError("configured service Git credential is unavailable") from error
+        if not isinstance(credential, str) or not credential:
+            raise RepositoryCredentialError("configured service Git credential is unavailable")
+        return BoundGitTransport(remote, credential)
 
 
 class RepositoryAuthorizer:

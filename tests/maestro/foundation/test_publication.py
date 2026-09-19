@@ -10,12 +10,15 @@ from maestro.foundation.credentials import (
     RepositoryBinding,
     RepositoryCredentialError,
     RepositoryProfile,
+    ServiceGitRoute,
+    ServiceGitTransport,
 )
 from maestro.foundation.database import Database
 from maestro.foundation.git_publication import (
     PublicationAccessError,
     PublicationConflictError,
     PublicationJournal,
+    PublicationStateError,
     publication_migrations,
 )
 from maestro.foundation.settings import StorageSettings
@@ -45,12 +48,18 @@ class PublicationJournalTest(unittest.TestCase):
             allowed_repositories=("owner/project",),
             allowed_branch_patterns=("main",),
         )
+        self.credentials = {"github-app-project": "fixture-credential"}
+        transport = ServiceGitTransport(
+            (ServiceGitRoute("owner/project", "github-app-project", str(self.remote)),),
+            lambda reference: self.credentials[reference],
+        )
         self.journal = PublicationJournal(
             database,
             RepositoryAuthorizer(
                 {profile.name: profile},
                 (RepositoryBinding("binding-project", "owner/project", profile.name),),
             ),
+            transport,
         )
 
     def tearDown(self) -> None:
@@ -116,6 +125,29 @@ class PublicationJournalTest(unittest.TestCase):
             ),
         )
 
+    def test_moved_head_is_reconciled_before_a_preserving_retry(self) -> None:
+        self.prepare()
+        (self.work / "unrelated.txt").write_text("preserve me\n", encoding="utf-8")
+        self.git_run("git", "-C", str(self.work), "add", "unrelated.txt")
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "unrelated move")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+
+        with self.assertRaises(PublicationStateError):
+            self.journal.attempt("publish-one")
+        reconciled = self.journal.operation("publish-one")
+        self.assertEqual("reconciled", reconciled.state)
+        self.assertEqual(
+            self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"),
+            reconciled.reconciled_parent,
+        )
+
+        result = self.journal.attempt("publish-one")
+        self.assertEqual("verified", result.state)
+        self.assertEqual(
+            b"preserve me\n",
+            subprocess.check_output(["git", "--git-dir", str(self.remote), "show", "main:unrelated.txt"]),
+        )
+
     def test_lost_acknowledgment_reconciles_matching_remote_bytes_without_another_write(self) -> None:
         self.prepare()
         first = self.journal.attempt("publish-one")
@@ -129,18 +161,38 @@ class PublicationJournalTest(unittest.TestCase):
         self.assertEqual("verified", self.journal.operation("publish-one").state)
         self.assertEqual(2, int(self.output("git", "--git-dir", str(self.remote), "rev-list", "--count", "main")))
 
-    def test_unreadable_remote_creates_no_success_receipt(self) -> None:
-        self.journal.prepare(
-            operation_id="publish-denied",
-            repository="owner/project",
-            remote=str(self.root / "not-a-remote.git"),
-            branch="main",
-            expected_parent=self.seed,
-            files={".maestro/registrations/candidate.json": b"candidate\n"},
-        )
+    def test_restored_access_reconciles_before_retry_and_never_reports_local_success(self) -> None:
+        self.prepare("publish-denied")
+        unavailable = self.root / "remote-unavailable.git"
+        self.remote.rename(unavailable)
         with self.assertRaises(PublicationAccessError):
             self.journal.attempt("publish-denied")
         operation = self.journal.operation("publish-denied")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+        unavailable.rename(self.remote)
+
+        with self.assertRaises(PublicationStateError):
+            self.journal.reconcile("publish-denied")
+        self.assertEqual("reconciled", self.journal.operation("publish-denied").state)
+        result = self.journal.attempt("publish-denied")
+        self.assertEqual(result.remote_commit, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
+
+    def test_mismatched_or_unavailable_privileged_route_cannot_create_a_receipt(self) -> None:
+        with self.assertRaises(PublicationAccessError):
+            self.journal.prepare(
+                operation_id="wrong-remote",
+                repository="owner/project",
+                remote=str(self.root / "unbound.git"),
+                branch="main",
+                expected_parent=self.seed,
+                files={".maestro/registrations/candidate.json": b"candidate\n"},
+            )
+        self.prepare("credential-unavailable")
+        self.credentials.clear()
+        with self.assertRaises(PublicationAccessError):
+            self.journal.attempt("credential-unavailable")
+        operation = self.journal.operation("credential-unavailable")
         self.assertEqual("paused", operation.state)
         self.assertIsNone(operation.remote_commit)
 

@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import Mapping
 
 from .contracts import DomainMigration, canonical_identifier
-from .credentials import AuthorizedRepository, RepositoryAuthorizer
+from .credentials import (
+    AuthorizedRepository,
+    RepositoryAuthorizer,
+    RepositoryCredentialError,
+    ServiceGitTransport,
+)
 from .database import Database
 from .git_read import GitReadError, RemoteGitReader, RemoteSnapshot, run_git, validate_object_id, validate_repository_path
 
@@ -48,6 +53,7 @@ _MIGRATION = DomainMigration(
             branch TEXT NOT NULL,
             expected_parent TEXT NOT NULL,
             state TEXT NOT NULL,
+            reconciled_parent TEXT,
             remote_commit TEXT,
             failure TEXT
         )
@@ -78,6 +84,7 @@ class PublicationOperation:
     expected_parent: str
     files: dict[str, bytes]
     state: str
+    reconciled_parent: str | None
     remote_commit: str | None
     failure: str | None
 
@@ -99,13 +106,21 @@ class PublicationJournal:
     transport.  The journal stores only the validated profile reference.
     """
 
-    def __init__(self, database: Database, authorizer: RepositoryAuthorizer) -> None:
+    def __init__(
+        self,
+        database: Database,
+        authorizer: RepositoryAuthorizer,
+        transport: ServiceGitTransport,
+    ) -> None:
         if not isinstance(database, Database):
             raise TypeError("PublicationJournal requires the service Database")
         if not isinstance(authorizer, RepositoryAuthorizer):
             raise TypeError("PublicationJournal requires RepositoryAuthorizer")
+        if not isinstance(transport, ServiceGitTransport):
+            raise TypeError("PublicationJournal requires ServiceGitTransport")
         self._database = database
         self._authorizer = authorizer
+        self._transport = transport
         self._reader = RemoteGitReader()
 
     def prepare(
@@ -122,16 +137,20 @@ class PublicationJournal:
         canonical_identifier(operation_id, "operation_id")
         authorization = self._authorizer.authorize(repository, branch)
         expected_parent = validate_object_id(expected_parent, "expected_parent")
-        if not isinstance(remote, str) or not remote or "\x00" in remote:
-            raise PublicationError("remote must be nonempty text")
+        try:
+            configured_remote = self._transport.remote_for(authorization)
+        except RepositoryCredentialError as error:
+            raise PublicationAccessError("configured privileged Git route is unavailable") from error
+        if remote != configured_remote:
+            raise PublicationAccessError("publication remote does not match its authorized profile")
         normalized_files = self._normalize_files(files)
         with self._database.transaction() as transaction:
             transaction.execute(
                 """
                 INSERT INTO publication_operations(
                     operation_id, binding_id, repository, profile_name, credential_reference,
-                    remote, branch, expected_parent, state, remote_commit, failure
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', NULL, NULL)
+                    remote, branch, expected_parent, state, reconciled_parent, remote_commit, failure
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', NULL, NULL, NULL)
                 """,
                 (
                     operation_id,
@@ -158,17 +177,22 @@ class PublicationJournal:
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
-        if operation.state not in {"prepared", "writing", "paused"}:
+        if operation.state not in {"prepared", "reconciled"}:
             raise PublicationStateError("publication operation is not retryable")
-        self._set_state(operation_id, "writing", failure=None)
-        return self._attempt_or_reconcile(operation_id, allow_write=True)
+        return self._attempt(operation_id)
 
     def observe(self, operation_id: str) -> RemoteSnapshot:
         """Read the current target state without a write or state transition."""
         operation = self.operation(operation_id)
         try:
-            return self._reader.snapshot(operation.remote, operation.authorization.branch, tuple(operation.files))
-        except GitReadError as error:
+            with self._transport.bind(operation.authorization) as transport:
+                return self._reader.snapshot(
+                    transport.remote,
+                    operation.authorization.branch,
+                    tuple(operation.files),
+                    command=lambda *args: run_git(*args, environment=transport.environment()),
+                )
+        except (GitReadError, RepositoryCredentialError) as error:
             raise PublicationAccessError("cannot observe the configured publication target") from error
 
     def reconcile(self, operation_id: str) -> PublicationResult:
@@ -177,9 +201,18 @@ class PublicationJournal:
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
-        if operation.state not in {"writing", "paused", "prepared"}:
+        if operation.state not in {"writing", "paused", "prepared", "reconciled"}:
             raise PublicationStateError("publication operation cannot be reconciled")
-        return self._attempt_or_reconcile(operation_id, allow_write=False)
+        snapshot = self._observe_or_pause(operation_id)
+        matches, missing = self._target_state(operation, snapshot)
+        if matches:
+            self._set_verified(operation_id, snapshot.head)
+            return PublicationResult(operation_id, snapshot.head, "verified", True)
+        if not missing:
+            self._pause(operation_id, "remote target contains conflicting publication bytes")
+            raise PublicationConflictError("remote target contains conflicting publication bytes")
+        self._set_reconciled(operation_id, snapshot.head)
+        raise PublicationStateError("remote state is reconciled; retry publication explicitly")
 
     def operation(self, operation_id: str) -> PublicationOperation:
         canonical_identifier(operation_id, "operation_id")
@@ -187,7 +220,7 @@ class PublicationJournal:
             row = connection.execute(
                 """SELECT operation_id, binding_id, repository, profile_name,
                           credential_reference, remote, branch, expected_parent,
-                          state, remote_commit, failure
+                          state, reconciled_parent, remote_commit, failure
                    FROM publication_operations WHERE operation_id = ?""",
                 (operation_id,),
             ).fetchone()
@@ -213,30 +246,26 @@ class PublicationJournal:
         return PublicationOperation(
             operation_id=str(row[0]), authorization=authorization, remote=str(row[5]),
             expected_parent=str(row[7]), files=files, state=str(row[8]),
-            remote_commit=None if row[9] is None else str(row[9]),
-            failure=None if row[10] is None else str(row[10]),
+            reconciled_parent=None if row[9] is None else str(row[9]),
+            remote_commit=None if row[10] is None else str(row[10]),
+            failure=None if row[11] is None else str(row[11]),
         )
 
-    def _attempt_or_reconcile(self, operation_id: str, *, allow_write: bool) -> PublicationResult:
+    def _attempt(self, operation_id: str) -> PublicationResult:
         operation = self.operation(operation_id)
-        try:
-            snapshot = self.observe(operation_id)
-        except PublicationAccessError as error:
-            self._set_state(operation_id, "paused", failure=str(error))
-            raise
-        matches = all(snapshot.files[path] == content for path, content in operation.files.items())
-        missing = all(snapshot.files[path] is None for path in operation.files)
+        snapshot = self._observe_or_pause(operation_id)
+        matches, missing = self._target_state(operation, snapshot)
         if matches:
             self._set_verified(operation_id, snapshot.head)
             return PublicationResult(operation_id, snapshot.head, "verified", True)
-        if not allow_write:
-            message = "remote target does not contain the intended bytes"
-            self._set_state(operation_id, "paused", failure=message)
-            raise PublicationConflictError(message)
         if not missing:
-            message = "remote target contains conflicting publication bytes"
-            self._set_state(operation_id, "paused", failure=message)
-            raise PublicationConflictError(message)
+            self._pause(operation_id, "remote target contains conflicting publication bytes")
+            raise PublicationConflictError("remote target contains conflicting publication bytes")
+        permitted_parent = operation.expected_parent if operation.state == "prepared" else operation.reconciled_parent
+        if snapshot.head != permitted_parent:
+            self._set_reconciled(operation_id, snapshot.head)
+            raise PublicationStateError("remote branch moved; reconciliation completed before retry")
+        self._set_state(operation_id, "writing", failure=None)
         try:
             commit = self._write_once(operation, snapshot.head)
         except PublicationAccessError as error:
@@ -245,12 +274,12 @@ class PublicationJournal:
         except PublicationConflictError as error:
             self._set_state(operation_id, "paused", failure=str(error))
             raise
-        observed = self.observe(operation_id)
+        observed = self._observe_or_pause(operation_id)
         if observed.head != commit or not all(
             observed.files[path] == content for path, content in operation.files.items()
         ):
             message = "remote write outcome is not the exact intended commit and bytes"
-            self._set_state(operation_id, "paused", failure=message)
+            self._pause(operation_id, message)
             raise PublicationConflictError(message)
         self._set_verified(operation_id, commit)
         return PublicationResult(operation_id, commit, "verified", False)
@@ -258,33 +287,36 @@ class PublicationJournal:
     def _write_once(self, operation: PublicationOperation, parent: str) -> str:
         directory = Path(tempfile.mkdtemp(prefix="maestro-git-publication-"))
         try:
-            self._checked("init", "--quiet", str(directory))
-            self._checked("-C", str(directory), "remote", "add", "origin", operation.remote)
-            self._checked("-C", str(directory), "fetch", "--no-tags", "--quiet", "origin", parent)
-            self._checked("-C", str(directory), "checkout", "--quiet", "--detach", "FETCH_HEAD")
-            for path, content in operation.files.items():
-                destination = directory / path
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_bytes(content)
-            self._checked("-C", str(directory), "add", "--", *operation.files)
-            message = f"Maestro publication {operation.operation_id}"
-            self._checked(
-                "-C", str(directory), "-c", "user.name=Maestro service",
-                "-c", "user.email=maestro@localhost", "commit", "--quiet", "-m", message,
-            )
-            commit = self._checked("-C", str(directory), "rev-parse", "HEAD").stdout.decode("ascii").strip()
-            commit = validate_object_id(commit, "published commit")
-            pushed = run_git(
-                "-C", str(directory), "push", "--porcelain", "origin",
-                f"{commit}:refs/heads/{operation.authorization.branch}",
-            )
-            if pushed.returncode != 0:
-                detail = pushed.stderr.decode("utf-8", "replace").strip()
-                raise PublicationConflictError(
-                    f"remote branch changed before non-force publication: {detail or 'rejected'}"
+            with self._transport.bind(operation.authorization) as transport:
+                command = lambda *args: run_git(*args, environment=transport.environment())
+                self._checked(command, "init", "--quiet", str(directory))
+                self._checked(command, "-C", str(directory), "remote", "add", "origin", transport.remote)
+                self._checked(command, "-C", str(directory), "fetch", "--no-tags", "--quiet", "origin", parent)
+                self._checked(command, "-C", str(directory), "checkout", "--quiet", "--detach", "FETCH_HEAD")
+                for path, content in operation.files.items():
+                    destination = directory / path
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(content)
+                self._checked(command, "-C", str(directory), "add", "--", *operation.files)
+                message = f"Maestro publication {operation.operation_id}"
+                self._checked(
+                    command,
+                    "-C", str(directory), "-c", "user.name=Maestro service",
+                    "-c", "user.email=maestro@localhost", "commit", "--quiet", "-m", message,
                 )
-            return commit
-        except GitReadError as error:
+                commit = self._checked(command, "-C", str(directory), "rev-parse", "HEAD").stdout.decode("ascii").strip()
+                commit = validate_object_id(commit, "published commit")
+                pushed = command(
+                    "-C", str(directory), "push", "--porcelain", "origin",
+                    f"{commit}:refs/heads/{operation.authorization.branch}",
+                )
+                if pushed.returncode != 0:
+                    detail = pushed.stderr.decode("utf-8", "replace").strip()
+                    raise PublicationConflictError(
+                        f"remote branch changed before non-force publication: {detail or 'rejected'}"
+                    )
+                return commit
+        except (GitReadError, RepositoryCredentialError) as error:
             raise PublicationAccessError("configured Git route rejected publication") from error
         except OSError as error:
             raise PublicationAccessError("cannot prepare bounded local publication worktree") from error
@@ -292,8 +324,8 @@ class PublicationJournal:
             shutil.rmtree(directory, ignore_errors=True)
 
     @staticmethod
-    def _checked(*arguments: str):
-        result = run_git(*arguments)
+    def _checked(command, *arguments: str):
+        result = command(*arguments)
         if result.returncode != 0:
             detail = result.stderr.decode("utf-8", "replace").strip()
             raise PublicationAccessError(f"Git operation failed: {detail or 'unavailable'}")
@@ -319,6 +351,32 @@ class PublicationJournal:
                 "UPDATE publication_operations SET state = ?, failure = ? WHERE operation_id = ?",
                 (state, failure, operation_id),
             )
+
+    def _set_reconciled(self, operation_id: str, parent: str) -> None:
+        with self._database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE publication_operations
+                   SET state = 'reconciled', reconciled_parent = ?, failure = NULL
+                   WHERE operation_id = ?""",
+                (parent, operation_id),
+            )
+
+    def _pause(self, operation_id: str, failure: str) -> None:
+        self._set_state(operation_id, "paused", failure=failure)
+
+    def _observe_or_pause(self, operation_id: str) -> RemoteSnapshot:
+        try:
+            return self.observe(operation_id)
+        except PublicationAccessError as error:
+            self._pause(operation_id, str(error))
+            raise
+
+    @staticmethod
+    def _target_state(operation: PublicationOperation, snapshot: RemoteSnapshot) -> tuple[bool, bool]:
+        return (
+            all(snapshot.files[path] == content for path, content in operation.files.items()),
+            all(snapshot.files[path] is None for path in operation.files),
+        )
 
     def _set_verified(self, operation_id: str, commit: str) -> None:
         with self._database.transaction() as transaction:
