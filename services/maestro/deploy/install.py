@@ -191,7 +191,10 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
     _secure_directory(paths.data_dir, 0o711, configuration.service.uid, configuration.service.gid)
     _secure_directory(
         paths.workspace_dir,
-        0o770,
+        # The agent has traverse-only access to the workspace hierarchy.
+        # Individual runs grant access only to their explicitly mounted
+        # source, input, assignment, output, and scratch leaves.
+        0o711,
         configuration.service.uid,
         _group_gid(WORKSPACE_GROUP, fallback=configuration.agent.gid),
     )

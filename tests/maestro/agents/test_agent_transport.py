@@ -446,6 +446,26 @@ class AgentTransportTests(unittest.TestCase):
             workspace.egress_command("codex", ("/usr/bin/bwrap", "--clearenv"))
         self.assertEqual("invalid_launch", caught.exception.code)
 
+    def test_workspace_grants_agent_access_only_at_assigned_leaves(self) -> None:
+        assignment = self._assignment("project_architect", "run-leaf-permissions")
+        workspace = self._workspace(assignment, {"brief.txt": b"assigned input\n"})
+
+        for directory in (
+            self.root / "workspaces" / assignment.project_id,
+            self.root / "workspaces" / assignment.project_id / assignment.activity_id,
+            self.root / "workspaces" / assignment.project_id / assignment.activity_id / "runs",
+            workspace.paths.root,
+        ):
+            self.assertEqual(0o701, directory.stat().st_mode & 0o777)
+        self.assertEqual(0o505, workspace.paths.source.stat().st_mode & 0o777)
+        self.assertEqual(0o505, workspace.paths.input.stat().st_mode & 0o777)
+        self.assertEqual(0o404, workspace.paths.assignment.stat().st_mode & 0o777)
+        self.assertEqual(0o707, workspace.paths.output.stat().st_mode & 0o777)
+        self.assertEqual(0o707, workspace.paths.scratch.stat().st_mode & 0o777)
+        self.assertEqual(
+            0o404, workspace.paths.input.joinpath("brief.txt").stat().st_mode & 0o777
+        )
+
     def test_reviewer_has_separate_read_only_source_and_exact_assigned_artifacts(self) -> None:
         candidate = b'{"candidate":1}\n'
         assessment = b'{"assessment":1}\n'
@@ -488,7 +508,7 @@ class AgentTransportTests(unittest.TestCase):
         )
         self.assertEqual("APPROVE", validated.review_outcome)
         self.assertNotEqual(workspace.paths.root, self.root / "workspaces/project-one/activity-one/runs/run-codex")
-        self.assertEqual(0o440, workspace.paths.input.joinpath("candidate.json").stat().st_mode & 0o777)
+        self.assertEqual(0o404, workspace.paths.input.joinpath("candidate.json").stat().st_mode & 0o777)
         input_bind = launch.sandbox_arguments.index(str(workspace.paths.input))
         self.assertEqual("--ro-bind", launch.sandbox_arguments[input_bind - 1])
 
