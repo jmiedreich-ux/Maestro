@@ -611,8 +611,8 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertEqual(64, failed.exception.code)
 
     @unittest.skipUnless(os.geteuid() == 0, "requires a disposable root-owned staged test")
-    def test_egress_runner_demotes_to_configured_agent_and_exposes_only_profile_mount(self) -> None:
-        """Exercise the real child identity in a disposable directory, never host credentials."""
+    def test_egress_runner_mounts_service_workspace_before_running_as_agent(self) -> None:
+        """A root runner mounts service-only sources, then bwrap applies the agent identity."""
         agent = pwd.getpwnam("nobody")
         os.chmod(self.root, 0o755)
         profile = self.paths.data_dir / ".codex" / "auth.json"
@@ -622,9 +622,24 @@ class LinuxInstallationTest(unittest.TestCase):
         workspace = self.paths.workspace_dir / "project" / "activity" / "runs" / "run-agent"
         profile_target = workspace / "scratch" / "home" / ".codex" / "auth.json"
         workspace.mkdir(parents=True)
+        source_directory = workspace / "source"
+        source_directory.mkdir(mode=0o700)
+        source = source_directory / "service-owned-source.txt"
+        source.write_text("assigned source", encoding="ascii")
+        source.chmod(0o400)
+        # This reproduces a service-created run: its path is not traversable by
+        # the configured agent on the host.  Bubblewrap must open it as root.
+        for directory in (
+            self.paths.workspace_dir,
+            self.paths.workspace_dir / "project",
+            self.paths.workspace_dir / "project" / "activity",
+            self.paths.workspace_dir / "project" / "activity" / "runs",
+            workspace,
+            source_directory,
+        ):
+            directory.chmod(0o700)
         evidence_directory = workspace / "output"
         evidence_directory.mkdir()
-        os.chown(evidence_directory, agent.pw_uid, agent.pw_gid)
         evidence_directory.chmod(0o700)
         evidence = evidence_directory / "result.json"
         hosts = self.root / "hosts"
@@ -658,7 +673,12 @@ class LinuxInstallationTest(unittest.TestCase):
         egress = types.ModuleType("staged_maestro_agent_egress")
         exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
 
-        directories = {evidence_directory, Path("/protected"), profile_target.parent}
+        directories = {
+            evidence_directory,
+            Path("/protected"),
+            profile_target.parent,
+            source_directory,
+        }
         for directory in tuple(directories):
             current = Path("/")
             for part in directory.parts[1:]:
@@ -668,7 +688,8 @@ class LinuxInstallationTest(unittest.TestCase):
             "import json, os, sys; from pathlib import Path; "
             "Path(sys.argv[1]).write_text(json.dumps({'uid': os.geteuid(), "
             "'profile': Path(sys.argv[2]).is_file() and bool(Path(sys.argv[2]).read_bytes()), "
-            "'denied': [not os.access(path, os.R_OK) for path in sys.argv[3:]]}))"
+            "'source': Path(sys.argv[3]).read_text(), "
+            "'denied': [not os.access(path, os.R_OK) for path in sys.argv[4:]]}))"
         )
         sandbox = [
             egress.BWRAP,
@@ -688,6 +709,9 @@ class LinuxInstallationTest(unittest.TestCase):
             "--ro-bind",
             str(profile),
             str(profile_target),
+            "--ro-bind",
+            str(source_directory),
+            str(source_directory),
             "--bind",
             str(evidence_directory),
             str(evidence_directory),
@@ -702,6 +726,7 @@ class LinuxInstallationTest(unittest.TestCase):
                 child,
                 str(evidence_directory / "result.json"),
                 str(profile_target),
+                str(source),
                 *protected_targets,
             )
         )
@@ -728,7 +753,10 @@ class LinuxInstallationTest(unittest.TestCase):
         observed = json.loads(evidence.read_text(encoding="utf-8"))
         self.assertEqual(agent.pw_uid, observed["uid"])
         self.assertTrue(observed["profile"])
+        self.assertEqual("assigned source", observed["source"])
         self.assertEqual([True, True, True], observed["denied"])
+        self.assertEqual(0o700, stat.S_IMODE(source_directory.stat().st_mode))
+        self.assertEqual(0o707, stat.S_IMODE(evidence_directory.stat().st_mode))
 
     def _start_server(self, application) -> str:
         server = InstalledServiceServer(application, "127.0.0.1", 0)
