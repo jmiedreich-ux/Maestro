@@ -2880,3 +2880,27 @@ M2 — Supervised shared processes completed, passed independent review and real
 The Owner requires reporting for all future Maestro-managed work. Reports must use saved lifecycle measurements for queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall time; operation counts; and available provider usage. Parallel child time stays distinct from wall time. Past unobserved manual time remains unknown and is never estimated from commits or calendar elapsed time.
 
 Before M3 starts, complete the new manual retrospective for M2 — Supervised shared processes. It compares M2's completed evidence with its pinned architecture and records separate architecture/delivery gaps and lessons learned. It is not a new approval or correction round; unavailable historical timing remains unknown.
+
+## M2 — Supervised shared processes retrospective — 2026-09-19
+
+Scope: promoted milestone revision `5c79bc7e9c4b38fe3603c0cfac43fe6ea6f3c486`, final milestone head `08fb14c6035a11b8b3611fe9d23470b5c84bc8dd`, and the pinned Supervised shared processes requirements and QA plan. Evidence includes the independent Claude guarded route, Codex reviewer route, installed preflight, session/policy persistence, and systemd supervision receipts. No previously unrecognized unmet M2 required outcome was found.
+
+### Architecture and delivery gaps
+
+| Gap | Evidence and impact | Future handling |
+|---|---|---|
+| Manual coordination had no durable lifecycle measurement. | The first M2 source commit was 2026-09-17 20:17 EDT and promotion was 2026-09-19 02:22 EDT: 30 hours 5 minutes of wall time. Active coding, review, waiting and QA time cannot be reconstructed reliably. | The saved lifecycle-reporting requirement records measured states and retains unknown time as unknown. |
+| Real host-route validation occurred too late. | The stated isolation, immutable-input, output-write and supervision requirements exposed corrected implementation defects in guarded identity, workspace traversal, mount layout, Claude output permission, Codex required-output handling and launch-event numbering. | Run a protected real-route smoke check for every required tool before packet acceptance and keep its evidence tied to the candidate. |
+| QA receipts did not initially bind every result to the exact candidate and run. | A post-correction supervision receipt named an older candidate; a buffered stream reader also made a finished Codex run appear to wait. Both required reruns and trace review. | Use run-unique evidence paths, record the copied candidate commit at test start, and read live streams without buffered readiness checks. |
+
+The route and workspace issues were implementation/QA-delivery defects, not a missing M2 architecture requirement. They were corrected and rechecked before promotion. The initial outcome-scope dispute was a review-scope error: M2 promised shared-process infrastructure, not later full domain workflow composition.
+
+### Lessons learned
+
+| Lesson | Apply before later work |
+|---|---|
+| Do not use fake or controlled data as milestone acceptance evidence. | Use an independently created real fixture and protected actual route for each promised path. |
+| Validate host boundaries at the first integrated candidate, not after all packets finish. | Preflight installed tool, model, credential boundary, egress, workspace mount and writable-output behavior before dependent packet reviews. |
+| Evidence is valid only when it identifies the exact candidate, run and source input. | Make candidate hash and unique run identity mandatory in every QA receipt and review input. |
+| Review only the declared milestone contribution. | Start outcome review from the stated inclusion and exclusion boundary; record later-domain gaps as outside scope unless they prevent the claimed contribution. |
+| Report measured work, not inferred effort. | Show lifecycle state durations and `unknown` values; never estimate active time from commits or calendar gaps. |
