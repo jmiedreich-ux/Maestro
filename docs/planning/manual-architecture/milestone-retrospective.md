@@ -10,18 +10,19 @@ Compare the delivered milestone with its pinned architecture, milestone requirem
 
 - Exact promoted milestone and product-master revisions.
 - Pinned architecture, milestone requirements, packet specifications and dependency records.
-- Packet, integration, independent-review, Quality Assurance, outcome-review and promotion evidence.
+- Packet, integration, independent-review, Quality Assurance, outcome-review and promotion evidence, including cause classifications for blocking findings.
 - Saved lifecycle measurements and operation counts. Missing historical measurements remain unknown.
 
 ## Manual procedure
 
 1. Trace each stated milestone contribution and required connection to its delivered code and evidence.
-2. Record every late-discovered architecture, dependency, setup, integration or verification gap. State whether it was absent from the pinned sources, available but missed, or an implementation defect already corrected through the normal process.
+2. Record every late-discovered architecture, dependency, setup, integration or verification gap. Classify every blocking correction as `architecture_requirement`, `packet_specification`, `dependency_or_setup`, `implementation`, `integration`, `verification_or_qa`, `provider_or_external`, or `unknown`; state the controlling source or evidence.
 3. Use saved measurements to describe queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall-time impact. Never infer active time from commit timestamps, message order or calendar gaps.
-4. Save two plain lists:
+4. Calculate and save separately: first-pass approval rate, specification-sufficiency rate, and blocking-finding cause distribution. If any applicable finding is `unknown`, label the affected measure partial.
+5. Save two plain lists:
    - **Architecture and delivery gaps:** requirement/source, observed condition, measured impact or `unknown`, and the existing authority or future work that may address it.
    - **Lessons learned:** a specific preparation, execution or reporting change, its evidence, and the later milestone or process it can improve.
-5. Save the record in the current handoff or the service's durable execution record before starting the next development milestone.
+6. Save the record in the current handoff or the service's durable execution record before starting the next development milestone.
 
 ## Applying lessons
 

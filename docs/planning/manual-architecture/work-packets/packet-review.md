@@ -68,7 +68,7 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 
 ## Completion criteria
 
-1. Assign an actual non-author to exact packet revision; save semantic findings, return valid corrections to original author and preserve counts on technical retry.
+1. Assign an actual non-author to exact packet revision; save semantic findings and the required cause classification for every blocking finding, return valid corrections to original author and preserve counts on technical retry.
 2. Reject self-review/stale approval and unresolved/exhausted correction; only approved exact head becomes integration eligible.
 3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
@@ -83,7 +83,7 @@ Exact test command:
 ["python","-m","unittest","discover","-s","tests/maestro/execution","-p","test_packet_review.py","-v"]
 ```
 
-Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Self-review, stale approval and exhausted unapproved correction cannot enter integration.
+Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Self-review, stale approval and exhausted unapproved correction cannot enter integration. A blocking finding without a valid cause classification is incomplete and cannot supply a packet-quality metric.
 
 The test file must observe the real included capability. Low-level deterministic inputs may isolate component logic; any actual service/agent/Git path promised by these criteria requires real path evidence, not a fake result. Missing installed resources are recorded as UNTESTED with nonzero status; do not convert them into success using a skip. Capture actual inputs, expected/observed results, command/exit output and source revision. No tests were run when writing this specification.
 

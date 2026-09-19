@@ -2906,3 +2906,5 @@ The route and workspace issues were implementation/QA-delivery defects, not a mi
 | Report measured work, not inferred effort. | Show lifecycle state durations and `unknown` values; never estimate active time from commits or calendar gaps. |
 
 M3 cannot start until its safeguard checklist names these five lessons, their owner, execution stage and required evidence. The checklist starts a manual lifecycle log at dispatch; requires real protected-route smoke checks at the first integrated candidate; rejects receipts without candidate/run/source identity; and attaches M3's inclusion/exclusion boundary to its outcome-review input. These safeguards do not expand M3 scope.
+
+All M3 blocking review, integration and QA findings must classify their cause as architecture requirement, packet specification, dependency/setup, implementation, integration, verification/QA, provider/external or unknown. M3 reporting must show first-pass approval, specification sufficiency and the cause distribution separately; incomplete classification makes the affected metric partial.

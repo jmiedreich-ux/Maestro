@@ -18,7 +18,7 @@ Controlling behavior: [execution api state and record contract](../../../archite
 
 ## Included scope and interfaces
 
-Add manager plans, review/queue/dependency/QA/gap/promotion/lifecycle views and commands from current service records. Show packet, milestone and activity timing by queue, preflight, active work, waiting, review, integration, Quality Assurance, correction, blocked and wall time; show operation counts and available provider usage. Parallel child time remains distinct from wall time.
+Add manager plans, review/queue/dependency/QA/gap/promotion/lifecycle views and commands from current service records. Show packet, milestone and activity timing by queue, preflight, active work, waiting, review, integration, Quality Assurance, correction, blocked and wall time; show operation counts, cause-classified correction measures and available provider usage. Parallel child time remains distinct from wall time.
 
 Provider contract: Terminal Execution extension uses workspace and authenticated service contract, with no direct SQL or process transition logic.
 
@@ -68,7 +68,7 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 ## Completion criteria
 
 1. Render real saved plans, assignments, reviews, FIFO/dependencies, QA/gaps/promotion/lifecycle and submit only available Execution commands.
-2. Render saved lifecycle timing, operation counts and available provider usage for each packet, milestone and activity. Show parallel child totals separately from wall time. Unknown, stale and unobserved values show their recorded reason and never appear as zero or an estimate.
+2. Render saved lifecycle timing, operation counts, first-pass approval rate, specification-sufficiency rate, blocking-finding cause distribution and available provider usage for each packet, milestone and activity. Show parallel child totals separately from wall time. Unknown, stale and unobserved values show their recorded reason and never appear as zero or an estimate.
 3. Reconnect reads/reconciles receipts without replay; stale/unknown measurements remain visible, and denied action is not success.
 4. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 5. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
