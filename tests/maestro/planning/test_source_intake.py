@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from maestro.foundation.credentials import (
@@ -15,6 +18,7 @@ from maestro.foundation.credentials import (
 from maestro.foundation.git_read import RemoteGitReader
 from maestro.planning import (
     ExactSourceReader,
+    GitHubDirectWriteVerifier,
     IntakeError,
     RegistrationIntake,
     RegistrationIntakeRequest,
@@ -40,6 +44,55 @@ class MovingBranchReader(RemoteGitReader):
     def snapshot(self, remote, branch, paths, **kwargs):
         self._move()
         return super().snapshot(remote, branch, paths, **kwargs)
+
+
+class GitHubEvidenceServer:
+    """A real HTTP boundary for bound-credential allow/deny evidence."""
+
+    def __init__(self, token: str) -> None:
+        self.token = token
+        self.push = True
+        self.protected = False
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.headers.get("Authorization") != f"Bearer {outer.token}":
+                    self.send_error(401)
+                    return
+                if self.path == "/repos/owner/project":
+                    outer._respond(self, {"full_name": "owner/project", "permissions": {"push": outer.push}})
+                    return
+                if self.path == "/repos/owner/project/branches/main":
+                    outer._respond(self, {"name": "main", "protected": outer.protected})
+                    return
+                self.send_error(404)
+
+            def log_message(self, *_):
+                return
+
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        self._thread.start()
+
+    @property
+    def api_base(self) -> str:
+        host, port = self._server.server_address[:2]
+        return f"http://{host}:{port}"
+
+    def close(self) -> None:
+        self._server.shutdown()
+        self._thread.join()
+        self._server.server_close()
+
+    @staticmethod
+    def _respond(handler, payload: dict[str, object]) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        handler.send_response(200)
+        handler.send_header("Content-Type", "application/json")
+        handler.send_header("Content-Length", str(len(body)))
+        handler.end_headers()
+        handler.wfile.write(body)
 
 
 class ExactSourceIntakeTest(unittest.TestCase):
@@ -95,6 +148,12 @@ class ExactSourceIntakeTest(unittest.TestCase):
             (ServiceGitRoute("owner/project", "project-github-app", str(self.remote)),),
             lambda reference: "fixture-token" if reference == "project-github-app" else "",
         )
+        self.github = GitHubEvidenceServer("fixture-token")
+        self.addCleanup(self.github.close)
+        self.verifier = GitHubDirectWriteVerifier(self.github.api_base)
+
+    def intake(self, reader: ExactSourceReader | None = None) -> RegistrationIntake:
+        return RegistrationIntake(reader or ExactSourceReader(), self.authorizer, self.transport, self.verifier)
 
     def git_run(self, *command: str) -> None:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
@@ -129,7 +188,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
 
     def test_reads_selected_real_branch_once_with_exact_inventory(self) -> None:
         questions = RecordingQuestions()
-        result = RegistrationIntake(ExactSourceReader(), self.authorizer, self.transport).begin(
+        result = self.intake().begin(
             self.request(), questions=questions
         )
 
@@ -144,6 +203,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertTrue(result.inventory.content_for("docs/overview.md").startswith(b"# Project\n"))
         self.assertEqual("All supplied milestones", result.selected_scope)
         self.assertEqual("supplied", result.source_selection)
+        self.assertEqual("direct-write-allowed", result.direct_write_evidence.protection_state)
         self.assertEqual(
             (("APP-PM1", "Start application", 3),),
             tuple((item.milestone, item.subject, item.version) for item in result.inventory.outcomes),
@@ -153,7 +213,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
 
     def test_missing_choices_are_published_as_questions_before_source_read(self) -> None:
         questions = RecordingQuestions()
-        result = RegistrationIntake(ExactSourceReader(), self.authorizer, self.transport).begin(
+        result = self.intake().begin(
             self.request(source_ref=None, publication_branch=None, scope=None, reviewer_selection=None),
             questions=questions,
         )
@@ -173,7 +233,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
                 overview_path="docs/missing.md",
             )
         with self.assertRaisesRegex(IntakeError, "does not authorize"):
-            RegistrationIntake(reader, self.authorizer, self.transport).begin(
+            self.intake(reader).begin(
                 self.request(publication_branch="unapproved"), questions=RecordingQuestions()
             )
 
@@ -210,12 +270,12 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual(self.initial_commit, inventory.source_commit)
 
     def test_re_registration_uses_saved_selector_and_default_is_recorded(self) -> None:
-        defaulted = RegistrationIntake(ExactSourceReader(), self.authorizer, self.transport).begin(
+        defaulted = self.intake().begin(
             self.request(source_ref=None), questions=RecordingQuestions()
         )
         self.assertEqual("defaulted", defaulted.source_selection)
         self.assertEqual(self.initial_commit, defaulted.inventory.source_commit)
-        inherited = RegistrationIntake(ExactSourceReader(), self.authorizer, self.transport).begin(
+        inherited = self.intake().begin(
             self.request(source_ref=None, prior_source_ref="refs/tags/registration-v1"),
             questions=RecordingQuestions(),
         )
@@ -224,7 +284,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
 
     def test_mismatched_or_missing_authorized_destination_is_rejected_before_source_read(self) -> None:
         with self.assertRaisesRegex(IntakeError, "does not match"):
-            RegistrationIntake(ExactSourceReader(), self.authorizer, self.transport).begin(
+            self.intake().begin(
                 self.request(remote=str(self.root / "other.git")), questions=RecordingQuestions()
             )
         missing_profile = RepositoryProfile(
@@ -235,9 +295,18 @@ class ExactSourceIntakeTest(unittest.TestCase):
             (RepositoryBinding("missing-binding", "owner/project", "missing-profile"),),
         )
         with self.assertRaisesRegex(IntakeError, "destination is unavailable"):
-            RegistrationIntake(ExactSourceReader(), missing_authorizer, self.transport).begin(
+            RegistrationIntake(ExactSourceReader(), missing_authorizer, self.transport, self.verifier).begin(
                 self.request(publication_branch="missing"), questions=RecordingQuestions()
             )
+
+    def test_bound_service_credential_denies_nonwritable_or_protected_destination(self) -> None:
+        self.github.push = False
+        with self.assertRaisesRegex(IntakeError, "cannot directly write"):
+            self.intake().begin(self.request(), questions=RecordingQuestions())
+        self.github.push = True
+        self.github.protected = True
+        with self.assertRaisesRegex(IntakeError, "protected"):
+            self.intake().begin(self.request(), questions=RecordingQuestions())
 
     def test_contradictory_authoritative_reference_is_rejected(self) -> None:
         milestones = self.work / "docs" / "milestones.md"

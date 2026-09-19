@@ -4,6 +4,9 @@ from .intake import (
     IntakeError,
     IntakeQuestion,
     IntakeQuestionPublisher,
+    DirectWriteEvidence,
+    DestinationWriteVerifier,
+    GitHubDirectWriteVerifier,
     RegistrationIntake,
     RegistrationIntakeRequest,
     RegistrationIntakeResult,
@@ -20,6 +23,9 @@ from .sources import (
 
 __all__ = [
     "ExactSourceReader",
+    "DirectWriteEvidence",
+    "DestinationWriteVerifier",
+    "GitHubDirectWriteVerifier",
     "IntakeError",
     "IntakeQuestion",
     "IntakeQuestionPublisher",
