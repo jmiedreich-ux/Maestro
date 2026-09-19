@@ -1,6 +1,6 @@
 # Registration confirmation
 
-Specification version: 1. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -18,9 +18,9 @@ Controlling behavior: [confirmation and activation](../../../architecture.md#con
 
 ## Included scope and interfaces
 
-Publish package/index and atomically activate only Owner-confirmed eligible version with saved history; add registration CLI actions/views.
+Publish package/index and atomically activate only Owner-confirmed eligible version with saved history; add registration CLI actions/views. Immediately before each package/index or confirmation remote write, recheck the saved immutable GitHub destination profile through the Publication journal provider.
 
-Provider contract: Registration command extension submits typed operations; service derives Owner and binds Git publication result to its SQL confirmation.
+Provider contract: Registration command extension submits typed operations; service derives Owner, passes the exact saved profile snapshot to the provider, and binds its fresh matching Git publication result to SQL confirmation. A changed, missing, blocked or unverifiable profile result rejects the write and leaves the prior activation unchanged.
 
 Consumer connection: Update/recovery preserves this approved history; package/index publication is not SQL activation.
 
@@ -31,7 +31,8 @@ Do not implement the work of another packet, change accepted product behavior, d
 ## Dependencies and safe parallel work
 
 - [Registration assessment](registration-assessment.md): its listed provider contract must be integrated at an exact recorded commit before this packet uses it.
-- [Publication journal](publication.md): its listed provider contract must be integrated at an exact recorded commit before this packet uses it.
+- [Exact source intake](source-intake.md): its listed saved profile snapshot and provider-evidence contract must be integrated at an exact recorded commit before this packet uses it.
+- [Publication journal](publication.md): its version-2 destination provider and journal contract must be integrated at an exact recorded commit before this packet uses it.
 - [Terminal workspace](terminal-workspace.md): its listed provider contract must be integrated at an exact recorded commit before this packet uses it.
 
 Independent packets may run in parallel once their own prerequisites hold and their allocated files/resources do not overlap. Do not edit provider files to make a missing contract appear available. [Shared ownership and migration rules](../packet-rules.md#exact-permitted-outputs-and-ownership) apply; all later Execution stages implement lifecycle and recovery integration from first delivery.
@@ -70,8 +71,8 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 
 ## Completion criteria
 
-1. Use terminal registration commands to publish and explicitly confirm exact candidate/version/hash; save activation and history atomically against current eligibility.
-2. Reject stale/unpublished/changed-version confirmation or competing activity; no architecture or Execution run starts automatically.
+1. Use terminal registration commands to publish and explicitly confirm exact candidate/version/hash; immediately before each remote write, require a fresh allowed provider result that matches the candidate saved immutable profile snapshot; save activation and history atomically against current eligibility.
+2. Reject stale/unpublished/changed-version confirmation, changed/missing/blocked destination authorization or competing activity; no remote write, activation, architecture or Execution run starts automatically.
 3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
