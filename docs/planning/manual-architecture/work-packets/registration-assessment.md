@@ -1,6 +1,6 @@
 # Registration assessment
 
-Specification version: 1. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -47,6 +47,7 @@ No other repository write is permitted by this record.
 | `docs/schemas/registration-process.schema.json` | JSON Schema or schema registry | Current process format/resource definition, with validation tests |
 | `docs/schemas/registration-records.schema.json` | JSON Schema or schema registry | Current process format/resource definition, with validation tests |
 | `services/maestro/maestro/planning/registration_plugin.py` | Python | Assigned behavior and integration contract |
+| `services/maestro/maestro/service/main.py` | Python | Register and bind the process plugin to the installed service dispatch and durable activity/run records |
 
 Non-JSON deliverables use schema reference null. JSON process schemas implement the named architecture definitions and installation mapping, not a private alternate format. No optional hidden output or broad directory permission is inferred.
 
