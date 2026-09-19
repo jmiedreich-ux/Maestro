@@ -444,6 +444,8 @@ class LinuxInstallationTest(unittest.TestCase):
                     self.paths.workspace_dir,
                     "run-guard",
                     Path("/run/maestro/agent-egress/run-guard/hosts"),
+                    "claude_code",
+                    Path("/usr/bin/true"),
                 )
             self.assertEqual(64, failed.exception.code)
 
@@ -462,12 +464,45 @@ class LinuxInstallationTest(unittest.TestCase):
             self.paths.workspace_dir,
             "run-guard",
             Path("/run/maestro/agent-egress/run-guard/hosts"),
+            "claude_code",
+            Path("/usr/bin/true"),
         )
         self.assertEqual((), descriptors)
         self.assertEqual("--ro-bind", rewritten[1])
         self.assertEqual("--bind", rewritten[4])
 
-    def test_egress_runner_allows_only_the_generated_tool_runtime_self_mounts(self) -> None:
+    def test_egress_launcher_passes_the_selected_route_to_the_runner(self) -> None:
+        helper_source = installer._render_egress_helper(
+            EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
+            config_file=self.paths.config_file,
+            data_dir=self.paths.data_dir,
+            service_user="maestro",
+        )
+        egress = types.ModuleType("guarded_maestro_agent_egress")
+        exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
+        configuration = {
+            "tools": {
+                "codex": {
+                    "permitted_destinations": [{"hostname": "api.openai.com", "port": 443}]
+                }
+            }
+        }
+        hosts = Path("/run/maestro/agent-egress/run-guard/hosts")
+        with (
+            mock.patch.object(egress, "load_configuration", return_value=configuration),
+            mock.patch.object(egress, "load_agent_account"),
+            mock.patch.object(egress, "resolve", return_value=([], [])),
+            mock.patch.object(egress, "write_hosts", return_value=hosts),
+        ):
+            command = egress.outer_command(
+                "codex", "run-guard", [egress.BWRAP, "--", "/configured/codex"]
+            )
+        runner = command.index(egress.RUNNER)
+        self.assertEqual("codex", command[runner + 1])
+        self.assertEqual("maestro-agent-run-guard", command[runner + 2])
+        self.assertEqual(str(hosts), command[runner + 3])
+
+    def test_egress_runner_allows_only_the_configured_tool_runtime_self_mounts(self) -> None:
         helper_source = installer._render_egress_helper(
             EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
             config_file=self.paths.config_file,
@@ -484,6 +519,12 @@ class LinuxInstallationTest(unittest.TestCase):
         sensitive.parent.mkdir()
         for path in (executable, companion, sensitive):
             path.write_text("fixture", encoding="ascii")
+        executable.chmod(0o700)
+        companion.chmod(0o700)
+        configured_executable = egress.load_route_executable(
+            {"tools": {"codex": {"executable": str(executable)}}}, "codex"
+        )
+        self.assertEqual(executable.resolve(), configured_executable)
 
         rewritten, descriptors = egress.profile_data_mounts(
             [
@@ -500,6 +541,8 @@ class LinuxInstallationTest(unittest.TestCase):
             self.paths.workspace_dir,
             "run-guard",
             Path("/run/maestro/agent-egress/run-guard/hosts"),
+            "codex",
+            configured_executable,
         )
         self.assertEqual((), descriptors)
         self.assertEqual(str(executable), rewritten[2])
@@ -521,6 +564,26 @@ class LinuxInstallationTest(unittest.TestCase):
                 self.paths.workspace_dir,
                 "run-guard",
                 Path("/run/maestro/agent-egress/run-guard/hosts"),
+                "codex",
+                configured_executable,
+            )
+        self.assertEqual(64, failed.exception.code)
+
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failed:
+            egress.profile_data_mounts(
+                [
+                    egress.BWRAP,
+                    "--ro-bind",
+                    str(sensitive),
+                    str(sensitive),
+                    "--",
+                    str(sensitive),
+                ],
+                self.paths.workspace_dir,
+                "run-guard",
+                Path("/run/maestro/agent-egress/run-guard/hosts"),
+                "codex",
+                configured_executable,
             )
         self.assertEqual(64, failed.exception.code)
 
@@ -567,9 +630,11 @@ class LinuxInstallationTest(unittest.TestCase):
         hosts = self.root / "hosts"
         hosts.write_text("127.0.0.1 localhost\n", encoding="ascii")
         configuration = self.root / "egress-agents.toml"
+        executable = Path("/usr/bin/python3").resolve()
         configuration.write_text(
             f'workspace_root = "{self.paths.workspace_dir}"\n\n'
-            '[service]\nagent_user = "nobody"\n',
+            '[service]\nagent_user = "nobody"\n\n'
+            f'[tools.codex]\nexecutable = "{executable}"\n',
             encoding="utf-8",
         )
         configuration.chmod(0o600)
@@ -632,7 +697,7 @@ class LinuxInstallationTest(unittest.TestCase):
         sandbox.extend(
             (
                 "--",
-                "/usr/bin/python3",
+                str(executable),
                 "-c",
                 child,
                 str(evidence_directory / "result.json"),
@@ -648,6 +713,7 @@ class LinuxInstallationTest(unittest.TestCase):
                 "argv",
                 [
                     "maestro-agent-egress-run",
+                    "codex",
                     "maestro-agent-run-agent",
                     str(hosts),
                     "127.0.0.1:443",
