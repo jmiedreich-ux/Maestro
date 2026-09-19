@@ -24,6 +24,10 @@ For each packet, read its record, these rules, its named specialist role/context
 
 Before coding, return a concise implementation plan through the service: affected code, necessary connections, checks and blockers. This is not an extra Owner approval gate. A routine implementation choice within the specified boundary belongs to the assigned developer; scope, conflicting architecture or unavailable authority goes to the architect. Missing resources pause only affected work.
 
+## External-provider readiness
+
+Before dispatching a packet that reads, writes or authorizes an external provider, the Coordinator records a compact provider trace: configured profile identity; service credential owner and actor identity; authoritative API or transport; selected repository, branch, path or other target; policy/permission check; durable non-secret evidence; and the real QA route. The trace distinguishes what packet tests can verify from what must be exercised through the real protected provider. A missing actor, policy contract, authoritative check or failure behavior is an architecture or packet gap before coding, not a detail to invent during review or QA. This is a bounded readiness check, not an extra test suite or Owner gate.
+
 ## Exact permitted outputs and ownership
 
 The packet's output table is its complete proposed repository write set. Python and SQL outputs have no JSON schema; JSON schema definitions validate the named process formats; TOML/package metadata and deployment files follow their named format. Tests are required functional outputs, not optional documentation. Required files must contain the specified behavior; do not add empty stubs merely to satisfy the list.

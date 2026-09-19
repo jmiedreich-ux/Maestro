@@ -2929,3 +2929,12 @@ Owner decision: every promoted milestone must receive delivery-host release and 
 Current application: M2 — Supervised shared processes delivery-host finalization is complete. The exact merged source revision `5c79bc7e9c4b38fe3603c0cfac43fe6ea6f3c486` is installed in `/opt/maestro`; the focused M2 agent suite passed, dependency validation passed, `maestro.service` is active, and the authenticated workspace smoke check returned HTTP 200. The non-secret local release receipt is `var/qa/promotions/m2-supervised-shared-processes-release-20260919.json`. The disposable release-build directory was removed after receipt verification.
 
 The Owner authorized M3 — Confirmed registration and history to begin. M3 starts from the current master baseline under its existing safeguard checklist. Claude OAuth remains expired; it is a real protected-route prerequisite to resolve before any M3 check that selects Claude.
+
+
+## M3 GitHub destination authorization amendment — 2026-09-19
+
+Owner direction: the recurring late-discovery problem must stop; amend the architecture and continue without routine authority requests. The Exact source intake packet exposed a real missing provider contract: the earlier design named an authorized Git destination but did not define how the service proves that its GitHub App may directly write to the exact branch under current protection and ruleset policy.
+
+The amended architecture defines a service-owned GitHub destination-authorization provider and a conservative initial direct-write policy. It binds the configured App, installation, repository and branch; uses service-only installation-token exchange; saves non-secret permission and exact-branch policy evidence; and allows only an unprotected branch with no matching repository or organization ruleset. Protected, ruleset-bound, missing-permission or unverifiable destinations fail closed before source read or write. M3 Quality Assurance must exercise the real QA App path.
+
+Exact source intake specification version 2 replaces version 1 for the blocked packet. It owns the provider, its planning consumption and focused tests. The new common external-provider readiness trace applies before future packet dispatches so actor identity, configuration, authoritative policy check, retained evidence and real QA route are established before coding rather than discovered during review. The current M3 branch must import this direct-master documentation amendment before the corrected packet resumes.

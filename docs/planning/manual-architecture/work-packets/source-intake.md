@@ -1,6 +1,6 @@
 # Exact source intake
 
-Specification version: 1. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -18,11 +18,11 @@ Controlling behavior: [source and publication selection](../../../architecture.m
 
 ## Included scope and interfaces
 
-Use assessed exact Git reader; resolve selected source once, scope/outcome versions, source consistency and missing references.
+Use the assessed exact Git reader and the service-owned GitHub destination-authorization provider; resolve selected source once, scope/outcome versions, source consistency and missing references.
 
-Provider contract: Source reader returns exact blob hashes and source inventory. Intake asks missing scope/source/destination and role-selection questions through service.
+Provider contract: The destination provider returns a non-secret allowed, blocked or unverifiable decision bound to the configured GitHub App, installation, repository, branch and policy observation. The source reader returns exact blob hashes and source inventory only after that decision is allowed. Intake asks only genuinely missing scope, destination and role-selection questions through the service.
 
-Consumer connection: Registration assessment consumes this inventory; shared Git reader supplies exact reads without publication credentials.
+Consumer connection: Registration assessment consumes this inventory. Publication rechecks the same bound provider result before writing; neither source reading nor publication receives an agent credential.
 
 ## Exclusions and stop boundary
 
@@ -41,8 +41,10 @@ No other repository write is permitted by this record.
 
 | Exact path | Format | Required result |
 |---|---|---|
+| `services/maestro/maestro/foundation/github_destination.py` | Python | Service-owned GitHub App destination-authorization provider |
 | `services/maestro/maestro/planning/sources.py` | Python | Assigned behavior and integration contract |
 | `services/maestro/maestro/planning/intake.py` | Python | Assigned behavior and integration contract |
+| `tests/maestro/foundation/test_github_destination.py` | Python | Provider main-path and essential-failure checks |
 | `tests/maestro/planning/test_source_intake.py` | Python | Real main-path and essential-failure checks |
 | `services/maestro/maestro/planning/__init__.py` | Python | Package boundary and explicit exports |
 
@@ -55,7 +57,8 @@ Non-JSON deliverables use schema reference null. JSON process schemas implement 
   "required_capabilities": [
     "code_edit",
     "local_command",
-    "repository_search"
+    "repository_search",
+    "approved_network"
   ],
   "allowed_locations": [
     "local_ai_box",
@@ -70,7 +73,7 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 ## Completion criteria
 
 1. Read an explicitly selected overview and its referenced architecture/declarations at a resolved commit, retaining ordered outcome identities/versions and selected scope.
-2. Reject missing/inconsistent references, traversal or unauthorized publication selection; moving branch head cannot retarget saved source.
+2. Reject missing/inconsistent references, traversal, unauthorized destination or an unavailable, protected or ruleset-bound GitHub destination; moving branch head cannot retarget saved source.
 3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
@@ -84,7 +87,7 @@ Exact test command:
 ["python","-m","unittest","discover","-s","tests/maestro/planning","-p","test_source_intake.py","-v"]
 ```
 
-Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Missing path, contradictory source, moving branch or unauthorized destination cannot silently change baseline.
+Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Missing path, contradictory source, moving branch, unauthorized destination, unavailable App permission or branch policy cannot silently change baseline. Packet checks use a controlled provider fixture for parsing/failure behavior; the M3 Quality Assurance plan must prove the real bound GitHub App route.
 
 The test file must observe the real included capability. Low-level deterministic inputs may isolate component logic; any actual service/agent/Git path promised by these criteria requires real path evidence, not a fake result. Missing installed resources are recorded as UNTESTED with nonzero status; do not convert them into success using a skip. Capture actual inputs, expected/observed results, command/exit output and source revision. No tests were run when writing this specification.
 
