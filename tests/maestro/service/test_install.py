@@ -44,6 +44,10 @@ OWNER_TOKEN = "a" * 64
 INSTALLER_PATH = ROOT / "services" / "maestro" / "deploy" / "install.py"
 UNIT_PATH = ROOT / "services" / "maestro" / "deploy" / "maestro.service"
 PYPROJECT_PATH = ROOT / "services" / "maestro" / "pyproject.toml"
+EGRESS_HELPER_PATH = ROOT / "services" / "maestro" / "deploy" / "maestro-agent-egress"
+EGRESS_SUDOERS_PATH = (
+    ROOT / "services" / "maestro" / "deploy" / "maestro-agent-egress.sudoers"
+)
 
 
 def _load_installer():
@@ -104,12 +108,42 @@ class LinuxInstallationTest(unittest.TestCase):
         service_config = self.paths.config_file.read_text(encoding="utf-8")
         cli_config = self.paths.cli_config.read_text(encoding="utf-8")
         unit = self.paths.unit_file.read_text(encoding="utf-8")
+        egress_helper = EGRESS_HELPER_PATH.read_text(encoding="utf-8")
+        egress_sudoers = EGRESS_SUDOERS_PATH.read_text(encoding="utf-8")
 
         self.assertEqual(OWNER_TOKEN, token)
         self.assertEqual(0o600, stat.S_IMODE(self.paths.owner_token.stat().st_mode))
         self.assertEqual(0o700, stat.S_IMODE(self.paths.operator_config_dir.stat().st_mode))
         self.assertEqual(0o640, stat.S_IMODE(self.paths.config_file.stat().st_mode))
         self.assertEqual(0o770, stat.S_IMODE(self.paths.workspace_dir.stat().st_mode))
+        self.assertEqual(
+            self.root / "usr" / "local" / "libexec" / "maestro-agent-egress",
+            self.paths.egress_launcher,
+        )
+        self.assertEqual(
+            self.root / "usr" / "local" / "libexec" / "maestro-agent-egress-run",
+            self.paths.egress_runner,
+        )
+        self.assertEqual(
+            self.root / "etc" / "sudoers.d" / "maestro-agent-egress",
+            self.paths.egress_sudoers,
+        )
+        self.assertEqual(
+            egress_helper, self.paths.egress_launcher.read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            egress_helper, self.paths.egress_runner.read_text(encoding="utf-8")
+        )
+        self.assertEqual(0o755, stat.S_IMODE(self.paths.egress_launcher.stat().st_mode))
+        self.assertEqual(0o755, stat.S_IMODE(self.paths.egress_runner.stat().st_mode))
+        self.assertEqual(
+            egress_sudoers, self.paths.egress_sudoers.read_text(encoding="utf-8")
+        )
+        self.assertEqual(0o440, stat.S_IMODE(self.paths.egress_sudoers.stat().st_mode))
+        self.assertEqual(
+            "maestro ALL=(root) NOPASSWD: /usr/local/libexec/maestro-agent-egress *\n",
+            egress_sudoers,
+        )
         self.assertNotIn(OWNER_TOKEN, service_config)
         self.assertIn(hashlib.sha256(OWNER_TOKEN.encode("ascii")).hexdigest(), service_config)
         self.assertIn(str(self.paths.owner_token), cli_config)
@@ -360,6 +394,10 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertEqual("maestro.terminal.main:main", scripts["maestro"])
         self.assertEqual("maestro.service.main:main", scripts["maestro-service"])
         self.assertIn("deploy/maestro.service", data_files["share/maestro/deploy"])
+        self.assertIn("deploy/maestro-agent-egress", data_files["share/maestro/deploy"])
+        self.assertIn(
+            "deploy/maestro-agent-egress.sudoers", data_files["share/maestro/deploy"]
+        )
         self.assertIn("**/*.json", package_data["maestro"])
         unit = UNIT_PATH.read_text(encoding="utf-8")
         self.assertNotIn("maestro.cli", unit)
