@@ -1,1 +1,1 @@
-maestro ALL=(root) NOPASSWD: /usr/local/libexec/maestro-agent-egress *
+@SERVICE_USER@ ALL=(root) NOPASSWD: /usr/local/libexec/maestro-agent-egress *

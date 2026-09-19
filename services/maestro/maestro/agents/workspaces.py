@@ -506,7 +506,6 @@ def _runtime_paths(executable: Path) -> tuple[Path, ...]:
         Path("/lib"),
         Path("/lib64"),
         Path("/etc/ssl"),
-        Path("/etc/hosts"),
         Path("/etc/resolv.conf"),
         Path("/etc/nsswitch.conf"),
         Path("/etc/passwd"),
