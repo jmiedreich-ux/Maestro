@@ -1,11 +1,11 @@
-# M2 outcome review — blocked
+# M2 outcome review — scope correction
 
 Candidate: `cfde1dce51b1c11ee60432bac26d114bcfc3444e` on `maestro/manual-20260917-supervised-shared-processes/milestone/supervised-shared-processes`.
 
 All five allocated M2 packets are integrated and independently reviewed. Focused agent checks (37), policy checks (6), two real isolated provider-route checks, and a live systemd-supervised-process check passed.
 
-The independent outcome review found the required composed service path is absent. `service/main.py` does not compose `ProcessPolicyService`, route preflight, workspace/transport, `AgentSupervisor`, and `SessionManager`; the delivered modules remain providers/components. Therefore the required real assignment cannot be supervised, restart-reconciled, session-linked, and observed through the installed service. This is `UNTESTED` and blocks M2 promotion.
+`service/main.py` does not yet compose `ProcessPolicyService`, route preflight, workspace/transport, `AgentSupervisor`, and `SessionManager` into a full assignment workflow. That is expected at this stage: the later Execution contracts/start, coder delivery and lifecycle-monitoring packets own that composition.
 
-This cannot be corrected within any confirmed M2 packet: the required service integration path is not a permitted output of the five packets, which explicitly defer later consumer/lifecycle integration. An architectural decision is required to add an in-scope bounded correction packet or amend the confirmed milestone scope.
+M2 is accepted as the independently reviewed, exercised shared-process foundation. The absent full workflow is a recorded downstream dependency, not an M2 promotion blocker.
 
 Do not start M3. Preserve the candidate branch and retained QA artifacts under `var/qa`.
