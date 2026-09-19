@@ -14,6 +14,13 @@ from maestro.foundation.credentials import (
     ServiceGitTransport,
 )
 from maestro.foundation.database import Database
+from maestro.foundation.github_destination import (
+    BranchPolicyObservation,
+    GitHubAppCredential,
+    GitHubAppDestinationProfile,
+    GitHubDestinationProvider,
+    GitHubInstallationToken,
+)
 from maestro.foundation.git_publication import (
     PublicationAccessError,
     PublicationConflictError,
@@ -42,7 +49,7 @@ class PublicationJournalTest(unittest.TestCase):
         database = Database(
             StorageSettings(path=self.root / "maestro.sqlite3"), publication_migrations()
         )
-        profile = RepositoryProfile(
+        repository_profile = RepositoryProfile(
             name="project-github",
             credential_reference="github-app-project",
             allowed_repositories=("owner/project",),
@@ -53,13 +60,26 @@ class PublicationJournalTest(unittest.TestCase):
             (ServiceGitRoute("owner/project", "github-app-project", str(self.remote)),),
             lambda reference: self.credentials[reference],
         )
+        profile = GitHubAppDestinationProfile(
+            profile_name="project-github",
+            binding_id="binding-project",
+            credential=GitHubAppCredential("github-app-project"),
+            app_id=101,
+            installation_id=202,
+            app_slug="maestro-coordinator",
+            allowed_repositories=("owner/project",),
+            allowed_branches=("main",),
+        )
+        self.destination_api = _FixtureDestinationApi()
+        self.destination = GitHubDestinationProvider(profile, self.destination_api)
         self.journal = PublicationJournal(
             database,
             RepositoryAuthorizer(
-                {profile.name: profile},
-                (RepositoryBinding("binding-project", "owner/project", profile.name),),
+                {repository_profile.name: repository_profile},
+                (RepositoryBinding("binding-project", "owner/project", repository_profile.name),),
             ),
             transport,
+            self.destination,
         )
 
     def tearDown(self) -> None:
@@ -84,11 +104,15 @@ class PublicationJournalTest(unittest.TestCase):
             branch="main",
             expected_parent=self.seed,
             files={".maestro/registrations/candidate.json": b'{"candidate":"one"}\n'},
+            destination_authorization=self.authorize(),
         )
+
+    def authorize(self):
+        return self.destination.authorize("owner/project", "main")
 
     def test_prepares_then_publishes_exact_bytes_to_real_remote_without_force(self) -> None:
         self.prepare()
-        result = self.journal.attempt("publish-one")
+        result = self.journal.attempt("publish-one", self.authorize())
 
         self.assertEqual("verified", result.state)
         self.assertFalse(result.reused_remote_bytes)
@@ -115,7 +139,7 @@ class PublicationJournalTest(unittest.TestCase):
         self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
 
         with self.assertRaises(PublicationConflictError):
-            self.journal.attempt("publish-one")
+            self.journal.attempt("publish-one", self.authorize())
 
         self.assertEqual("paused", self.journal.operation("publish-one").state)
         self.assertEqual(
@@ -133,7 +157,7 @@ class PublicationJournalTest(unittest.TestCase):
         self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
 
         with self.assertRaises(PublicationStateError):
-            self.journal.attempt("publish-one")
+            self.journal.attempt("publish-one", self.authorize())
         reconciled = self.journal.operation("publish-one")
         self.assertEqual("reconciled", reconciled.state)
         self.assertEqual(
@@ -141,7 +165,7 @@ class PublicationJournalTest(unittest.TestCase):
             reconciled.reconciled_parent,
         )
 
-        result = self.journal.attempt("publish-one")
+        result = self.journal.attempt("publish-one", self.authorize())
         self.assertEqual("verified", result.state)
         self.assertEqual(
             b"preserve me\n",
@@ -150,11 +174,11 @@ class PublicationJournalTest(unittest.TestCase):
 
     def test_lost_acknowledgment_reconciles_matching_remote_bytes_without_another_write(self) -> None:
         self.prepare()
-        first = self.journal.attempt("publish-one")
+        first = self.journal.attempt("publish-one", self.authorize())
         # A process that lost its final state update has only ``writing`` saved.
         self.journal._set_state("publish-one", "writing", failure=None)
 
-        recovered = self.journal.reconcile("publish-one")
+        recovered = self.journal.reconcile("publish-one", self.authorize())
 
         self.assertTrue(recovered.reused_remote_bytes)
         self.assertEqual(first.remote_commit, recovered.remote_commit)
@@ -166,19 +190,19 @@ class PublicationJournalTest(unittest.TestCase):
         unavailable = self.root / "remote-unavailable.git"
         self.remote.rename(unavailable)
         with self.assertRaises(PublicationAccessError):
-            self.journal.attempt("publish-denied")
+            self.journal.attempt("publish-denied", self.authorize())
         operation = self.journal.operation("publish-denied")
         self.assertEqual("paused", operation.state)
         self.assertIsNone(operation.remote_commit)
         unavailable.rename(self.remote)
 
         with self.assertRaises(PublicationStateError):
-            self.journal.reconcile("publish-denied")
+            self.journal.reconcile("publish-denied", self.authorize())
         self.assertEqual("reconciled", self.journal.operation("publish-denied").state)
-        result = self.journal.attempt("publish-denied")
+        result = self.journal.attempt("publish-denied", self.authorize())
         self.assertEqual(result.remote_commit, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
 
-    def test_mismatched_or_unavailable_privileged_route_cannot_create_a_receipt(self) -> None:
+    def test_mismatched_route_or_expired_destination_result_cannot_create_a_receipt(self) -> None:
         with self.assertRaises(PublicationAccessError):
             self.journal.prepare(
                 operation_id="wrong-remote",
@@ -187,14 +211,65 @@ class PublicationJournalTest(unittest.TestCase):
                 branch="main",
                 expected_parent=self.seed,
                 files={".maestro/registrations/candidate.json": b"candidate\n"},
+                destination_authorization=self.authorize(),
             )
         self.prepare("credential-unavailable")
         self.credentials.clear()
+        expired = self.destination.authorize("owner/project", "main", now=4_102_444_801)
         with self.assertRaises(PublicationAccessError):
-            self.journal.attempt("credential-unavailable")
+            self.journal.attempt("credential-unavailable", expired)
         operation = self.journal.operation("credential-unavailable")
         self.assertEqual("paused", operation.state)
         self.assertIsNone(operation.remote_commit)
+
+    def test_changed_profile_snapshot_pauses_attempt_and_reconciliation_without_writing(self) -> None:
+        self.prepare("profile-changed")
+        updated_profile = GitHubAppDestinationProfile(
+            profile_name="project-github",
+            binding_id="binding-project",
+            credential=GitHubAppCredential("github-app-project"),
+            app_id=303,
+            installation_id=404,
+            app_slug="maestro-coordinator-next",
+            allowed_repositories=("owner/project",),
+            allowed_branches=("main",),
+        )
+        updated_provider = GitHubDestinationProvider(updated_profile, _FixtureDestinationApi())
+        self.journal._destination_provider = updated_provider
+        current = updated_provider.authorize("owner/project", "main")
+
+        with self.assertRaises(PublicationAccessError):
+            self.journal.reconcile("profile-changed", current)
+        with self.assertRaises(PublicationAccessError):
+            self.journal.attempt("profile-changed", current)
+
+        operation = self.journal.operation("profile-changed")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+        self.assertEqual(self.seed, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
+
+    def test_live_recheck_blocks_a_branch_that_becomes_protected_before_push(self) -> None:
+        self.prepare("protected-before-push")
+        original_checked = self.journal._checked
+        state = {"local_commit_created": False}
+
+        def change_policy_after_local_commit(command, *arguments):
+            result = original_checked(command, *arguments)
+            if "commit" in arguments:
+                state["local_commit_created"] = True
+                self.destination_api.policy = BranchPolicyObservation(True, ())
+            return result
+
+        self.journal._checked = change_policy_after_local_commit
+
+        with self.assertRaises(PublicationAccessError):
+            self.journal.attempt("protected-before-push", self.authorize())
+
+        self.assertTrue(state["local_commit_created"])
+        operation = self.journal.operation("protected-before-push")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+        self.assertEqual(self.seed, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
 
     def test_profile_requires_one_allowlisted_repository_and_branch(self) -> None:
         profile = RepositoryProfile("profile", "credential", ("owner/project",), ("main",))
@@ -205,6 +280,34 @@ class PublicationJournalTest(unittest.TestCase):
             authorizer.authorize("owner/other", "main")
         with self.assertRaises(RepositoryCredentialError):
             authorizer.authorize("owner/project", "feature")
+
+
+class _FixtureDestinationApi:
+    """Controlled provider component input; publication itself uses real Git."""
+
+    def __init__(self) -> None:
+        self.policy_sequence: list[BranchPolicyObservation] = []
+        self.policy = BranchPolicyObservation(False, ())
+
+    def app_identity(self, profile):
+        return {"id": profile.app_id, "slug": profile.app_slug}
+
+    def installation_identity(self, profile):
+        return {"id": profile.installation_id, "app_id": profile.app_id}
+
+    def installation_token(self, profile):
+        return GitHubInstallationToken("fixture-installation-token", {"contents": "write", "administration": "read"}, 4_102_444_800, profile.api_base_url)
+
+    def repository_identity(self, token, repository):
+        return {"id": 1, "full_name": repository}
+
+    def branch_identity(self, token, repository, branch):
+        return {"name": branch}
+
+    def branch_policy(self, token, repository, branch):
+        if self.policy_sequence:
+            return self.policy_sequence.pop(0)
+        return self.policy
 
 
 if __name__ == "__main__":
