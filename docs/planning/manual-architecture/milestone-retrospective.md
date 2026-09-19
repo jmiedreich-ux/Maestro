@@ -1,0 +1,30 @@
+# Manual milestone retrospective
+
+Manual procedure for a promoted development milestone. It does not allocate runtime work, reopen accepted code, or authorize another milestone.
+
+## Purpose
+
+Compare the delivered milestone with its pinned architecture, milestone requirements and evidence. Identify what was missing or discovered too late, explain measured delay or rework, and save lessons that improve later milestones.
+
+## Required inputs
+
+- Exact promoted milestone and product-master revisions.
+- Pinned architecture, milestone requirements, packet specifications and dependency records.
+- Packet, integration, independent-review, Quality Assurance, outcome-review and promotion evidence.
+- Saved lifecycle measurements and operation counts. Missing historical measurements remain unknown.
+
+## Manual procedure
+
+1. Trace each stated milestone contribution and required connection to its delivered code and evidence.
+2. Record every late-discovered architecture, dependency, setup, integration or verification gap. State whether it was absent from the pinned sources, available but missed, or an implementation defect already corrected through the normal process.
+3. Use saved measurements to describe queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall-time impact. Never infer active time from commit timestamps, message order or calendar gaps.
+4. Save two plain lists:
+   - **Architecture and delivery gaps:** requirement/source, observed condition, measured impact or `unknown`, and the existing authority or future work that may address it.
+   - **Lessons learned:** a specific preparation, execution or reporting change, its evidence, and the later milestone or process it can improve.
+5. Save the record in the current handoff or the service's durable execution record before starting the next development milestone.
+
+## Boundaries
+
+This retrospective is not Quality Assurance, an independent review or a correction round. It cannot change the completed milestone result, invent a defect from a preference, add work to a later milestone automatically or alter scope. A required outcome found incomplete before promotion uses the normal milestone-gap process. A concern discovered after promotion follows the existing architecture and Owner change authority.
+
+The Coordinator performs this procedure manually until Maestro implements equivalent record collection and presentation. Later automation preserves the same evidence, unknown-measurement and authority boundaries.

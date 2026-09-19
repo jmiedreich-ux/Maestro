@@ -2878,3 +2878,5 @@ Input packet hash (SHA-256 of sorted JSON path/hash map): `c5fdb92265c9086f3e85a
 M2 — Supervised shared processes completed, passed independent review and real component QA, and merged to `master` at `5c79bc7e9c4b38fe3603c0cfac43fe6ea6f3c486`. Do not start M3 until separately authorized.
 
 The Owner requires reporting for all future Maestro-managed work. Reports must use saved lifecycle measurements for queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall time; operation counts; and available provider usage. Parallel child time stays distinct from wall time. Past unobserved manual time remains unknown and is never estimated from commits or calendar elapsed time.
+
+Before M3 starts, complete the new manual retrospective for M2 — Supervised shared processes. It compares M2's completed evidence with its pinned architecture and records separate architecture/delivery gaps and lessons learned. It is not a new approval or correction round; unavailable historical timing remains unknown.
