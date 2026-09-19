@@ -250,15 +250,22 @@ class PublicationJournalTest(unittest.TestCase):
 
     def test_live_recheck_blocks_a_branch_that_becomes_protected_before_push(self) -> None:
         self.prepare("protected-before-push")
-        self.destination_api.policy_sequence = [
-            BranchPolicyObservation(False, ()),
-            BranchPolicyObservation(False, ()),
-            BranchPolicyObservation(True, ()),
-        ]
+        original_checked = self.journal._checked
+        state = {"local_commit_created": False}
+
+        def change_policy_after_local_commit(command, *arguments):
+            result = original_checked(command, *arguments)
+            if "commit" in arguments:
+                state["local_commit_created"] = True
+                self.destination_api.policy = BranchPolicyObservation(True, ())
+            return result
+
+        self.journal._checked = change_policy_after_local_commit
 
         with self.assertRaises(PublicationAccessError):
             self.journal.attempt("protected-before-push", self.authorize())
 
+        self.assertTrue(state["local_commit_created"])
         operation = self.journal.operation("protected-before-push")
         self.assertEqual("paused", operation.state)
         self.assertIsNone(operation.remote_commit)
@@ -280,6 +287,7 @@ class _FixtureDestinationApi:
 
     def __init__(self) -> None:
         self.policy_sequence: list[BranchPolicyObservation] = []
+        self.policy = BranchPolicyObservation(False, ())
 
     def app_identity(self, profile):
         return {"id": profile.app_id, "slug": profile.app_slug}
@@ -299,7 +307,7 @@ class _FixtureDestinationApi:
     def branch_policy(self, token, repository, branch):
         if self.policy_sequence:
             return self.policy_sequence.pop(0)
-        return BranchPolicyObservation(False, ())
+        return self.policy
 
 
 if __name__ == "__main__":

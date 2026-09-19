@@ -311,10 +311,7 @@ class PublicationJournal:
             raise PublicationStateError("remote branch moved; reconciliation completed before retry")
         self._set_state(operation_id, "writing", failure=None)
         try:
-            # Obtain a new live authorization/policy observation at the last
-            # possible point before the irreversible push.
-            current = self._fresh_destination(operation, destination_authorization)
-            commit = self._write_once(operation, snapshot.head, current)
+            commit = self._write_once(operation, snapshot.head, destination_authorization)
         except PublicationAccessError as error:
             self._set_state(operation_id, "paused", failure=str(error))
             raise
@@ -358,7 +355,16 @@ class PublicationJournal:
                 )
                 commit = self._checked(command, "-C", str(directory), "rev-parse", "HEAD").stdout.decode("ascii").strip()
                 commit = validate_object_id(commit, "published commit")
-                pushed = command(
+
+            # The branch policy can change while this bounded local commit is
+            # being prepared.  Re-authorize only after all local work and
+            # immediately before the irreversible network push.
+            current = self._fresh_destination(operation, destination_authorization)
+            with self._destination_provider.bind_transport(
+                current, self._transport, operation.authorization
+            ) as push_transport:
+                push_command = lambda *args: run_git(*args, environment=push_transport.environment())
+                pushed = push_command(
                     "-C", str(directory), "push", "--porcelain", "origin",
                     f"{commit}:refs/heads/{operation.authorization.branch}",
                 )
