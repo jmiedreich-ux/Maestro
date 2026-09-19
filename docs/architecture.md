@@ -299,9 +299,13 @@ Performance records and context management apply to every supported agent route,
 
 The service records facts in SQL before display. Each record carries a schema version, stable event identity, UTC observation time, project, activity, assignment, run, session, role, tool, and exact model identity. Service observations and provider measurements remain distinguishable from agent-reported progress.
 
+Every service-managed packet, integration, Quality Assurance run, correction and milestone has a reportable lifecycle. Its record identifies the start and end of queueing, preflight, active work, waiting, independent review, integration, Quality Assurance, correction, blocked and terminal states. A state transition is a saved service observation, not an inferred duration.
+
 | Measurement | Meaning |
 |---|---|
 | Time | Active elapsed run time, waiting time, and total assignment elapsed time, in seconds. Active time includes provider backoff and tools, not only model generation. Waiting reasons distinguish Owner input, review, and service-managed continuation. |
+| Lifecycle time | Queue, preflight, active-work, waiting, review, integration, Quality Assurance, correction and blocked durations for each packet, milestone and activity. Reports show both wall elapsed time and accumulated child time; parallel child durations are never presented as wall time. |
+| Work counts | Assigned, launched, completed, failed, cancelled, recovered, corrected, reviewed, integrated, Quality Assurance and promoted operations, each with its saved result or failure cause. |
 | Result | Validated completion, blocked, failed, or cancelled, with a recorded cause. A capacity transition is not an assignment's terminal result. |
 | Rework | Technical recovery, output correction, and fidelity-review counts use their existing accounting records, not inferred message counts. |
 | Tokens | Input and output tokens separately, with cached input and reasoning tokens when reported. Preserve provider definitions: subset counters are not added again to totals. |
@@ -311,6 +315,8 @@ The service records facts in SQL before display. Each record carries a schema ve
 Usage events identify their provider request or tool event, counter scope, and whether values are deltas or cumulative snapshots. Deduplicate by run and source event identity; cumulative readings replace the previous reading for that scope rather than being summed. Session totals spanning several runs contribute only verified increments. Counter resets start a new recorded scope. Missing intervals make totals partial; estimates and partial coverage remain labeled.
 
 Durations use monotonic elapsed measurements while running and saved state transitions across restarts. Do not double-count overlapping run intervals as assignment wall time. Preserve uncertainty when an interval cannot be reconstructed. Store unavailable numeric fields as null with a reason, never zero.
+
+The service reports only measurements it observed or received from a supported provider. Manual or external work can have a timestamped recorded event, but unobserved active time is `null` with its reason; no report estimates or backfills it from commit times, message order or elapsed calendar time.
 
 The service retains time and usage across capacity continuations. It records capacity-event counts separately from failures, corrections, and reviews. No single agent score or automatic model ranking is defined. Capacity stops do not lower quality or success measures; time and resource consumption remain visible. Source insufficiency, permissions, provider faults, and invalid output retain distinct causes.
 

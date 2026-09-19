@@ -2873,6 +2873,8 @@ Input packet hash (SHA-256 of sorted JSON path/hash map): `c5fdb92265c9086f3e85a
 ```
 
 
-## M2 execution status — 2026-09-18
+## M2 completion and reporting requirement — 2026-09-19
 
-M2 candidate `cfde1dce51b1c11ee60432bac26d114bcfc3444e` has all five packets integrated and independently reviewed. Component QA passed: 37 agent checks, 6 policy checks, both real isolated provider routes, and a live systemd-supervised process. Full assignment-workflow composition belongs to later Execution contracts/start, coder delivery, and lifecycle-monitoring packets; it is not an M2 blocker. Do not start M3 until M2 promotion is complete.
+M2 — Supervised shared processes completed, passed independent review and real component QA, and merged to `master` at `5c79bc7e9c4b38fe3603c0cfac43fe6ea6f3c486`. Do not start M3 until separately authorized.
+
+The Owner requires reporting for all future Maestro-managed work. Reports must use saved lifecycle measurements for queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall time; operation counts; and available provider usage. Parallel child time stays distinct from wall time. Past unobserved manual time remains unknown and is never estimated from commits or calendar elapsed time.

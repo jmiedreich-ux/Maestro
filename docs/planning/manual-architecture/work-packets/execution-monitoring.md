@@ -18,7 +18,7 @@ Controlling behavior: [execution api state and record contract](../../../archite
 
 ## Included scope and interfaces
 
-Add manager plans, review/queue/dependency/QA/gap/promotion/lifecycle views and commands from current service records.
+Add manager plans, review/queue/dependency/QA/gap/promotion/lifecycle views and commands from current service records. Show packet, milestone and activity timing by queue, preflight, active work, waiting, review, integration, Quality Assurance, correction, blocked and wall time; show operation counts and available provider usage. Parallel child time remains distinct from wall time.
 
 Provider contract: Terminal Execution extension uses workspace and authenticated service contract, with no direct SQL or process transition logic.
 
@@ -68,9 +68,10 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 ## Completion criteria
 
 1. Render real saved plans, assignments, reviews, FIFO/dependencies, QA/gaps/promotion/lifecycle and submit only available Execution commands.
-2. Reconnect reads/reconciles receipts without replay; stale/unknown measurements remain visible, and denied action is not success.
-3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
-4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
+2. Render saved lifecycle timing, operation counts and available provider usage for each packet, milestone and activity. Show parallel child totals separately from wall time. Unknown, stale and unobserved values show their recorded reason and never appear as zero or an estimate.
+3. Reconnect reads/reconciles receipts without replay; stale/unknown measurements remain visible, and denied action is not success.
+4. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
+5. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
 ## Verification and essential failures
 
@@ -82,7 +83,7 @@ Exact test command:
 ["python","-m","unittest","discover","-s","tests/maestro/terminal","-p","test_execution_monitoring.py","-v"]
 ```
 
-Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Reconnect is read/reconcile; no replay; stale or unavailable readings remain explicit.
+Required assertions: completion criteria 1 through 3, plus this essential rejection/recovery boundary: Reconnect is read/reconcile; no replay; stale, unavailable or unobserved readings remain explicit. A report must not turn missing active-time evidence into zero or a commit-time estimate.
 
 The test file must observe the real included capability. Low-level deterministic inputs may isolate component logic; any actual service/agent/Git path promised by these criteria requires real path evidence, not a fake result. Missing installed resources are recorded as UNTESTED with nonzero status; do not convert them into success using a skip. Capture actual inputs, expected/observed results, command/exit output and source revision. No tests were run when writing this specification.
 
