@@ -2908,3 +2908,15 @@ The route and workspace issues were implementation/QA-delivery defects, not a mi
 M3 cannot start until its safeguard checklist names these five lessons, their owner, execution stage and required evidence. The checklist starts a manual lifecycle log at dispatch; requires real protected-route smoke checks at the first integrated candidate; rejects receipts without candidate/run/source identity; and attaches M3's inclusion/exclusion boundary to its outcome-review input. These safeguards do not expand M3 scope.
 
 All M3 blocking review, integration and QA findings must classify their cause as architecture requirement, packet specification, dependency/setup, implementation, integration, verification/QA, provider/external or unknown. M3 reporting must show first-pass approval, specification sufficiency and the cause distribution separately; incomplete classification makes the affected metric partial.
+
+## M3 — Confirmed registration and history safeguard checklist
+
+| Safeguard | Owner and stage | Required evidence |
+|---|---|---|
+| Lifecycle log | Coordinator, before the first M3 packet dispatch and throughout M3. | Saved queue, active, waiting, review, integration, QA, correction, blocked and wall-time events; unknown is explicit. |
+| Protected real-route smoke checks | QA Coordinator, at the first integrated M3 candidate and before dependent packet acceptance. | Each required supported tool route uses a run-owned real source task and protected workspace; tool/model, candidate, run, source and output identity agree. |
+| Receipt identity validation | QA Coordinator, before accepting every M3 QA or review result. | Exact candidate commit, run ID, source/input identity, command/result and artifact path are present and match. |
+| Scope-bound outcome review | Independent milestone reviewer, before M3 promotion. | M3's stated inclusion and exclusion boundary is attached to the exact branch/evidence packet. |
+| Correction-cause reporting | Packet, integration, QA and milestone reviewers, for every blocking M3 finding. | One valid cause classification, controlling requirement/evidence and affected packet; M3 report calculates first-pass approval, specification sufficiency and cause distribution. |
+
+All five safeguards are planned and enforceable. M3 still needs the Owner's separate authorization to begin execution. At M3 QA setup, the service must recheck the isolated test Owner credential and GitHub App binding without exposing either value.
