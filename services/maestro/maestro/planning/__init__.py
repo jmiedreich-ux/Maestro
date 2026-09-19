@@ -10,9 +10,11 @@ from .intake import (
 )
 from .sources import (
     ExactSourceReader,
+    OutcomeReference,
     SourceBlob,
     SourceIntakeError,
     SourceInventory,
+    SourceReference,
     validate_source_ref,
 )
 
@@ -21,11 +23,13 @@ __all__ = [
     "IntakeError",
     "IntakeQuestion",
     "IntakeQuestionPublisher",
+    "OutcomeReference",
     "RegistrationIntake",
     "RegistrationIntakeRequest",
     "RegistrationIntakeResult",
     "SourceBlob",
     "SourceIntakeError",
     "SourceInventory",
+    "SourceReference",
     "validate_source_ref",
 ]
