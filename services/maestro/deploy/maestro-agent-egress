@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Start one Maestro agent in a root-supervised constrained systemd unit."""
+
+from __future__ import annotations
+
+import hashlib
+import ipaddress
+import os
+import pwd
+import socket
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+CONFIG = Path("/etc/maestro/agents.toml")
+RUN_ROOT = Path("/run/maestro/agent-egress")
+SYSTEMD_RUN = "/usr/bin/systemd-run"
+BWRAP = "/usr/bin/bwrap"
+RUNNER = "/usr/local/libexec/maestro-agent-egress-run"
+SERVICE_USER = "maestro"
+
+
+def fail(message: str) -> None:
+    print(f"maestro agent egress: {message}", file=sys.stderr)
+    raise SystemExit(64)
+
+
+def valid_run_id(value: str) -> bool:
+    return bool(value) and all(character.isalnum() or character in "-_" for character in value)
+
+
+def load_destinations(route: str) -> list[tuple[str, int]]:
+    try:
+        with CONFIG.open("rb") as stream:
+            values = tomllib.load(stream)["tools"][route]["permitted_destinations"]
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as error:
+        fail(f"cannot load the configured route: {error}")
+    if not isinstance(values, list) or not values:
+        fail("configured route has no permitted destinations")
+    result: list[tuple[str, int]] = []
+    for value in values:
+        if not isinstance(value, dict):
+            fail("configured destination is invalid")
+        host, port = value.get("hostname"), value.get("port")
+        if not isinstance(host, str) or not host or host != host.lower() or not isinstance(port, int):
+            fail("configured destination is invalid")
+        if not 1 <= port <= 65535:
+            fail("configured destination is invalid")
+        result.append((host, port))
+    return result
+
+
+def resolve(destinations: list[tuple[str, int]]) -> tuple[list[str], list[tuple[list[str], int]]]:
+    hosts = ["127.0.0.1 localhost", "::1 localhost"]
+    result: list[tuple[list[str], int]] = []
+    for host, port in destinations:
+        try:
+            entries = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        except socket.gaierror as error:
+            fail(f"cannot resolve {host}: {error}")
+        addresses = sorted({entry[4][0] for entry in entries})
+        if not addresses:
+            fail(f"cannot resolve {host}")
+        hosts.append(f"{' '.join(addresses)} {host}")
+        result.append((addresses, port))
+    return hosts, result
+
+
+def write_hosts(run_id: str, lines: list[str]) -> Path:
+    RUN_ROOT.mkdir(parents=True, mode=0o711, exist_ok=True)
+    os.chmod(RUN_ROOT.parent, 0o711)
+    os.chmod(RUN_ROOT, 0o711)
+    directory = RUN_ROOT / run_id
+    directory.mkdir(mode=0o711, exist_ok=False)
+    os.chmod(directory, 0o711)
+    hosts = directory / "hosts"
+    descriptor = os.open(hosts, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write("\n".join(lines) + "\n")
+    return hosts
+
+
+def unit_name(run_id: str) -> str:
+    return f"maestro-agent-{run_id}"
+
+
+def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[str]:
+    if route not in {"codex", "claude_code"} or not valid_run_id(run_id):
+        fail("route or run identifier is invalid")
+    if not bwrap_arguments or bwrap_arguments[0] != BWRAP or "--" not in bwrap_arguments:
+        fail("isolated command is invalid")
+    hosts, resolved = resolve(load_destinations(route))
+    hosts_path = write_hosts(run_id, hosts)
+    split = bwrap_arguments.index("--")
+    sandbox = bwrap_arguments[:split] + ["--ro-bind", str(hosts_path), "/etc/hosts"] + bwrap_arguments[split:]
+    arguments = [SYSTEMD_RUN, "--pipe", "--wait", "--collect", f"--unit={unit_name(run_id)}", "--property=IPAddressDeny=any", "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK"]
+    for addresses, _ in resolved:
+        for address in addresses:
+            suffix = "/128" if ipaddress.ip_address(address).version == 6 else "/32"
+            arguments.append(f"--property=IPAddressAllow={address}{suffix}")
+    return arguments + [RUNNER, unit_name(run_id), str(hosts_path), *[f"{address}:{port}" for addresses, port in resolved for address in addresses], "--", *sandbox]
+
+
+def run_outer() -> None:
+    if os.geteuid() != 0 or len(sys.argv) < 5:
+        fail("must run as root with route, run identifier, and isolated command")
+    process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+    raise SystemExit(process.returncode)
+
+
+def rule_table(unit: str) -> str:
+    return "maestro_egress_" + hashlib.sha256(unit.encode("utf-8")).hexdigest()[:16]
+
+
+def nft_apply(table: str, unit: str, pairs: list[tuple[str, int]]) -> None:
+    grouped: dict[tuple[int, int], list[str]] = {}
+    for address, port in pairs:
+        grouped.setdefault((ipaddress.ip_address(address).version, port), []).append(address)
+    rules = [f"table inet {table} {{", " chain output {", "  type filter hook output priority filter; policy accept;"]
+    match = f'socket cgroupv2 level 2 "system.slice/{unit}.service"'
+    for (version, port), addresses in sorted(grouped.items()):
+        family = "ip6" if version == 6 else "ip"
+        rules.append(f"  {match} {family} daddr {{ {', '.join(sorted(addresses))} }} tcp dport {port} accept")
+    rules.append(f"  {match} drop")
+    rules.extend([" }", "}"])
+    subprocess.run(["/usr/sbin/nft", "-f", "-"], input="\n".join(rules) + "\n", text=True, check=True)
+
+
+def nft_remove(table: str) -> None:
+    subprocess.run(["/usr/sbin/nft", "delete", "table", "inet", table], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def run_inner() -> None:
+    if os.geteuid() != 0 or len(sys.argv) < 6 or "--" not in sys.argv:
+        fail("invalid root-supervised launch")
+    unit, hosts = sys.argv[1], Path(sys.argv[2])
+    if not unit.startswith("maestro-agent-") or not hosts.is_file():
+        fail("invalid root-supervised launch")
+    separator = sys.argv.index("--")
+    try:
+        pairs = [(value.rsplit(":", 1)[0], int(value.rsplit(":", 1)[1])) for value in sys.argv[3:separator]]
+        for address, port in pairs:
+            ipaddress.ip_address(address)
+            if not 1 <= port <= 65535:
+                raise ValueError
+    except ValueError:
+        fail("invalid resolved destination")
+    sandbox = sys.argv[separator + 1 :]
+    if not sandbox or sandbox[0] != BWRAP:
+        fail("invalid isolated command")
+    table = rule_table(unit)
+    try:
+        nft_apply(table, unit, pairs)
+        account = pwd.getpwnam(SERVICE_USER)
+        def demote() -> None:
+            os.setgroups([])
+            os.setgid(account.pw_gid)
+            os.setuid(account.pw_uid)
+        process = subprocess.run(sandbox, check=False, preexec_fn=demote)
+        raise SystemExit(process.returncode)
+    finally:
+        nft_remove(table)
+
+
+if __name__ == "__main__":
+    if Path(sys.argv[0]).name == "maestro-agent-egress-run":
+        run_inner()
+    run_outer()

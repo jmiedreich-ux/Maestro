@@ -26,6 +26,9 @@ WORKSPACE_GROUP = "maestro-workspace"
 OWNER_TOKEN_NAME = "owner.token"
 UNIT_NAME = "maestro.service"
 SCHEMA_MANIFEST_NAME = ".bundles.sha256"
+EGRESS_LAUNCHER_NAME = "maestro-agent-egress"
+EGRESS_RUNNER_NAME = "maestro-agent-egress-run"
+EGRESS_SUDOERS_NAME = "maestro-agent-egress.sudoers"
 
 
 class InstallationError(RuntimeError):
@@ -51,6 +54,9 @@ class InstallationPaths:
     workspace_dir: Path
     schema_dir: Path
     unit_file: Path
+    egress_launcher: Path
+    egress_runner: Path
+    egress_sudoers: Path
     operator_config_dir: Path
     owner_token: Path
     cli_config: Path
@@ -86,6 +92,9 @@ class InstallationPaths:
             workspace_dir=data_dir / "workspaces",
             schema_dir=install_dir / "schemas",
             unit_file=under("/etc/systemd/system/maestro.service"),
+            egress_launcher=under(f"/usr/local/libexec/{EGRESS_LAUNCHER_NAME}"),
+            egress_runner=under(f"/usr/local/libexec/{EGRESS_RUNNER_NAME}"),
+            egress_sudoers=under(f"/etc/sudoers.d/{EGRESS_LAUNCHER_NAME}"),
             operator_config_dir=operator_config_dir,
             owner_token=operator_config_dir / OWNER_TOKEN_NAME,
             cli_config=operator_config_dir / "cli.toml",
@@ -139,6 +148,9 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
         paths.owner_token,
         paths.cli_config,
         paths.unit_file,
+        paths.egress_launcher,
+        paths.egress_runner,
+        paths.egress_sudoers,
     )
     if not replace:
         existing = [str(path) for path in guarded if path.exists() or path.is_symlink()]
@@ -154,7 +166,9 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
 
     token = secrets.token_hex(32)
     digest = hashlib.sha256(token.encode("ascii")).hexdigest()
-    unit_template = Path(__file__).with_name(UNIT_NAME).read_text(encoding="utf-8")
+    unit_template = _deploy_template(UNIT_NAME)
+    egress_helper = _deploy_template(EGRESS_LAUNCHER_NAME)
+    egress_sudoers = _deploy_template(EGRESS_SUDOERS_NAME)
     unit = (
         unit_template.replace("@SERVICE_USER@", configuration.service.name)
         .replace("@SERVICE_GROUP@", configuration.service.name)
@@ -213,6 +227,9 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
         configuration.operator.gid,
     )
     _atomic_write(paths.unit_file, unit, 0o644, 0, 0)
+    _atomic_write(paths.egress_launcher, egress_helper, 0o755, 0, 0)
+    _atomic_write(paths.egress_runner, egress_helper, 0o755, 0, 0)
+    _atomic_write(paths.egress_sudoers, egress_sudoers, 0o440, 0, 0)
     return digest
 
 
@@ -404,6 +421,9 @@ def verify_installed_host(operator_name: str | None) -> int:
         Path("/etc/maestro/agents.toml"),
         Path("/var/lib/maestro/maestro.sqlite3"),
         Path("/etc/systemd/system/maestro.service"),
+        Path(f"/usr/local/libexec/{EGRESS_LAUNCHER_NAME}"),
+        Path(f"/usr/local/libexec/{EGRESS_RUNNER_NAME}"),
+        Path(f"/etc/sudoers.d/{EGRESS_LAUNCHER_NAME}"),
     )
     for path in required:
         if not path.exists():
@@ -478,6 +498,16 @@ def _service_configuration(
         f'id = "{owner_id}"\n'
         f'token_sha256 = "{digest}"\n'
     )
+
+
+def _deploy_template(name: str) -> str:
+    source = Path(__file__).with_name(name)
+    if source.is_symlink() or not source.is_file():
+        raise InstallationError(f"required deployment template is missing: {source}")
+    try:
+        return source.read_text(encoding="utf-8")
+    except OSError as error:
+        raise InstallationError(f"cannot read deployment template: {source}") from error
 
 
 def _atomic_write(path: Path, content: str, mode: int, uid: int, gid: int) -> None:
