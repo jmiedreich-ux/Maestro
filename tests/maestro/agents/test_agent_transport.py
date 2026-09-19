@@ -375,7 +375,9 @@ class AgentTransportTests(unittest.TestCase):
         self.assertEqual("owner", question.recipient)
         self.assertEqual("main", question.choices[0].choice_id)
         self.assertIn("--json-schema", launch.tool_arguments)
-        self.assertIn("dontAsk", launch.tool_arguments)
+        self.assertIn("acceptEdits", launch.tool_arguments)
+        self.assertIn("Read", launch.tool_arguments)
+        self.assertIn("Write", launch.tool_arguments)
         self.assertEqual(
             (
                 "/usr/bin/sudo",

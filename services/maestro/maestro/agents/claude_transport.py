@@ -38,8 +38,11 @@ class ClaudeTransport:
             "--verbose",
             "--json-schema",
             canonical_json(assignment.response_schema),
+            "--allowedTools",
+            "Read",
+            "Write",
             "--permission-mode",
-            "dontAsk",
+            "acceptEdits",
         )
         sandbox_arguments = workspace.isolated_command(arguments, profile=profile)
         return TransportLaunch(
