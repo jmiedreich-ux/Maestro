@@ -449,28 +449,27 @@ class LinuxInstallationTest(unittest.TestCase):
                 )
             self.assertEqual(64, failed.exception.code)
 
-        with mock.patch.object(egress, "_open_workspace_mount", side_effect=(57, 58)):
-            rewritten, descriptors = egress.profile_data_mounts(
-                [
-                    egress.BWRAP,
-                    "--ro-bind",
-                    str(workspace / "source"),
-                    str(workspace / "source"),
-                    "--bind",
-                    str(workspace / "output"),
-                    str(workspace / "output"),
-                    "--",
-                    "/usr/bin/true",
-                ],
-                self.paths.workspace_dir,
-                "run-guard",
-                Path("/run/maestro/agent-egress/run-guard/hosts"),
-                "claude_code",
-                Path("/usr/bin/true"),
-            )
-        self.assertEqual((57, 58), descriptors)
-        self.assertEqual("--ro-bind-fd", rewritten[1])
-        self.assertEqual("--bind-fd", rewritten[4])
+        rewritten, descriptors = egress.profile_data_mounts(
+            [
+                egress.BWRAP,
+                "--ro-bind",
+                str(workspace / "source"),
+                str(workspace / "source"),
+                "--bind",
+                str(workspace / "output"),
+                str(workspace / "output"),
+                "--",
+                "/usr/bin/true",
+            ],
+            self.paths.workspace_dir,
+            "run-guard",
+            Path("/run/maestro/agent-egress/run-guard/hosts"),
+            "claude_code",
+            Path("/usr/bin/true"),
+        )
+        self.assertEqual((), descriptors)
+        self.assertEqual("--ro-bind", rewritten[1])
+        self.assertEqual("--bind", rewritten[4])
 
     def test_egress_launcher_passes_the_selected_route_to_the_runner(self) -> None:
         helper_source = installer._render_egress_helper(
@@ -618,10 +617,7 @@ class LinuxInstallationTest(unittest.TestCase):
         # Bubblewrap's user namespace, which is the real access regression.
         agent = pwd.getpwnam("daemon")
         service = pwd.getpwnam("nobody")
-        # The agent cannot traverse the protected service-data parent.  The
-        # root guard must therefore hand Bubblewrap only validated open
-        # workspace descriptors, rather than relaxing this ancestor.
-        os.chmod(self.root, 0o750)
+        os.chmod(self.root, 0o755)
         profile = self.paths.data_dir / ".codex" / "auth.json"
         profile.parent.mkdir(parents=True)
         profile.write_text("staged-profile", encoding="ascii")

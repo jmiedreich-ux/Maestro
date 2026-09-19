@@ -450,6 +450,7 @@ class AgentTransportTests(unittest.TestCase):
         assignment = self._assignment("project_architect", "run-leaf-permissions")
         workspace = self._workspace(assignment, {"brief.txt": b"assigned input\n"})
 
+        self.assertEqual(0o711, (self.root / "workspaces").stat().st_mode & 0o777)
         for directory in (
             self.root / "workspaces" / assignment.project_id,
             self.root / "workspaces" / assignment.project_id / assignment.activity_id,

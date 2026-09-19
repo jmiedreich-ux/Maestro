@@ -337,37 +337,6 @@ def _open_profile(source: Path) -> int:
     return credential
 
 
-def _open_workspace_mount(source: Path, kind: str) -> int:
-    """Open one validated service-owned workspace leaf for Bubblewrap.
-
-    Bubblewrap resolves ordinary bind sources after entering its user
-    namespace.  The selected agent cannot traverse the protected service
-    data directory then, even for an otherwise permitted assigned leaf.
-    Passing an already-open descriptor keeps the protected ancestor hidden
-    while letting the root guard expose exactly that validated leaf.
-    """
-    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW
-    try:
-        descriptor = os.open(source, flags)
-    except OSError as error:
-        fail(f"workspace mount is unavailable: {error}")
-    metadata = os.fstat(descriptor)
-    try:
-        service = pwd.getpwnam(SERVICE_USER)
-    except KeyError:
-        os.close(descriptor)
-        fail("installed service account does not exist")
-    expected_directory = kind in {"read-only", "read-write"} and source.name != "assignment.json"
-    if (
-        metadata.st_uid != service.pw_uid
-        or (expected_directory and not stat.S_ISDIR(metadata.st_mode))
-        or (not expected_directory and not stat.S_ISREG(metadata.st_mode))
-    ):
-        os.close(descriptor)
-        fail("workspace mount is unsafe")
-    return descriptor
-
-
 def profile_data_mounts(
     sandbox: list[str], workspace_root: Path, run_id: str, hosts_path: Path,
     route: str, executable: Path,
@@ -435,13 +404,10 @@ def profile_data_mounts(
                     rewritten.extend((value, str(source), str(target)))
                 elif value == "--ro-bind" and source == target and source in tool_runtime_sources:
                     rewritten.extend((value, str(source), str(target)))
-                elif (kind := _workspace_mount_kind(source, target, workspace_root, run_id)) == (
+                elif _workspace_mount_kind(source, target, workspace_root, run_id) == (
                     "read-only" if value == "--ro-bind" else "read-write"
                 ):
-                    descriptor = _open_workspace_mount(source, kind)
-                    descriptors.append(descriptor)
-                    option = "--ro-bind-fd" if kind == "read-only" else "--bind-fd"
-                    rewritten.extend((option, str(descriptor), str(target)))
+                    rewritten.extend((value, str(source), str(target)))
                 else:
                     fail("isolated command mount is unsupported")
                 index += 3

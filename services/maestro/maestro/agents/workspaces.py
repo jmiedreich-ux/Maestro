@@ -356,6 +356,11 @@ class WorkspaceManager:
         run = self.root / project_id / activity_id / "runs" / run_id
         if run.exists() or run.is_symlink():
             raise WorkspaceError("workspace_exists", "run workspace already exists")
+        # The root guard must be able to mount an assigned leaf after
+        # Bubblewrap enters the isolated agent identity.  This root contains
+        # no readable directory listing; service-owned data and credentials
+        # remain protected by their own modes beneath the service data root.
+        self.root.chmod(0o711)
         run.mkdir(parents=True, mode=0o701)
         # Bubblewrap switches to the configured agent identity in a user
         # namespace.  Service-owned UIDs are deliberately not mapped there,
