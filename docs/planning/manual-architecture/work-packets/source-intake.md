@@ -1,6 +1,6 @@
 # Exact source intake
 
-Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 3. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -18,11 +18,11 @@ Controlling behavior: [source and publication selection](../../../architecture.m
 
 ## Included scope and interfaces
 
-Use the assessed exact Git reader and the service-owned GitHub destination-authorization provider; resolve selected source once, scope/outcome versions, source consistency and missing references.
+Use the assessed exact Git reader and the service-owned GitHub destination-authorization provider delivered by Publication journal version 2; resolve selected source once, scope/outcome versions, source consistency and missing references.
 
-Provider contract: The destination provider returns a non-secret allowed, blocked or unverifiable decision bound to the configured GitHub App, installation, repository, branch and policy observation. The source reader returns exact blob hashes and source inventory only after that decision is allowed. Intake asks only genuinely missing scope, destination and role-selection questions through the service.
+Provider contract: The publication-owned destination provider returns a non-secret allowed, blocked or unverifiable decision bound to the saved immutable effective profile snapshot, GitHub App, installation, repository, branch and policy observation. The source reader returns exact blob hashes and source inventory only after that decision is allowed. Intake saves the provider evidence and snapshot reference with the attempt and asks only genuinely missing scope, destination and role-selection questions through the service.
 
-Consumer connection: Registration assessment consumes this inventory. Publication rechecks the same bound provider result before writing; neither source reading nor publication receives an agent credential.
+Consumer connection: Registration assessment consumes this inventory. Registration confirmation obtains a fresh matching provider result before publication; neither source reading nor publication receives an agent credential.
 
 ## Exclusions and stop boundary
 
@@ -41,10 +41,8 @@ No other repository write is permitted by this record.
 
 | Exact path | Format | Required result |
 |---|---|---|
-| `services/maestro/maestro/foundation/github_destination.py` | Python | Service-owned GitHub App destination-authorization provider |
 | `services/maestro/maestro/planning/sources.py` | Python | Assigned behavior and integration contract |
 | `services/maestro/maestro/planning/intake.py` | Python | Assigned behavior and integration contract |
-| `tests/maestro/foundation/test_github_destination.py` | Python | Provider main-path and essential-failure checks |
 | `tests/maestro/planning/test_source_intake.py` | Python | Real main-path and essential-failure checks |
 | `services/maestro/maestro/planning/__init__.py` | Python | Package boundary and explicit exports |
 
@@ -73,8 +71,8 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 ## Completion criteria
 
 1. Read an explicitly selected overview and its referenced architecture/declarations at a resolved commit, retaining ordered outcome identities/versions and selected scope.
-2. Reject missing/inconsistent references, traversal, unauthorized destination or an unavailable, protected or ruleset-bound GitHub destination; moving branch head cannot retarget saved source.
-3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
+2. Consume the publication-owned provider result and reject missing/inconsistent references, traversal, unauthorized destination or an unavailable, protected or ruleset-bound GitHub destination; moving branch head cannot retarget saved source.
+3. Save and preserve the immutable effective-profile snapshot reference and non-secret provider evidence with the attempted source selection; do not replace it with a later configuration value. The included consumer responsibility uses the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
 ## Verification and essential failures
