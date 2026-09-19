@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import tempfile
@@ -18,6 +19,11 @@ from .credentials import (
     ServiceGitTransport,
 )
 from .database import Database
+from .github_destination import (
+    GitHubDestinationAuthorization,
+    GitHubDestinationAuthorizationError,
+    GitHubDestinationProvider,
+)
 from .git_read import GitReadError, RemoteGitReader, RemoteSnapshot, run_git, validate_object_id, validate_repository_path
 
 
@@ -37,7 +43,7 @@ class PublicationStateError(PublicationError):
     """A publication operation is not in a state that permits that action."""
 
 
-_MIGRATION = DomainMigration(
+_MIGRATION_V1 = DomainMigration(
     domain="publication",
     version=1,
     identity="publication-journal-v1",
@@ -70,10 +76,19 @@ _MIGRATION = DomainMigration(
     ),
 )
 
+_MIGRATION_V2 = DomainMigration(
+    domain="publication",
+    version=2,
+    identity="publication-journal-v2",
+    statements=(
+        "ALTER TABLE publication_operations ADD COLUMN authorization_snapshot TEXT",
+    ),
+)
+
 
 def publication_migrations() -> tuple[DomainMigration, ...]:
     """Return the publication journal's installed-domain migration definition."""
-    return (_MIGRATION,)
+    return (_MIGRATION_V1, _MIGRATION_V2)
 
 
 @dataclass(frozen=True)
@@ -87,6 +102,7 @@ class PublicationOperation:
     reconciled_parent: str | None
     remote_commit: str | None
     failure: str | None
+    authorization_snapshot: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -111,6 +127,7 @@ class PublicationJournal:
         database: Database,
         authorizer: RepositoryAuthorizer,
         transport: ServiceGitTransport,
+        destination_provider: GitHubDestinationProvider,
     ) -> None:
         if not isinstance(database, Database):
             raise TypeError("PublicationJournal requires the service Database")
@@ -118,9 +135,12 @@ class PublicationJournal:
             raise TypeError("PublicationJournal requires RepositoryAuthorizer")
         if not isinstance(transport, ServiceGitTransport):
             raise TypeError("PublicationJournal requires ServiceGitTransport")
+        if not isinstance(destination_provider, GitHubDestinationProvider):
+            raise TypeError("PublicationJournal requires GitHubDestinationProvider")
         self._database = database
         self._authorizer = authorizer
         self._transport = transport
+        self._destination_provider = destination_provider
         self._reader = RemoteGitReader()
 
     def prepare(
@@ -132,10 +152,12 @@ class PublicationJournal:
         branch: str,
         expected_parent: str,
         files: Mapping[str, bytes],
+        destination_authorization: GitHubDestinationAuthorization,
     ) -> PublicationOperation:
         """Persist the exact authorized target and bytes before any network write."""
         canonical_identifier(operation_id, "operation_id")
         authorization = self._authorizer.authorize(repository, branch)
+        self._require_destination(destination_authorization, authorization)
         expected_parent = validate_object_id(expected_parent, "expected_parent")
         try:
             configured_remote = self._transport.remote_for(authorization)
@@ -149,8 +171,9 @@ class PublicationJournal:
                 """
                 INSERT INTO publication_operations(
                     operation_id, binding_id, repository, profile_name, credential_reference,
-                    remote, branch, expected_parent, state, reconciled_parent, remote_commit, failure
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', NULL, NULL, NULL)
+                    remote, branch, expected_parent, state, reconciled_parent, remote_commit, failure,
+                    authorization_snapshot
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', NULL, NULL, NULL, ?)
                 """,
                 (
                     operation_id,
@@ -161,6 +184,7 @@ class PublicationJournal:
                     remote,
                     authorization.branch,
                     expected_parent,
+                    self._snapshot_json(destination_authorization),
                 ),
             )
             for path, content in normalized_files.items():
@@ -171,21 +195,29 @@ class PublicationJournal:
                 )
         return self.operation(operation_id)
 
-    def attempt(self, operation_id: str) -> PublicationResult:
+    def attempt(
+        self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
+    ) -> PublicationResult:
         """Publish once, never force-pushing, then verify remote bytes before success."""
         operation = self.operation(operation_id)
+        self._require_destination(destination_authorization, operation.authorization)
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
         if operation.state not in {"prepared", "reconciled"}:
             raise PublicationStateError("publication operation is not retryable")
-        return self._attempt(operation_id)
+        return self._attempt(operation_id, destination_authorization)
 
-    def observe(self, operation_id: str) -> RemoteSnapshot:
+    def observe(
+        self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
+    ) -> RemoteSnapshot:
         """Read the current target state without a write or state transition."""
         operation = self.operation(operation_id)
+        self._require_destination(destination_authorization, operation.authorization)
         try:
-            with self._transport.bind(operation.authorization) as transport:
+            with self._destination_provider.bind_transport(
+                destination_authorization, self._transport, operation.authorization
+            ) as transport:
                 return self._reader.snapshot(
                     transport.remote,
                     operation.authorization.branch,
@@ -195,15 +227,18 @@ class PublicationJournal:
         except (GitReadError, RepositoryCredentialError) as error:
             raise PublicationAccessError("cannot observe the configured publication target") from error
 
-    def reconcile(self, operation_id: str) -> PublicationResult:
+    def reconcile(
+        self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
+    ) -> PublicationResult:
         """Resolve an uncertain write from remote facts before any retry."""
         operation = self.operation(operation_id)
+        self._require_destination(destination_authorization, operation.authorization)
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
         if operation.state not in {"writing", "paused", "prepared", "reconciled"}:
             raise PublicationStateError("publication operation cannot be reconciled")
-        snapshot = self._observe_or_pause(operation_id)
+        snapshot = self._observe_or_pause(operation_id, destination_authorization)
         matches, missing = self._target_state(operation, snapshot)
         if matches:
             self._set_verified(operation_id, snapshot.head)
@@ -220,7 +255,7 @@ class PublicationJournal:
             row = connection.execute(
                 """SELECT operation_id, binding_id, repository, profile_name,
                           credential_reference, remote, branch, expected_parent,
-                          state, reconciled_parent, remote_commit, failure
+                          state, reconciled_parent, remote_commit, failure, authorization_snapshot
                    FROM publication_operations WHERE operation_id = ?""",
                 (operation_id,),
             ).fetchone()
@@ -243,17 +278,26 @@ class PublicationJournal:
             profile_name=str(row[3]),
             credential_reference=str(row[4]),
         )
+        try:
+            snapshot = json.loads(str(row[12]))
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            raise PublicationStateError("saved GitHub destination snapshot is invalid") from error
+        if not isinstance(snapshot, dict):
+            raise PublicationStateError("saved GitHub destination snapshot is invalid")
         return PublicationOperation(
             operation_id=str(row[0]), authorization=authorization, remote=str(row[5]),
             expected_parent=str(row[7]), files=files, state=str(row[8]),
             reconciled_parent=None if row[9] is None else str(row[9]),
             remote_commit=None if row[10] is None else str(row[10]),
             failure=None if row[11] is None else str(row[11]),
+            authorization_snapshot=snapshot,
         )
 
-    def _attempt(self, operation_id: str) -> PublicationResult:
+    def _attempt(
+        self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
+    ) -> PublicationResult:
         operation = self.operation(operation_id)
-        snapshot = self._observe_or_pause(operation_id)
+        snapshot = self._observe_or_pause(operation_id, destination_authorization)
         matches, missing = self._target_state(operation, snapshot)
         if matches:
             self._set_verified(operation_id, snapshot.head)
@@ -267,14 +311,16 @@ class PublicationJournal:
             raise PublicationStateError("remote branch moved; reconciliation completed before retry")
         self._set_state(operation_id, "writing", failure=None)
         try:
-            commit = self._write_once(operation, snapshot.head)
+            # Recheck at the last possible point before the irreversible push.
+            self._require_destination(destination_authorization, operation.authorization)
+            commit = self._write_once(operation, snapshot.head, destination_authorization)
         except PublicationAccessError as error:
             self._set_state(operation_id, "paused", failure=str(error))
             raise
         except PublicationConflictError as error:
             self._set_state(operation_id, "paused", failure=str(error))
             raise
-        observed = self._observe_or_pause(operation_id)
+        observed = self._observe_or_pause(operation_id, destination_authorization)
         if observed.head != commit or not all(
             observed.files[path] == content for path, content in operation.files.items()
         ):
@@ -284,10 +330,15 @@ class PublicationJournal:
         self._set_verified(operation_id, commit)
         return PublicationResult(operation_id, commit, "verified", False)
 
-    def _write_once(self, operation: PublicationOperation, parent: str) -> str:
+    def _write_once(
+        self, operation: PublicationOperation, parent: str,
+        destination_authorization: GitHubDestinationAuthorization,
+    ) -> str:
         directory = Path(tempfile.mkdtemp(prefix="maestro-git-publication-"))
         try:
-            with self._transport.bind(operation.authorization) as transport:
+            with self._destination_provider.bind_transport(
+                destination_authorization, self._transport, operation.authorization
+            ) as transport:
                 command = lambda *args: run_git(*args, environment=transport.environment())
                 self._checked(command, "init", "--quiet", str(directory))
                 self._checked(command, "-C", str(directory), "remote", "add", "origin", transport.remote)
@@ -364,10 +415,12 @@ class PublicationJournal:
     def _pause(self, operation_id: str, failure: str) -> None:
         self._set_state(operation_id, "paused", failure=failure)
 
-    def _observe_or_pause(self, operation_id: str) -> RemoteSnapshot:
+    def _observe_or_pause(
+        self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
+    ) -> RemoteSnapshot:
         try:
-            return self.observe(operation_id)
-        except PublicationAccessError as error:
+            return self.observe(operation_id, destination_authorization)
+        except (PublicationAccessError, GitHubDestinationAuthorizationError) as error:
             self._pause(operation_id, str(error))
             raise
 
@@ -386,3 +439,19 @@ class PublicationJournal:
                    WHERE operation_id = ?""",
                 (commit, operation_id),
             )
+
+    def _require_destination(
+        self, destination_authorization: GitHubDestinationAuthorization,
+        authorization: AuthorizedRepository,
+    ) -> None:
+        try:
+            self._destination_provider.require_fresh_match(destination_authorization, authorization)
+        except GitHubDestinationAuthorizationError as error:
+            raise PublicationAccessError("GitHub destination authorization is unavailable") from error
+
+    @staticmethod
+    def _snapshot_json(destination_authorization: GitHubDestinationAuthorization) -> str:
+        return json.dumps(
+            destination_authorization.durable_record(), sort_keys=True,
+            separators=(",", ":"), ensure_ascii=False, allow_nan=False,
+        )
