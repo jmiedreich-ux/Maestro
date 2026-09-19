@@ -200,13 +200,13 @@ class PublicationJournal:
     ) -> PublicationResult:
         """Publish once, never force-pushing, then verify remote bytes before success."""
         operation = self.operation(operation_id)
-        self._require_destination(destination_authorization, operation.authorization)
+        current = self._fresh_destination(operation, destination_authorization)
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
         if operation.state not in {"prepared", "reconciled"}:
             raise PublicationStateError("publication operation is not retryable")
-        return self._attempt(operation_id, destination_authorization)
+        return self._attempt(operation_id, current)
 
     def observe(
         self, operation_id: str, destination_authorization: GitHubDestinationAuthorization
@@ -232,13 +232,13 @@ class PublicationJournal:
     ) -> PublicationResult:
         """Resolve an uncertain write from remote facts before any retry."""
         operation = self.operation(operation_id)
-        self._require_destination(destination_authorization, operation.authorization)
+        current = self._fresh_destination(operation, destination_authorization)
         if operation.state == "verified":
             assert operation.remote_commit is not None
             return PublicationResult(operation_id, operation.remote_commit, "verified", True)
         if operation.state not in {"writing", "paused", "prepared", "reconciled"}:
             raise PublicationStateError("publication operation cannot be reconciled")
-        snapshot = self._observe_or_pause(operation_id, destination_authorization)
+        snapshot = self._observe_or_pause(operation_id, current)
         matches, missing = self._target_state(operation, snapshot)
         if matches:
             self._set_verified(operation_id, snapshot.head)
@@ -311,9 +311,10 @@ class PublicationJournal:
             raise PublicationStateError("remote branch moved; reconciliation completed before retry")
         self._set_state(operation_id, "writing", failure=None)
         try:
-            # Recheck at the last possible point before the irreversible push.
-            self._require_destination(destination_authorization, operation.authorization)
-            commit = self._write_once(operation, snapshot.head, destination_authorization)
+            # Obtain a new live authorization/policy observation at the last
+            # possible point before the irreversible push.
+            current = self._fresh_destination(operation, destination_authorization)
+            commit = self._write_once(operation, snapshot.head, current)
         except PublicationAccessError as error:
             self._set_state(operation_id, "paused", failure=str(error))
             raise
@@ -448,6 +449,33 @@ class PublicationJournal:
             self._destination_provider.require_fresh_match(destination_authorization, authorization)
         except GitHubDestinationAuthorizationError as error:
             raise PublicationAccessError("GitHub destination authorization is unavailable") from error
+
+    def _fresh_destination(
+        self,
+        operation: PublicationOperation,
+        supplied: GitHubDestinationAuthorization,
+    ) -> GitHubDestinationAuthorization:
+        """Require supplied evidence and a new matching provider observation.
+
+        The saved profile snapshot is immutable: recovery must never adopt a
+        changed App, installation, allowlist, API base, or credential profile.
+        A failed live recheck pauses the operation before any remote write.
+        """
+        try:
+            self._require_destination(supplied, operation.authorization)
+            fresh = self._destination_provider.authorize(
+                operation.authorization.repository, operation.authorization.branch
+            )
+            self._require_destination(fresh, operation.authorization)
+            saved = operation.authorization_snapshot.get("snapshot")
+            if not isinstance(saved, dict) or saved != dict(fresh.snapshot):
+                raise PublicationAccessError(
+                    "GitHub destination profile changed since publication preparation"
+                )
+            return fresh
+        except PublicationAccessError as error:
+            self._pause(operation.operation_id, str(error))
+            raise
 
     @staticmethod
     def _snapshot_json(destination_authorization: GitHubDestinationAuthorization) -> str:

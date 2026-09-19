@@ -70,7 +70,8 @@ class PublicationJournalTest(unittest.TestCase):
             allowed_repositories=("owner/project",),
             allowed_branches=("main",),
         )
-        self.destination = GitHubDestinationProvider(profile, _FixtureDestinationApi())
+        self.destination_api = _FixtureDestinationApi()
+        self.destination = GitHubDestinationProvider(profile, self.destination_api)
         self.journal = PublicationJournal(
             database,
             RepositoryAuthorizer(
@@ -218,8 +219,50 @@ class PublicationJournalTest(unittest.TestCase):
         with self.assertRaises(PublicationAccessError):
             self.journal.attempt("credential-unavailable", expired)
         operation = self.journal.operation("credential-unavailable")
-        self.assertEqual("prepared", operation.state)
+        self.assertEqual("paused", operation.state)
         self.assertIsNone(operation.remote_commit)
+
+    def test_changed_profile_snapshot_pauses_attempt_and_reconciliation_without_writing(self) -> None:
+        self.prepare("profile-changed")
+        updated_profile = GitHubAppDestinationProfile(
+            profile_name="project-github",
+            binding_id="binding-project",
+            credential=GitHubAppCredential("github-app-project"),
+            app_id=303,
+            installation_id=404,
+            app_slug="maestro-coordinator-next",
+            allowed_repositories=("owner/project",),
+            allowed_branches=("main",),
+        )
+        updated_provider = GitHubDestinationProvider(updated_profile, _FixtureDestinationApi())
+        self.journal._destination_provider = updated_provider
+        current = updated_provider.authorize("owner/project", "main")
+
+        with self.assertRaises(PublicationAccessError):
+            self.journal.reconcile("profile-changed", current)
+        with self.assertRaises(PublicationAccessError):
+            self.journal.attempt("profile-changed", current)
+
+        operation = self.journal.operation("profile-changed")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+        self.assertEqual(self.seed, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
+
+    def test_live_recheck_blocks_a_branch_that_becomes_protected_before_push(self) -> None:
+        self.prepare("protected-before-push")
+        self.destination_api.policy_sequence = [
+            BranchPolicyObservation(False, ()),
+            BranchPolicyObservation(False, ()),
+            BranchPolicyObservation(True, ()),
+        ]
+
+        with self.assertRaises(PublicationAccessError):
+            self.journal.attempt("protected-before-push", self.authorize())
+
+        operation = self.journal.operation("protected-before-push")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+        self.assertEqual(self.seed, self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"))
 
     def test_profile_requires_one_allowlisted_repository_and_branch(self) -> None:
         profile = RepositoryProfile("profile", "credential", ("owner/project",), ("main",))
@@ -234,6 +277,9 @@ class PublicationJournalTest(unittest.TestCase):
 
 class _FixtureDestinationApi:
     """Controlled provider component input; publication itself uses real Git."""
+
+    def __init__(self) -> None:
+        self.policy_sequence: list[BranchPolicyObservation] = []
 
     def app_identity(self, profile):
         return {"id": profile.app_id, "slug": profile.app_slug}
@@ -251,6 +297,8 @@ class _FixtureDestinationApi:
         return {"name": branch}
 
     def branch_policy(self, token, repository, branch):
+        if self.policy_sequence:
+            return self.policy_sequence.pop(0)
         return BranchPolicyObservation(False, ())
 
 
