@@ -8,17 +8,44 @@ import ipaddress
 import os
 import pwd
 import socket
+import stat
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
-CONFIG = Path("/etc/maestro/agents.toml")
+CONFIG = Path("@CONFIG_FILE@")
+PROFILE_ROOT = Path("@DATA_DIR@")
 RUN_ROOT = Path("/run/maestro/agent-egress")
 SYSTEMD_RUN = "/usr/bin/systemd-run"
 BWRAP = "/usr/bin/bwrap"
 RUNNER = "/usr/local/libexec/maestro-agent-egress-run"
-SERVICE_USER = "maestro"
+SERVICE_USER = "@SERVICE_USER@"
+PROFILE_FILES = {
+    Path(".codex/auth.json"),
+    Path(".claude.json"),
+    Path(".claude/.credentials.json"),
+}
+CALLER_FD_OPTIONS = frozenset(
+    {
+        "--args",
+        "--userns",
+        "--userns2",
+        "--pidns",
+        "--sync-fd",
+        "--bind-fd",
+        "--ro-bind-fd",
+        "--file",
+        "--bind-data",
+        "--ro-bind-data",
+        "--seccomp",
+        "--add-seccomp-fd",
+        "--block-fd",
+        "--userns-block-fd",
+        "--info-fd",
+        "--json-status-fd",
+    }
+)
 
 
 def fail(message: str) -> None:
@@ -30,11 +57,22 @@ def valid_run_id(value: str) -> bool:
     return bool(value) and all(character.isalnum() or character in "-_" for character in value)
 
 
-def load_destinations(route: str) -> list[tuple[str, int]]:
+def load_configuration() -> dict[str, object]:
     try:
         with CONFIG.open("rb") as stream:
-            values = tomllib.load(stream)["tools"][route]["permitted_destinations"]
-    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as error:
+            configuration = tomllib.load(stream)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        fail(f"cannot load the service configuration: {error}")
+    if not isinstance(configuration, dict):
+        fail("service configuration is invalid")
+    return configuration
+
+
+def load_destinations(configuration: dict[str, object], route: str) -> list[tuple[str, int]]:
+    try:
+        tools = configuration["tools"]
+        values = tools[route]["permitted_destinations"]
+    except (KeyError, TypeError) as error:
         fail(f"cannot load the configured route: {error}")
     if not isinstance(values, list) or not values:
         fail("configured route has no permitted destinations")
@@ -49,6 +87,22 @@ def load_destinations(route: str) -> list[tuple[str, int]]:
             fail("configured destination is invalid")
         result.append((host, port))
     return result
+
+
+def load_agent_account(configuration: dict[str, object]) -> pwd.struct_passwd:
+    try:
+        value = configuration["service"]["agent_user"]
+    except (KeyError, TypeError) as error:
+        fail(f"cannot load the configured agent account: {error}")
+    if not isinstance(value, str) or not value or value == SERVICE_USER:
+        fail("configured agent account is invalid")
+    try:
+        account = pwd.getpwnam(value)
+    except KeyError:
+        fail("configured agent account does not exist")
+    if account.pw_uid == 0:
+        fail("configured agent account is invalid")
+    return account
 
 
 def resolve(destinations: list[tuple[str, int]]) -> tuple[list[str], list[tuple[list[str], int]]]:
@@ -90,7 +144,10 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
         fail("route or run identifier is invalid")
     if not bwrap_arguments or bwrap_arguments[0] != BWRAP or "--" not in bwrap_arguments:
         fail("isolated command is invalid")
-    hosts, resolved = resolve(load_destinations(route))
+    configuration = load_configuration()
+    # Fail before creating any runtime state when the configured identity is unsafe.
+    load_agent_account(configuration)
+    hosts, resolved = resolve(load_destinations(configuration, route))
     hosts_path = write_hosts(run_id, hosts)
     split = bwrap_arguments.index("--")
     sandbox = bwrap_arguments[:split] + ["--ro-bind", str(hosts_path), "/etc/hosts"] + bwrap_arguments[split:]
@@ -131,6 +188,93 @@ def nft_remove(table: str) -> None:
     subprocess.run(["/usr/sbin/nft", "delete", "table", "inet", table], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _profile_target_is_safe(relative: Path, target: Path) -> bool:
+    """Profiles are exposed only below the isolated run's private scratch home."""
+    if not target.is_absolute() or ".." in target.parts:
+        return False
+    expected = ("scratch", "home", *relative.parts)
+    return len(target.parts) >= len(expected) and target.parts[-len(expected) :] == expected
+
+
+def _open_profile(source: Path) -> int:
+    """Open one approved credential without following service-controlled links."""
+    try:
+        relative = source.relative_to(PROFILE_ROOT)
+    except ValueError:
+        fail("credential profile is outside the supported profile root")
+    if relative not in PROFILE_FILES:
+        fail("credential profile is unsupported")
+    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW
+    directory_flags = flags | os.O_DIRECTORY
+    descriptor = os.open(PROFILE_ROOT, directory_flags)
+    try:
+        for component in relative.parts[:-1]:
+            next_descriptor = os.open(component, directory_flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = next_descriptor
+        credential = os.open(relative.name, flags, dir_fd=descriptor)
+    finally:
+        os.close(descriptor)
+    metadata = os.fstat(credential)
+    try:
+        service = pwd.getpwnam(SERVICE_USER)
+    except KeyError:
+        os.close(credential)
+        fail("installed service account does not exist")
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != service.pw_uid:
+        os.close(credential)
+        fail("credential profile is unsafe")
+    return credential
+
+
+def profile_data_mounts(sandbox: list[str]) -> tuple[list[str], tuple[int, ...]]:
+    """Replace only approved profile binds with descriptor-backed read-only mounts."""
+    rewritten: list[str] = []
+    descriptors: list[int] = []
+    index = 0
+    try:
+        while index < len(sandbox):
+            value = sandbox[index]
+            if value == "--":
+                rewritten.extend(sandbox[index:])
+                break
+            if value in CALLER_FD_OPTIONS:
+                fail("isolated command cannot consume inherited descriptors")
+            if value == "--ro-bind" and index + 2 < len(sandbox):
+                source = Path(sandbox[index + 1])
+                target = Path(sandbox[index + 2])
+                if source.is_relative_to(PROFILE_ROOT):
+                    relative = source.relative_to(PROFILE_ROOT)
+                    if relative in PROFILE_FILES:
+                        if not _profile_target_is_safe(relative, target):
+                            fail("credential profile target is invalid")
+                        descriptor = _open_profile(source)
+                        descriptors.append(descriptor)
+                        rewritten.extend(("--ro-bind-data", str(descriptor), str(target)))
+                    else:
+                        rewritten.extend((value, str(source), str(target)))
+                else:
+                    rewritten.extend((value, str(source), str(target)))
+                index += 3
+                continue
+            rewritten.append(value)
+            index += 1
+        return rewritten, tuple(descriptors)
+    except BaseException:
+        for descriptor in descriptors:
+            os.close(descriptor)
+        raise
+
+
+def sandbox_as_agent(sandbox: list[str], account: pwd.struct_passwd) -> list[str]:
+    try:
+        separator = sandbox.index("--")
+    except ValueError:
+        fail("invalid isolated command")
+    # These are appended last so a caller cannot override the guarded child identity.
+    return sandbox[:separator] + ["--uid", str(account.pw_uid), "--gid", str(account.pw_gid)] + sandbox[separator:]
+
+
 def run_inner() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 6 or "--" not in sys.argv:
         fail("invalid root-supervised launch")
@@ -150,16 +294,26 @@ def run_inner() -> None:
     if not sandbox or sandbox[0] != BWRAP:
         fail("invalid isolated command")
     table = rule_table(unit)
+    configuration = load_configuration()
+    account = load_agent_account(configuration)
+    sandbox, profile_descriptors = profile_data_mounts(sandbox)
     try:
+        sandbox = sandbox_as_agent(sandbox, account)
         nft_apply(table, unit, pairs)
-        account = pwd.getpwnam(SERVICE_USER)
         def demote() -> None:
-            os.setgroups([])
+            os.initgroups(account.pw_name, account.pw_gid)
             os.setgid(account.pw_gid)
             os.setuid(account.pw_uid)
-        process = subprocess.run(sandbox, check=False, preexec_fn=demote)
+        process = subprocess.run(
+            sandbox,
+            check=False,
+            preexec_fn=demote,
+            pass_fds=profile_descriptors,
+        )
         raise SystemExit(process.returncode)
     finally:
+        for descriptor in profile_descriptors:
+            os.close(descriptor)
         nft_remove(table)
 
 

@@ -28,12 +28,21 @@ The installer creates these separate identities and paths:
 | Owner credential | `~OPERATOR/.config/maestro/owner.token`, operator-owned, mode 0600 |
 | Terminal configuration | `~OPERATOR/.config/maestro/cli.toml`, operator-owned, mode 0600 |
 | Service unit | `/etc/systemd/system/maestro.service` |
+| Agent egress launcher | `/usr/local/libexec/maestro-agent-egress` (service-only sudo rule) |
 
 The plaintext Owner credential is written only to the operator file. The
 service configuration contains its SHA-256 digest. The agent identity is not a
 member of the service group and cannot read `/etc/maestro`, the database, the
 Owner home, or either credential. Both service and agent identities share only
 the workspace group. Never place credentials in a workspace or repository.
+
+The root-supervised egress runner reads `service.agent_user` from the protected
+service configuration and starts Bubblewrap as that configured account. The
+sudo rule permits only the service account to invoke the launcher. Supported
+Codex and Claude CLI profile files are opened as no-follow, read-only
+descriptors and mounted only at their expected private scratch-home paths; the
+agent does not receive the service configuration, database, Owner credential,
+or the service profile directory.
 
 Installation copies versioned schema resources declared by the installed
 package. Bundles are local, immutable directories named `<name>/<version>` and

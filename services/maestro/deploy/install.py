@@ -7,6 +7,7 @@ import argparse
 import grp
 import hashlib
 import importlib.metadata
+import json
 import os
 import pwd
 import secrets
@@ -167,8 +168,15 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
     token = secrets.token_hex(32)
     digest = hashlib.sha256(token.encode("ascii")).hexdigest()
     unit_template = _deploy_template(UNIT_NAME)
-    egress_helper = _deploy_template(EGRESS_LAUNCHER_NAME)
-    egress_sudoers = _deploy_template(EGRESS_SUDOERS_NAME)
+    egress_helper = _render_egress_helper(
+        _deploy_template(EGRESS_LAUNCHER_NAME),
+        config_file=paths.config_file,
+        data_dir=paths.data_dir,
+        service_user=configuration.service.name,
+    )
+    egress_sudoers = _render_egress_sudoers(
+        _deploy_template(EGRESS_SUDOERS_NAME), configuration.service.name
+    )
     unit = (
         unit_template.replace("@SERVICE_USER@", configuration.service.name)
         .replace("@SERVICE_GROUP@", configuration.service.name)
@@ -508,6 +516,31 @@ def _deploy_template(name: str) -> str:
         return source.read_text(encoding="utf-8")
     except OSError as error:
         raise InstallationError(f"cannot read deployment template: {source}") from error
+
+
+def _render_egress_helper(
+    template: str, *, config_file: Path, data_dir: Path, service_user: str
+) -> str:
+    rendered = (
+        template.replace("@CONFIG_FILE@", _python_string_content(str(config_file)))
+        .replace("@DATA_DIR@", _python_string_content(str(data_dir)))
+        .replace("@SERVICE_USER@", _python_string_content(service_user))
+    )
+    if "@" in rendered:
+        raise InstallationError("agent egress helper contains an unresolved installation value")
+    return rendered
+
+
+def _python_string_content(value: str) -> str:
+    """Render an arbitrary path or account safely inside a quoted Python template."""
+    return json.dumps(value)[1:-1]
+
+
+def _render_egress_sudoers(template: str, service_user: str) -> str:
+    rendered = template.replace("@SERVICE_USER@", service_user)
+    if "@" in rendered:
+        raise InstallationError("agent egress sudoers contains an unresolved installation value")
+    return rendered
 
 
 def _atomic_write(path: Path, content: str, mode: int, uid: int, gid: int) -> None:
