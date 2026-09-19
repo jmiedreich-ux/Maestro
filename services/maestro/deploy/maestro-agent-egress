@@ -424,6 +424,38 @@ def sandbox_as_agent(sandbox: list[str], account: pwd.struct_passwd) -> list[str
     return sandbox[:separator] + ["--uid", str(account.pw_uid), "--gid", str(account.pw_gid)] + sandbox[separator:]
 
 
+def make_writable_mounts_available(
+    sandbox: list[str], workspace_root: Path, run_id: str
+) -> None:
+    """Permit the agent to write only its already-validated private bind mounts."""
+    try:
+        separator = sandbox.index("--")
+        service = pwd.getpwnam(SERVICE_USER)
+    except (KeyError, ValueError):
+        fail("installed service account or isolated command is invalid")
+    for index in range(separator - 2):
+        if sandbox[index] != "--bind":
+            continue
+        source, target = Path(sandbox[index + 1]), Path(sandbox[index + 2])
+        if _workspace_mount_kind(source, target, workspace_root, run_id) != "read-write":
+            continue
+        flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_DIRECTORY
+        try:
+            descriptor = os.open(source, flags)
+        except OSError as error:
+            fail(f"writable workspace mount is unavailable: {error}")
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != service.pw_uid:
+                fail("writable workspace mount is unsafe")
+            # The user namespace maps the root runner, not the agent's host
+            # UID.  The run's service-owned parents stay private; this grants
+            # access only through the selected output or scratch bind mount.
+            os.fchmod(descriptor, 0o707)
+        finally:
+            os.close(descriptor)
+
+
 def run_inner() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 7 or "--" not in sys.argv:
         fail("invalid root-supervised launch")
@@ -452,16 +484,14 @@ def run_inner() -> None:
         route, executable,
     )
     try:
+        make_writable_mounts_available(
+            sandbox, workspace_root, unit.removeprefix("maestro-agent-")
+        )
         sandbox = sandbox_as_agent(sandbox, account)
         nft_apply(table, unit, pairs)
-        def demote() -> None:
-            os.initgroups(account.pw_name, account.pw_gid)
-            os.setgid(account.pw_gid)
-            os.setuid(account.pw_uid)
         process = subprocess.run(
             sandbox,
             check=False,
-            preexec_fn=demote,
             pass_fds=profile_descriptors,
         )
         raise SystemExit(process.returncode)
