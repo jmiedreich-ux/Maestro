@@ -1,6 +1,6 @@
 # Registration update and recovery
 
-Specification version: 1. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -18,9 +18,9 @@ Controlling behavior: [re registration](../../../architecture.md#re-registration
 
 ## Included scope and interfaces
 
-Implement idle reservation, comparison, preserved approval, cancellation, retry and SQL/Git recovery with existing counts.
+Implement idle reservation, comparison, preserved approval, cancellation, retry and SQL/Git recovery with existing counts and the original immutable destination-profile snapshot.
 
-Provider contract: Recovery consumes saved journal operations and process snapshot; retries keep the same unresolved-work allowances.
+Provider contract: Recovery consumes saved journal operations, process snapshot and original non-secret effective-profile snapshot; it resolves the original credential-profile identity and rechecks that exact App/repository/branch policy before an allowed retry. A missing historical snapshot, missing credential reference, changed/missing/blocked policy or unverifiable provider result pauses with a specific setup error; retries never adopt an edited current profile. Retries keep the same unresolved-work allowances.
 
 Consumer connection: Architecture later-registration reconciliation sees actual confirmed replacement, not a working candidate.
 
@@ -68,8 +68,8 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 
 ## Completion criteria
 
-1. Re-register only when eligible using one atomic reservation; compare versions, retain old approval until exact new confirmation, and recover interrupted attempt/publication.
-2. Race two starts; cancel before/after remote write; restart during confirmation; preserve source/questions/decisions/counts and reconcile exact Git state.
+1. Re-register only when eligible using one atomic reservation; compare versions, retain old approval until exact new confirmation, and recover interrupted attempt/publication using its original immutable destination-profile snapshot.
+2. Race two starts; cancel before/after remote write; restart during confirmation; preserve source/questions/decisions/counts and reconcile exact Git state. A missing historical snapshot or blocked/unverifiable recheck pauses without a write or substitution.
 3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
