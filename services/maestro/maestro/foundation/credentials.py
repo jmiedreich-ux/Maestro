@@ -180,6 +180,55 @@ class ServiceGitTransport:
             raise RepositoryCredentialError("configured service Git credential is unavailable")
         return BoundGitTransport(remote, credential)
 
+    def bind_installation_token(
+        self, authorization: AuthorizedRepository, installation_token: str
+    ) -> BoundGitTransport:
+        """Bind an ephemeral GitHub App installation token to its configured route.
+
+        Only the destination-authorization provider calls this service boundary.
+        The token is deliberately accepted only for the lifetime of the returned
+        context manager and is never attached to an authorization record.
+        """
+        remote = self.remote_for(authorization)
+        if not isinstance(installation_token, str) or not installation_token:
+            raise RepositoryCredentialError("GitHub installation token is unavailable")
+        return BoundGitTransport(remote, installation_token)
+
+
+@dataclass(frozen=True)
+class GitHubAppCredential:
+    """The non-secret locator of a service-owned GitHub App private key."""
+
+    credential_reference: str
+
+    def __post_init__(self) -> None:
+        _name(self.credential_reference, "credential_reference")
+
+
+class ServiceGitHubAppCredentials:
+    """Resolve an App private key only while a service API request is assembled.
+
+    The supplied resolver is owned by the service credential store.  This small
+    boundary deliberately exposes no operation for callers to inspect or retain
+    all configured credential values.
+    """
+
+    def __init__(self, resolve_private_key: Callable[[str], str]) -> None:
+        if not callable(resolve_private_key):
+            raise TypeError("GitHub App credential resolver must be callable")
+        self._resolve_private_key = resolve_private_key
+
+    def private_key_for(self, credential: GitHubAppCredential) -> str:
+        if not isinstance(credential, GitHubAppCredential):
+            raise TypeError("GitHub App credential must be typed")
+        try:
+            private_key = self._resolve_private_key(credential.credential_reference)
+        except Exception as error:
+            raise RepositoryCredentialError("configured GitHub App private key is unavailable") from error
+        if not isinstance(private_key, str) or not private_key.strip():
+            raise RepositoryCredentialError("configured GitHub App private key is unavailable")
+        return private_key
+
 
 class RepositoryAuthorizer:
     """Resolve one repository/branch to exactly one configured service profile."""
