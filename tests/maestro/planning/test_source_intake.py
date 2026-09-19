@@ -178,8 +178,26 @@ class ExactSourceIntakeTest(unittest.TestCase):
 
     def test_blocked_or_unverifiable_destination_fails_before_source_read(self) -> None:
         self.api.protected = True
-        with self.assertRaisesRegex(IntakeError, "not allowed"):
+        with self.assertRaisesRegex(IntakeError, "not allowed") as raised:
             self._intake().begin(self._request(), questions=_Questions())
+        attempt = raised.exception.attempt
+        self.assertIsNone(attempt.inventory)
+        self.assertEqual("blocked", attempt.destination_evidence["decision"])
+        self.assertEqual("refs/heads/main", attempt.source_ref)
+        self.assertEqual("main", attempt.publication_branch)
+        self.assertEqual(64, len(attempt.destination_snapshot_reference))
+        self.assertNotIn("installation-token", json.dumps(attempt.destination_evidence))
+        with self.assertRaises(TypeError):
+            attempt.destination_evidence["snapshot"]["branch"] = "other"
+
+    def test_source_read_failure_retains_allowed_snapshot_and_evidence(self) -> None:
+        with self.assertRaisesRegex(IntakeError, "does not contain") as raised:
+            self._intake().begin(self._request(overview_path="docs/missing.md"), questions=_Questions())
+        attempt = raised.exception.attempt
+        self.assertIsNone(attempt.inventory)
+        self.assertEqual("allowed", attempt.destination_evidence["decision"])
+        self.assertEqual("refs/heads/main", attempt.source_ref)
+        self.assertIsNotNone(attempt.failure)
 
     def test_missing_destination_permission_or_allowlist_fails_closed(self) -> None:
         self.api.permissions = {"contents": "read", "administration": "read"}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterable, Mapping, Protocol
 
 from maestro.foundation.credentials import (
@@ -25,6 +25,10 @@ from .sources import ExactSourceReader, SourceIntakeError, SourceInventory, vali
 
 class IntakeError(ValueError):
     """Registration intake cannot safely make or replace a selection."""
+
+    def __init__(self, message: str, *, attempt: "RegistrationIntakeResult | None" = None) -> None:
+        super().__init__(message)
+        self.attempt = attempt
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,9 @@ class RegistrationIntakeResult:
     source_selection: str | None
     destination_snapshot_reference: str | None
     destination_evidence: Mapping[str, object] | None
+    source_ref: str | None = None
+    publication_branch: str | None = None
+    failure: str | None = None
 
 
 class RegistrationIntake:
@@ -107,6 +114,7 @@ class RegistrationIntake:
             return RegistrationIntakeResult(None, missing, None, request.scope, source_selection, None, None)
 
         assert request.publication_branch is not None
+        attempt: RegistrationIntakeResult | None = None
         try:
             authorization = self._authorizer.authorize(request.repository, request.publication_branch)
             remote = self._transport.remote_for(authorization)
@@ -115,9 +123,16 @@ class RegistrationIntake:
             provider_result = self._destination_provider.authorize(
                 authorization.repository, authorization.branch
             )
+            # This is deliberately built before the provider decision is used.
+            # It is the non-secret record the registration service persists for
+            # an allowed, blocked, or unverifiable authorization attempt.
+            attempt = self._attempt_result(
+                request, authorization, source_selection, self._attempted_source_ref(request), provider_result
+            )
             self._destination_provider.require_fresh_match(provider_result, authorization)
             selector, source_selection = self._source_selection(request, authorization, provider_result)
             selector = validate_source_ref(selector)
+            attempt = replace(attempt, source_selection=source_selection, source_ref=selector)
             with self._destination_provider.bind_transport(
                 provider_result, self._transport, authorization
             ) as bound:
@@ -134,15 +149,36 @@ class RegistrationIntake:
             RepositoryCredentialError,
             GitHubDestinationAuthorizationError,
         ) as error:
-            raise IntakeError(str(error)) from error
+            saved_attempt = None if attempt is None else replace(attempt, failure=str(error))
+            raise IntakeError(str(error), attempt=saved_attempt) from error
+        return replace(attempt, inventory=inventory)
+
+    @staticmethod
+    def _attempted_source_ref(request: RegistrationIntakeRequest) -> str | None:
+        if isinstance(request.source_ref, str) and request.source_ref.strip():
+            return request.source_ref
+        if isinstance(request.prior_source_ref, str) and request.prior_source_ref.strip():
+            return request.prior_source_ref
+        return None
+
+    @staticmethod
+    def _attempt_result(
+        request: RegistrationIntakeRequest,
+        authorization: AuthorizedRepository,
+        source_selection: str,
+        source_ref: str | None,
+        provider_result: GitHubDestinationAuthorization,
+    ) -> RegistrationIntakeResult:
         return RegistrationIntakeResult(
-            inventory,
+            None,
             (),
             authorization.binding_id,
             request.scope,
             source_selection,
             _snapshot_reference(provider_result),
             _durable_evidence(provider_result),
+            source_ref,
+            authorization.branch,
         )
 
     def _source_selection(
@@ -194,5 +230,36 @@ def _snapshot_reference(result: GitHubDestinationAuthorization) -> str:
 
 
 def _durable_evidence(result: GitHubDestinationAuthorization) -> Mapping[str, object]:
-    """Copy the provider's persistable evidence while it still owns its token."""
-    return json.loads(json.dumps(result.durable_record(), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False))
+    """Deep-freeze persistable provider evidence while it still owns its token."""
+    copied = json.loads(json.dumps(result.durable_record(), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False))
+    return _FrozenEvidence(copied)
+
+
+class _FrozenEvidence(dict[str, object]):
+    """A JSON-compatible deep-immutable mapping for durable intake evidence."""
+
+    def __init__(self, values: Mapping[str, object]) -> None:
+        dict.__init__(self)
+        for key, value in values.items():
+            dict.__setitem__(self, key, _freeze_evidence(value))
+
+    @staticmethod
+    def _immutable(*_args, **_kwargs) -> None:
+        raise TypeError("destination evidence is immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    __ior__ = _immutable
+    clear = _immutable
+    pop = _immutable
+    popitem = _immutable
+    setdefault = _immutable
+    update = _immutable
+
+
+def _freeze_evidence(value: object) -> object:
+    if isinstance(value, Mapping):
+        return _FrozenEvidence(value)
+    if isinstance(value, list):
+        return tuple(_freeze_evidence(item) for item in value)
+    return value
