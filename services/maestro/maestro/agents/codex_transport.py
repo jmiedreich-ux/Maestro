@@ -147,7 +147,11 @@ class CodexConversation:
                             "input": [
                                 {
                                     "type": "text",
-                                    "text": "Read assignment.json and perform only that assignment.",
+                                    "text": (
+                                        "Read assignment.json and perform only that assignment. "
+                                        "Execute every required output before your final response; "
+                                        "do not merely describe the work."
+                                    ),
                                 }
                             ],
                             "outputSchema": dict(self.assignment.response_schema),
