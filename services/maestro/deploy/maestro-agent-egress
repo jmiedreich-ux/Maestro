@@ -46,6 +46,39 @@ CALLER_FD_OPTIONS = frozenset(
         "--json-status-fd",
     }
 )
+CALLER_FLAGS = frozenset(
+    {
+        "--die-with-parent",
+        "--new-session",
+        "--unshare-user",
+        "--unshare-pid",
+        "--unshare-uts",
+        "--unshare-ipc",
+        "--unshare-cgroup",
+        "--clearenv",
+    }
+)
+CALLER_VALUE_OPTIONS = {
+    "--cap-drop": 1,
+    "--tmpfs": 1,
+    "--proc": 1,
+    "--dev": 1,
+    "--dir": 1,
+    "--setenv": 2,
+    "--chdir": 1,
+}
+RUNTIME_RO_SOURCES = frozenset(
+    {
+        Path("/usr"),
+        Path("/bin"),
+        Path("/lib"),
+        Path("/lib64"),
+        Path("/etc/ssl"),
+        Path("/etc/resolv.conf"),
+        Path("/etc/nsswitch.conf"),
+        Path("/etc/passwd"),
+    }
+)
 
 
 def fail(message: str) -> None:
@@ -100,7 +133,11 @@ def load_agent_account(configuration: dict[str, object]) -> pwd.struct_passwd:
         account = pwd.getpwnam(value)
     except KeyError:
         fail("configured agent account does not exist")
-    if account.pw_uid == 0:
+    try:
+        service = pwd.getpwnam(SERVICE_USER)
+    except KeyError:
+        fail("installed service account does not exist")
+    if account.pw_uid == 0 or account.pw_uid == service.pw_uid:
         fail("configured agent account is invalid")
     return account
 
@@ -188,12 +225,55 @@ def nft_remove(table: str) -> None:
     subprocess.run(["/usr/sbin/nft", "delete", "table", "inet", table], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _profile_target_is_safe(relative: Path, target: Path) -> bool:
+def load_workspace_root(configuration: dict[str, object]) -> Path:
+    value = configuration.get("workspace_root")
+    if not isinstance(value, str) or not value:
+        fail("configured workspace root is invalid")
+    root = Path(value)
+    if not root.is_absolute() or ".." in root.parts:
+        fail("configured workspace root is invalid")
+    return root
+
+
+def _workspace_mount_kind(source: Path, target: Path, workspace_root: Path, run_id: str) -> str | None:
+    """Return the generated workspace mount type, never a caller-selected host path."""
+    if (
+        not source.is_absolute()
+        or not target.is_absolute()
+        or ".." in source.parts
+        or ".." in target.parts
+        or source != target
+    ):
+        return None
+    try:
+        relative = source.relative_to(workspace_root)
+    except ValueError:
+        return None
+    if len(relative.parts) != 5 or relative.parts[2:4] != ("runs", run_id):
+        return None
+    leaf = relative.parts[-1]
+    if leaf in {"source", "input", "assignment.json"}:
+        return "read-only"
+    if leaf in {"output", "scratch"}:
+        return "read-write"
+    return None
+
+
+def _profile_target_is_safe(
+    relative: Path, target: Path, workspace_root: Path, run_id: str
+) -> bool:
     """Profiles are exposed only below the isolated run's private scratch home."""
     if not target.is_absolute() or ".." in target.parts:
         return False
-    expected = ("scratch", "home", *relative.parts)
-    return len(target.parts) >= len(expected) and target.parts[-len(expected) :] == expected
+    try:
+        workspace_relative = target.relative_to(workspace_root)
+    except ValueError:
+        return False
+    expected = ("runs", run_id, "scratch", "home", *relative.parts)
+    return (
+        len(workspace_relative.parts) == len(expected) + 2
+        and workspace_relative.parts[2:] == expected
+    )
 
 
 def _open_profile(source: Path) -> int:
@@ -227,38 +307,66 @@ def _open_profile(source: Path) -> int:
     return credential
 
 
-def profile_data_mounts(sandbox: list[str]) -> tuple[list[str], tuple[int, ...]]:
-    """Replace only approved profile binds with descriptor-backed read-only mounts."""
+def profile_data_mounts(
+    sandbox: list[str], workspace_root: Path, run_id: str, hosts_path: Path
+) -> tuple[list[str], tuple[int, ...]]:
+    """Allow only generated host mounts and descriptor-backed credential profiles."""
     rewritten: list[str] = []
     descriptors: list[int] = []
     index = 0
     try:
         while index < len(sandbox):
             value = sandbox[index]
+            if index == 0 and value == BWRAP:
+                rewritten.append(value)
+                index += 1
+                continue
             if value == "--":
                 rewritten.extend(sandbox[index:])
                 break
             if value in CALLER_FD_OPTIONS:
                 fail("isolated command cannot consume inherited descriptors")
-            if value == "--ro-bind" and index + 2 < len(sandbox):
+            if value in CALLER_FLAGS:
+                rewritten.append(value)
+                index += 1
+                continue
+            count = CALLER_VALUE_OPTIONS.get(value)
+            if count is not None:
+                if index + count >= len(sandbox) or "--" in sandbox[index + 1 : index + count + 1]:
+                    fail("isolated command option is incomplete")
+                rewritten.extend(sandbox[index : index + count + 1])
+                index += count + 1
+                continue
+            if value in {"--ro-bind", "--bind"}:
+                if index + 2 >= len(sandbox) or "--" in sandbox[index + 1 : index + 3]:
+                    fail("isolated command mount is incomplete")
                 source = Path(sandbox[index + 1])
                 target = Path(sandbox[index + 2])
-                if source.is_relative_to(PROFILE_ROOT):
+                if value == "--ro-bind" and source.is_relative_to(PROFILE_ROOT):
                     relative = source.relative_to(PROFILE_ROOT)
                     if relative in PROFILE_FILES:
-                        if not _profile_target_is_safe(relative, target):
+                        if not _profile_target_is_safe(relative, target, workspace_root, run_id):
                             fail("credential profile target is invalid")
                         descriptor = _open_profile(source)
                         descriptors.append(descriptor)
                         rewritten.extend(("--ro-bind-data", str(descriptor), str(target)))
-                    else:
-                        rewritten.extend((value, str(source), str(target)))
-                else:
+                        index += 3
+                        continue
+                    if relative.parts and relative.parts[0] in {".codex", ".claude"}:
+                        fail("credential profile is unsupported")
+                if value == "--ro-bind" and source == hosts_path and target == Path("/etc/hosts"):
                     rewritten.extend((value, str(source), str(target)))
+                elif value == "--ro-bind" and source == target and source in RUNTIME_RO_SOURCES:
+                    rewritten.extend((value, str(source), str(target)))
+                elif _workspace_mount_kind(source, target, workspace_root, run_id) == (
+                    "read-only" if value == "--ro-bind" else "read-write"
+                ):
+                    rewritten.extend((value, str(source), str(target)))
+                else:
+                    fail("isolated command mount is unsupported")
                 index += 3
                 continue
-            rewritten.append(value)
-            index += 1
+            fail("isolated command option is unsupported")
         return rewritten, tuple(descriptors)
     except BaseException:
         for descriptor in descriptors:
@@ -296,7 +404,10 @@ def run_inner() -> None:
     table = rule_table(unit)
     configuration = load_configuration()
     account = load_agent_account(configuration)
-    sandbox, profile_descriptors = profile_data_mounts(sandbox)
+    workspace_root = load_workspace_root(configuration)
+    sandbox, profile_descriptors = profile_data_mounts(
+        sandbox, workspace_root, unit.removeprefix("maestro-agent-"), hosts
+    )
     try:
         sandbox = sandbox_as_agent(sandbox, account)
         nft_apply(table, unit, pairs)

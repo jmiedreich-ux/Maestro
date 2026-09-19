@@ -420,6 +420,76 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertNotIn("maestro.cli", unit)
         self.assertIn("WantedBy=multi-user.target", unit)
 
+    def test_egress_runner_rejects_unapproved_caller_mounts(self) -> None:
+        helper_source = installer._render_egress_helper(
+            EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
+            config_file=self.paths.config_file,
+            data_dir=self.paths.data_dir,
+            service_user="maestro",
+        )
+        egress = types.ModuleType("guarded_maestro_agent_egress")
+        exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
+        workspace = self.paths.workspace_dir / "project" / "activity" / "runs" / "run-guard"
+
+        for mount in (
+            ("--bind", "/etc/shadow", "/sandbox/shadow"),
+            ("--ro-bind", "/etc/shadow", "/sandbox/shadow"),
+            ("--bind-try", "/etc/shadow", "/sandbox/shadow"),
+        ):
+            with self.subTest(mount=mount), redirect_stderr(io.StringIO()), self.assertRaises(
+                SystemExit
+            ) as failed:
+                egress.profile_data_mounts(
+                    [egress.BWRAP, *mount, "--", "/usr/bin/true"],
+                    self.paths.workspace_dir,
+                    "run-guard",
+                    Path("/run/maestro/agent-egress/run-guard/hosts"),
+                )
+            self.assertEqual(64, failed.exception.code)
+
+        rewritten, descriptors = egress.profile_data_mounts(
+            [
+                egress.BWRAP,
+                "--ro-bind",
+                str(workspace / "source"),
+                str(workspace / "source"),
+                "--bind",
+                str(workspace / "output"),
+                str(workspace / "output"),
+                "--",
+                "/usr/bin/true",
+            ],
+            self.paths.workspace_dir,
+            "run-guard",
+            Path("/run/maestro/agent-egress/run-guard/hosts"),
+        )
+        self.assertEqual((), descriptors)
+        self.assertEqual("--ro-bind", rewritten[1])
+        self.assertEqual("--bind", rewritten[4])
+
+    def test_egress_runner_rejects_agent_uid_alias_of_service(self) -> None:
+        helper_source = installer._render_egress_helper(
+            EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
+            config_file=self.paths.config_file,
+            data_dir=self.paths.data_dir,
+            service_user="maestro",
+        )
+        egress = types.ModuleType("guarded_maestro_agent_egress")
+        exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
+        service = types.SimpleNamespace(pw_uid=2101)
+        alias = types.SimpleNamespace(pw_uid=2101)
+        with (
+            mock.patch.object(
+                egress.pwd,
+                "getpwnam",
+                side_effect=lambda name: {"maestro": service, "agent-alias": alias}[name],
+            ),
+            redirect_stderr(io.StringIO()),
+            self.assertRaises(SystemExit) as failed,
+        ):
+            egress.load_agent_account({"service": {"agent_user": "agent-alias"}})
+        self.assertEqual(64, failed.exception.code)
+
     @unittest.skipUnless(os.geteuid() == 0, "requires a disposable root-owned staged test")
     def test_egress_runner_demotes_to_configured_agent_and_exposes_only_profile_mount(self) -> None:
         """Exercise the real child identity in a disposable directory, never host credentials."""
@@ -431,7 +501,8 @@ class LinuxInstallationTest(unittest.TestCase):
         profile.chmod(0o600)
         workspace = self.paths.workspace_dir / "project" / "activity" / "runs" / "run-agent"
         profile_target = workspace / "scratch" / "home" / ".codex" / "auth.json"
-        evidence_directory = self.root / "egress-evidence"
+        workspace.mkdir(parents=True)
+        evidence_directory = workspace / "output"
         evidence_directory.mkdir()
         os.chown(evidence_directory, agent.pw_uid, agent.pw_gid)
         evidence_directory.chmod(0o700)
@@ -440,7 +511,9 @@ class LinuxInstallationTest(unittest.TestCase):
         hosts.write_text("127.0.0.1 localhost\n", encoding="ascii")
         configuration = self.root / "egress-agents.toml"
         configuration.write_text(
-            '[service]\nagent_user = "nobody"\n', encoding="utf-8"
+            f'workspace_root = "{self.paths.workspace_dir}"\n\n'
+            '[service]\nagent_user = "nobody"\n',
+            encoding="utf-8",
         )
         configuration.chmod(0o600)
         database = self.paths.data_dir / "maestro.sqlite3"
@@ -463,7 +536,7 @@ class LinuxInstallationTest(unittest.TestCase):
         egress = types.ModuleType("staged_maestro_agent_egress")
         exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
 
-        directories = {Path("/output"), Path("/protected"), profile_target.parent}
+        directories = {evidence_directory, Path("/protected"), profile_target.parent}
         for directory in tuple(directories):
             current = Path("/")
             for part in directory.parts[1:]:
@@ -495,7 +568,7 @@ class LinuxInstallationTest(unittest.TestCase):
             str(profile_target),
             "--bind",
             str(evidence_directory),
-            "/output",
+            str(evidence_directory),
         ]
         for directory in sorted(directories):
             sandbox.extend(("--dir", str(directory)))
@@ -505,7 +578,7 @@ class LinuxInstallationTest(unittest.TestCase):
                 "/usr/bin/python3",
                 "-c",
                 child,
-                "/output/result.json",
+                str(evidence_directory / "result.json"),
                 str(profile_target),
                 *protected_targets,
             )
