@@ -155,13 +155,18 @@ class PreparedWorkspace:
         run = self.paths.root
         home = self.paths.scratch / "home"
         config_home = home / ".config"
-        home.mkdir(mode=0o700, exist_ok=True)
-        config_home.mkdir(mode=0o700, exist_ok=True)
+        home.mkdir(mode=0o707, exist_ok=True)
+        config_home.mkdir(mode=0o707, exist_ok=True)
+        home.chmod(0o707)
+        config_home.chmod(0o707)
         if home.is_symlink() or config_home.is_symlink():
             raise WorkspaceError("unsafe_profile", "isolated profile home is unsafe")
         profile_mounts = () if profile is None else profile.mounts()
         for _, target in profile_mounts:
-            home.joinpath(*target.parent.parts).mkdir(parents=True, exist_ok=True, mode=0o700)
+            profile_directory = home.joinpath(*target.parent.parts)
+            profile_directory.mkdir(parents=True, exist_ok=True, mode=0o707)
+            for directory in _path_chain(home, profile_directory):
+                directory.chmod(0o707)
         directories = _path_chain(self.workspace_root, run)
         arguments: list[str] = [
             str(self.isolation_executable),
@@ -351,7 +356,15 @@ class WorkspaceManager:
         run = self.root / project_id / activity_id / "runs" / run_id
         if run.exists() or run.is_symlink():
             raise WorkspaceError("workspace_exists", "run workspace already exists")
-        run.mkdir(parents=True, mode=0o700)
+        run.mkdir(parents=True, mode=0o701)
+        # Bubblewrap switches to the configured agent identity in a user
+        # namespace.  Service-owned UIDs are deliberately not mapped there,
+        # so every ancestor of an assigned run must be traverse-only for that
+        # identity.  Read access remains limited to the explicitly mounted
+        # leaves below; the service owns every inode and can still administer
+        # or remove the run.
+        for directory in _path_chain(self.root, run):
+            directory.chmod(0o701)
         paths = WorkspacePaths(
             run,
             run / "source",
@@ -362,9 +375,12 @@ class WorkspaceManager:
         )
         try:
             self._checkout(source_repository, source_commit, paths.source)
-            paths.input.mkdir(mode=0o700)
-            paths.output.mkdir(mode=0o700)
-            paths.scratch.mkdir(mode=0o700)
+            paths.input.mkdir(mode=0o701)
+            paths.output.mkdir(mode=0o707)
+            paths.scratch.mkdir(mode=0o707)
+            paths.input.chmod(0o701)
+            paths.output.chmod(0o707)
+            paths.scratch.chmod(0o707)
             for relative, content in normalized_inputs.items():
                 target = paths.input.joinpath(*PurePosixPath(relative).parts)
                 target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -372,7 +388,7 @@ class WorkspaceManager:
             paths.assignment.write_bytes(assignment_bytes)
             _make_read_only(paths.source)
             _make_read_only(paths.input)
-            paths.assignment.chmod(0o440)
+            paths.assignment.chmod(0o404)
             immutable = _hash_tree(paths.root, ("source", "input", "assignment.json"))
             return PreparedWorkspace(
                 project_id,
@@ -455,8 +471,8 @@ def _make_read_only(root: Path) -> None:
     for path in sorted(root.rglob("*"), reverse=True):
         if path.is_symlink():
             raise WorkspaceError("unsafe_source", "workspace immutable inputs contain a symbolic link")
-        path.chmod(0o550 if path.is_dir() else 0o440)
-    root.chmod(0o550)
+        path.chmod(0o505 if path.is_dir() else 0o404)
+    root.chmod(0o505)
 
 
 def _hash_tree(root: Path, names: Sequence[str]) -> dict[str, str]:

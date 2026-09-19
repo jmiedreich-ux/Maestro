@@ -388,7 +388,12 @@ def profile_data_mounts(
                             fail("credential profile target is invalid")
                         descriptor = _open_profile(source)
                         descriptors.append(descriptor)
-                        rewritten.extend(("--ro-bind-data", str(descriptor), str(target)))
+                        # The descriptor preserves the protected host file's
+                        # ownership.  Give the isolated agent a read-only
+                        # copy without relaxing that host credential mode.
+                        rewritten.extend(
+                            ("--perms", "0444", "--ro-bind-data", str(descriptor), str(target))
+                        )
                         index += 3
                         continue
                     if relative.parts and relative.parts[0] in {".codex", ".claude"}:
@@ -448,9 +453,10 @@ def make_writable_mounts_available(
             metadata = os.fstat(descriptor)
             if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != service.pw_uid:
                 fail("writable workspace mount is unsafe")
-            # The user namespace maps the root runner, not the agent's host
-            # UID.  The run's service-owned parents stay private; this grants
-            # access only through the selected output or scratch bind mount.
+            # The user namespace does not map the service UID to the agent.
+            # A prepared run grants the selected writable leaves exactly this
+            # access mode; retain that mode here for workspaces prepared by
+            # older service processes as well.
             os.fchmod(descriptor, 0o707)
         finally:
             os.close(descriptor)

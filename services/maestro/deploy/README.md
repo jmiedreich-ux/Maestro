@@ -23,7 +23,7 @@ The installer creates these separate identities and paths:
 | Shared workspaces only | group `maestro-workspace` |
 | Service configuration | `/etc/maestro/agents.toml`, root:`maestro`, mode 0640 |
 | Database and journals | `/var/lib/maestro/maestro.sqlite3`, service-created with mode 0600 |
-| Agent workspaces | `/var/lib/maestro/workspaces`, mode 0770 for the shared workspace group |
+| Agent workspaces | `/var/lib/maestro/workspaces`, mode 0771; the agent may traverse but not list the hierarchy |
 | Process schema bundles | `/opt/maestro/schemas/<name>/<version>/` |
 | Owner credential | `~OPERATOR/.config/maestro/owner.token`, operator-owned, mode 0600 |
 | Terminal configuration | `~OPERATOR/.config/maestro/cli.toml`, operator-owned, mode 0600 |
@@ -43,6 +43,12 @@ Codex and Claude CLI profile files are opened as no-follow, read-only
 descriptors and mounted only at their expected private scratch-home paths; the
 agent does not receive the service configuration, database, Owner credential,
 or the service profile directory.
+
+The service owns every workspace inode. Run ancestors are traverse-only for the
+agent; only the assigned source, input, assignment, output, and scratch leaves
+are made accessible before Bubblewrap changes to the agent user-namespace
+identity. The egress runner still accepts mounts only for those exact leaves of
+the selected run.
 
 Installation copies versioned schema resources declared by the installed
 package. Bundles are local, immutable directories named `<name>/<version>` and

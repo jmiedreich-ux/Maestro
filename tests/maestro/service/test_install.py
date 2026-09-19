@@ -126,7 +126,7 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertEqual(0o600, stat.S_IMODE(self.paths.owner_token.stat().st_mode))
         self.assertEqual(0o700, stat.S_IMODE(self.paths.operator_config_dir.stat().st_mode))
         self.assertEqual(0o640, stat.S_IMODE(self.paths.config_file.stat().st_mode))
-        self.assertEqual(0o770, stat.S_IMODE(self.paths.workspace_dir.stat().st_mode))
+        self.assertEqual(0o711, stat.S_IMODE(self.paths.workspace_dir.stat().st_mode))
         self.assertEqual(
             self.root / "usr" / "local" / "libexec" / "maestro-agent-egress",
             self.paths.egress_launcher,
@@ -613,42 +613,65 @@ class LinuxInstallationTest(unittest.TestCase):
     @unittest.skipUnless(os.geteuid() == 0, "requires a disposable root-owned staged test")
     def test_egress_runner_mounts_service_workspace_before_running_as_agent(self) -> None:
         """A root runner mounts service-only sources, then bwrap applies the agent identity."""
-        agent = pwd.getpwnam("nobody")
+        # Use distinct host identities.  The service UID becomes unmapped in
+        # Bubblewrap's user namespace, which is the real access regression.
+        agent = pwd.getpwnam("daemon")
+        service = pwd.getpwnam("nobody")
         os.chmod(self.root, 0o755)
         profile = self.paths.data_dir / ".codex" / "auth.json"
         profile.parent.mkdir(parents=True)
         profile.write_text("staged-profile", encoding="ascii")
         profile.chmod(0o600)
+        os.chown(profile, service.pw_uid, service.pw_gid)
         workspace = self.paths.workspace_dir / "project" / "activity" / "runs" / "run-agent"
         profile_target = workspace / "scratch" / "home" / ".codex" / "auth.json"
         workspace.mkdir(parents=True)
         source_directory = workspace / "source"
-        source_directory.mkdir(mode=0o700)
+        source_directory.mkdir(mode=0o505)
         source = source_directory / "service-owned-source.txt"
         source.write_text("assigned source", encoding="ascii")
-        source.chmod(0o400)
-        # This reproduces a service-created run: its path is not traversable by
-        # the configured agent on the host.  Bubblewrap must open it as root.
+        source.chmod(0o404)
+        os.chown(source_directory, service.pw_uid, service.pw_gid)
+        os.chown(source, service.pw_uid, service.pw_gid)
+        input_directory = workspace / "input"
+        input_directory.mkdir(mode=0o505)
+        input_file = input_directory / "assigned-input.txt"
+        input_file.write_text("assigned input", encoding="ascii")
+        input_file.chmod(0o404)
+        os.chown(input_directory, service.pw_uid, service.pw_gid)
+        os.chown(input_file, service.pw_uid, service.pw_gid)
+        assignment = workspace / "assignment.json"
+        assignment.write_text('{"assignment":"exact"}', encoding="ascii")
+        assignment.chmod(0o404)
+        os.chown(assignment, service.pw_uid, service.pw_gid)
+        # Service-owned workspace ancestors reveal no entries, but Bubblewrap
+        # must be able to traverse this assigned run after its user-namespace
+        # identity transition.
         for directory in (
             self.paths.workspace_dir,
             self.paths.workspace_dir / "project",
             self.paths.workspace_dir / "project" / "activity",
             self.paths.workspace_dir / "project" / "activity" / "runs",
             workspace,
-            source_directory,
         ):
-            directory.chmod(0o700)
+            directory.chmod(0o701)
         evidence_directory = workspace / "output"
         evidence_directory.mkdir()
-        evidence_directory.chmod(0o700)
+        evidence_directory.chmod(0o707)
+        os.chown(evidence_directory, service.pw_uid, service.pw_gid)
         evidence = evidence_directory / "result.json"
+        scratch_directory = workspace / "scratch"
+        scratch_directory.mkdir()
+        scratch_directory.chmod(0o707)
+        os.chown(scratch_directory, service.pw_uid, service.pw_gid)
+        scratch_evidence = scratch_directory / "result.txt"
         hosts = self.root / "hosts"
         hosts.write_text("127.0.0.1 localhost\n", encoding="ascii")
         configuration = self.root / "egress-agents.toml"
         executable = Path("/usr/bin/python3").resolve()
         configuration.write_text(
             f'workspace_root = "{self.paths.workspace_dir}"\n\n'
-            '[service]\nagent_user = "nobody"\n\n'
+            '[service]\nagent_user = "daemon"\n\n'
             f'[tools.codex]\nexecutable = "{executable}"\n',
             encoding="utf-8",
         )
@@ -668,7 +691,7 @@ class LinuxInstallationTest(unittest.TestCase):
             EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
             config_file=configuration,
             data_dir=self.paths.data_dir,
-            service_user="root",
+            service_user="nobody",
         )
         egress = types.ModuleType("staged_maestro_agent_egress")
         exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
@@ -678,6 +701,8 @@ class LinuxInstallationTest(unittest.TestCase):
             Path("/protected"),
             profile_target.parent,
             source_directory,
+            input_directory,
+            scratch_directory,
         }
         for directory in tuple(directories):
             current = Path("/")
@@ -687,9 +712,11 @@ class LinuxInstallationTest(unittest.TestCase):
         child = (
             "import json, os, sys; from pathlib import Path; "
             "Path(sys.argv[1]).write_text(json.dumps({'uid': os.geteuid(), "
-            "'profile': Path(sys.argv[2]).is_file() and bool(Path(sys.argv[2]).read_bytes()), "
-            "'source': Path(sys.argv[3]).read_text(), "
-            "'denied': [not os.access(path, os.R_OK) for path in sys.argv[4:]]}))"
+            "'profile': Path(sys.argv[3]).is_file() and bool(Path(sys.argv[3]).read_bytes()), "
+            "'source': Path(sys.argv[4]).read_text(), 'input': Path(sys.argv[5]).read_text(), "
+            "'assignment': Path(sys.argv[6]).read_text(), "
+            "'denied': [not os.access(path, os.R_OK) for path in sys.argv[7:]]})); "
+            "Path(sys.argv[2]).write_text('scratch writable')"
         )
         sandbox = [
             egress.BWRAP,
@@ -707,14 +734,23 @@ class LinuxInstallationTest(unittest.TestCase):
             "/lib64",
             "/lib64",
             "--ro-bind",
-            str(profile),
-            str(profile_target),
+            str(source_directory),
+            str(source_directory),
             "--ro-bind",
-            str(source_directory),
-            str(source_directory),
+            str(input_directory),
+            str(input_directory),
+            "--ro-bind",
+            str(assignment),
+            str(assignment),
             "--bind",
             str(evidence_directory),
             str(evidence_directory),
+            "--bind",
+            str(scratch_directory),
+            str(scratch_directory),
+            "--ro-bind",
+            str(profile),
+            str(profile_target),
         ]
         for directory in sorted(directories):
             sandbox.extend(("--dir", str(directory)))
@@ -725,8 +761,11 @@ class LinuxInstallationTest(unittest.TestCase):
                 "-c",
                 child,
                 str(evidence_directory / "result.json"),
+                str(scratch_evidence),
                 str(profile_target),
                 str(source),
+                str(input_file),
+                str(assignment),
                 *protected_targets,
             )
         )
@@ -754,9 +793,12 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertEqual(agent.pw_uid, observed["uid"])
         self.assertTrue(observed["profile"])
         self.assertEqual("assigned source", observed["source"])
+        self.assertEqual("assigned input", observed["input"])
+        self.assertEqual('{"assignment":"exact"}', observed["assignment"])
         self.assertEqual([True, True, True], observed["denied"])
-        self.assertEqual(0o700, stat.S_IMODE(source_directory.stat().st_mode))
+        self.assertEqual(0o505, stat.S_IMODE(source_directory.stat().st_mode))
         self.assertEqual(0o707, stat.S_IMODE(evidence_directory.stat().st_mode))
+        self.assertEqual("scratch writable", scratch_evidence.read_text(encoding="ascii"))
 
     def _start_server(self, application) -> str:
         server = InstalledServiceServer(application, "127.0.0.1", 0)
