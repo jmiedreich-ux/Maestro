@@ -82,13 +82,14 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 
 Preparation: isolated Python environment at the assigned base; `PYTHONPATH=services/maestro` for source-tree checks. Installed/external resources must come from the approved setup; do not install/provision or broaden access implicitly.
 
-Exact test command:
+Exact test commands:
 
 ```json
+["python","-m","unittest","discover","-s","tests/maestro/foundation","-p","test_github_destination.py","-v"]
 ["python","-m","unittest","discover","-s","tests/maestro/foundation","-p","test_publication.py","-v"]
 ```
 
-Required assertions: completion criteria 1 and 2, plus this essential rejection/recovery boundary: Denied access/moved head/lost response reconciles before retry; no local-only success.
+Required assertions: completion criteria 1 through 3, plus this essential rejection/recovery boundary: A wrong App/installation, missing Contents-write or Administration-read permission, protected/ruleset-bound branch, stale provider result, moved head or lost response creates no remote write or local-only success and reconciles before retry.
 
 The test file must observe the real included capability. Low-level deterministic inputs may isolate component logic; any actual service/agent/Git path promised by these criteria requires real path evidence, not a fake result. Missing installed resources are recorded as UNTESTED with nonzero status; do not convert them into success using a skip. Capture actual inputs, expected/observed results, command/exit output and source revision. No tests were run when writing this specification.
 
