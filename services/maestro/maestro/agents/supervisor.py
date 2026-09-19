@@ -393,7 +393,7 @@ class AgentSupervisor:
             last_activity_monotonic=self.clock(),
             events=(*intent.events, self._event("launch_confirmed", pid=unit.pid)),
         )
-        self.journal.save(running)
+        running = self._save(running)
         self._managed[key] = managed
         self._drain(key, managed, "stdout")
         self._drain(key, managed, "stderr")
