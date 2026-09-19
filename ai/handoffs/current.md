@@ -2920,3 +2920,10 @@ All M3 blocking review, integration and QA findings must classify their cause as
 | Correction-cause reporting | Packet, integration, QA and milestone reviewers, for every blocking M3 finding. | One valid cause classification, controlling requirement/evidence and affected packet; M3 report calculates first-pass approval, specification sufficiency and cause distribution. |
 
 All five safeguards are planned and enforceable. M3 still needs the Owner's separate authorization to begin execution. At M3 QA setup, the service must recheck the isolated test Owner credential and GitHub App binding without exposing either value.
+
+
+## Required post-milestone finalization — 2026-09-19
+
+Owner decision: every promoted milestone must receive delivery-host release and evidence finalization before the next milestone starts. The Coordinator releases the exact verified `master` revision through the approved installation path when the milestone changes installed runtime behavior, records a release receipt, then removes only run-owned temporary test material after final evidence is retained. Unclear release or cleanup blocks later work; it never justifies broad deletion or substituting a candidate worktree.
+
+Current application: M2 — Supervised shared processes is merged at `5c79bc7e9c4b38fe3603c0cfac43fe6ea6f3c486`, but the installed `/opt/maestro` package does not contain the M2 agent modules. The retained M2 source worktree does contain them. M2 delivery-host finalization is therefore pending and M3 — Confirmed registration and history must not start. Local M3 temporary route-check artifacts and workspaces were removed; only `maestro.service` is active. Existing M2 local QA material is inactive evidence and must be consolidated or removed only under the new scoped-cleanup rule after the release receipt exists.
