@@ -2904,3 +2904,5 @@ The route and workspace issues were implementation/QA-delivery defects, not a mi
 | Evidence is valid only when it identifies the exact candidate, run and source input. | Make candidate hash and unique run identity mandatory in every QA receipt and review input. |
 | Review only the declared milestone contribution. | Start outcome review from the stated inclusion and exclusion boundary; record later-domain gaps as outside scope unless they prevent the claimed contribution. |
 | Report measured work, not inferred effort. | Show lifecycle state durations and `unknown` values; never estimate active time from commits or calendar gaps. |
+
+M3 cannot start until its safeguard checklist names these five lessons, their owner, execution stage and required evidence. The checklist starts a manual lifecycle log at dispatch; requires real protected-route smoke checks at the first integrated candidate; rejects receipts without candidate/run/source identity; and attaches M3's inclusion/exclusion boundary to its outcome-review input. These safeguards do not expand M3 scope.

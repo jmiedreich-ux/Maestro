@@ -23,6 +23,12 @@ Compare the delivered milestone with its pinned architecture, milestone requirem
    - **Lessons learned:** a specific preparation, execution or reporting change, its evidence, and the later milestone or process it can improve.
 5. Save the record in the current handoff or the service's durable execution record before starting the next development milestone.
 
+## Applying lessons
+
+Before the next development milestone starts, the Coordinator reads applicable earlier retrospectives and saves a safeguard checklist for that milestone. Each checklist entry names the lesson, the concrete prevention action, the delivery stage, the evidence required and its owner. A later milestone does not start until this checklist exists; the listed actions run at their named stage and their results are retained with the milestone evidence.
+
+For example, a measurement lesson starts a manual lifecycle log at dispatch; a real-host validation lesson schedules a protected smoke check at the first integrated candidate; a receipt lesson validates candidate, run and source identities before accepting QA evidence; and a scope lesson attaches the stated inclusion and exclusion boundary to the outcome-review input. The checklist applies lessons without silently expanding a milestone's confirmed scope. A needed scope change follows the existing architecture and Owner authority.
+
 ## Boundaries
 
 This retrospective is not Quality Assurance, an independent review or a correction round. It cannot change the completed milestone result, invent a defect from a preference, add work to a later milestone automatically or alter scope. A required outcome found incomplete before promotion uses the normal milestone-gap process. A concern discovered after promotion follows the existing architecture and Owner change authority.
