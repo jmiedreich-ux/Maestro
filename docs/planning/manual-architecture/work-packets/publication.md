@@ -1,6 +1,6 @@
 # Publication journal
 
-Specification version: 1. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
+Specification version: 2. Manual planning record; not a runtime allocation or permission to execute. Read [common packet rules](../packet-rules.md), which are part of this record.
 
 ## Outcome and milestone
 
@@ -18,11 +18,11 @@ Controlling behavior: [candidate publication](../../../architecture.md#candidate
 
 ## Included scope and interfaces
 
-Add authorized repository profiles, bounded Git calls, expected-parent journal, exact remote byte verification and uncertain-write reconciliation.
+Add executable authorized GitHub App repository profiles, service-only installation-token exchange, exact destination-policy evaluation, bounded Git calls, expected-parent journal, exact remote byte verification and uncertain-write reconciliation.
 
-Provider contract: Foundation publication journal exposes prepare, attempt, observe and reconcile operations; callers control eligibility and post-publication domain activation.
+Provider contract: Foundation exposes a GitHub destination-authorization provider and publication-journal prepare, attempt, observe and reconcile operations. The provider validates the typed configured profile, mints the service-only installation token and returns non-secret allowed, blocked or unverifiable evidence. The journal accepts a fresh matching allowed result only; callers control eligibility and post-publication domain activation.
 
-Consumer connection: Registration and architecture publication and Execution pushes/imports/promotions use the same journal primitive but retain separate policy.
+Consumer connection: Source intake consumes the provider before reading. Registration confirmation obtains a fresh matching result immediately before it invokes the journal write. Registration and architecture publication and Execution pushes/imports/promotions use the same journal primitive but retain separate policy.
 
 ## Exclusions and stop boundary
 
@@ -43,8 +43,10 @@ No other repository write is permitted by this record.
 |---|---|---|
 | `services/maestro/maestro/foundation/git_read.py` | Python | Assigned behavior and integration contract |
 | `services/maestro/maestro/foundation/git_publication.py` | Python | Assigned behavior and integration contract |
-| `tests/maestro/foundation/test_publication.py` | Python | Real main-path and essential-failure checks |
-| `services/maestro/maestro/foundation/credentials.py` | Python | Assigned behavior and integration contract |
+| `services/maestro/maestro/foundation/github_destination.py` | Python | Typed service-owned GitHub App destination-authorization provider |
+| `tests/maestro/foundation/test_publication.py` | Python | Real journal main-path and essential-failure checks |
+| `tests/maestro/foundation/test_github_destination.py` | Python | Provider main-path and essential-failure checks |
+| `services/maestro/maestro/foundation/credentials.py` | Python | Service-only App private-key and installation-token handling |
 
 Non-JSON deliverables use schema reference null. JSON process schemas implement the named architecture definitions and installation mapping, not a private alternate format. No optional hidden output or broad directory permission is inferred.
 
@@ -70,8 +72,9 @@ Actual installed route/model, permissions, credentials and workspace identity ar
 
 ## Completion criteria
 
-1. Save expected parent, intended content/tree/commit and bound repository profile; publish through privileged service Git and verify exact remote ref/bytes.
-2. Simulate lost acknowledgment and remote movement; read/reconcile before retry, never force-push or silently overwrite. Access denial creates no success receipt.
+1. Validate the typed GitHub App profile; save the immutable non-secret effective-profile snapshot, expected parent and intended content/tree/commit; create the installation token only inside the service and verify the exact App, installation, repository, branch, contents-write and Administration-read permissions and branch/ruleset policy.
+2. Permit source read or remote publication only for a fresh matching allowed result on an unprotected branch with no active repository or organization ruleset. Immediately before every journal remote write, reject a stale, changed, blocked or unverifiable result; access or policy denial creates no success receipt or write.
+3. Simulate lost acknowledgment and remote movement; read/reconcile before retry, never force-push or silently overwrite.
 3. The included provider/consumer responsibilities use the real module/service boundary and meaningful declared outputs, with no unsupported stub or silent fallback. A provider demonstrates its boundary with a real minimal caller; later consumer implementation and assembled acceptance follow the common integration rules.
 4. Mandatory checks below produce actual passing evidence for included behavior; disclose missing evidence as UNTESTED. Submit the exact scoped result for independent review under the common completion rules.
 
