@@ -81,6 +81,20 @@ RUNTIME_RO_SOURCES = frozenset(
 )
 
 
+def _tool_runtime_ro_sources(sandbox: list[str]) -> frozenset[Path]:
+    """Return the only non-static runtime paths generated for this command."""
+    try:
+        executable = Path(sandbox[sandbox.index("--") + 1])
+    except (IndexError, ValueError):
+        return frozenset()
+    if not executable.is_absolute() or ".." in executable.parts:
+        return frozenset()
+    sources = {executable}
+    if executable.name == "codex":
+        sources.add(executable.with_name("codex-code-mode-host"))
+    return frozenset(sources)
+
+
 def fail(message: str) -> None:
     print(f"maestro agent egress: {message}", file=sys.stderr)
     raise SystemExit(64)
@@ -313,6 +327,7 @@ def profile_data_mounts(
     """Allow only generated host mounts and descriptor-backed credential profiles."""
     rewritten: list[str] = []
     descriptors: list[int] = []
+    tool_runtime_sources = _tool_runtime_ro_sources(sandbox)
     index = 0
     try:
         while index < len(sandbox):
@@ -357,6 +372,8 @@ def profile_data_mounts(
                 if value == "--ro-bind" and source == hosts_path and target == Path("/etc/hosts"):
                     rewritten.extend((value, str(source), str(target)))
                 elif value == "--ro-bind" and source == target and source in RUNTIME_RO_SOURCES:
+                    rewritten.extend((value, str(source), str(target)))
+                elif value == "--ro-bind" and source == target and source in tool_runtime_sources:
                     rewritten.extend((value, str(source), str(target)))
                 elif _workspace_mount_kind(source, target, workspace_root, run_id) == (
                     "read-only" if value == "--ro-bind" else "read-write"

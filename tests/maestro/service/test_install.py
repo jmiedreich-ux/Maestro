@@ -467,6 +467,63 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertEqual("--ro-bind", rewritten[1])
         self.assertEqual("--bind", rewritten[4])
 
+    def test_egress_runner_allows_only_the_generated_tool_runtime_self_mounts(self) -> None:
+        helper_source = installer._render_egress_helper(
+            EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
+            config_file=self.paths.config_file,
+            data_dir=self.paths.data_dir,
+            service_user="maestro",
+        )
+        egress = types.ModuleType("guarded_maestro_agent_egress")
+        exec(compile(helper_source, str(EGRESS_HELPER_PATH), "exec"), egress.__dict__)
+        tool_directory = self.root / "generated-tools"
+        tool_directory.mkdir()
+        executable = tool_directory / "codex"
+        companion = tool_directory / "codex-code-mode-host"
+        sensitive = self.root / "service-data" / "agent-config.toml"
+        sensitive.parent.mkdir()
+        for path in (executable, companion, sensitive):
+            path.write_text("fixture", encoding="ascii")
+
+        rewritten, descriptors = egress.profile_data_mounts(
+            [
+                egress.BWRAP,
+                "--ro-bind",
+                str(executable),
+                str(executable),
+                "--ro-bind",
+                str(companion),
+                str(companion),
+                "--",
+                str(executable),
+            ],
+            self.paths.workspace_dir,
+            "run-guard",
+            Path("/run/maestro/agent-egress/run-guard/hosts"),
+        )
+        self.assertEqual((), descriptors)
+        self.assertEqual(str(executable), rewritten[2])
+        self.assertEqual(str(companion), rewritten[5])
+
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failed:
+            egress.profile_data_mounts(
+                [
+                    egress.BWRAP,
+                    "--ro-bind",
+                    str(executable),
+                    str(executable),
+                    "--ro-bind",
+                    str(sensitive),
+                    str(sensitive),
+                    "--",
+                    str(executable),
+                ],
+                self.paths.workspace_dir,
+                "run-guard",
+                Path("/run/maestro/agent-egress/run-guard/hosts"),
+            )
+        self.assertEqual(64, failed.exception.code)
+
     def test_egress_runner_rejects_agent_uid_alias_of_service(self) -> None:
         helper_source = installer._render_egress_helper(
             EGRESS_HELPER_PATH.read_text(encoding="utf-8"),
