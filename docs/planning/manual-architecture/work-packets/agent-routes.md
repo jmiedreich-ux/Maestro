@@ -20,7 +20,7 @@ Controlling behavior: [tool and model selection](../../../architecture.md#tool-a
 
 Collect process-supplied architect/reviewer selections separately; validate installed transport, exact model, permissions, output and assigned location/context requirements.
 
-Provider contract: Routes resolve immutable assignment settings plus a live availability check; credentials are non-secret references resolved by service only.
+Provider contract: Routes resolve immutable assignment settings, including a nonempty exact HTTPS hostname-and-port permitted-destination list, plus a live availability check; credentials are non-secret references resolved by service only. The destination list is included in the resolved configuration hash and rejects wildcards or an empty policy.
 
 Consumer connection: Transport and supervision use the resolved route; process handlers own when selection questions are collected.
 

@@ -26,7 +26,7 @@ Consumer connection: Agent transport and each process supply recipient handlers;
 
 ## Exclusions and stop boundary
 
-Do not implement the work of another packet, change accepted product behavior, delete old modules/data, alter unlisted files or use test results as independent approval. Common exclusions and authority boundaries apply. Stop affected work for a missing prerequisite, schema/behavior conflict, unavailable required resource or unsafe operation; return the concrete issue through the assigned process. Technical failure does not authorize changing scope or resetting a budget.
+Do not implement the work of another packet, change accepted product behavior, delete old modules/data, alter unlisted files or use test results as independent approval. Owner-approved execution amendment: the terminal provider contract may be minimally extended only in `services/maestro/maestro/terminal/extensions.py` and `services/maestro/maestro/terminal/workspace.py` so this extension receives real ordinary-answer submission and choice identity; no renderer redesign or unrelated terminal change is permitted. Common exclusions and authority boundaries apply. Stop affected work for a missing prerequisite, schema/behavior conflict, unavailable required resource or unsafe operation; return the concrete issue through the assigned process. Technical failure does not authorize changing scope or resetting a budget.
 
 ## Dependencies and safe parallel work
 
@@ -44,6 +44,9 @@ No other repository write is permitted by this record.
 | `services/maestro/maestro/service/questions.py` | Python | Assigned behavior and integration contract |
 | `tests/maestro/service/test_questions.py` | Python | Real main-path and essential-failure checks |
 | `services/maestro/maestro/terminal/questions.py` | Python | Assigned behavior and integration contract |
+| `services/maestro/maestro/terminal/extensions.py` | Python | Minimal generic extension input/choice provider hook for linked questions |
+| `services/maestro/maestro/terminal/workspace.py` | Python | Minimal generic workspace routing to that provider hook |
+| `services/maestro/maestro/service/main.py` | Python | Minimal installed-service composition of linked-question publication, reads, and answer delivery |
 
 Non-JSON deliverables use schema reference null. JSON process schemas implement the named architecture definitions and installation mapping, not a private alternate format. No optional hidden output or broad directory permission is inferred.
 

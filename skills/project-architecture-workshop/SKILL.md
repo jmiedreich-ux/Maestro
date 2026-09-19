@@ -30,6 +30,17 @@ Use the [overview](assets/templates/project-overview.md), [architecture](assets/
 - Check boundaries, shared responsibilities, duplication, dependencies, and interactions across the whole product as topics develop. Do not wait until milestone writing to discover a missing service.
 - Separate fact, owner agreement, architect decision, proposal, and unresolved question. Keep architecture impersonal. Use plain concise wording, stable subject-based filenames, and full subjects with coded references.
 
+## Simplify active planning sources
+
+Use the named action **“Simplify active planning sources”** when the owner asks to clean planning documentation, replace legacy stage shorthand, or make the current architecture easier to read. It is a documentation transformation, not an implementation or repository-cleanup action.
+
+1. Identify the current overview, architecture, delivery declarations, questions, and any machine-consumed records. Confirm which files are active sources and which are historical evidence before editing.
+2. Preserve current behavior, scope, unresolved decisions, dependencies, and completion evidence. Move prior packet, agent, pull-request, and attempt history out of active reader-facing sources; use existing Git history as the archive unless the owner separately directs archival or deletion.
+3. Give delivery stages plain outcome-based titles and subject-based filenames. Keep immutable identifiers only where a machine consumer or an explicit authority requires them; never make a bare stage code the reader-facing name.
+4. Replace a resolved-question log with a short current architecture and an open-question list. Do not present a review finding, proposal, or historical behavior as an approved decision.
+5. Update every active reference, structured record, and workshop state affected by renamed or simplified sources. Inspect consumers before changing machine keys or schema fields.
+6. Validate links, structured files, and documentation diffs. Report what remains intentionally historical or outside the cleanup boundary. Save the workshop state and do not publish remotely without separate authorization.
+
 ## Save, review, and continue
 
 Save after a coherent topic is settled, before moving to another major area, when asked to write up, before context compaction/session handoff where possible, and at a natural work boundary during long drafting. Do not wait for the owner to remind the agent.
