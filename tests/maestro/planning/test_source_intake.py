@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import subprocess
 import tempfile
 import time
@@ -73,6 +72,12 @@ class _MovingBranchReader(RemoteGitReader):
     def snapshot(self, remote, branch, paths, **kwargs):
         self._move()
         return super().snapshot(remote, branch, paths, **kwargs)
+
+
+class _UnreadableDefaultReader(ExactSourceReader):
+    @staticmethod
+    def default_branch(_remote, **_kwargs):
+        raise SourceIntakeError("source repository has no readable default branch")
 
 
 class ExactSourceIntakeTest(unittest.TestCase):
@@ -165,7 +170,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual(64, len(result.destination_snapshot_reference))
         self.assertEqual("allowed", result.destination_evidence["decision"])
         self.assertEqual("project-profile", result.destination_evidence["snapshot"]["profile_name"])
-        self.assertNotIn("installation-token", json.dumps(result.destination_evidence))
+        self.assertNotIn("installation-token", repr(result.destination_evidence))
         self.assertEqual(["app", "installation", "token", "repository", "branch", "policy"], self.api.calls)
 
     def test_missing_questions_prevent_provider_and_source_read(self) -> None:
@@ -186,9 +191,13 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual("refs/heads/main", attempt.source_ref)
         self.assertEqual("main", attempt.publication_branch)
         self.assertEqual(64, len(attempt.destination_snapshot_reference))
-        self.assertNotIn("installation-token", json.dumps(attempt.destination_evidence))
+        self.assertNotIn("installation-token", repr(attempt.destination_evidence))
         with self.assertRaises(TypeError):
             attempt.destination_evidence["snapshot"]["branch"] = "other"
+        with self.assertRaises(TypeError):
+            dict.__setitem__(attempt.destination_evidence, "decision", "allowed")
+        with self.assertRaises(TypeError):
+            dict.__setitem__(attempt.destination_evidence["snapshot"], "branch", "other")
 
     def test_source_read_failure_retains_allowed_snapshot_and_evidence(self) -> None:
         with self.assertRaisesRegex(IntakeError, "does not contain") as raised:
@@ -198,6 +207,17 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual("allowed", attempt.destination_evidence["decision"])
         self.assertEqual("refs/heads/main", attempt.source_ref)
         self.assertIsNotNone(attempt.failure)
+
+    def test_default_branch_failure_retains_provider_attempt(self) -> None:
+        with self.assertRaisesRegex(IntakeError, "no readable default branch") as raised:
+            self._intake(_UnreadableDefaultReader()).begin(
+                self._request(source_ref=None), questions=_Questions()
+            )
+        attempt = raised.exception.attempt
+        self.assertIsNone(attempt.inventory)
+        self.assertIsNone(attempt.source_ref)
+        self.assertEqual("allowed", attempt.destination_evidence["decision"])
+        self.assertEqual(64, len(attempt.destination_snapshot_reference))
 
     def test_missing_destination_permission_or_allowlist_fails_closed(self) -> None:
         self.api.permissions = {"contents": "read", "administration": "read"}

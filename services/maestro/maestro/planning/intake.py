@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterator, Mapping as MappingABC
 from dataclasses import dataclass, replace
 from typing import Iterable, Mapping, Protocol
 
@@ -151,6 +152,11 @@ class RegistrationIntake:
         ) as error:
             saved_attempt = None if attempt is None else replace(attempt, failure=str(error))
             raise IntakeError(str(error), attempt=saved_attempt) from error
+        except IntakeError as error:
+            saved_attempt = error.attempt
+            if saved_attempt is None and attempt is not None:
+                saved_attempt = replace(attempt, failure=str(error))
+            raise IntakeError(str(error), attempt=saved_attempt) from error
         return replace(attempt, inventory=inventory)
 
     @staticmethod
@@ -235,30 +241,32 @@ def _durable_evidence(result: GitHubDestinationAuthorization) -> Mapping[str, ob
     return _FrozenEvidence(copied)
 
 
-class _FrozenEvidence(dict[str, object]):
-    """A JSON-compatible deep-immutable mapping for durable intake evidence."""
+class _FrozenEvidence(MappingABC[str, object]):
+    """A JSON-shaped, deep-immutable mapping for durable intake evidence."""
+
+    __slots__ = ("_values",)
 
     def __init__(self, values: Mapping[str, object]) -> None:
-        dict.__init__(self)
-        for key, value in values.items():
-            dict.__setitem__(self, key, _freeze_evidence(value))
+        object.__setattr__(self, "_values", tuple((key, _freeze_evidence(value)) for key, value in values.items()))
 
-    @staticmethod
-    def _immutable(*_args, **_kwargs) -> None:
+    def __setattr__(self, _name: str, _value: object) -> None:
         raise TypeError("destination evidence is immutable")
 
-    __setitem__ = _immutable
-    __delitem__ = _immutable
-    __ior__ = _immutable
-    clear = _immutable
-    pop = _immutable
-    popitem = _immutable
-    setdefault = _immutable
-    update = _immutable
+    def __getitem__(self, key: str) -> object:
+        for candidate, value in self._values:
+            if candidate == key:
+                return value
+        raise KeyError(key)
+
+    def __iter__(self) -> Iterator[str]:
+        return (key for key, _value in self._values)
+
+    def __len__(self) -> int:
+        return len(self._values)
 
 
 def _freeze_evidence(value: object) -> object:
-    if isinstance(value, Mapping):
+    if isinstance(value, MappingABC):
         return _FrozenEvidence(value)
     if isinstance(value, list):
         return tuple(_freeze_evidence(item) for item in value)
