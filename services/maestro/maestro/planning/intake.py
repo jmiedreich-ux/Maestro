@@ -206,6 +206,41 @@ class RegistrationIntakeResult:
         if self.inventory is None:
             if self.selection_decision_ref is not None:
                 raise IntakeError("an incomplete intake cannot have a selection decision reference")
+            if self.failure is None:
+                return
+            if not isinstance(self.failure, str) or not self.failure.strip() or self.missing_questions:
+                raise IntakeError("a failed intake record is invalid")
+            required = {
+                "repository": self.repository,
+                "repository_binding_id": self.repository_binding_id,
+                "selected_scope": self.selected_scope,
+                "source_selection": self.source_selection,
+                "destination_snapshot_reference": self.destination_snapshot_reference,
+                "destination_evidence": self.destination_evidence,
+                "publication_branch": self.publication_branch,
+            }
+            text_fields = {key: value for key, value in required.items() if key != "destination_evidence"}
+            if any(not isinstance(value, str) or not value for value in text_fields.values()) or not isinstance(self.destination_evidence, MappingABC):
+                raise IntakeError("a failed intake record is incomplete")
+            assert self.repository is not None
+            assert self.source_selection is not None
+            assert self.destination_snapshot_reference is not None
+            assert self.destination_evidence is not None
+            assert self.publication_branch is not None
+            if normalize_repository(self.repository) != self.repository:
+                raise IntakeError("saved intake repository is not normalized")
+            validate_branch(self.publication_branch)
+            if self.source_selection not in {"supplied", "inherited", "defaulted"}:
+                raise IntakeError("saved intake source selection is invalid")
+            if self.source_ref is None:
+                if self.source_selection != "defaulted":
+                    raise IntakeError("saved intake source selector is missing")
+            elif validate_source_ref(self.source_ref) != self.source_ref:
+                raise IntakeError("saved intake source selector is not normalized")
+            _validate_destination_evidence(
+                self.destination_evidence, self.repository, self.repository_binding_id,
+                self.publication_branch, self.destination_snapshot_reference,
+            )
             return
         if self.missing_questions or self.failure is not None:
             raise IntakeError("a successful intake cannot retain questions or failure")
@@ -239,8 +274,11 @@ class RegistrationIntakeResult:
             raise IntakeError("saved intake selector does not match its inventory")
         if not self.inventory.source_references or not self.inventory.outcomes:
             raise IntakeError("saved intake inventory is incomplete")
-        if _snapshot_reference_from_evidence(self.destination_evidence) != self.destination_snapshot_reference:
-            raise IntakeError("saved intake destination snapshot does not match its evidence")
+        assert self.repository_binding_id is not None
+        _validate_destination_evidence(
+            self.destination_evidence, self.repository, self.repository_binding_id,
+            self.publication_branch, self.destination_snapshot_reference,
+        )
         if _selection_decision_reference(
             self.repository, self.source_selection, self.source_ref, self.inventory.source_commit,
             self.inventory.overview_path, self.publication_branch, self.destination_snapshot_reference,
@@ -425,6 +463,36 @@ def _snapshot_reference_from_evidence(evidence: Mapping[str, object]) -> str:
     if not isinstance(snapshot, MappingABC):
         raise IntakeError("saved intake destination evidence lacks a snapshot")
     return hashlib.sha256(_canonical_json(_plain_json(snapshot)).encode("utf-8")).hexdigest()
+
+
+def _validate_destination_evidence(
+    evidence: Mapping[str, object], repository: str, binding_id: str,
+    publication_branch: str, snapshot_reference: str,
+) -> None:
+    fields = {"decision", "snapshot", "observed_at", "evidence_hashes", "reason"}
+    if set(evidence) != fields:
+        raise IntakeError("saved intake destination evidence is invalid")
+    decision = evidence["decision"]
+    snapshot = evidence["snapshot"]
+    observed_at = evidence["observed_at"]
+    hashes = evidence["evidence_hashes"]
+    reason = evidence["reason"]
+    if not isinstance(decision, str) or decision not in {"allowed", "blocked", "unverifiable"}:
+        raise IntakeError("saved intake destination decision is invalid")
+    if isinstance(observed_at, bool) or not isinstance(observed_at, (int, float)):
+        raise IntakeError("saved intake destination observation is invalid")
+    if not isinstance(reason, str | type(None)):
+        raise IntakeError("saved intake destination reason is invalid")
+    if not isinstance(snapshot, MappingABC) or not isinstance(hashes, MappingABC):
+        raise IntakeError("saved intake destination evidence is invalid")
+    if snapshot.get("repository") != repository or snapshot.get("branch") != publication_branch:
+        raise IntakeError("saved intake destination snapshot does not match its target")
+    if snapshot.get("binding_id") != binding_id:
+        raise IntakeError("saved intake destination snapshot does not match its binding")
+    if any(not isinstance(key, str) or not isinstance(value, str) or len(value) != 64 for key, value in hashes.items()):
+        raise IntakeError("saved intake destination evidence hashes are invalid")
+    if _snapshot_reference_from_evidence(evidence) != snapshot_reference:
+        raise IntakeError("saved intake destination snapshot does not match its evidence")
 
 
 def _selection_decision_reference(

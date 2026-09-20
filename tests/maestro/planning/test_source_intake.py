@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -170,6 +171,13 @@ class ExactSourceIntakeTest(unittest.TestCase):
         values.update(changes)
         return RegistrationIntakeRequest(**values)
 
+    @staticmethod
+    def _redigest(record: dict[str, object]) -> str:
+        payload = {key: value for key, value in record.items() if key != "integrity_sha256"}
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+
     def test_reads_authorized_exact_source_and_retains_provider_snapshot_evidence(self) -> None:
         result = self._intake().begin(self._request(), questions=_Questions())
 
@@ -240,6 +248,37 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertIsNotNone(restored.failure)
         self.assertEqual("owner/project", restored.repository)
         self.assertIsNone(restored.selection_decision_ref)
+
+    def test_failed_attempt_reload_rejects_semantically_tampered_common_state(self) -> None:
+        with self.assertRaisesRegex(IntakeError, "does not contain") as raised:
+            self._intake().begin(self._request(overview_path="docs/missing.md"), questions=_Questions())
+        saved = raised.exception.attempt.to_json()
+        cases = (
+            ("repository", "OWNER/PROJECT", "not normalized"),
+            ("source_selection", "guessed", "source selection is invalid"),
+            ("source_ref", "main", "full branch"),
+            ("publication_branch", "main//other", "supported branch"),
+            ("failure", "", "failed intake record is invalid"),
+        )
+        for field, replacement, expected in cases:
+            with self.subTest(field=field):
+                tampered = json.loads(saved)
+                tampered[field] = replacement
+                tampered["integrity_sha256"] = self._redigest(tampered)
+                with self.assertRaisesRegex(IntakeError, expected):
+                    self._intake().rehydrate(json.dumps(tampered))
+
+        tampered = json.loads(saved)
+        tampered["destination_evidence"]["snapshot"]["branch"] = "other"
+        tampered["destination_snapshot_reference"] = hashlib.sha256(
+            json.dumps(
+                tampered["destination_evidence"]["snapshot"], sort_keys=True,
+                separators=(",", ":"), ensure_ascii=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        tampered["integrity_sha256"] = self._redigest(tampered)
+        with self.assertRaisesRegex(IntakeError, "does not match its target"):
+            self._intake().rehydrate(json.dumps(tampered))
 
     def test_missing_questions_prevent_provider_and_source_read(self) -> None:
         questions = _Questions()
