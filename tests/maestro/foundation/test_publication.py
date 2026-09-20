@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import subprocess
 import tempfile
 import unittest
@@ -46,7 +48,7 @@ class PublicationJournalTest(unittest.TestCase):
         self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "seed")
         self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
         self.seed = self.output("git", "-C", str(self.work), "rev-parse", "HEAD")
-        database = Database(
+        self.database = Database(
             StorageSettings(path=self.root / "maestro.sqlite3"), publication_migrations()
         )
         repository_profile = RepositoryProfile(
@@ -56,7 +58,7 @@ class PublicationJournalTest(unittest.TestCase):
             allowed_branch_patterns=("main",),
         )
         self.credentials = {"github-app-project": "fixture-credential"}
-        transport = ServiceGitTransport(
+        self.transport = ServiceGitTransport(
             (ServiceGitRoute("owner/project", "github-app-project", str(self.remote)),),
             lambda reference: self.credentials[reference],
         )
@@ -72,13 +74,14 @@ class PublicationJournalTest(unittest.TestCase):
         )
         self.destination_api = _FixtureDestinationApi()
         self.destination = GitHubDestinationProvider(profile, self.destination_api)
+        self.authorizer = RepositoryAuthorizer(
+            {repository_profile.name: repository_profile},
+            (RepositoryBinding("binding-project", "owner/project", repository_profile.name),),
+        )
         self.journal = PublicationJournal(
-            database,
-            RepositoryAuthorizer(
-                {repository_profile.name: repository_profile},
-                (RepositoryBinding("binding-project", "owner/project", repository_profile.name),),
-            ),
-            transport,
+            self.database,
+            self.authorizer,
+            self.transport,
             self.destination,
         )
 
@@ -110,6 +113,36 @@ class PublicationJournalTest(unittest.TestCase):
     def authorize(self):
         return self.destination.authorize("owner/project", "main")
 
+    def prepare_confirmation(
+        self,
+        *,
+        number: int,
+        parent: str,
+        index: bytes,
+        expected_index: bytes | None,
+    ) -> str:
+        operation_id = f"confirmation-{number}"
+        receipt_path = f".maestro/registrations/confirmations/{operation_id}.json"
+        index_path = ".maestro/registrations/index.json"
+        self.journal.prepare(
+            operation_id=operation_id,
+            operation_type="registration_confirmation",
+            request_id=f"request-{number}",
+            repository="owner/project",
+            remote=str(self.remote),
+            branch="main",
+            expected_parent=parent,
+            files={
+                receipt_path: json.dumps(
+                    {"confirmation_id": operation_id}, separators=(",", ":")
+                ).encode("utf-8"),
+                index_path: index,
+            },
+            expected_files={receipt_path: None, index_path: expected_index},
+            destination_authorization=self.authorize(),
+        )
+        return operation_id
+
     def test_prepares_then_publishes_exact_bytes_to_real_remote_without_force(self) -> None:
         self.prepare()
         result = self.journal.attempt("publish-one", self.authorize())
@@ -128,6 +161,289 @@ class PublicationJournalTest(unittest.TestCase):
         self.assertEqual("binding-project", operation.authorization.binding_id)
         self.assertEqual("github-app-project", operation.authorization.credential_reference)
         self.assertEqual("verified", operation.state)
+
+    def test_creates_then_compare_and_replaces_receipt_and_index_in_one_commit(self) -> None:
+        first_index = b'{"confirmation_refs":["confirmation-1"]}\n'
+        first_id = self.prepare_confirmation(
+            number=1, parent=self.seed, index=first_index, expected_index=None
+        )
+        first = self.journal.attempt(first_id, self.authorize())
+
+        second_index = b'{"confirmation_refs":["confirmation-1","confirmation-2"]}\n'
+        second_id = self.prepare_confirmation(
+            number=2,
+            parent=first.remote_commit,
+            index=second_index,
+            expected_index=first_index,
+        )
+        second = self.journal.attempt(second_id, self.authorize())
+
+        self.assertEqual("verified", second.state)
+        self.assertEqual(
+            second_index,
+            subprocess.check_output(
+                [
+                    "git", "--git-dir", str(self.remote), "show",
+                    "main:.maestro/registrations/index.json",
+                ]
+            ),
+        )
+        operation = self.journal.operation(second_id)
+        self.assertEqual("registration_confirmation", operation.operation_type)
+        self.assertEqual("request-2", operation.request_id)
+        self.assertEqual(first_index, operation.expected_files[".maestro/registrations/index.json"])
+        self.assertIsNone(
+            operation.expected_files[
+                ".maestro/registrations/confirmations/confirmation-2.json"
+            ]
+        )
+
+    def test_compare_and_replace_reconciles_unrelated_head_before_retry(self) -> None:
+        first_index = b'{"confirmation_refs":["confirmation-1"]}\n'
+        first_id = self.prepare_confirmation(
+            number=1, parent=self.seed, index=first_index, expected_index=None
+        )
+        first = self.journal.attempt(first_id, self.authorize())
+        second_id = self.prepare_confirmation(
+            number=2,
+            parent=first.remote_commit,
+            index=b'{"confirmation_refs":["confirmation-1","confirmation-2"]}\n',
+            expected_index=first_index,
+        )
+
+        self.git_run("git", "-C", str(self.work), "pull", "--quiet", "--ff-only")
+        (self.work / "unrelated.txt").write_text("preserve me\n", encoding="utf-8")
+        self.git_run("git", "-C", str(self.work), "add", "unrelated.txt")
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "unrelated move")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+
+        with self.assertRaises(PublicationStateError):
+            self.journal.attempt(second_id, self.authorize())
+        moved_head = self.output("git", "--git-dir", str(self.remote), "rev-parse", "main")
+        self.assertEqual(moved_head, self.journal.operation(second_id).reconciled_parent)
+
+        result = self.journal.attempt(second_id, self.authorize())
+        self.assertEqual("verified", result.state)
+        self.assertEqual(
+            b"preserve me\n",
+            subprocess.check_output(
+                ["git", "--git-dir", str(self.remote), "show", "main:unrelated.txt"]
+            ),
+        )
+
+    def test_compare_and_replace_rejects_a_conflicting_index(self) -> None:
+        first_index = b'{"confirmation_refs":["confirmation-1"]}\n'
+        first_id = self.prepare_confirmation(
+            number=1, parent=self.seed, index=first_index, expected_index=None
+        )
+        first = self.journal.attempt(first_id, self.authorize())
+        second_id = self.prepare_confirmation(
+            number=2,
+            parent=first.remote_commit,
+            index=b'{"confirmation_refs":["confirmation-1","confirmation-2"]}\n',
+            expected_index=first_index,
+        )
+
+        self.git_run("git", "-C", str(self.work), "pull", "--quiet", "--ff-only")
+        index_path = self.work / ".maestro/registrations/index.json"
+        conflicting = b'{"confirmation_refs":["competing-confirmation"]}\n'
+        index_path.write_bytes(conflicting)
+        self.git_run("git", "-C", str(self.work), "add", ".maestro/registrations/index.json")
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "competing index")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+
+        with self.assertRaises(PublicationConflictError):
+            self.journal.attempt(second_id, self.authorize())
+
+        self.assertEqual("paused", self.journal.operation(second_id).state)
+        self.assertEqual(
+            conflicting,
+            subprocess.check_output(
+                [
+                    "git", "--git-dir", str(self.remote), "show",
+                    "main:.maestro/registrations/index.json",
+                ]
+            ),
+        )
+
+    def test_identical_blob_symlink_conflict_cannot_mutate_or_partially_publish(self) -> None:
+        sentinel = self.root / "sentinel.txt"
+        sentinel.write_bytes(b"sentinel remains unchanged\n")
+        index_relative = ".maestro/registrations/index.json"
+        receipt_relative = ".maestro/registrations/confirmations/confirmation-2.json"
+        index_path = self.work / index_relative
+        index_path.parent.mkdir(parents=True)
+        expected_index = str(sentinel).encode("utf-8")
+        index_path.write_bytes(expected_index)
+        self.git_run("git", "-C", str(self.work), "add", index_relative)
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "regular index")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+        regular_head = self.output("git", "-C", str(self.work), "rev-parse", "HEAD")
+
+        self.journal.prepare(
+            operation_id="symlink-conflict",
+            operation_type="registration_confirmation",
+            request_id="symlink-conflict-request",
+            repository="owner/project",
+            remote=str(self.remote),
+            branch="main",
+            expected_parent=regular_head,
+            files={
+                index_relative: b'{"confirmation_refs":["confirmation-2"]}\n',
+                receipt_relative: b'{"confirmation_id":"confirmation-2"}\n',
+            },
+            expected_files={
+                index_relative: expected_index,
+                receipt_relative: None,
+            },
+            destination_authorization=self.authorize(),
+        )
+
+        index_path.unlink()
+        index_path.symlink_to(sentinel)
+        self.git_run("git", "-C", str(self.work), "add", index_relative)
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "symlink index")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+        conflicting_head = self.output("git", "-C", str(self.work), "rev-parse", "HEAD")
+        commit_count = self.output(
+            "git", "--git-dir", str(self.remote), "rev-list", "--count", "main"
+        )
+
+        with self.assertRaisesRegex(PublicationConflictError, "not a regular file"):
+            self.journal.attempt("symlink-conflict", self.authorize())
+
+        self.assertEqual(b"sentinel remains unchanged\n", sentinel.read_bytes())
+        self.assertEqual(
+            conflicting_head,
+            self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"),
+        )
+        self.assertEqual(
+            commit_count,
+            self.output("git", "--git-dir", str(self.remote), "rev-list", "--count", "main"),
+        )
+        receipt = subprocess.run(
+            ["git", "--git-dir", str(self.remote), "cat-file", "-e", f"main:{receipt_relative}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertNotEqual(0, receipt.returncode)
+        tree_entry = self.output(
+            "git", "--git-dir", str(self.remote), "ls-tree", "main", "--", index_relative
+        )
+        self.assertTrue(tree_entry.startswith("120000 blob "))
+        operation = self.journal.operation("symlink-conflict")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+
+    def test_compare_and_replace_lost_acknowledgment_reuses_exact_remote_commit(self) -> None:
+        first_index = b'{"confirmation_refs":["confirmation-1"]}\n'
+        first_id = self.prepare_confirmation(
+            number=1, parent=self.seed, index=first_index, expected_index=None
+        )
+        first = self.journal.attempt(first_id, self.authorize())
+        second_id = self.prepare_confirmation(
+            number=2,
+            parent=first.remote_commit,
+            index=b'{"confirmation_refs":["confirmation-1","confirmation-2"]}\n',
+            expected_index=first_index,
+        )
+        written = self.journal.attempt(second_id, self.authorize())
+        self.journal._set_state(second_id, "writing", failure=None)
+
+        recovered = self.journal.reconcile(second_id, self.authorize())
+
+        self.assertTrue(recovered.reused_remote_bytes)
+        self.assertEqual(written.remote_commit, recovered.remote_commit)
+        self.assertEqual("verified", self.journal.operation(second_id).state)
+
+    def test_applied_transition_is_transactional_and_replayable(self) -> None:
+        operation_id = "activation-publication"
+        self.journal.prepare(
+            operation_id=operation_id,
+            operation_type="registration_confirmation",
+            request_id="confirmation-request",
+            repository="owner/project",
+            remote=str(self.remote),
+            branch="main",
+            expected_parent=self.seed,
+            files={".maestro/registrations/index.json": b'{"current":"one"}\n'},
+            expected_files={".maestro/registrations/index.json": None},
+            destination_authorization=self.authorize(),
+        )
+        verified = self.journal.attempt(operation_id, self.authorize())
+
+        with self.database.transaction() as transaction:
+            first = self.journal.mark_applied(
+                transaction,
+                operation_id=operation_id,
+                request_id="confirmation-request",
+            )
+        with self.database.transaction() as transaction:
+            replay = self.journal.mark_applied(
+                transaction,
+                operation_id=operation_id,
+                request_id="confirmation-request",
+            )
+
+        self.assertEqual(verified.remote_commit, first.remote_commit)
+        self.assertEqual(first, replay)
+        self.assertEqual("applied", self.journal.operation(operation_id).state)
+        self.assertEqual(
+            "applied", self.journal.attempt(operation_id, self.authorize()).state
+        )
+
+    def test_migration_backfills_existing_operations_as_absent_target_writes(self) -> None:
+        settings = StorageSettings(path=self.root / "legacy.sqlite3")
+        legacy_database = Database(settings, publication_migrations()[:2])
+        legacy_database.initialize()
+        content = b"legacy candidate\n"
+        with legacy_database.transaction() as transaction:
+            transaction.execute(
+                """INSERT INTO publication_operations(
+                       operation_id, binding_id, repository, profile_name,
+                       credential_reference, remote, branch, expected_parent,
+                       state, reconciled_parent, remote_commit, failure,
+                       authorization_snapshot
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', NULL, NULL, NULL, ?)""",
+                (
+                    "legacy-operation",
+                    "binding-project",
+                    "owner/project",
+                    "project-github",
+                    "github-app-project",
+                    str(self.remote),
+                    "main",
+                    self.seed,
+                    json.dumps(self.authorize().durable_record(), sort_keys=True),
+                ),
+            )
+            transaction.execute(
+                """INSERT INTO publication_files(operation_id, path, content, sha256)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    "legacy-operation",
+                    ".maestro/registrations/legacy.json",
+                    content,
+                    hashlib.sha256(content).hexdigest(),
+                ),
+            )
+
+        upgraded_database = Database(settings, publication_migrations())
+        upgraded_journal = PublicationJournal(
+            upgraded_database,
+            self.authorizer,
+            self.transport,
+            self.destination,
+        )
+        operation = upgraded_journal.operation("legacy-operation")
+
+        self.assertEqual("legacy_publication", operation.operation_type)
+        self.assertEqual("legacy-operation", operation.request_id)
+        self.assertEqual(
+            {".maestro/registrations/legacy.json": None},
+            operation.expected_files,
+        )
 
     def test_moved_head_with_conflicting_bytes_pauses_and_never_overwrites(self) -> None:
         self.prepare()
