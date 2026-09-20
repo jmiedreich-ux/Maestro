@@ -45,6 +45,7 @@ from maestro.planning.registration_records import (
 )
 from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.service.authentication import VerifiedActor
+from maestro.terminal.connection import TerminalConnectionError
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.registration import RegistrationExtension, RegistrationInteraction
 
@@ -217,6 +218,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
     def publish(
         self, activity_id: str, version: int, candidate_id: str,
         parent: str, previous: RegistrationPackageReference | None = None,
+        publication_id: str | None = None,
     ):
         assessment, manifest, records = self.package(
             activity_id=activity_id,
@@ -231,8 +233,8 @@ class RegistrationConfirmationTest(unittest.TestCase):
             records=records,
             remote=str(self.remote),
             expected_parent=parent,
-            operation_id=f"candidate-operation-{version}",
-            request_id=f"candidate-request-{version}",
+            operation_id=f"candidate-operation-{publication_id or version}",
+            request_id=f"candidate-request-{publication_id or version}",
         )
         return assessment, reference
 
@@ -297,6 +299,64 @@ class RegistrationConfirmationTest(unittest.TestCase):
         self.assertGreaterEqual(self.destination_api.authorization_count, 10)
         self.assertFalse(hasattr(self.service, "start_architecture"))
         self.assertFalse(hasattr(self.service, "start_execution"))
+
+    def test_older_candidate_cannot_replace_newer_active_registration(self) -> None:
+        assessment1, package1 = self.publish("activity-1", 1, "candidate-1", self.seed)
+        first = self.service.confirm(
+            assessment1,
+            VerifiedActor("owner-local"),
+            OwnerConfirmation(
+                "confirmation-1", "confirmation-request-1", "project-1", "activity-1",
+                1, package1, "2026-09-20T10:00:00Z",
+            ),
+        )
+        assessment2, package2 = self.publish(
+            "activity-2", 2, "candidate-2", first.remote_commit, package1,
+            publication_id="2",
+        )
+        assessment3, package3 = self.publish(
+            "activity-3", 2, "candidate-3", package2.commit, package1,
+            publication_id="3",
+        )
+        self.service.confirm(
+            assessment3,
+            VerifiedActor("owner-local"),
+            OwnerConfirmation(
+                "confirmation-3", "confirmation-request-3", "project-1", "activity-3",
+                1, package3, "2026-09-20T12:00:00Z",
+            ),
+        )
+        head_before = self.output("git", "--git-dir", str(self.remote), "rev-parse", "main")
+        index_before = subprocess.check_output(
+            ["git", "--git-dir", str(self.remote), "show", "main:.maestro/registrations/index.json"]
+        )
+        history_before = self.service.history("project-1")
+        active_before = self.service.active("project-1")
+
+        with self.assertRaisesRegex(
+            RegistrationConfirmationError, "previous registration differs"
+        ):
+            self.service.confirm(
+                assessment2,
+                VerifiedActor("owner-local"),
+                OwnerConfirmation(
+                    "confirmation-2", "confirmation-request-2", "project-1", "activity-2",
+                    1, package2, "2026-09-20T11:00:00Z",
+                ),
+            )
+
+        self.assertEqual(
+            head_before,
+            self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"),
+        )
+        self.assertEqual(
+            index_before,
+            subprocess.check_output(
+                ["git", "--git-dir", str(self.remote), "show", "main:.maestro/registrations/index.json"]
+            ),
+        )
+        self.assertEqual(history_before, self.service.history("project-1"))
+        self.assertEqual(active_before, self.service.active("project-1"))
 
     def test_rejects_unpublished_stale_changed_and_competing_confirmation(self) -> None:
         assessment, package = self.publish("activity-1", 1, "candidate-1", self.seed)
@@ -408,6 +468,66 @@ class RegistrationConfirmationTest(unittest.TestCase):
         self.assertEqual(package, client.submissions[0]["payload"]["package_ref"])
         self.assertEqual(3, client.submissions[0]["expected_version"])
 
+    def test_terminal_preserves_lost_acknowledgment_across_projects(self) -> None:
+        package1 = _terminal_package("candidate-1", "a")
+        package2 = _terminal_package("candidate-2", "c")
+        client = _TerminalClient(_terminal_detail("project-1", "activity-1", package1))
+        client.connection_failures = 1
+        state = _TerminalState("project-1", "activity-1")
+        context = ExtensionContext(client, state)
+        interaction = RegistrationInteraction(
+            request_id_factory=lambda: "request-1",
+            confirmation_id_factory=lambda: "confirmation-1",
+            time_factory=lambda: "2026-09-20T10:00:00Z",
+        )
+        registry = ExtensionRegistry()
+        RegistrationExtension(interaction).install(registry)
+        registry.invoke_command("registration", context)
+        with self.assertRaises(TerminalConnectionError):
+            registry.invoke_action("registration-confirm", context, "candidate-1")
+
+        state.selected_project_id = "project-2"
+        state.selected_activity_id = "activity-2"
+        client.detail = _terminal_detail("project-2", "activity-2", package2)
+        rendered = registry.invoke_command("registration", context)
+        self.assertIn("request-1", rendered)
+        with self.assertRaisesRegex(ValueError, "remains unresolved"):
+            registry.invoke_action("registration-confirm", context, "candidate-2")
+        self.assertEqual("request-1", interaction.pending.request_id)
+        self.assertEqual(1, len(client.submissions))
+
+        client.request_response = {
+            "receipt": {"request_id": "request-1", "status": "completed"}
+        }
+        registry.invoke_action("registration-retry", context)
+        self.assertIsNone(interaction.pending)
+
+    def test_terminal_preserves_lost_acknowledgment_when_candidate_changes(self) -> None:
+        package1 = _terminal_package("candidate-1", "a")
+        package2 = _terminal_package("candidate-2", "c")
+        client = _TerminalClient(_terminal_detail("project-1", "activity-1", package1))
+        client.connection_failures = 1
+        state = _TerminalState("project-1", "activity-1")
+        context = ExtensionContext(client, state)
+        interaction = RegistrationInteraction(
+            request_id_factory=lambda: "request-1",
+            confirmation_id_factory=lambda: "confirmation-1",
+            time_factory=lambda: "2026-09-20T10:00:00Z",
+        )
+        registry = ExtensionRegistry()
+        RegistrationExtension(interaction).install(registry)
+        registry.invoke_command("registration", context)
+        with self.assertRaises(TerminalConnectionError):
+            registry.invoke_action("registration-confirm", context, "candidate-1")
+
+        client.detail = _terminal_detail("project-1", "activity-1", package2)
+        rendered = registry.invoke_command("registration", context)
+        self.assertIn("request-1", rendered)
+        with self.assertRaisesRegex(ValueError, "remains unresolved"):
+            registry.invoke_action("registration-confirm", context, "candidate-2")
+        self.assertEqual(package1, interaction.pending.package_ref)
+        self.assertEqual(1, len(client.submissions))
+
     def test_changed_immutable_destination_profile_cannot_write_or_activate(self) -> None:
         assessment, package = self.publish("activity-1", 1, "candidate-1", self.seed)
         remote_before = self.output("git", "--git-dir", str(self.remote), "rev-parse", "main")
@@ -506,13 +626,49 @@ class _TerminalClient:
     def __init__(self, detail):
         self.detail = detail
         self.submissions: list[dict[str, object]] = []
+        self.connection_failures = 0
+        self.request_response = None
 
     def get_json(self, path: str, *, timeout: int = 15):
+        if path.startswith("/requests/") and self.request_response is not None:
+            return self.request_response
         return self.detail
 
     def submit(self, envelope):
         self.submissions.append(dict(envelope))
+        if self.connection_failures:
+            self.connection_failures -= 1
+            raise TerminalConnectionError("acknowledgment was lost")
         return {"receipt": {"request_id": envelope["request_id"], "status": "completed"}}
+
+
+def _terminal_package(candidate_id: str, commit_character: str) -> dict[str, object]:
+    return {
+        "repository": "owner/project",
+        "commit": commit_character * 40,
+        "registration_version": 1,
+        "candidate_id": candidate_id,
+        "manifest_path": (
+            f".maestro/registrations/versions/1/candidates/{candidate_id}/manifest.json"
+        ),
+        "manifest_sha256": "b" * 64,
+    }
+
+
+def _terminal_detail(
+    project_id: str, activity_id: str, package: dict[str, object]
+) -> dict[str, object]:
+    return {
+        "data": {
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "activity_version": 3,
+            "state": "Ready to confirm",
+            "package_ref": package,
+            "history": [],
+            "can_confirm": True,
+        }
+    }
 
 
 if __name__ == "__main__":

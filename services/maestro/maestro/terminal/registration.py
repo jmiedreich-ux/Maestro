@@ -71,6 +71,10 @@ class RegistrationInteraction:
             raise ValueError("registration detail differs from the selected activity")
         self.detail = detail
         self.status = None
+        if self.pending is not None and not self._pending_matches(
+            project_id, activity_id, detail
+        ):
+            self.status = self._pending_block_message()
         return self.render()
 
     def render(self) -> str:
@@ -114,6 +118,11 @@ class RegistrationInteraction:
         assert isinstance(package, Mapping)
         if candidate_id.strip() != package["candidate_id"]:
             raise ValueError("confirmation must name the displayed exact candidate")
+        if self.pending is not None and not self._pending_matches(
+            project_id, activity_id, detail
+        ):
+            self.status = self._pending_block_message()
+            raise ValueError(self.status)
         if self.pending is None:
             self.pending = PendingConfirmation(
                 _identifier(self._request_id_factory(), "request_id"),
@@ -154,14 +163,53 @@ class RegistrationInteraction:
         except ServiceError as error:
             if error.status_code != 404 or error.code != "request_not_found":
                 raise
-            package = self.pending.package_ref
-            return self.confirm(context, str(package["candidate_id"]))
+            self.status = "Retrying the saved registration confirmation request."
+            try:
+                response = context.client.submit(self.pending.envelope)
+            except ServiceError as submit_error:
+                self.status = f"Not confirmed — {submit_error}."
+                if submit_error.status_code in {400, 404, 409}:
+                    self.pending = None
+                raise
+            except TerminalConnectionError:
+                self.status = (
+                    "Outcome not confirmed. Reconnect and retry to reconcile the saved request."
+                )
+                raise
         receipt = _receipt(response)
         if receipt["request_id"] != self.pending.request_id:
             raise ValueError("service returned a receipt for another confirmation request")
         self.status = "Registered. Confirmation and history are saved."
         self.pending = None
         return response
+
+    def _pending_matches(
+        self,
+        project_id: str,
+        activity_id: str,
+        detail: Mapping[str, object],
+    ) -> bool:
+        pending = self.pending
+        if pending is None:
+            return True
+        package = detail["package_ref"]
+        assert isinstance(package, Mapping)
+        envelope = pending.envelope
+        return (
+            envelope["request_id"] == pending.request_id
+            and pending.project_id == project_id
+            and pending.activity_id == activity_id
+            and pending.expected_version == detail["activity_version"]
+            and dict(pending.package_ref) == dict(package)
+        )
+
+    def _pending_block_message(self) -> str:
+        assert self.pending is not None
+        return (
+            "A different registration confirmation request remains unresolved "
+            f"({self.pending.request_id}). Use registration-retry before confirming "
+            "this candidate."
+        )
 
 
 class RegistrationExtension:

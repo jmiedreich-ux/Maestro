@@ -8,7 +8,13 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from maestro.foundation import Database, DomainMigration, canonical_identifier, canonical_json
+from maestro.foundation import (
+    Database,
+    DomainMigration,
+    Transaction,
+    canonical_identifier,
+    canonical_json,
+)
 from maestro.foundation.git_publication import (
     PublicationJournal,
     PublicationResult,
@@ -103,9 +109,32 @@ REGISTRATION_CONFIRMATION_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_CONFIRMATION_LINEAGE_MIGRATION = DomainMigration(
+    domain="registration_confirmation",
+    version=2,
+    identity="registration-confirmation-lineage-v2",
+    statements=(
+        """ALTER TABLE registration_candidate_publications
+           ADD COLUMN previous_registration_ref_json TEXT""",
+        """UPDATE registration_candidate_publications
+           SET previous_registration_ref_json = (
+               SELECT json_extract(CAST(publication_files.content AS TEXT),
+                                   '$.previous_registration_ref')
+               FROM publication_files
+               WHERE publication_files.operation_id =
+                         registration_candidate_publications.operation_id
+                 AND publication_files.path =
+                         registration_candidate_publications.manifest_path
+           )""",
+    ),
+)
+
 
 def registration_confirmation_migrations() -> tuple[DomainMigration, ...]:
-    return (REGISTRATION_CONFIRMATION_MIGRATION,)
+    return (
+        REGISTRATION_CONFIRMATION_MIGRATION,
+        REGISTRATION_CONFIRMATION_LINEAGE_MIGRATION,
+    )
 
 
 @dataclass(frozen=True)
@@ -209,7 +238,8 @@ class RegistrationConfirmationService:
         self.database = database
         self.journal = journal
         self.destination_provider = destination_provider
-        self.database.registry.register(REGISTRATION_CONFIRMATION_MIGRATION)
+        for migration in registration_confirmation_migrations():
+            self.database.registry.register(migration)
         self.database.initialize()
 
     def publish_candidate(
@@ -242,6 +272,12 @@ class RegistrationConfirmationService:
             raise RegistrationConfirmationError(str(error)) from error
         registration_version = _positive(
             validated["registration_version"], "registration_version"
+        )
+        previous_value = validated["previous_registration_ref"]
+        previous_registration_ref = (
+            None
+            if previous_value is None
+            else RegistrationPackageReference.from_mapping(previous_value)
         )
         candidate_id = str(validated["candidate_id"])
         canonical_identifier(candidate_id, "candidate_id")
@@ -297,6 +333,7 @@ class RegistrationConfirmationService:
             operation_id=operation_id,
             request_id=request_id,
             expected_parent=expected_parent,
+            previous_registration_ref=previous_registration_ref,
         )
         result = self._write_or_recover(
             operation_id,
@@ -394,6 +431,9 @@ class RegistrationConfirmationService:
         operation_id = f"registration-confirmation-{action.confirmation_id}"
         try:
             with self.database.transaction() as transaction:
+                self._require_current_candidate_lineage(
+                    transaction, action.project_id, action.package_ref
+                )
                 transaction.execute(
                     """INSERT INTO registration_confirmations(
                            confirmation_id, request_id, operation_id, project_id,
@@ -486,6 +526,9 @@ class RegistrationConfirmationService:
             str(row[0]), str(row[10]), str(row[11])
         )
         with self.database.transaction() as transaction:
+            self._require_current_candidate_lineage(
+                transaction, str(row[3]), package_ref
+            )
             current = transaction.execute(
                 """SELECT confirmation_id, confirmation_ref_json
                    FROM active_registrations WHERE project_id = ?""",
@@ -629,9 +672,48 @@ class RegistrationConfirmationService:
     def _save_candidate_prepared(self, **value: object) -> None:
         assessment = value["assessment"]
         assert isinstance(assessment, RegistrationAssessment)
+        previous = value["previous_registration_ref"]
+        assert previous is None or isinstance(previous, RegistrationPackageReference)
         context = assessment.context.package_context
         try:
             with self.database.transaction() as transaction:
+                existing = transaction.execute(
+                    """SELECT project_id, activity_id, activity_version,
+                              registration_version, candidate_id, operation_id, request_id,
+                              previous_registration_ref_json
+                       FROM registration_candidate_publications WHERE operation_id = ?""",
+                    (value["operation_id"],),
+                ).fetchone()
+                if existing is not None:
+                    saved_previous = (
+                        None
+                        if existing[7] is None
+                        else RegistrationPackageReference.from_mapping(
+                            json.loads(str(existing[7]))
+                        )
+                    )
+                    if any(
+                        str(existing[index]) != str(expected)
+                        for index, expected in (
+                            (0, assessment.context.project_id),
+                            (1, assessment.context.activity_id),
+                            (2, value["activity_version"]),
+                            (3, value["registration_version"]),
+                            (4, value["candidate_id"]),
+                            (5, value["operation_id"]),
+                            (6, value["request_id"]),
+                        )
+                    ) or saved_previous != previous:
+                        raise RegistrationConfirmationError(
+                            "candidate publication conflicts with a saved candidate"
+                        )
+                    return
+                self._require_lineage(
+                    transaction,
+                    assessment.context.project_id,
+                    int(value["registration_version"]),
+                    previous,
+                )
                 transaction.execute(
                     """INSERT INTO registration_candidate_publications(
                            project_id, activity_id, activity_version,
@@ -639,9 +721,10 @@ class RegistrationConfirmationService:
                            remote, destination_snapshot_reference, manifest_path,
                            manifest_sha256, content_hash, assessment_candidate_sha256,
                            operation_id, request_id, expected_parent, state,
-                           remote_commit, package_ref_json
+                           remote_commit, package_ref_json,
+                           previous_registration_ref_json
                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                                 'prepared', NULL, NULL)""",
+                                 'prepared', NULL, NULL, ?)""",
                     (
                         assessment.context.project_id,
                         assessment.context.activity_id,
@@ -659,6 +742,11 @@ class RegistrationConfirmationService:
                         value["operation_id"],
                         value["request_id"],
                         value["expected_parent"],
+                        (
+                            None
+                            if previous is None
+                            else canonical_json(previous.as_dict())
+                        ),
                     ),
                 )
         except sqlite3.IntegrityError:
@@ -678,6 +766,58 @@ class RegistrationConfirmationService:
                 raise RegistrationConfirmationError(
                     "candidate publication conflicts with a saved candidate"
                 ) from None
+
+    @staticmethod
+    def _require_lineage(
+        transaction: Transaction,
+        project_id: str,
+        registration_version: int,
+        previous: RegistrationPackageReference | None,
+    ) -> None:
+        active = transaction.execute(
+            "SELECT package_ref_json FROM active_registrations WHERE project_id = ?",
+            (project_id,),
+        ).fetchone()
+        current = (
+            None
+            if active is None
+            else RegistrationPackageReference.from_mapping(json.loads(str(active[0])))
+        )
+        if current != previous:
+            raise RegistrationConfirmationError(
+                "candidate previous registration differs from the current active package"
+            )
+        expected_version = 1 if current is None else current.registration_version + 1
+        if registration_version != expected_version:
+            raise RegistrationConfirmationError(
+                "candidate registration version is not the next active version"
+            )
+
+    def _require_current_candidate_lineage(
+        self,
+        transaction: Transaction,
+        project_id: str,
+        package_ref: RegistrationPackageReference,
+    ) -> None:
+        candidate = transaction.execute(
+            """SELECT state, package_ref_json, previous_registration_ref_json
+               FROM registration_candidate_publications
+               WHERE project_id = ? AND registration_version = ? AND candidate_id = ?""",
+            (project_id, package_ref.registration_version, package_ref.candidate_id),
+        ).fetchone()
+        if candidate is None or str(candidate[0]) != "published":
+            raise RegistrationConfirmationError("confirmation candidate is no longer published")
+        saved = RegistrationPackageReference.from_mapping(json.loads(str(candidate[1])))
+        if saved != package_ref:
+            raise RegistrationConfirmationError("confirmation candidate changed before activation")
+        previous = (
+            None
+            if candidate[2] is None
+            else RegistrationPackageReference.from_mapping(json.loads(str(candidate[2])))
+        )
+        self._require_lineage(
+            transaction, project_id, package_ref.registration_version, previous
+        )
 
     def _eligible_candidate(
         self, assessment: RegistrationAssessment, action: OwnerConfirmation
