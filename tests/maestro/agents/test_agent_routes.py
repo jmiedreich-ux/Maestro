@@ -9,6 +9,7 @@ from pathlib import Path
 from maestro.agents import (
     AdapterObservation,
     AgentRouteError,
+    ConfiguredAgentRouteProvider,
     AgentRoutePreflight,
     AgentRouteRegistry,
     InstalledAdapter,
@@ -21,6 +22,9 @@ from maestro.agents import (
 from maestro.foundation import canonical_json
 from maestro.service.processes import ProcessHandlerRegistry, ProcessProvider, ProcessSnapshot
 from maestro.service.resources import BundleSnapshot
+from maestro.service.main import InstalledServiceApplication, ServiceConfigurationError, ServiceSettings
+from maestro.service.authentication import OwnerAuthenticationSettings
+from maestro.foundation import StorageSettings
 
 
 CODEX_MODEL = "openai/gpt-5.6-codex-2026-09-01"
@@ -427,6 +431,63 @@ class AgentRouteTests(unittest.TestCase):
         with self.assertRaises(AgentRouteError) as caught:
             ToolModelSelection("qwen", "qwen/model")
         self.assertEqual(caught.exception.code, "unsupported_tool")
+
+    def test_service_configured_provider_has_no_missing_or_default_route(self) -> None:
+        with self.assertRaises(AgentRouteError) as caught:
+            ConfiguredAgentRouteProvider.from_service_configuration({})
+        self.assertEqual(caught.exception.code, "route_configuration_unavailable")
+
+        provider = ConfiguredAgentRouteProvider.from_service_configuration(
+            {
+                "tools": {
+                    "codex": {
+                        "executable": str(self.codex_executable),
+                        "credential_profile": "credential-codex",
+                        "settings_profile": "settings-codex",
+                        "allowed_model_ids": [CODEX_MODEL],
+                        "permitted_destinations": list(CODEX_DESTINATIONS),
+                    }
+                }
+            }
+        )
+        with self.assertRaises(AgentRouteError) as caught:
+            provider.resolve(ToolModelSelection("claude_code", CLAUDE_MODEL))
+        self.assertEqual(caught.exception.code, "route_not_installed")
+
+        resolved = provider.preflight(
+            {"codex": (self.adapters["codex"], self.codex_inspector)},
+            credential_fingerprint=lambda reference: self.profile_fingerprints.get(reference),
+            settings_fingerprint=lambda reference: self.profile_fingerprints.get(reference),
+        ).resolve("architect", ToolModelSelection("codex", CODEX_MODEL), self.requirements["architect"])
+        self.assertEqual(resolved.tool, "codex")
+
+    def test_installed_service_exposes_only_its_configured_provider(self) -> None:
+        settings = ServiceSettings(
+            storage=StorageSettings(path=self.root / "maestro.sqlite3"),
+            owner=OwnerAuthenticationSettings("owner", "a" * 64),
+            workspace_root=self.root / "workspaces",
+        )
+        application = InstalledServiceApplication(settings)
+        with self.assertRaises(ServiceConfigurationError):
+            application.agent_route_provider
+
+        configured = ConfiguredAgentRouteProvider.from_service_configuration(
+            {
+                "tools": {
+                    "codex": {
+                        "executable": str(self.codex_executable),
+                        "credential_profile": "credential-codex",
+                        "settings_profile": "settings-codex",
+                        "allowed_model_ids": [CODEX_MODEL],
+                        "permitted_destinations": list(CODEX_DESTINATIONS),
+                    }
+                }
+            }
+        )
+        configured_application = InstalledServiceApplication(
+            replace(settings, agent_route_provider=configured)
+        )
+        self.assertIs(configured, configured_application.agent_route_provider)
 
     def test_destination_policy_rejects_absent_empty_wildcard_and_malformed_entries(self) -> None:
         base = {

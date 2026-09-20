@@ -12,6 +12,7 @@ from .preflight import (
 )
 from .routes import (
     AgentRouteError,
+    ConfiguredAgentRouteProvider,
     AgentRouteRegistry,
     PermittedDestination,
     RoleSelections,
@@ -24,6 +25,7 @@ __all__ = [
     "AdapterInspector",
     "AdapterObservation",
     "AgentRouteError",
+    "ConfiguredAgentRouteProvider",
     "AgentRoutePreflight",
     "AgentRouteRegistry",
     "InstalledAdapter",

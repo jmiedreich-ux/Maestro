@@ -6,7 +6,10 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
+
+if TYPE_CHECKING:
+    from .preflight import AdapterInspector, AgentRoutePreflight, InstalledAdapter, ProfileFingerprint
 
 
 _REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
@@ -233,6 +236,67 @@ class AgentRouteRegistry:
                 model_id=selection.model_id,
             )
         return route
+
+
+class ConfiguredAgentRouteProvider:
+    """The one service-owned route source made from installed configuration.
+
+    Process plugins receive this provider, not a TOML mapping or a registry they
+    can replace.  The service configuration loader is responsible for safely
+    reading ``/etc/maestro/agents.toml``; this boundary deliberately accepts
+    only its already-parsed complete configuration.
+    """
+
+    def __init__(self, registry: AgentRouteRegistry) -> None:
+        if not isinstance(registry, AgentRouteRegistry):
+            raise TypeError("configured route provider requires an AgentRouteRegistry")
+        self._registry = registry
+
+    @classmethod
+    def from_service_configuration(
+        cls, configuration: Mapping[str, object]
+    ) -> "ConfiguredAgentRouteProvider":
+        if not isinstance(configuration, Mapping):
+            raise AgentRouteError(
+                "route_configuration_unavailable",
+                "installed agent route configuration is unavailable",
+            )
+        try:
+            tools = configuration["tools"]
+        except KeyError as error:
+            raise AgentRouteError(
+                "route_configuration_unavailable",
+                "installed agent route configuration is missing",
+            ) from error
+        if not isinstance(tools, Mapping):
+            raise AgentRouteError(
+                "route_configuration_unavailable",
+                "installed agent route configuration is unverifiable",
+            )
+        return cls(AgentRouteRegistry.from_mapping(tools))
+
+    def resolve(self, selection: ToolModelSelection) -> ToolRoute:
+        """Resolve only the explicitly selected installed route."""
+        return self._registry.resolve(selection)
+
+    def preflight(
+        self,
+        adapters: Mapping[str, tuple["InstalledAdapter", "AdapterInspector"]],
+        *,
+        credential_fingerprint: "ProfileFingerprint",
+        settings_fingerprint: "ProfileFingerprint",
+    ) -> "AgentRoutePreflight":
+        """Create a plugin-facing preflight over this provider's sole registry."""
+        # Keep the dependency one-way at module import time: preflight already
+        # defines the runtime adapter contracts while routes owns configuration.
+        from .preflight import AgentRoutePreflight
+
+        return AgentRoutePreflight(
+            self._registry,
+            adapters,
+            credential_fingerprint=credential_fingerprint,
+            settings_fingerprint=settings_fingerprint,
+        )
 
 
 def _reference(value: object, field: str) -> str:
