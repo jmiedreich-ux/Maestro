@@ -13,6 +13,8 @@ from maestro.foundation.credentials import (
     RepositoryAuthorizer,
     RepositoryCredentialError,
     ServiceGitTransport,
+    normalize_repository,
+    validate_branch,
 )
 from maestro.foundation.git_read import run_git
 from maestro.foundation.github_destination import (
@@ -75,6 +77,213 @@ class RegistrationIntakeResult:
     source_ref: str | None = None
     publication_branch: str | None = None
     failure: str | None = None
+    repository: str | None = None
+    selection_decision_ref: str | None = None
+
+    @property
+    def selection_decision_reference(self) -> str | None:
+        """Long-form alias for the saved selection Decision reference."""
+        return self.selection_decision_ref
+
+    @property
+    def source_commit(self) -> str | None:
+        return None if self.inventory is None else self.inventory.source_commit
+
+    @property
+    def overview_path(self) -> str | None:
+        return None if self.inventory is None else self.inventory.overview_path
+
+    def to_record(self) -> dict[str, object]:
+        """Return the complete detached JSON record for this intake state.
+
+        A completed intake carries every value an assessment or recovery may
+        consume.  Incomplete and failed attempts deliberately have no source
+        inventory, so loading them cannot be interpreted as permission to read
+        the repository again.
+        """
+        self._validate_persisted_state()
+        record: dict[str, object] = {
+            "schema_version": 1,
+            "repository": self.repository,
+            "repository_binding_id": self.repository_binding_id,
+            "selected_scope": self.selected_scope,
+            "source_selection": self.source_selection,
+            "selection_decision_ref": self.selection_decision_ref,
+            "destination_snapshot_reference": self.destination_snapshot_reference,
+            "destination_evidence": _plain_json(self.destination_evidence),
+            "source_ref": self.source_ref,
+            "source_commit": self.source_commit,
+            "overview_path": self.overview_path,
+            "publication_branch": self.publication_branch,
+            "inventory": None if self.inventory is None else self.inventory.to_record(),
+            "missing_questions": [
+                {"field": item.field, "subject": item.subject, "prompt": item.prompt}
+                for item in self.missing_questions
+            ],
+            "failure": self.failure,
+        }
+        record["integrity_sha256"] = _record_digest(record)
+        return record
+
+    def to_json(self) -> str:
+        """Serialize a canonical durable record without exposing credentials."""
+        return _canonical_json(self.to_record())
+
+    @classmethod
+    def from_record(cls, value: object) -> "RegistrationIntakeResult":
+        fields = {
+            "schema_version", "repository", "repository_binding_id", "selected_scope",
+            "source_selection", "selection_decision_ref", "destination_snapshot_reference",
+            "destination_evidence", "source_ref", "source_commit", "overview_path",
+            "publication_branch", "inventory",
+            "missing_questions", "failure", "integrity_sha256",
+        }
+        if not isinstance(value, MappingABC) or set(value) != fields:
+            raise IntakeError("saved intake record is invalid")
+        if value.get("schema_version") != 1:
+            raise IntakeError("saved intake record schema version is invalid")
+        digest = value.get("integrity_sha256")
+        if not isinstance(digest, str) or len(digest) != 64 or digest != _record_digest({key: item for key, item in value.items() if key != "integrity_sha256"}):
+            raise IntakeError("saved intake record integrity check failed")
+        questions_value = value.get("missing_questions")
+        if not isinstance(questions_value, list):
+            raise IntakeError("saved intake record questions are invalid")
+        questions: list[IntakeQuestion] = []
+        for item in questions_value:
+            if not isinstance(item, MappingABC) or set(item) != {"field", "subject", "prompt"}:
+                raise IntakeError("saved intake record question is invalid")
+            question = tuple(item.get(key) for key in ("field", "subject", "prompt"))
+            if any(not isinstance(part, str) or not part for part in question):
+                raise IntakeError("saved intake record question is invalid")
+            questions.append(IntakeQuestion(*question))
+        inventory_value = value.get("inventory")
+        try:
+            inventory = None if inventory_value is None else SourceInventory.from_record(inventory_value)
+        except SourceIntakeError as error:
+            raise IntakeError(str(error)) from error
+        evidence = value.get("destination_evidence")
+        if evidence is not None and not isinstance(evidence, MappingABC):
+            raise IntakeError("saved intake destination evidence is invalid")
+        result = cls(
+            inventory,
+            tuple(questions),
+            _optional_text(value, "repository_binding_id"),
+            _optional_text(value, "selected_scope"),
+            _optional_text(value, "source_selection"),
+            _optional_text(value, "destination_snapshot_reference"),
+            None if evidence is None else _freeze_json_evidence(evidence),
+            _optional_text(value, "source_ref"),
+            _optional_text(value, "publication_branch"),
+            _optional_text(value, "failure"),
+            _optional_text(value, "repository"),
+            _optional_text(value, "selection_decision_ref"),
+        )
+        source_commit = _optional_text(value, "source_commit")
+        overview_path = _optional_text(value, "overview_path")
+        if inventory is None:
+            if source_commit is not None or overview_path is not None:
+                raise IntakeError("an incomplete intake cannot have saved source inventory details")
+        elif source_commit != inventory.source_commit or overview_path != inventory.overview_path:
+            raise IntakeError("saved intake source details do not match its inventory")
+        try:
+            result._validate_persisted_state()
+        except (RepositoryCredentialError, SourceIntakeError) as error:
+            raise IntakeError(str(error)) from error
+        return result
+
+    @classmethod
+    def from_json(cls, value: object) -> "RegistrationIntakeResult":
+        if not isinstance(value, (str, bytes, bytearray)):
+            raise IntakeError("saved intake JSON must be text or bytes")
+        try:
+            return cls.from_record(json.loads(value))
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as error:
+            raise IntakeError("saved intake JSON is invalid") from error
+
+    def _validate_persisted_state(self) -> None:
+        if not isinstance(self.missing_questions, tuple) or any(not isinstance(item, IntakeQuestion) for item in self.missing_questions):
+            raise IntakeError("saved intake questions are invalid")
+        if self.inventory is None:
+            if self.selection_decision_ref is not None:
+                raise IntakeError("an incomplete intake cannot have a selection decision reference")
+            if self.failure is None:
+                return
+            if not isinstance(self.failure, str) or not self.failure.strip() or self.missing_questions:
+                raise IntakeError("a failed intake record is invalid")
+            required = {
+                "repository": self.repository,
+                "repository_binding_id": self.repository_binding_id,
+                "selected_scope": self.selected_scope,
+                "source_selection": self.source_selection,
+                "destination_snapshot_reference": self.destination_snapshot_reference,
+                "destination_evidence": self.destination_evidence,
+                "publication_branch": self.publication_branch,
+            }
+            text_fields = {key: value for key, value in required.items() if key != "destination_evidence"}
+            if any(not isinstance(value, str) or not value for value in text_fields.values()) or not isinstance(self.destination_evidence, MappingABC):
+                raise IntakeError("a failed intake record is incomplete")
+            assert self.repository is not None
+            assert self.source_selection is not None
+            assert self.destination_snapshot_reference is not None
+            assert self.destination_evidence is not None
+            assert self.publication_branch is not None
+            if normalize_repository(self.repository) != self.repository:
+                raise IntakeError("saved intake repository is not normalized")
+            validate_branch(self.publication_branch)
+            if self.source_selection not in {"supplied", "inherited", "defaulted"}:
+                raise IntakeError("saved intake source selection is invalid")
+            if self.source_ref is None:
+                if self.source_selection != "defaulted":
+                    raise IntakeError("saved intake source selector is missing")
+            elif validate_source_ref(self.source_ref) != self.source_ref:
+                raise IntakeError("saved intake source selector is not normalized")
+            _validate_destination_evidence(
+                self.destination_evidence, self.repository, self.repository_binding_id,
+                self.publication_branch, self.destination_snapshot_reference,
+            )
+            return
+        if self.missing_questions or self.failure is not None:
+            raise IntakeError("a successful intake cannot retain questions or failure")
+        required = {
+            "repository": self.repository,
+            "repository_binding_id": self.repository_binding_id,
+            "selected_scope": self.selected_scope,
+            "source_selection": self.source_selection,
+            "selection_decision_ref": self.selection_decision_ref,
+            "destination_snapshot_reference": self.destination_snapshot_reference,
+            "destination_evidence": self.destination_evidence,
+            "source_ref": self.source_ref,
+            "publication_branch": self.publication_branch,
+        }
+        text_fields = {key: value for key, value in required.items() if key != "destination_evidence"}
+        if any(not isinstance(value, str) or not value for value in text_fields.values()) or not isinstance(self.destination_evidence, MappingABC):
+            raise IntakeError("a successful intake record is incomplete")
+        assert self.repository is not None
+        assert self.source_selection is not None
+        assert self.source_ref is not None
+        assert self.publication_branch is not None
+        assert self.destination_snapshot_reference is not None
+        assert self.destination_evidence is not None
+        assert self.selection_decision_ref is not None
+        if normalize_repository(self.repository) != self.repository:
+            raise IntakeError("saved intake repository is not normalized")
+        validate_branch(self.publication_branch)
+        if self.source_selection not in {"supplied", "inherited", "defaulted"}:
+            raise IntakeError("saved intake source selection is invalid")
+        if validate_source_ref(self.source_ref) != self.inventory.source_ref:
+            raise IntakeError("saved intake selector does not match its inventory")
+        if not self.inventory.source_references or not self.inventory.outcomes:
+            raise IntakeError("saved intake inventory is incomplete")
+        assert self.repository_binding_id is not None
+        _validate_destination_evidence(
+            self.destination_evidence, self.repository, self.repository_binding_id,
+            self.publication_branch, self.destination_snapshot_reference,
+        )
+        if _selection_decision_reference(
+            self.repository, self.source_selection, self.source_ref, self.inventory.source_commit,
+            self.inventory.overview_path, self.publication_branch, self.destination_snapshot_reference,
+        ) != self.selection_decision_ref:
+            raise IntakeError("saved intake selection decision reference does not match its selection")
 
 
 class RegistrationIntake:
@@ -157,7 +366,20 @@ class RegistrationIntake:
             if saved_attempt is None and attempt is not None:
                 saved_attempt = replace(attempt, failure=str(error))
             raise IntakeError(str(error), attempt=saved_attempt) from error
-        return replace(attempt, inventory=inventory)
+        assert attempt is not None
+        return replace(
+            attempt,
+            inventory=inventory,
+            repository=authorization.repository,
+            selection_decision_ref=_selection_decision_reference(
+                authorization.repository, source_selection, inventory.source_ref, inventory.source_commit,
+                inventory.overview_path, authorization.branch, attempt.destination_snapshot_reference,
+            ),
+        )
+
+    def rehydrate(self, saved_record: str | bytes | bytearray) -> RegistrationIntakeResult:
+        """Rebuild saved intake state without authorizing or reading a source."""
+        return RegistrationIntakeResult.from_json(saved_record)
 
     @staticmethod
     def _attempted_source_ref(request: RegistrationIntakeRequest) -> str | None:
@@ -185,6 +407,7 @@ class RegistrationIntake:
             _durable_evidence(provider_result),
             source_ref,
             authorization.branch,
+            repository=authorization.repository,
         )
 
     def _source_selection(
@@ -235,9 +458,101 @@ def _snapshot_reference(result: GitHubDestinationAuthorization) -> str:
     return hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
 
 
+def _snapshot_reference_from_evidence(evidence: Mapping[str, object]) -> str:
+    snapshot = evidence.get("snapshot")
+    if not isinstance(snapshot, MappingABC):
+        raise IntakeError("saved intake destination evidence lacks a snapshot")
+    return hashlib.sha256(_canonical_json(_plain_json(snapshot)).encode("utf-8")).hexdigest()
+
+
+def _validate_destination_evidence(
+    evidence: Mapping[str, object], repository: str, binding_id: str,
+    publication_branch: str, snapshot_reference: str,
+) -> None:
+    fields = {"decision", "snapshot", "observed_at", "evidence_hashes", "reason"}
+    if set(evidence) != fields:
+        raise IntakeError("saved intake destination evidence is invalid")
+    decision = evidence["decision"]
+    snapshot = evidence["snapshot"]
+    observed_at = evidence["observed_at"]
+    hashes = evidence["evidence_hashes"]
+    reason = evidence["reason"]
+    if not isinstance(decision, str) or decision not in {"allowed", "blocked", "unverifiable"}:
+        raise IntakeError("saved intake destination decision is invalid")
+    if isinstance(observed_at, bool) or not isinstance(observed_at, (int, float)):
+        raise IntakeError("saved intake destination observation is invalid")
+    if not isinstance(reason, str | type(None)):
+        raise IntakeError("saved intake destination reason is invalid")
+    if not isinstance(snapshot, MappingABC) or not isinstance(hashes, MappingABC):
+        raise IntakeError("saved intake destination evidence is invalid")
+    if snapshot.get("repository") != repository or snapshot.get("branch") != publication_branch:
+        raise IntakeError("saved intake destination snapshot does not match its target")
+    if snapshot.get("binding_id") != binding_id:
+        raise IntakeError("saved intake destination snapshot does not match its binding")
+    if any(not isinstance(key, str) or not isinstance(value, str) or len(value) != 64 for key, value in hashes.items()):
+        raise IntakeError("saved intake destination evidence hashes are invalid")
+    if _snapshot_reference_from_evidence(evidence) != snapshot_reference:
+        raise IntakeError("saved intake destination snapshot does not match its evidence")
+
+
+def _selection_decision_reference(
+    repository: str, source_selection: str, source_ref: str, source_commit: str,
+    overview_path: str, publication_branch: str, destination_snapshot_reference: str | None,
+) -> str:
+    if destination_snapshot_reference is None:
+        raise IntakeError("saved intake destination snapshot reference is missing")
+    return hashlib.sha256(_canonical_json({
+        "kind": "registration_source_selection_v1",
+        "repository": repository,
+        "source_selection": source_selection,
+        "source_ref": source_ref,
+        "source_commit": source_commit,
+        "overview_path": overview_path,
+        "publication_branch": publication_branch,
+        "destination_snapshot_reference": destination_snapshot_reference,
+    }).encode("utf-8")).hexdigest()
+
+
 def _durable_evidence(result: GitHubDestinationAuthorization) -> Mapping[str, object]:
     """Deep-freeze persistable provider evidence while it still owns its token."""
     copied = json.loads(json.dumps(result.durable_record(), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False))
+    return _FrozenEvidence(copied)
+
+
+def _optional_text(record: Mapping[str, object], field: str) -> str | None:
+    value = record.get(field)
+    if value is not None and not isinstance(value, str):
+        raise IntakeError(f"saved intake {field} is invalid")
+    return value
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+
+
+def _record_digest(record: Mapping[str, object]) -> str:
+    return hashlib.sha256(_canonical_json(record).encode("utf-8")).hexdigest()
+
+
+def _plain_json(value: object) -> object:
+    if isinstance(value, MappingABC):
+        if any(not isinstance(key, str) for key in value):
+            raise IntakeError("saved intake JSON object keys must be text")
+        return {key: _plain_json(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_plain_json(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise IntakeError("saved intake contains a non-JSON value")
+
+
+def _freeze_json_evidence(value: Mapping[str, object]) -> Mapping[str, object]:
+    try:
+        copied = json.loads(_canonical_json(_plain_json(value)))
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        raise IntakeError("saved intake destination evidence is invalid") from error
+    if not isinstance(copied, dict):
+        raise IntakeError("saved intake destination evidence is invalid")
     return _FrozenEvidence(copied)
 
 

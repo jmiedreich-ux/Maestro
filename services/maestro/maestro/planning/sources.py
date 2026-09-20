@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import re
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
@@ -23,6 +26,7 @@ class SourceIntakeError(ValueError):
 
 
 _FULL_SHA = re.compile(r"[0-9a-f]{40}\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _REF_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 GitCommand = Callable[..., object]
 
@@ -59,6 +63,23 @@ class SourceBlob:
     sha256: str
     content: bytes
 
+    def __post_init__(self) -> None:
+        try:
+            object.__setattr__(self, "path", validate_repository_path(self.path))
+        except GitReadError as error:
+            raise SourceIntakeError(str(error)) from error
+        if not isinstance(self.content, bytes):
+            raise SourceIntakeError("source content must be bytes")
+        if not isinstance(self.object_id, str) or _FULL_SHA.fullmatch(self.object_id) is None:
+            raise SourceIntakeError("source blob object_id is invalid")
+        if not isinstance(self.sha256, str) or _SHA256.fullmatch(self.sha256) is None:
+            raise SourceIntakeError("source blob sha256 is invalid")
+        git_header = f"blob {len(self.content)}\0".encode("ascii")
+        if self.object_id != hashlib.sha1(git_header + self.content).hexdigest():
+            raise SourceIntakeError("source blob object_id does not match its content")
+        if self.sha256 != hashlib.sha256(self.content).hexdigest():
+            raise SourceIntakeError("source blob sha256 does not match its content")
+
     @classmethod
     def from_bytes(cls, path: str, content: bytes) -> "SourceBlob":
         try:
@@ -70,6 +91,32 @@ class SourceBlob:
         git_header = f"blob {len(content)}\0".encode("ascii")
         return cls(path, hashlib.sha1(git_header + content).hexdigest(), hashlib.sha256(content).hexdigest(), content)
 
+    def to_record(self) -> dict[str, str]:
+        """Return a JSON-safe copy of this exact source blob."""
+        return {
+            "path": self.path,
+            "object_id": self.object_id,
+            "sha256": self.sha256,
+            "content_base64": base64.b64encode(self.content).decode("ascii"),
+        }
+
+    @classmethod
+    def from_record(cls, value: object) -> "SourceBlob":
+        record = _record_object(value, {"path", "object_id", "sha256", "content_base64"}, "source blob")
+        content = record["content_base64"]
+        if not isinstance(content, str):
+            raise SourceIntakeError("source blob content_base64 must be text")
+        try:
+            decoded = base64.b64decode(content.encode("ascii"), validate=True)
+        except (UnicodeEncodeError, ValueError) as error:
+            raise SourceIntakeError("source blob content_base64 is invalid") from error
+        return cls(
+            _record_text(record, "path", "source blob"),
+            _record_text(record, "object_id", "source blob"),
+            _record_text(record, "sha256", "source blob"),
+            decoded,
+        )
+
 
 @dataclass(frozen=True)
 class SourceReference:
@@ -78,6 +125,24 @@ class SourceReference:
     source_type: str
     subject: str
     path: str
+
+    def __post_init__(self) -> None:
+        if self.source_type not in {"Architecture", "Milestone declaration"}:
+            raise SourceIntakeError("source reference type is invalid")
+        if not isinstance(self.subject, str) or not self.subject.strip():
+            raise SourceIntakeError("source reference subject is invalid")
+        try:
+            object.__setattr__(self, "path", validate_repository_path(self.path))
+        except GitReadError as error:
+            raise SourceIntakeError(str(error)) from error
+
+    def to_record(self) -> dict[str, str]:
+        return {"source_type": self.source_type, "subject": self.subject, "path": self.path}
+
+    @classmethod
+    def from_record(cls, value: object) -> "SourceReference":
+        record = _record_object(value, {"source_type", "subject", "path"}, "source reference")
+        return cls(*(_record_text(record, key, "source reference") for key in ("source_type", "subject", "path")))
 
 
 @dataclass(frozen=True)
@@ -89,6 +154,36 @@ class OutcomeReference:
     milestone: str
     subject: str
     version: int
+
+    def __post_init__(self) -> None:
+        for field in ("declaration", "milestone", "subject"):
+            value = getattr(self, field)
+            if not isinstance(value, str) or not value.strip():
+                raise SourceIntakeError(f"outcome {field} is invalid")
+        for field in ("declaration_version", "version"):
+            value = getattr(self, field)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise SourceIntakeError(f"outcome {field} is invalid")
+
+    def to_record(self) -> dict[str, object]:
+        return {
+            "declaration": self.declaration,
+            "declaration_version": self.declaration_version,
+            "milestone": self.milestone,
+            "subject": self.subject,
+            "version": self.version,
+        }
+
+    @classmethod
+    def from_record(cls, value: object) -> "OutcomeReference":
+        record = _record_object(value, {"declaration", "declaration_version", "milestone", "subject", "version"}, "outcome")
+        integers = ("declaration_version", "version")
+        if any(isinstance(record[field], bool) or not isinstance(record[field], int) for field in integers):
+            raise SourceIntakeError("outcome version is invalid")
+        return cls(
+            _record_text(record, "declaration", "outcome"), record["declaration_version"],
+            _record_text(record, "milestone", "outcome"), _record_text(record, "subject", "outcome"), record["version"],
+        )
 
 
 @dataclass(frozen=True)
@@ -109,17 +204,83 @@ class SourceInventory:
             object.__setattr__(self, "overview_path", validate_repository_path(self.overview_path))
         except GitReadError as error:
             raise SourceIntakeError(str(error)) from error
+        if not isinstance(self.blobs, tuple) or any(not isinstance(item, SourceBlob) for item in self.blobs):
+            raise SourceIntakeError("source inventory blobs must be an ordered tuple")
+        if not isinstance(self.source_references, tuple) or any(not isinstance(item, SourceReference) for item in self.source_references):
+            raise SourceIntakeError("source inventory references must be an ordered tuple")
+        if not isinstance(self.outcomes, tuple) or any(not isinstance(item, OutcomeReference) for item in self.outcomes):
+            raise SourceIntakeError("source inventory outcomes must be an ordered tuple")
         paths = tuple(item.path for item in self.blobs)
         if self.overview_path not in paths:
             raise SourceIntakeError("source inventory does not contain the overview")
         if len(paths) != len(set(paths)):
             raise SourceIntakeError("source inventory paths must be unique")
+        reference_paths = tuple(item.path for item in self.source_references)
+        if len(reference_paths) != len(set(reference_paths)):
+            raise SourceIntakeError("source inventory references must be unique")
+        if any(path not in paths for path in reference_paths):
+            raise SourceIntakeError("source inventory does not contain a referenced source")
 
     def content_for(self, path: str) -> bytes:
         for blob in self.blobs:
             if blob.path == path:
                 return blob.content
         raise SourceIntakeError(f"selected source does not contain {path}")
+
+    def to_record(self) -> dict[str, object]:
+        """Return a detached JSON-safe record retaining the inventory order."""
+        return {
+            "source_ref": self.source_ref,
+            "source_commit": self.source_commit,
+            "overview_path": self.overview_path,
+            "blobs": [item.to_record() for item in self.blobs],
+            "source_references": [item.to_record() for item in self.source_references],
+            "outcomes": [item.to_record() for item in self.outcomes],
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_record(), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+
+    @classmethod
+    def from_record(cls, value: object) -> "SourceInventory":
+        record = _record_object(
+            value, {"source_ref", "source_commit", "overview_path", "blobs", "source_references", "outcomes"}, "source inventory"
+        )
+        collections = ("blobs", "source_references", "outcomes")
+        if any(not isinstance(record[field], list) for field in collections):
+            raise SourceIntakeError("source inventory collections must be arrays")
+        return cls(
+            _record_text(record, "source_ref", "source inventory"),
+            _record_text(record, "source_commit", "source inventory"),
+            _record_text(record, "overview_path", "source inventory"),
+            tuple(SourceBlob.from_record(item) for item in record["blobs"]),
+            tuple(SourceReference.from_record(item) for item in record["source_references"]),
+            tuple(OutcomeReference.from_record(item) for item in record["outcomes"]),
+        )
+
+    @classmethod
+    def from_json(cls, value: object) -> "SourceInventory":
+        if not isinstance(value, (str, bytes, bytearray)):
+            raise SourceIntakeError("source inventory JSON must be text or bytes")
+        try:
+            return cls.from_record(json.loads(value))
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as error:
+            raise SourceIntakeError("source inventory JSON is invalid") from error
+
+
+def _record_object(value: object, fields: set[str], subject: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise SourceIntakeError(f"{subject} record is invalid")
+    if any(not isinstance(key, str) for key in value):
+        raise SourceIntakeError(f"{subject} record is invalid")
+    return value
+
+
+def _record_text(record: Mapping[str, object], field: str, subject: str) -> str:
+    value = record[field]
+    if not isinstance(value, str):
+        raise SourceIntakeError(f"{subject} {field} must be text")
+    return value
 
 
 class ExactSourceReader:
