@@ -17,8 +17,19 @@ from pathlib import Path
 from typing import Mapping
 from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
+from maestro.agents.preflight import AgentRoutePreflight
+from maestro.agents.runtime_identity import (
+    PlanningIdentityConsumer,
+    SupervisorIdentityReporter,
+    compose_runtime_identity_endpoints,
+)
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
+from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, SystemdUserUnits, UnitController
 from maestro.foundation import Database, StorageSettings
+from maestro.planning.registration_plugin import (
+    RegistrationProcessPlugin,
+    RegistrationServiceBinding,
+)
 
 from .activities import ActivityRepository
 from .authentication import (
@@ -30,6 +41,7 @@ from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamSe
 from .http import MAX_REQUEST_BYTES, HTTPResponse
 from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
+from .processes import ProcessHandlerRegistry
 from .registry import OperationRegistry
 from .requests import RequestService
 
@@ -180,11 +192,26 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
 class InstalledServiceApplication:
     """Compose authenticated reads, durable requests, and the event stream."""
 
-    def __init__(self, settings: ServiceSettings) -> None:
+    def __init__(
+        self, settings: ServiceSettings,
+        registration_preflight: AgentRoutePreflight | None = None,
+        supervisor_units: UnitController | None = None,
+    ) -> None:
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
+        reporter: SupervisorIdentityReporter | None = None
+        consumer: PlanningIdentityConsumer | None = None
+        if self._agent_route_provider is not None:
+            reporter, consumer = compose_runtime_identity_endpoints()
+        self.agent_supervisor = AgentSupervisor(
+            FileSupervisorJournal(settings.storage.path.with_name("agent-supervisor.json")),
+            supervisor_units or SystemdUserUnits(),
+            runtime_identity_reporter=reporter,
+        )
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
+        self.process_registry = ProcessHandlerRegistry()
+        self.registration_assessment: RegistrationServiceBinding | None = None
         self.authenticator = OwnerAuthenticator(settings.owner)
         self.questions = QuestionService(self.database)
         base_requests = RequestService(
@@ -199,6 +226,16 @@ class InstalledServiceApplication:
         )
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
+        )
+        # Production composition always installs the registration process.  A
+        # missing route configuration or live preflight blocks that process's
+        # start instead of creating a caller-selected fallback.
+        self.registration_assessment = RegistrationServiceBinding(
+            self.database,
+            RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
+            self.process_registry,
+            self.agent_supervisor,
+            consumer,
         )
 
     @property

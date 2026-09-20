@@ -22,6 +22,7 @@ from maestro.agents.supervisor import (
     UnitIdentity,
 )
 from maestro.agents import ResolvedAgentRoute, RunningToolIdentity
+import maestro.agents.supervisor as supervisor_module
 
 
 class DurableSupervisionTest(unittest.TestCase):
@@ -30,7 +31,16 @@ class DurableSupervisionTest(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.journal = FileSupervisorJournal(self.root / "service-owned" / "runs.json")
         self.units = LocalProcessUnits()
-        self.supervisor = AgentSupervisor(self.journal, self.units)
+        self.published = []
+
+        class Publisher:
+            def __init__(self, published):
+                self.published = published
+
+            def publish(self, identity):
+                self.published.append(identity)
+
+        self.supervisor = AgentSupervisor(self.journal, self.units, runtime_identity_reporter=Publisher(self.published))
         self.identity = OperationIdentity("project-one", "activity-one", "assignment-one", "run-one")
 
     def tearDown(self) -> None:
@@ -189,51 +199,61 @@ class DurableSupervisionTest(unittest.TestCase):
         assert saved is not None
         self.assertEqual("terminal", saved.events[-1]["kind"])
 
-    def test_runtime_identity_reaches_only_its_reserved_confirmed_callback(self) -> None:
-        received = []
-        self.supervisor.reserve_runtime_identity_callback(self.identity, self.route(), received.append)
+    def test_runtime_identity_publishes_only_its_reserved_confirmed_identity(self) -> None:
+        self.supervisor.reserve_runtime_identity(self.identity, self.route())
         self.supervisor.launch(self.request("sleep 5"))
-        report = self.supervisor.runtime_identity_callback(self.identity)
         identity = RunningToolIdentity(
             "tool_metadata", "openai", "openai/gpt-5.6-codex-2026-09-01", "1.2.3", "a" * 64
         )
-        report(identity)
-        self.assertEqual(1, len(received))
-        self.assertEqual(self.identity, received[0].operation)
-        self.assertEqual(identity, received[0].tool_identity)
+        self.supervisor.report_runtime_identity(self.identity, identity)
+        self.assertEqual(1, len(self.published))
+        self.assertEqual(self.identity.key, self.published[0].operation_key)
+        self.assertEqual(identity.provider, self.published[0].provider)
         saved = self.journal.get(self.identity.key)
         assert saved is not None
         self.assertEqual("runtime_identity_confirmed", saved.events[-1]["kind"])
-        with self.assertRaisesRegex(SupervisionError, "already delivered"):
-            self.supervisor.runtime_identity_callback(self.identity)
+        with self.assertRaisesRegex(SupervisionError, "already published"):
+            self.supervisor.report_runtime_identity(self.identity, identity)
 
         unmatched = OperationIdentity("project-one", "activity-one", "assignment-two", "run-two")
         self.supervisor.launch(LaunchRequest(unmatched, ("/bin/sh", "-c", "sleep 5"), str(self.root), 5, 1))
-        with self.assertRaisesRegex(SupervisionError, "not available"):
-            self.supervisor.runtime_identity_callback(unmatched)
+        with self.assertRaisesRegex(SupervisionError, "reservation is not available"):
+            self.supervisor.report_runtime_identity(unmatched, identity)
         self.units.stop(unmatched.unit_name)
 
-    def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
-        received = []
-        self.supervisor.reserve_runtime_identity_callback(self.identity, self.route(), received.append)
+    def test_runtime_identity_requires_protected_authority_and_cannot_be_replayed(self) -> None:
+        self.assertFalse(hasattr(supervisor_module, "_issue_verified_runtime_identity"))
+        self.assertFalse(hasattr(supervisor_module, "_VerifiedRuntimeIdentityDelivery"))
+        self.assertFalse(hasattr(self.supervisor, "runtime_identity_callback"))
+        self.assertFalse(hasattr(self.supervisor, "consume_verified_runtime_identity"))
+        self.supervisor.reserve_runtime_identity(self.identity, self.route())
         self.supervisor.launch(self.request("sleep 5"))
-        report = self.supervisor.runtime_identity_callback(self.identity)
+        tool_identity = RunningToolIdentity(
+            "tool_metadata", "openai", "openai/gpt-5.6-codex-2026-09-01", "1.2.3", "a" * 64
+        )
+        self.supervisor.report_runtime_identity(self.identity, tool_identity)
+        self.assertEqual(1, len(self.published))
+        with self.assertRaisesRegex(SupervisionError, "already published"):
+            self.supervisor.report_runtime_identity(self.identity, tool_identity)
+
+    def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
+        self.supervisor.reserve_runtime_identity(self.identity, self.route())
+        self.supervisor.launch(self.request("sleep 5"))
         with self.assertRaisesRegex(SupervisionError, "trusted tool metadata"):
-            report(RunningToolIdentity("agent_text", "openai", "model", "1", "a" * 64))
+            self.supervisor.report_runtime_identity(self.identity, RunningToolIdentity("agent_text", "openai", "model", "1", "a" * 64))
         with self.assertRaisesRegex(SupervisionError, "differs from the reserved route"):
-            report(RunningToolIdentity("tool_metadata", "openai", "different-model", "1.2.3", "a" * 64))
+            self.supervisor.report_runtime_identity(self.identity, RunningToolIdentity("tool_metadata", "openai", "different-model", "1.2.3", "a" * 64))
         self.units.stop(self.identity.unit_name)
         with self.assertRaisesRegex(SupervisionError, "cannot confirm"):
-            report(
+            self.supervisor.report_runtime_identity(self.identity,
                 RunningToolIdentity(
                     "tool_metadata",
                     "openai",
                     "openai/gpt-5.6-codex-2026-09-01",
                     "1.2.3",
                     "a" * 64,
-                )
-            )
-        self.assertEqual([], received)
+                ))
+        self.assertEqual([], self.published)
 
 
 class SystemdUserUnitsTest(unittest.TestCase):

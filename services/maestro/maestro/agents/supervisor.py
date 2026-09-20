@@ -26,6 +26,7 @@ from .preflight import (
     RunningToolIdentity,
     verify_running_identity,
 )
+from .runtime_identity import ConfirmedRuntimeIdentity
 from .routes import AgentRouteError
 
 
@@ -131,19 +132,10 @@ class UnitController(Protocol):
     def stop(self, unit_name: str) -> None: ...
 
 
-@dataclass(frozen=True)
-class SupervisorRuntimeIdentity:
-    """Adapter metadata delivered only after the reserved run is confirmed."""
+class RuntimeIdentityPublisher(Protocol):
+    """The supervisor's write-only protected-runtime authority."""
 
-    operation: OperationIdentity
-    tool_identity: RunningToolIdentity
-    pid: int
-    boot_id: str
-    start_identity: str
-    invocation_id: str
-
-
-RuntimeIdentityConsumer = Callable[[SupervisorRuntimeIdentity], None]
+    def publish(self, identity: ConfirmedRuntimeIdentity) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -370,83 +362,66 @@ def _synchronized(method: Callable[..., object]) -> Callable[..., object]:
 
 
 class AgentSupervisor:
-    def __init__(self, journal: SupervisorJournal, units: UnitController, *, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self, journal: SupervisorJournal, units: UnitController, *,
+        runtime_identity_reporter: RuntimeIdentityPublisher | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self.journal, self.units, self.clock = journal, units, clock
+        if runtime_identity_reporter is not None and not callable(getattr(runtime_identity_reporter, "publish", None)):
+            raise TypeError("runtime identity reporter must publish to the protected runtime authority")
+        self._runtime_identity_reporter = runtime_identity_reporter
         self._managed: dict[str, ManagedUnit] = {}
-        self._runtime_identity_callbacks: dict[
-            str, tuple[ResolvedAgentRoute, RuntimeIdentityConsumer]
-        ] = {}
+        self._runtime_identity_routes: dict[str, ResolvedAgentRoute] = {}
         self._runtime_identity_delivered: set[str] = set()
         self._lock = threading.RLock()
 
     @_synchronized
-    def reserve_runtime_identity_callback(
+    def reserve_runtime_identity(
         self,
         identity: OperationIdentity,
         route: ResolvedAgentRoute,
-        callback: RuntimeIdentityConsumer,
     ) -> None:
-        """Reserve the sole service callback that may receive one run's identity.
-
-        Reservation precedes launch, so an adapter cannot attach metadata to a
-        different or already-existing operation.  The callback is intentionally
-        in-memory capability wiring: it is not agent input and is not recovered
-        as a substitute for a new service-owned reservation.
-        """
-        if (
-            not isinstance(identity, OperationIdentity)
-            or not isinstance(route, ResolvedAgentRoute)
-            or not callable(callback)
-        ):
+        """Reserve one preflighted run for protected identity publication."""
+        if not isinstance(identity, OperationIdentity) or not isinstance(route, ResolvedAgentRoute):
             raise SupervisionError(
-                "runtime_identity_callback_invalid",
-                "runtime identity callback reservation is invalid",
+                "runtime_identity_reservation_invalid",
+                "runtime identity reservation is invalid",
             )
+        if self._runtime_identity_reporter is None:
+            raise SupervisionError("runtime_identity_authority_unavailable", "protected runtime identity authority is unavailable")
         key = identity.key
         if self.journal.get(key) is not None:
             raise SupervisionError(
-                "runtime_identity_callback_late",
-                "runtime identity callback must be reserved before launch",
+                "runtime_identity_reservation_late",
+                "runtime identity must be reserved before launch",
             )
-        if key in self._runtime_identity_callbacks:
+        if key in self._runtime_identity_routes:
             raise SupervisionError(
-                "runtime_identity_callback_duplicate",
-                "operation already has a runtime identity callback",
+                "runtime_identity_reservation_duplicate",
+                "operation already has a runtime identity reservation",
             )
-        self._runtime_identity_callbacks[key] = (route, callback)
+        self._runtime_identity_routes[key] = route
 
     @_synchronized
-    def runtime_identity_callback(
-        self, identity: OperationIdentity
-    ) -> Callable[[RunningToolIdentity], None]:
-        """Return the adapter-only reporter for one confirmed reserved operation."""
+    def report_runtime_identity(
+        self, identity: OperationIdentity, tool_identity: RunningToolIdentity,
+    ) -> None:
+        """Publish one supervisor-confirmed identity to the protected core."""
         if not isinstance(identity, OperationIdentity):
-            raise SupervisionError(
-                "runtime_identity_callback_invalid", "operation identity is invalid"
-            )
+            raise SupervisionError("runtime_identity_reservation_invalid", "operation identity is invalid")
         record = self._required(identity)
         key = identity.key
-        if record.state != "running" or key not in self._runtime_identity_callbacks:
+        if record.state != "running" or key not in self._runtime_identity_routes:
             raise SupervisionError(
-                "runtime_identity_callback_unavailable",
-                "runtime identity callback is not available for this operation",
+                "runtime_identity_reservation_unavailable",
+                "runtime identity reservation is not available for this operation",
             )
         if key in self._runtime_identity_delivered:
             raise SupervisionError(
-                "runtime_identity_callback_delivered",
-                "runtime identity was already delivered for this operation",
+                "runtime_identity_already_published",
+                "runtime identity was already published for this operation",
             )
-
-        def report(tool_identity: RunningToolIdentity) -> None:
-            self._deliver_runtime_identity(identity, tool_identity)
-
-        return report
-
-    @_synchronized
-    def _deliver_runtime_identity(
-        self, identity: OperationIdentity, tool_identity: RunningToolIdentity
-    ) -> None:
-        """Confirm the live unit before delivering trusted adapter metadata."""
         if not isinstance(tool_identity, RunningToolIdentity) or tool_identity.source != "tool_metadata":
             raise SupervisionError(
                 "runtime_identity_unverified",
@@ -454,13 +429,7 @@ class AgentSupervisor:
             )
         record = self._required(identity)
         key = identity.key
-        reservation = self._runtime_identity_callbacks.get(key)
-        if record.state != "running" or reservation is None or key in self._runtime_identity_delivered:
-            raise SupervisionError(
-                "runtime_identity_callback_unavailable",
-                "runtime identity callback is not available for this operation",
-            )
-        route, callback = reservation
+        route = self._runtime_identity_routes[key]
         try:
             tool_identity = verify_running_identity(route, tool_identity)
         except AgentRouteError as error:
@@ -474,20 +443,24 @@ class AgentSupervisor:
                 "runtime_identity_unconfirmed",
                 "supervisor cannot confirm the operation receiving runtime identity",
             )
-        delivery = SupervisorRuntimeIdentity(
-            operation=identity,
-            tool_identity=tool_identity,
+        confirmed = ConfirmedRuntimeIdentity(
+            operation_key=identity.key,
+            provider=tool_identity.provider,
+            model_id=tool_identity.model_id,
+            tool_version=tool_identity.tool_version,
+            configuration_hash=tool_identity.configuration_hash,
             pid=observed.pid,
             boot_id=observed.boot_id,
             start_identity=observed.start_identity,
             invocation_id=observed.invocation_id,
         )
         try:
-            callback(delivery)
+            assert self._runtime_identity_reporter is not None
+            self._runtime_identity_reporter.publish(confirmed)
         except Exception as error:
             raise SupervisionError(
-                "runtime_identity_callback_failed",
-                "reserved operation callback rejected runtime identity",
+                "runtime_identity_publish_failed",
+                "protected runtime identity authority rejected publication",
             ) from error
         self._runtime_identity_delivered.add(key)
         self._save(
