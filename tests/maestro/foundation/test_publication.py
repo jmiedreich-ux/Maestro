@@ -266,6 +266,76 @@ class PublicationJournalTest(unittest.TestCase):
             ),
         )
 
+    def test_identical_blob_symlink_conflict_cannot_mutate_or_partially_publish(self) -> None:
+        sentinel = self.root / "sentinel.txt"
+        sentinel.write_bytes(b"sentinel remains unchanged\n")
+        index_relative = ".maestro/registrations/index.json"
+        receipt_relative = ".maestro/registrations/confirmations/confirmation-2.json"
+        index_path = self.work / index_relative
+        index_path.parent.mkdir(parents=True)
+        expected_index = str(sentinel).encode("utf-8")
+        index_path.write_bytes(expected_index)
+        self.git_run("git", "-C", str(self.work), "add", index_relative)
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "regular index")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+        regular_head = self.output("git", "-C", str(self.work), "rev-parse", "HEAD")
+
+        self.journal.prepare(
+            operation_id="symlink-conflict",
+            operation_type="registration_confirmation",
+            request_id="symlink-conflict-request",
+            repository="owner/project",
+            remote=str(self.remote),
+            branch="main",
+            expected_parent=regular_head,
+            files={
+                index_relative: b'{"confirmation_refs":["confirmation-2"]}\n',
+                receipt_relative: b'{"confirmation_id":"confirmation-2"}\n',
+            },
+            expected_files={
+                index_relative: expected_index,
+                receipt_relative: None,
+            },
+            destination_authorization=self.authorize(),
+        )
+
+        index_path.unlink()
+        index_path.symlink_to(sentinel)
+        self.git_run("git", "-C", str(self.work), "add", index_relative)
+        self.git_run("git", "-C", str(self.work), "commit", "--quiet", "-m", "symlink index")
+        self.git_run("git", "-C", str(self.work), "push", "--quiet", "origin", "main")
+        conflicting_head = self.output("git", "-C", str(self.work), "rev-parse", "HEAD")
+        commit_count = self.output(
+            "git", "--git-dir", str(self.remote), "rev-list", "--count", "main"
+        )
+
+        with self.assertRaisesRegex(PublicationConflictError, "not a regular file"):
+            self.journal.attempt("symlink-conflict", self.authorize())
+
+        self.assertEqual(b"sentinel remains unchanged\n", sentinel.read_bytes())
+        self.assertEqual(
+            conflicting_head,
+            self.output("git", "--git-dir", str(self.remote), "rev-parse", "main"),
+        )
+        self.assertEqual(
+            commit_count,
+            self.output("git", "--git-dir", str(self.remote), "rev-list", "--count", "main"),
+        )
+        receipt = subprocess.run(
+            ["git", "--git-dir", str(self.remote), "cat-file", "-e", f"main:{receipt_relative}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertNotEqual(0, receipt.returncode)
+        tree_entry = self.output(
+            "git", "--git-dir", str(self.remote), "ls-tree", "main", "--", index_relative
+        )
+        self.assertTrue(tree_entry.startswith("120000 blob "))
+        operation = self.journal.operation("symlink-conflict")
+        self.assertEqual("paused", operation.state)
+        self.assertIsNone(operation.remote_commit)
+
     def test_compare_and_replace_lost_acknowledgment_reuses_exact_remote_commit(self) -> None:
         first_index = b'{"confirmation_refs":["confirmation-1"]}\n'
         first_id = self.prepare_confirmation(

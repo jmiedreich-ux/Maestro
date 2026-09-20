@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import sqlite3
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -272,12 +273,19 @@ class PublicationJournal:
             with self._destination_provider.bind_transport(
                 destination_authorization, self._transport, operation.authorization
             ) as transport:
-                return self._reader.snapshot(
+                command = lambda *args: run_git(
+                    *args, environment=transport.environment()
+                )
+                snapshot = self._reader.snapshot(
                     transport.remote,
                     operation.authorization.branch,
                     tuple(operation.files),
-                    command=lambda *args: run_git(*args, environment=transport.environment()),
+                    command=command,
                 )
+                self._require_regular_remote_targets(
+                    transport.remote, snapshot, tuple(operation.files), command
+                )
+                return snapshot
         except (GitReadError, RepositoryCredentialError) as error:
             raise PublicationAccessError("cannot observe the configured publication target") from error
 
@@ -418,6 +426,7 @@ class PublicationJournal:
                 self._checked(command, "-C", str(directory), "remote", "add", "origin", transport.remote)
                 self._checked(command, "-C", str(directory), "fetch", "--no-tags", "--quiet", "origin", parent)
                 self._checked(command, "-C", str(directory), "checkout", "--quiet", "--detach", "FETCH_HEAD")
+                self._require_regular_local_targets(directory, tuple(operation.files))
                 for path, content in operation.files.items():
                     destination = directory / path
                     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -526,9 +535,103 @@ class PublicationJournal:
     ) -> RemoteSnapshot:
         try:
             return self.observe(operation_id, destination_authorization)
-        except (PublicationAccessError, GitHubDestinationAuthorizationError) as error:
+        except (
+            PublicationAccessError,
+            PublicationConflictError,
+            GitHubDestinationAuthorizationError,
+        ) as error:
             self._pause(operation_id, str(error))
             raise
+
+    @classmethod
+    def _require_regular_remote_targets(
+        cls,
+        remote: str,
+        snapshot: RemoteSnapshot,
+        paths: tuple[str, ...],
+        command,
+    ) -> None:
+        """Reject symlinks, submodules, and path-shape conflicts before a write."""
+        with tempfile.TemporaryDirectory(prefix="maestro-git-entry-check-") as temporary:
+            cls._checked(command, "init", "--bare", "--quiet", temporary)
+            cls._checked(
+                command,
+                "-C", temporary,
+                "fetch", "--no-tags", "--quiet", remote, snapshot.head,
+            )
+            for path in paths:
+                parts = path.split("/")
+                for end in range(1, len(parts)):
+                    prefix = "/".join(parts[:end])
+                    entry = cls._tree_entry(command, temporary, snapshot.head, prefix)
+                    if entry is None:
+                        break
+                    if entry != ("040000", "tree"):
+                        raise PublicationConflictError(
+                            f"remote publication target parent is not a directory: {prefix}"
+                        )
+                entry = cls._tree_entry(command, temporary, snapshot.head, path)
+                if entry is not None and entry not in {
+                    ("100644", "blob"),
+                    ("100755", "blob"),
+                }:
+                    raise PublicationConflictError(
+                        f"remote publication target is not a regular file: {path}"
+                    )
+
+    @classmethod
+    def _tree_entry(
+        cls, command, repository: str, commit: str, path: str
+    ) -> tuple[str, str] | None:
+        result = cls._checked(
+            command,
+            "-C", repository,
+            "ls-tree", "-z", "--full-tree", commit, "--", path,
+        )
+        entries = tuple(item for item in result.stdout.split(b"\0") if item)
+        if not entries:
+            return None
+        if len(entries) != 1:
+            raise PublicationConflictError(
+                f"remote publication target has an ambiguous tree entry: {path}"
+            )
+        try:
+            metadata, returned_path = entries[0].split(b"\t", 1)
+            mode, entry_type, _object_id = metadata.decode("ascii").split(" ", 2)
+        except (UnicodeDecodeError, ValueError) as error:
+            raise PublicationConflictError(
+                f"remote publication target has an invalid tree entry: {path}"
+            ) from error
+        if returned_path != path.encode("utf-8"):
+            raise PublicationConflictError(
+                f"remote publication target resolved to another path: {path}"
+            )
+        return mode, entry_type
+
+    @staticmethod
+    def _require_regular_local_targets(root: Path, paths: tuple[str, ...]) -> None:
+        """Preflight every checked-out target before materializing any bytes."""
+        for path in paths:
+            destination = root / path
+            current = root
+            for part in destination.relative_to(root).parts[:-1]:
+                current /= part
+                try:
+                    metadata = os.lstat(current)
+                except FileNotFoundError:
+                    break
+                if not stat.S_ISDIR(metadata.st_mode):
+                    raise PublicationConflictError(
+                        f"local publication target parent is not a directory: {path}"
+                    )
+            try:
+                metadata = os.lstat(destination)
+            except FileNotFoundError:
+                continue
+            if not stat.S_ISREG(metadata.st_mode):
+                raise PublicationConflictError(
+                    f"local publication target is not a regular file: {path}"
+                )
 
     @staticmethod
     def _target_state(operation: PublicationOperation, snapshot: RemoteSnapshot) -> tuple[bool, bool]:
