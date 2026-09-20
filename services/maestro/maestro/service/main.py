@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Mapping
 from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
+from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
 from maestro.foundation import Database, StorageSettings
 
 from .activities import ActivityRepository
@@ -66,6 +67,7 @@ class ServiceSettings:
     port: int = DEFAULT_PORT
     agent_user: str = "maestro-agent"
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
+    agent_route_provider: ConfiguredAgentRouteProvider | None = None
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -78,6 +80,11 @@ class ServiceSettings:
             raise ServiceConfigurationError("service.agent_user is invalid")
         if not self.workspace_root.is_absolute():
             raise ServiceConfigurationError("workspace_root must be absolute")
+        if (
+            self.agent_route_provider is not None
+            and not isinstance(self.agent_route_provider, ConfiguredAgentRouteProvider)
+        ):
+            raise ServiceConfigurationError("agent route provider is invalid")
 
 
 def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
@@ -142,6 +149,14 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         owner = OwnerAuthenticationSettings.from_mapping(_table(value["owner"], "owner"))
     except ValueError as error:
         raise ServiceConfigurationError(str(error)) from error
+    try:
+        agent_route_provider = (
+            ConfiguredAgentRouteProvider.from_service_configuration(value)
+            if "tools" in value
+            else None
+        )
+    except AgentRouteError as error:
+        raise ServiceConfigurationError(str(error)) from error
     host = service.get("host", DEFAULT_HOST)
     port = service.get("port", DEFAULT_PORT)
     agent_user = service.get("agent_user", "maestro-agent")
@@ -158,6 +173,7 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         port=port,
         agent_user=agent_user,
         workspace_root=Path(workspace_root),
+        agent_route_provider=agent_route_provider,
     )
 
 
@@ -165,6 +181,7 @@ class InstalledServiceApplication:
     """Compose authenticated reads, durable requests, and the event stream."""
 
     def __init__(self, settings: ServiceSettings) -> None:
+        self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
@@ -183,6 +200,15 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
+
+    @property
+    def agent_route_provider(self) -> ConfiguredAgentRouteProvider:
+        """Return the one installed route source, or block an agent start."""
+        if self._agent_route_provider is None:
+            raise ServiceConfigurationError(
+                "installed agent route configuration is missing"
+            )
+        return self._agent_route_provider
 
     def start(self) -> None:
         self.event_application.start()

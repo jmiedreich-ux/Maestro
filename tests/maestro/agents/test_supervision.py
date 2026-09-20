@@ -21,6 +21,7 @@ from maestro.agents.supervisor import (
     SystemdUserUnits,
     UnitIdentity,
 )
+from maestro.agents import RunningToolIdentity
 
 
 class DurableSupervisionTest(unittest.TestCase):
@@ -169,6 +170,42 @@ class DurableSupervisionTest(unittest.TestCase):
         saved = self.journal.get(self.identity.key)
         assert saved is not None
         self.assertEqual("terminal", saved.events[-1]["kind"])
+
+    def test_runtime_identity_reaches_only_its_reserved_confirmed_callback(self) -> None:
+        received = []
+        self.supervisor.reserve_runtime_identity_callback(self.identity, received.append)
+        self.supervisor.launch(self.request("sleep 5"))
+        report = self.supervisor.runtime_identity_callback(self.identity)
+        identity = RunningToolIdentity(
+            "tool_metadata", "openai", "openai/gpt-5.6-codex-2026-09-01", "1.2.3", "a" * 64
+        )
+        report(identity)
+        self.assertEqual(1, len(received))
+        self.assertEqual(self.identity, received[0].operation)
+        self.assertEqual(identity, received[0].tool_identity)
+        saved = self.journal.get(self.identity.key)
+        assert saved is not None
+        self.assertEqual("runtime_identity_confirmed", saved.events[-1]["kind"])
+        with self.assertRaisesRegex(SupervisionError, "already delivered"):
+            self.supervisor.runtime_identity_callback(self.identity)
+
+        unmatched = OperationIdentity("project-one", "activity-one", "assignment-two", "run-two")
+        self.supervisor.launch(LaunchRequest(unmatched, ("/bin/sh", "-c", "sleep 5"), str(self.root), 5, 1))
+        with self.assertRaisesRegex(SupervisionError, "not available"):
+            self.supervisor.runtime_identity_callback(unmatched)
+        self.units.stop(unmatched.unit_name)
+
+    def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
+        received = []
+        self.supervisor.reserve_runtime_identity_callback(self.identity, received.append)
+        self.supervisor.launch(self.request("sleep 5"))
+        report = self.supervisor.runtime_identity_callback(self.identity)
+        with self.assertRaisesRegex(SupervisionError, "trusted tool metadata"):
+            report(RunningToolIdentity("agent_text", "openai", "model", "1", "a" * 64))
+        self.units.stop(self.identity.unit_name)
+        with self.assertRaisesRegex(SupervisionError, "cannot confirm"):
+            report(RunningToolIdentity("tool_metadata", "openai", "model", "1", "a" * 64))
+        self.assertEqual([], received)
 
 
 class SystemdUserUnitsTest(unittest.TestCase):
