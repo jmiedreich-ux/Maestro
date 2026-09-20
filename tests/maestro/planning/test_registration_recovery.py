@@ -20,6 +20,7 @@ from maestro.foundation.credentials import (
 )
 from maestro.foundation.git_publication import (
     PublicationAccessError,
+    PublicationConflictError,
     PublicationJournal,
     publication_migrations,
 )
@@ -31,6 +32,11 @@ from maestro.foundation.github_destination import (
     GitHubInstallationToken,
 )
 from maestro.planning.registration import AssessmentContext, AssessmentRun, RegistrationAssessment
+from maestro.planning.intake import (
+    RegistrationIntakeResult,
+    _selection_decision_reference,
+)
+from maestro.planning.registration_plugin import REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION
 from maestro.planning.registration_confirmation import (
     OwnerConfirmation,
     RegistrationConfirmationService,
@@ -44,10 +50,8 @@ from maestro.planning.registration_records import (
     package_content_hash,
 )
 from maestro.planning.registration_recovery import (
-    ComparisonItem,
     HistoricalDestinationProfiles,
     HistoricalPublicationRoute,
-    RegistrationContinuity,
     RegistrationRecoveryError,
     RegistrationRecoveryService,
     RegistrationRecoverySetupError,
@@ -58,11 +62,14 @@ from maestro.service.activities import (
     ACTIVITY_ACTIONS_MIGRATION,
     ACTIVITY_RECORDS_MIGRATION,
     ActivityRecord,
+    ActivityAction,
     ActivityRepository,
     ProjectRecord,
+    QuestionRecord,
 )
 from maestro.service.authentication import VerifiedActor
 from maestro.service.processes import ProcessSnapshot
+from maestro.service.questions import QUESTION_MIGRATION
 from maestro.service.resources import BundleSnapshot
 
 
@@ -112,8 +119,10 @@ class RegistrationRecoveryTest(unittest.TestCase):
                 *publication_migrations(),
                 *registration_confirmation_migrations(),
                 *registration_recovery_migrations(),
+                REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION,
                 ACTIVITY_RECORDS_MIGRATION,
                 ACTIVITY_ACTIONS_MIGRATION,
+                QUESTION_MIGRATION,
             ),
         )
         self.journal = PublicationJournal(
@@ -150,13 +159,6 @@ class RegistrationRecoveryTest(unittest.TestCase):
         self.authorization = self.provider.authorize("owner/project", "main")
         self.snapshot_reference = _snapshot_reference(self.authorization.snapshot)
         self.route = HistoricalPublicationRoute(self.journal, self.provider)
-        self.continuity = RegistrationContinuity(
-            source={"source_ref": "refs/heads/main", "source_commit": "b" * 40},
-            questions=({"question_id": "question-1", "answer": "Keep scope"},),
-            decisions=({"decision_id": "decision-1", "resolution": "Retain source"},),
-            review={"review_count": 1, "review_limit": 2, "approved_hash": "d" * 64},
-            retry_counts={"architect": 1, "reviewer": 0},
-        )
         process_definition = {
             "initiation": {"policy": "registration_intake_or_idle_update"},
             "agent_session": {
@@ -199,14 +201,115 @@ class RegistrationRecoveryTest(unittest.TestCase):
         )
 
     def begin(self, service: RegistrationRecoveryService, activity_id: str, request_id: str):
+        self.save_registration_history(activity_id)
+        continuity = service.load_continuity("project-1", activity_id)
         return service.begin(
             request_id=request_id,
             project_id="project-1",
             activity_id=activity_id,
             destination_authorization=self.authorization,
-            continuity=self.continuity,
+            continuity=continuity,
             process_snapshot=self.process_snapshot,
         )
+
+    def save_registration_history(self, activity_id: str) -> None:
+        with self.database.read_connection() as connection:
+            if connection.execute(
+                "SELECT 1 FROM registration_assessment_intake WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone() is not None:
+                return
+        assessment, _manifest, _records = self.package(
+            activity_id, 2, f"saved-{activity_id}", self.first_package
+        )
+        context = assessment.context
+        intake = RegistrationIntakeResult(
+            context.source_inventory,
+            (),
+            "binding-project",
+            context.selected_scope,
+            "supplied",
+            self.snapshot_reference,
+            self.authorization.durable_record(),
+            context.source_inventory.source_ref,
+            "main",
+            None,
+            "owner/project",
+            context.decision_version,
+        )
+        state = assessment.to_record()
+        with self.database.transaction() as transaction:
+            self.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    activity_id, "project-1", "registration",
+                    f"Update registration {activity_id}", "starting", 1,
+                    available_actions=(
+                        ActivityAction(
+                            f"{activity_id}-source-decision",
+                            "Retain saved source", "decision",
+                        ),
+                    ),
+                ),
+            )
+            self.activities.create_question(
+                transaction,
+                QuestionRecord(
+                    f"{activity_id}-question", "project-1", activity_id,
+                    "Retained context", "Keep this saved context?",
+                    "project-architect", "open", 1,
+                ),
+            )
+            transaction.execute(
+                """INSERT INTO registration_assessment_intake(
+                       activity_id, project_id, selections_json, intake_json
+                   ) VALUES (?, ?, ?, ?)""",
+                (
+                    activity_id, "project-1",
+                    canonical_json({
+                        "architect": {"tool": "codex", "model_id": "openai/model-1"},
+                        "fidelity_reviewer": {
+                            "tool": "claude_code", "model_id": "anthropic/model-1"
+                        },
+                    }),
+                    intake.to_json(),
+                ),
+            )
+            for role, run, route in (
+                ("project_architect", context.architect_run, context.routes.architect),
+                ("fidelity_reviewer", context.reviewer_run, context.routes.fidelity_reviewer),
+            ):
+                transaction.execute(
+                    """INSERT INTO registration_assessment_runs(
+                           activity_id, role, assignment_id, run_id, route_json,
+                           runtime_identity_json
+                       ) VALUES (?, ?, ?, ?, ?, NULL)""",
+                    (
+                        activity_id, role, run.assignment_id, run.run_id,
+                        canonical_json({
+                            "role": route.role,
+                            "tool": route.tool,
+                            "requested_model_id": route.requested_model_id,
+                            "provider": route.provider,
+                            "tool_version": route.tool_version,
+                            "executable": route.executable,
+                            "credential_profile": route.credential_profile,
+                            "settings_profile": route.settings_profile,
+                            "location": route.location,
+                            "capabilities": list(route.capabilities),
+                            "context_limit_tokens": route.context_limit_tokens,
+                            "permitted_destinations": [
+                                item.as_dict() for item in route.permitted_destinations
+                            ],
+                            "configuration_hash": route.configuration_hash,
+                        }),
+                    ),
+                )
+            transaction.execute(
+                """INSERT INTO registration_assessment_state(activity_id, state_json)
+                   VALUES (?, ?)""",
+                (activity_id, canonical_json(state)),
+            )
 
     def test_atomic_idle_reservation_comparison_and_retained_active_approval(self) -> None:
         service = self.recovery()
@@ -263,27 +366,24 @@ class RegistrationRecoveryTest(unittest.TestCase):
             activity_id, 2, "candidate-2", self.first.remote_commit,
             self.first_package, "2",
         )
-        unchanged = ComparisonItem("requirement-1", "Safety", 1, "1" * 64, "completion_requirement")
         comparison = service.record_candidate(
             activity_id,
             package2,
-            (
-                ComparisonItem("scope-1", "Registered scope", 1, "2" * 64, "scope"),
-                unchanged,
-            ),
-            (
-                ComparisonItem("scope-1", "Registered scope", 2, "3" * 64, "scope"),
-                unchanged,
-                ComparisonItem("milestone-2", "Second outcome", 1, "4" * 64, "project_milestone"),
-            ),
             {
-                "scope-1": ("decision-1",),
+                "summary-project-1": ("decision-1",),
                 "milestone-2": ("finding-2",),
             },
         )
         self.assertEqual(("added", "changed"), tuple(item.kind for item in comparison.differences))
         self.assertEqual(self.first_package, self.confirmation.active("project-1").package_ref)
-        self.assertEqual(self.continuity, service.status(activity_id).continuity)
+        self.assertEqual(
+            service.load_continuity("project-1", activity_id),
+            service.status(activity_id).continuity,
+        )
+        self.assertEqual(
+            f"{activity_id}-question",
+            service.status(activity_id).continuity.questions[0]["question_id"],
+        )
         self.assertEqual(self.process_snapshot, service.status(activity_id).process_snapshot)
         self.assertEqual(comparison, service.comparison(activity_id))
 
@@ -344,6 +444,32 @@ class RegistrationRecoveryTest(unittest.TestCase):
         )
         self.assertEqual(self.first_package, self.confirmation.active("project-1").package_ref)
 
+    def test_cancellation_conflict_pauses_and_keeps_the_reservation(self) -> None:
+        service = self.recovery()
+        self.begin(service, "activity-2", "begin-2")
+        original_head = self.remote_head()
+        self.interrupt_candidate_publication(
+            "activity-2", "candidate-2", "cancel-conflict", original_head
+        )
+        operation_id = "candidate-operation-cancel-conflict"
+        operation = self.journal.operation(operation_id)
+        target = sorted(operation.files)[0]
+        self.push_exact_files({target: b"conflicting package bytes\n"})
+        conflict_head = self.remote_head()
+
+        with self.assertRaisesRegex(PublicationConflictError, "conflicting"):
+            service.cancel(
+                "activity-2", "cancel-conflict-action", operation_id=operation_id
+            )
+
+        status = service.status("activity-2")
+        self.assertEqual("paused", status.state)
+        self.assertIn("Cancellation paused", status.failure or "")
+        self.assertEqual(conflict_head, self.remote_head())
+        self.assertEqual(self.first_package, self.confirmation.active("project-1").package_ref)
+        with self.assertRaisesRegex(RegistrationRecoveryError, "already reserves"):
+            self.begin(self.recovery(), "activity-3", "begin-3")
+
     def test_restart_recovers_pending_confirmation_with_only_original_profile(self) -> None:
         service = self.recovery()
         self.begin(service, "activity-2", "begin-2")
@@ -353,9 +479,10 @@ class RegistrationRecoveryTest(unittest.TestCase):
         )
         service.record_candidate(
             "activity-2", package2,
-            (ComparisonItem("scope-1", "Scope", 1, "1" * 64, "scope"),),
-            (ComparisonItem("scope-1", "Scope", 2, "2" * 64, "scope"),),
-            {"scope-1": ("decision-2",)},
+            {
+                "summary-project-1": ("decision-2",),
+                "milestone-2": ("finding-2",),
+            },
         )
         action = OwnerConfirmation(
             "confirmation-2", "confirmation-request-2", "project-1", "activity-2",
@@ -495,7 +622,10 @@ class RegistrationRecoveryTest(unittest.TestCase):
         self.assertEqual(package2, self.confirmation.active("project-1").package_ref)
         status = restarted.status("activity-2")
         self.assertEqual("completed", status.state)
-        self.assertEqual(self.continuity, status.continuity)
+        self.assertEqual(
+            restarted.load_continuity("project-1", "activity-2"),
+            status.continuity,
+        )
         self.assertEqual((1, 0), (
             status.automatic_publication_retries, status.manual_publication_retries
         ))
@@ -536,7 +666,11 @@ class RegistrationRecoveryTest(unittest.TestCase):
         self.assertEqual("applied", self.journal.operation("candidate-operation-retry").state)
         status = service.status("activity-2")
         self.assertEqual(1, status.automatic_publication_retries)
-        self.assertEqual(self.continuity, status.continuity)
+        self.assertEqual(
+            service.load_continuity("project-1", "activity-2"),
+            status.continuity,
+        )
+        self.assertEqual(1, status.continuity.retry_counts["automatic_publication"])
 
         restarted = self.recovery()
         replay = restarted.recover_candidate_publication(
@@ -561,6 +695,127 @@ class RegistrationRecoveryTest(unittest.TestCase):
                 f"main:{manifest_path}",
             ]),
         )
+
+    def test_each_candidate_retry_dispatch_is_counted_once_and_limit_pauses(self) -> None:
+        service = self.recovery()
+        self.begin(service, "activity-2", "begin-2")
+        head = self.remote_head()
+        assessment, manifest, records = self.interrupt_candidate_publication(
+            "activity-2", "candidate-2", "counted", head
+        )
+
+        for request_id in ("automatic-retry-1", "automatic-retry-2"):
+            self.api.block_at_authorization = self.api.authorization_count + 3
+            with self.assertRaises(PublicationAccessError):
+                service.recover_candidate_publication(
+                    "activity-2", self.confirmation, assessment,
+                    activity_version=1, manifest=manifest, records=records,
+                    remote=str(self.remote), expected_parent=head,
+                    operation_id="candidate-operation-counted",
+                    publication_request_id="candidate-request-counted",
+                    retry_request_id=request_id, automatic=True,
+                )
+            self.api.block_at_authorization = None
+            self.assertEqual(head, self.remote_head())
+
+        with self.assertRaisesRegex(RegistrationRecoveryError, "allowance is exhausted"):
+            service.recover_candidate_publication(
+                "activity-2", self.confirmation, assessment,
+                activity_version=1, manifest=manifest, records=records,
+                remote=str(self.remote), expected_parent=head,
+                operation_id="candidate-operation-counted",
+                publication_request_id="candidate-request-counted",
+                retry_request_id="automatic-retry-3", automatic=True,
+            )
+        status = service.status("activity-2")
+        self.assertEqual("paused", status.state)
+        self.assertEqual(2, status.automatic_publication_retries)
+        self.assertIn("allowance is exhausted", status.failure or "")
+        self.assertEqual(head, self.remote_head())
+
+        with self.assertRaisesRegex(RegistrationRecoveryError, "already dispatched"):
+            service.recover_candidate_publication(
+                "activity-2", self.confirmation, assessment,
+                activity_version=1, manifest=manifest, records=records,
+                remote=str(self.remote), expected_parent=head,
+                operation_id="candidate-operation-counted",
+                publication_request_id="candidate-request-counted",
+                retry_request_id="automatic-retry-1", automatic=True,
+            )
+        self.assertEqual(2, service.status("activity-2").automatic_publication_retries)
+        self.assertEqual(head, self.remote_head())
+
+    def test_confirmation_retry_limit_and_saved_continuity_are_enforced(self) -> None:
+        service = self.recovery()
+        self.save_registration_history("activity-2")
+        continuity = service.load_continuity("project-1", "activity-2")
+        fabricated = replace(
+            continuity,
+            questions=({"question_id": "invented", "answer": "unsupported"},),
+        )
+        with self.assertRaisesRegex(RegistrationRecoveryError, "authoritative saved history"):
+            service.begin(
+                request_id="fabricated-begin", project_id="project-1",
+                activity_id="activity-2", destination_authorization=self.authorization,
+                continuity=fabricated, process_snapshot=self.process_snapshot,
+            )
+        self.begin(service, "activity-2", "begin-2")
+        assessment, _manifest, _records, package = self.publish(
+            "activity-2", 2, "candidate-2", self.first.remote_commit,
+            self.first_package, "2",
+        )
+        service.record_candidate(
+            "activity-2", package,
+            {
+                "summary-project-1": ("decision-2",),
+                "milestone-2": ("finding-2",),
+            },
+        )
+        action = OwnerConfirmation(
+            "confirmation-2", "confirmation-request-2", "project-1", "activity-2",
+            1, package, "2026-09-20T11:00:00Z",
+        )
+        self.api.block_at_authorization = self.api.authorization_count + 2
+        with self.assertRaises(PublicationAccessError):
+            self.confirmation.confirm(
+                assessment, VerifiedActor("owner-local"), action
+            )
+        self.api.block_at_authorization = None
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET automatic_publication_limit = 0 WHERE activity_id = ?""",
+                ("activity-2",),
+            )
+        head = self.remote_head()
+        with self.assertRaisesRegex(RegistrationRecoveryError, "allowance is exhausted"):
+            service.recover_confirmation(
+                "activity-2", self.confirmation, assessment,
+                VerifiedActor("owner-local"), action,
+                retry_request_id="confirmation-retry-limit", automatic=True,
+            )
+        status = service.status("activity-2")
+        self.assertEqual("paused", status.state)
+        self.assertEqual(0, status.automatic_publication_retries)
+        self.assertIn("allowance is exhausted", status.failure or "")
+        self.assertEqual(head, self.remote_head())
+
+        with self.database.transaction() as transaction:
+            row = transaction.execute(
+                """SELECT state_json FROM registration_assessment_state
+                   WHERE activity_id = ?""",
+                ("activity-2",),
+            ).fetchone()
+            assert row is not None
+            changed = json.loads(str(row[0]))
+            changed["review_count"] = 0
+            transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(changed), "activity-2"),
+            )
+        with self.assertRaisesRegex(RegistrationRecoveryError, "authoritative history"):
+            self.recovery().status("activity-2")
 
     def interrupt_candidate_publication(
         self, activity_id: str, candidate_id: str, publication_id: str, parent: str
@@ -593,12 +848,21 @@ class RegistrationRecoveryTest(unittest.TestCase):
         record = {
             "schema_version": 1,
             "record_type": "summary",
-            "record_id": f"summary-{candidate_id}",
+            "record_id": "summary-project-1",
             "subject": "Project summary",
             "record_version": registration_version,
             "data": {},
         }
         records = {"summary.json": record}
+        if registration_version > 1:
+            records["milestone-2.json"] = {
+                "schema_version": 1,
+                "record_type": "milestone",
+                "record_id": "milestone-2",
+                "subject": "Second outcome",
+                "record_version": 1,
+                "data": {},
+            }
         inventory = SourceInventory(
             "refs/heads/main", "b" * 40, "docs/overview.md",
             (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
@@ -610,9 +874,14 @@ class RegistrationRecoveryTest(unittest.TestCase):
             snapshot_reference = _snapshot_reference(
                 self.provider.authorize("owner/project", "main").snapshot
             )
+        decision_reference = _selection_decision_reference(
+            "owner/project", "supplied", inventory.source_ref,
+            inventory.source_commit, inventory.overview_path, "main",
+            snapshot_reference,
+        )
         context = RegistrationPackageContext(
-            "project-1", "owner/project", inventory, "decision-1", "main",
-            snapshot_reference, "decision/source-selection-1",
+            "project-1", "owner/project", inventory, decision_reference, "main",
+            snapshot_reference, decision_reference,
         )
         manifest: dict[str, object] = {
             "project_id": "project-1",
@@ -622,20 +891,23 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "source_repository": "owner/project",
             "source_commit": inventory.source_commit,
             "overview_path": inventory.overview_path,
-            "decision_version": "decision-1",
+            "decision_version": decision_reference,
             "source_ref": inventory.source_ref,
             "publication_branch": "main",
             "destination_snapshot_reference": snapshot_reference,
-            "selection_decision_ref": "decision/source-selection-1",
+            "selection_decision_ref": decision_reference,
             "content_hash": package_content_hash(records),
-            "files": [{
-                "path": "summary.json",
-                "record_id": record["record_id"],
-                "record_type": record["record_type"],
-                "record_version": record["record_version"],
-                "subject": record["subject"],
-                "sha256": hashlib.sha256(canonical_record_bytes(record)).hexdigest(),
-            }],
+            "files": [
+                {
+                    "path": path,
+                    "record_id": item["record_id"],
+                    "record_type": item["record_type"],
+                    "record_version": item["record_version"],
+                    "subject": item["subject"],
+                    "sha256": hashlib.sha256(canonical_record_bytes(item)).hexdigest(),
+                }
+                for path, item in records.items()
+            ],
         }
         artifact = {
             "path": "candidate/manifest.json",
@@ -653,17 +925,17 @@ class RegistrationRecoveryTest(unittest.TestCase):
             requested_model_id="anthropic/model-1", provider="anthropic",
         )
         assessment = RegistrationAssessment(AssessmentContext(
-            "project-1", activity_id, inventory, "decision-1", "APP-PM1",
+            "project-1", activity_id, inventory, decision_reference, "APP-PM1",
             "architect-agent", "reviewer-agent", ResolvedRoleRoutes(route, reviewer),
             AssessmentRun("architect-assignment", "architect-run"),
             AssessmentRun("reviewer-assignment", "reviewer-run"), context,
         ))
         assessment.submit_architect(
-            _response("project_architect", activity_id, artifact),
+            _response("project_architect", activity_id, artifact, decision_reference),
             RunningToolIdentity("tool_metadata", "openai", "openai/model-1", "1", "c" * 64),
         )
         assessment.submit_reviewer(
-            _response("fidelity_reviewer", activity_id, artifact),
+            _response("fidelity_reviewer", activity_id, artifact, decision_reference),
             RunningToolIdentity("tool_metadata", "anthropic", "anthropic/model-1", "1", "c" * 64),
         )
         return assessment, manifest, records
@@ -721,7 +993,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
 
 
 def _response(
-    role: str, activity_id: str, artifact: dict[str, str]
+    role: str, activity_id: str, artifact: dict[str, str], decision_version: str
 ) -> RegistrationAgentResponse:
     return RegistrationAgentResponse.from_mapping({
         "contract_version": 1,
@@ -731,7 +1003,7 @@ def _response(
         "activity_id": activity_id,
         "role": role,
         "source_commit": "b" * 40,
-        "decision_version": "decision-1",
+        "decision_version": decision_version,
         "result": "completed",
         "summary": "Ready candidate.",
         "findings": [],

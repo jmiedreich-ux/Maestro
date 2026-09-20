@@ -23,12 +23,20 @@ from maestro.service.authentication import VerifiedActor
 from maestro.service.processes import ProcessSnapshot
 from maestro.service.resources import BundleSnapshot, ProcessResourceError
 
+from .intake import IntakeError, RegistrationIntakeResult
 from .registration import RegistrationAssessment
 from .registration_confirmation import (
     ConfirmationResult,
     OwnerConfirmation,
+    RegistrationConfirmationError,
     RegistrationConfirmationService,
     RegistrationPackageReference,
+)
+from .registration_records import (
+    RegistrationRecordError,
+    canonical_record_bytes,
+    package_content_hash,
+    validate_package_record,
 )
 
 
@@ -92,9 +100,24 @@ REGISTRATION_RECOVERY_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION = DomainMigration(
+    domain="registration_recovery",
+    version=2,
+    identity="registration-recovery-retry-dispatch-v2",
+    statements=(
+        """ALTER TABLE registration_recovery_retry_requests
+           ADD COLUMN dispatched INTEGER NOT NULL DEFAULT 0
+           CHECK(dispatched IN (0, 1))""",
+        "UPDATE registration_recovery_retry_requests SET dispatched = 1",
+    ),
+)
+
 
 def registration_recovery_migrations() -> tuple[DomainMigration, ...]:
-    return (REGISTRATION_RECOVERY_MIGRATION,)
+    return (
+        REGISTRATION_RECOVERY_MIGRATION,
+        REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION,
+    )
 
 
 @dataclass(frozen=True)
@@ -313,8 +336,18 @@ class RegistrationRecoveryService:
         self.database = database
         self.journal_reader = journal_reader
         self.historical_profiles = historical_profiles
-        self.database.registry.register(REGISTRATION_RECOVERY_MIGRATION)
+        for migration in registration_recovery_migrations():
+            self.database.registry.register(migration)
         self.database.initialize()
+
+    def load_continuity(
+        self, project_id: str, activity_id: str
+    ) -> RegistrationContinuity:
+        """Load the exact service-saved intake and assessment history."""
+        canonical_identifier(project_id, "project_id")
+        canonical_identifier(activity_id, "activity_id")
+        with self.database.read_connection() as connection:
+            return self._authoritative_continuity_in(connection, project_id, activity_id)
 
     def begin(
         self,
@@ -350,6 +383,13 @@ class RegistrationRecoveryService:
         snapshot_reference = _snapshot_reference(snapshot)
         self.historical_profiles.resolve(snapshot, snapshot_reference)
         with self.database.transaction() as transaction:
+            authoritative_continuity = self._authoritative_continuity_in(
+                transaction, project_id, activity_id
+            )
+            if continuity != authoritative_continuity:
+                raise RegistrationRecoveryError(
+                    "registration continuity differs from authoritative saved history"
+                )
             replay = transaction.execute(
                 "SELECT activity_id FROM registration_recovery_attempts WHERE request_id = ?",
                 (request_id,),
@@ -381,7 +421,7 @@ class RegistrationRecoveryService:
                 raise RegistrationRecoverySetupError(
                     "re-registration destination repository differs from the active registration"
                 )
-            self._require_idle(transaction, project_id)
+            self._require_idle(transaction, project_id, activity_id)
             try:
                 transaction.execute(
                     """INSERT INTO registration_recovery_attempts(
@@ -400,7 +440,8 @@ class RegistrationRecoveryService:
                         canonical_json(previous_package.as_dict()), str(active[2]),
                         previous_package.registration_version + 1,
                         canonical_json(snapshot), snapshot_reference,
-                        canonical_json(continuity.as_dict()), automatic_publication_limit,
+                        canonical_json(authoritative_continuity.as_dict()),
+                        automatic_publication_limit,
                         canonical_json(process_record),
                     ),
                 )
@@ -430,8 +471,6 @@ class RegistrationRecoveryService:
         self,
         activity_id: str,
         candidate_package_ref: RegistrationPackageReference,
-        active_items: tuple[ComparisonItem, ...],
-        candidate_items: tuple[ComparisonItem, ...],
         reasons: Mapping[str, tuple[str, ...]],
     ) -> RegistrationComparison:
         canonical_identifier(activity_id, "activity_id")
@@ -454,7 +493,12 @@ class RegistrationRecoveryService:
                 transaction, str(row[2]), activity_id, active_package, candidate_package_ref,
                 int(row[5]),
             )
-            comparison = _compare(active_package, candidate_package_ref, active_items, candidate_items, reasons)
+            exact_active = self._package_items_in(transaction, active_package)
+            exact_candidate = self._package_items_in(transaction, candidate_package_ref)
+            comparison = _compare(
+                active_package, candidate_package_ref,
+                exact_active, exact_candidate, reasons,
+            )
             saved_candidate = row[10]
             if saved_candidate is not None:
                 if (
@@ -578,10 +622,11 @@ class RegistrationRecoveryService:
                 self._clear_failure(activity_id)
             return package
         except (
-            RegistrationRecoverySetupError,
+            RegistrationRecoveryError,
             PublicationAccessError,
             PublicationConflictError,
             PublicationStateError,
+            RegistrationConfirmationError,
         ) as error:
             self._pause(activity_id, str(error))
             raise
@@ -634,9 +679,11 @@ class RegistrationRecoveryService:
                 except PublicationStateError:
                     if route.journal.operation(bound).state != "reconciled":
                         raise
-                except PublicationConflictError:
-                    pass  # The conflicting bytes prove that this operation did not write them.
-            except (RegistrationRecoverySetupError, PublicationAccessError) as error:
+            except (
+                RegistrationRecoverySetupError,
+                PublicationAccessError,
+                PublicationConflictError,
+            ) as error:
                 self._pause(activity_id, str(error), cancelling=True)
                 raise
         with self.database.transaction() as transaction:
@@ -704,9 +751,11 @@ class RegistrationRecoveryService:
             confirmation_service.journal is not route.journal
             or confirmation_service.destination_provider is not route.destination_provider
         ):
-            raise RegistrationRecoverySetupError(
+            error = RegistrationRecoverySetupError(
                 "confirmation service is not bound to the saved destination profile"
             )
+            self._pause(activity_id, str(error))
+            raise error
         try:
             try:
                 route.journal.reconcile(operation_id, authorization)
@@ -718,7 +767,7 @@ class RegistrationRecoveryService:
                 )
                 reserved = True
         except (
-            RegistrationRecoverySetupError,
+            RegistrationRecoveryError,
             PublicationAccessError,
             PublicationConflictError,
             PublicationStateError,
@@ -756,15 +805,7 @@ class RegistrationRecoveryService:
         return result
 
     def status(self, activity_id: str) -> RegistrationRecoveryStatus:
-        canonical_identifier(activity_id, "activity_id")
-        with self.database.read_connection() as connection:
-            row = connection.execute(
-                "SELECT * FROM registration_recovery_attempts WHERE activity_id = ?",
-                (activity_id,),
-            ).fetchone()
-        if row is None:
-            raise RegistrationRecoveryError("re-registration attempt was not found")
-        return self._status_from_row(tuple(row))
+        return self._status_from_row(self._attempt(activity_id))
 
     def comparison(self, activity_id: str) -> RegistrationComparison:
         row = self._attempt(activity_id)
@@ -800,7 +841,7 @@ class RegistrationRecoveryService:
     ) -> None:
         with self.database.transaction() as transaction:
             replay = transaction.execute(
-                """SELECT activity_id, operation_id, kind, intervention
+                """SELECT activity_id, operation_id, kind, intervention, state, dispatched
                    FROM registration_recovery_retry_requests
                    WHERE request_id = ?""",
                 (request_id,),
@@ -815,6 +856,16 @@ class RegistrationRecoveryService:
                     raise RegistrationRecoveryError(
                         "publication retry request identity was reused with changed content"
                     )
+                if int(replay[5]) == 1:
+                    raise RegistrationRecoveryError(
+                        "publication retry request was already dispatched; reconcile it "
+                        "or reserve a new counted retry"
+                    )
+                transaction.execute(
+                    """UPDATE registration_recovery_retry_requests SET dispatched = 1
+                       WHERE request_id = ? AND dispatched = 0""",
+                    (request_id,),
+                )
                 return
             row = self._attempt_in(transaction, activity_id)
             if automatic and int(row[14]) >= int(row[13]):
@@ -823,8 +874,9 @@ class RegistrationRecoveryService:
                 )
             transaction.execute(
                 """INSERT INTO registration_recovery_retry_requests(
-                       request_id, activity_id, operation_id, kind, intervention, state
-                   ) VALUES (?, ?, ?, ?, ?, 'reserved')""",
+                       request_id, activity_id, operation_id, kind, intervention,
+                       state, dispatched
+                   ) VALUES (?, ?, ?, ?, ?, 'reserved', 1)""",
                 (request_id, activity_id, operation_id, kind, intervention),
             )
             column = (
@@ -835,6 +887,14 @@ class RegistrationRecoveryService:
                 f"UPDATE registration_recovery_attempts SET {column} = {column} + 1 "
                 "WHERE activity_id = ?",
                 (activity_id,),
+            )
+            continuity = self._authoritative_continuity_in(
+                transaction, str(row[2]), activity_id
+            )
+            transaction.execute(
+                """UPDATE registration_recovery_attempts SET continuity_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(continuity.as_dict()), activity_id),
             )
 
     def _complete_retry(
@@ -884,7 +944,284 @@ class RegistrationRecoveryService:
                 (("Cancellation paused: " if cancelling else "") + failure, activity_id),
             )
 
-    def _require_idle(self, transaction: Transaction, project_id: str) -> None:
+    def _authoritative_continuity_in(
+        self, transaction: Any, project_id: str, activity_id: str
+    ) -> RegistrationContinuity:
+        activity = transaction.execute(
+            """SELECT project_id, kind FROM service_activities
+               WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        if activity is None or (str(activity[0]), str(activity[1])) != (
+            project_id, "registration"
+        ):
+            raise RegistrationRecoveryError(
+                "re-registration activity history is missing or mismatched"
+            )
+        intake_row = transaction.execute(
+            """SELECT project_id, intake_json FROM registration_assessment_intake
+               WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        state_row = transaction.execute(
+            """SELECT state_json FROM registration_assessment_state
+               WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        run_rows = transaction.execute(
+            """SELECT role, assignment_id, run_id FROM registration_assessment_runs
+               WHERE activity_id = ? ORDER BY role""",
+            (activity_id,),
+        ).fetchall()
+        if (
+            intake_row is None
+            or str(intake_row[0]) != project_id
+            or state_row is None
+            or len(run_rows) != 2
+            or {str(row[0]) for row in run_rows}
+            != {"project_architect", "fidelity_reviewer"}
+        ):
+            raise RegistrationRecoveryError(
+                "saved registration intake, assessment, review, or retry history is incomplete"
+            )
+        try:
+            intake = RegistrationIntakeResult.from_json(str(intake_row[1]))
+            state = json.loads(str(state_row[0]))
+        except (IntakeError, TypeError, ValueError, json.JSONDecodeError) as error:
+            raise RegistrationRecoveryError(
+                "saved registration intake or assessment history is invalid"
+            ) from error
+        if intake.inventory is None or not isinstance(state, Mapping):
+            raise RegistrationRecoveryError(
+                "saved registration intake or assessment history is incomplete"
+            )
+        expected_state_fields = {
+            "state", "review_count", "candidate", "assessment",
+            "architect_findings", "review_findings", "reviewed_candidate",
+            "reviewed_assessment", "current_runs",
+        }
+        if set(state) != expected_state_fields or state.get("state") != "ready":
+            raise RegistrationRecoveryError(
+                "saved registration assessment and review are not complete"
+            )
+        current_runs = state.get("current_runs")
+        saved_runs = {
+            str(row[0]): {
+                "assignment_id": str(row[1]), "run_id": str(row[2])
+            }
+            for row in run_rows
+        }
+        if current_runs != saved_runs:
+            raise RegistrationRecoveryError(
+                "saved registration retry identities differ from assessment history"
+            )
+        has_answer_history = transaction.execute(
+            """SELECT 1 FROM sqlite_master
+               WHERE type = 'table' AND name = 'service_question_answers'"""
+        ).fetchone() is not None
+        if has_answer_history:
+            questions = transaction.execute(
+                """SELECT q.question_id, q.subject, q.prompt, q.requester,
+                          q.status, q.version, a.answer_id, a.text, a.choice_id,
+                          a.answered_at, a.question_version
+                   FROM service_questions AS q
+                   LEFT JOIN service_question_answers AS a
+                     ON a.question_id = q.question_id
+                   WHERE q.project_id = ? AND q.activity_id = ?
+                   ORDER BY q.question_id""",
+                (project_id, activity_id),
+            ).fetchall()
+        else:
+            questions = transaction.execute(
+                """SELECT question_id, subject, prompt, requester, status, version
+                   FROM service_questions WHERE project_id = ? AND activity_id = ?
+                   ORDER BY question_id""",
+                (project_id, activity_id),
+            ).fetchall()
+            if questions:
+                raise RegistrationRecoveryError(
+                    "saved registration question and answer history is incomplete"
+                )
+        question_records_list: list[Mapping[str, object]] = []
+        for row in questions:
+            answer = None
+            if len(row) > 6 and row[6] is not None:
+                answer = {
+                    "answer_id": str(row[6]),
+                    "text": str(row[7]),
+                    "choice_id": None if row[8] is None else str(row[8]),
+                    "answered_at": str(row[9]),
+                    "question_version": int(row[10]),
+                }
+            if str(row[4]) == "answered" and answer is None:
+                raise RegistrationRecoveryError(
+                    "saved registration question answer is missing"
+                )
+            question_records_list.append({
+                "question_id": str(row[0]),
+                "subject": str(row[1]),
+                "prompt": str(row[2]),
+                "requester": str(row[3]),
+                "status": str(row[4]),
+                "version": int(row[5]),
+                "answer": answer,
+            })
+        question_records = tuple(question_records_list)
+        decisions = transaction.execute(
+            """SELECT action_id, label FROM service_activity_actions
+               WHERE project_id = ? AND activity_id = ? AND kind = 'decision'
+               ORDER BY sequence""",
+            (project_id, activity_id),
+        ).fetchall()
+        if not decisions:
+            raise RegistrationRecoveryError(
+                "saved registration decision history is incomplete"
+            )
+        decision_records = tuple({
+            "decision_id": str(row[0]), "label": str(row[1])
+        } for row in decisions)
+        retry_rows = transaction.execute(
+            """SELECT kind, COUNT(*) FROM registration_recovery_retry_requests
+               WHERE activity_id = ? GROUP BY kind""",
+            (activity_id,),
+        ).fetchall()
+        observed_retry_counts = {str(row[0]): int(row[1]) for row in retry_rows}
+        retry_counts = {
+            "automatic_publication": observed_retry_counts.get("automatic", 0),
+            "manual_publication": observed_retry_counts.get("manual", 0),
+        }
+        return RegistrationContinuity(
+            source={"intake": intake.to_record()},
+            questions=question_records,
+            decisions=decision_records,
+            review=state,
+            retry_counts=retry_counts,
+        )
+
+    def _package_items_in(
+        self, transaction: Transaction, package: RegistrationPackageReference
+    ) -> tuple[ComparisonItem, ...]:
+        row = transaction.execute(
+            """SELECT operation_id, manifest_sha256, content_hash, remote_commit,
+                      package_ref_json, state, project_id
+               FROM registration_candidate_publications
+               WHERE repository = ? AND registration_version = ? AND candidate_id = ?
+                 AND package_ref_json = ?""",
+            (
+                package.repository, package.registration_version, package.candidate_id,
+                canonical_json(package.as_dict()),
+            ),
+        ).fetchone()
+        if (
+            row is None
+            or str(row[1]) != package.manifest_sha256
+            or str(row[3]) != package.commit
+            or str(row[4]) != canonical_json(package.as_dict())
+            or str(row[5]) != "published"
+        ):
+            raise RegistrationRecoveryError(
+                "registration comparison package is not the exact published package"
+            )
+        operation = self.journal_reader.operation(str(row[0]))
+        if (
+            operation.operation_type != "registration_candidate"
+            or operation.remote_commit != package.commit
+            or operation.state not in {"verified", "applied"}
+            or package.manifest_path not in operation.files
+        ):
+            raise RegistrationRecoveryError(
+                "registration comparison package publication is not verified"
+            )
+        manifest_bytes = operation.files[package.manifest_path]
+        if hashlib.sha256(manifest_bytes).hexdigest() != package.manifest_sha256:
+            raise RegistrationRecoveryError(
+                "registration comparison manifest differs from its exact reference"
+            )
+        try:
+            manifest = json.loads(manifest_bytes)
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise RegistrationRecoveryError(
+                "registration comparison manifest bytes are invalid"
+            ) from error
+        if (
+            not isinstance(manifest, Mapping)
+            or manifest.get("project_id") != str(row[6])
+            or manifest.get("registration_version") != package.registration_version
+            or manifest.get("candidate_id") != package.candidate_id
+            or manifest.get("content_hash") != str(row[2])
+            or not isinstance(manifest.get("files"), list)
+        ):
+            raise RegistrationRecoveryError(
+                "registration comparison manifest identity is invalid"
+            )
+        if canonical_record_bytes(manifest) != manifest_bytes:
+            raise RegistrationRecoveryError(
+                "registration comparison manifest bytes are not canonical"
+            )
+        root = package.manifest_path.rsplit("/", 1)[0]
+        records: dict[str, Mapping[str, Any]] = {}
+        items: list[ComparisonItem] = []
+        areas = {
+            "summary": "scope",
+            "declaration": "scope",
+            "naming_conventions": "scope",
+            "milestone": "project_milestone",
+            "requirement": "completion_requirement",
+        }
+        try:
+            for entry in manifest["files"]:
+                if (
+                    not isinstance(entry, Mapping)
+                    or set(entry) != {
+                        "path", "record_id", "record_type", "record_version",
+                        "subject", "sha256",
+                    }
+                    or not isinstance(entry.get("path"), str)
+                ):
+                    raise RegistrationRecordError("manifest file entry is invalid")
+                relative = str(entry["path"])
+                target = f"{root}/{relative}"
+                if target not in operation.files:
+                    raise RegistrationRecordError("manifest record bytes are missing")
+                raw = operation.files[target]
+                record = validate_package_record(json.loads(raw))
+                if canonical_record_bytes(record) != raw:
+                    raise RegistrationRecordError("package record bytes are not canonical")
+                if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
+                    raise RegistrationRecordError("manifest record hash differs")
+                if any(
+                    entry.get(field) != record[field]
+                    for field in ("record_id", "record_type", "record_version", "subject")
+                ):
+                    raise RegistrationRecordError("manifest record identity differs")
+                records[relative] = record
+                area = areas.get(str(record["record_type"]))
+                if area is not None:
+                    items.append(ComparisonItem(
+                        str(record["record_id"]), str(record["subject"]),
+                        int(record["record_version"]),
+                        hashlib.sha256(raw).hexdigest(), area,
+                    ))
+            if len(records) != len(manifest["files"]):
+                raise RegistrationRecordError("manifest file inventory is not unique")
+            if set(operation.files) != {
+                package.manifest_path, *(f"{root}/{path}" for path in records)
+            }:
+                raise RegistrationRecordError("published package contains untracked files")
+            if package_content_hash(records) != str(row[2]):
+                raise RegistrationRecordError("published package content hash differs")
+        except (
+            KeyError, TypeError, ValueError, UnicodeDecodeError,
+            json.JSONDecodeError, RegistrationRecordError,
+        ) as error:
+            raise RegistrationRecoveryError(
+                "registration comparison package inventory is invalid"
+            ) from error
+        return tuple(sorted(items, key=lambda item: item.item_id))
+
+    def _require_idle(
+        self, transaction: Transaction, project_id: str, activity_id: str
+    ) -> None:
         active_attempt = transaction.execute(
             """SELECT activity_id FROM registration_recovery_attempts
                WHERE project_id = ? AND state NOT IN ('cancelled', 'completed')""",
@@ -895,10 +1232,15 @@ class RegistrationRecoveryService:
                 "another re-registration already reserves this project"
             )
         activities = transaction.execute(
-            """SELECT subject, state FROM service_activities
-               WHERE project_id = ? AND state NOT IN ('completed', 'cancelled')""",
-            (project_id,),
+            """SELECT subject, state, kind FROM service_activities
+               WHERE project_id = ? AND activity_id != ?
+                 AND state NOT IN ('completed', 'cancelled')""",
+            (project_id, activity_id),
         ).fetchall()
+        activities = tuple(
+            row for row in activities
+            if not (str(row[1]) == "starting" and str(row[2]) == "registration")
+        )
         if activities:
             reasons = ", ".join(f"{row[0]} ({row[1]})" for row in activities)
             raise RegistrationRecoveryError(
@@ -968,19 +1310,35 @@ class RegistrationRecoveryService:
                 "SELECT * FROM registration_recovery_attempts WHERE activity_id = ?",
                 (activity_id,),
             ).fetchone()
+            if row is not None:
+                self._require_continuity_in(connection, tuple(row))
         if row is None:
             raise RegistrationRecoveryError("re-registration attempt was not found")
         return tuple(row)
 
-    @staticmethod
-    def _attempt_in(transaction: Transaction, activity_id: str) -> tuple[object, ...]:
+    def _attempt_in(
+        self, transaction: Transaction, activity_id: str
+    ) -> tuple[object, ...]:
         row = transaction.execute(
             "SELECT * FROM registration_recovery_attempts WHERE activity_id = ?",
             (activity_id,),
         ).fetchone()
         if row is None:
             raise RegistrationRecoveryError("re-registration attempt was not found")
-        return tuple(row)
+        result = tuple(row)
+        self._require_continuity_in(transaction, result)
+        return result
+
+    def _require_continuity_in(
+        self, transaction: Any, row: tuple[object, ...]
+    ) -> None:
+        authoritative = self._authoritative_continuity_in(
+            transaction, str(row[2]), str(row[0])
+        )
+        if canonical_json(authoritative.as_dict()) != str(row[8]):
+            raise RegistrationRecoveryError(
+                "saved registration continuity no longer matches authoritative history"
+            )
 
     def _status_in(
         self, transaction: Transaction, activity_id: str
@@ -1041,6 +1399,10 @@ def _compare(
             None if after is None else after.version,
             reason_refs,
         ))
+    if set(reasons) != {item.item_id for item in differences}:
+        raise RegistrationRecoveryError(
+            "comparison reasons must match the exact changed package items"
+        )
     return RegistrationComparison(active_ref, candidate_ref, tuple(differences))
 
 
