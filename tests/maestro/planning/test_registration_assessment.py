@@ -5,10 +5,12 @@ import json
 import tempfile
 import unittest
 from dataclasses import replace
+from pathlib import Path
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity
 from maestro.agents.routes import ConfiguredAgentRouteProvider, RoleSelections, ToolModelSelection
-from maestro.agents.supervisor import OperationIdentity, SupervisorRuntimeIdentity
+from maestro.agents.runtime_identity import RuntimeIdentityProtocolError
+from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, LaunchRequest, LocalProcessUnits, OperationIdentity
 from maestro.foundation import StorageSettings
 from maestro.planning.intake import RegistrationIntakeResult, _selection_decision_reference
 from maestro.planning.registration import (
@@ -31,6 +33,24 @@ from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.main import InstalledServiceApplication, ServiceSettings
 from maestro.service.processes import ProcessSnapshot
 from maestro.service.resources import BundleSnapshot
+
+
+class _RuntimeIdentityAuthority:
+    """Test double for the protected core's separate publish/consume ends."""
+
+    def __init__(self) -> None:
+        self.identities = {}
+
+    def publish(self, identity) -> None:
+        if identity.operation_key in self.identities:
+            raise RuntimeIdentityProtocolError("identity_already_published", "already published")
+        self.identities[identity.operation_key] = identity
+
+    def consume(self, operation_key):
+        try:
+            return self.identities.pop(operation_key)
+        except KeyError as error:
+            raise RuntimeIdentityProtocolError("identity_unavailable", "unavailable") from error
 
 
 def _artifact(path: str, version: str) -> dict[str, str]:
@@ -188,18 +208,23 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 snapshot, intake=self._saved_intake(), source_repository="owner/project", decision_version="forged"
             )
 
-    def test_service_rehydrates_saved_intake_and_accepts_only_supervisor_identity_delivery(self) -> None:
+    def test_service_rehydrates_saved_intake_and_rejects_forged_runtime_delivery(self) -> None:
         baseline = self._assessment()
         preflight = object.__new__(AgentRoutePreflight)
         preflight.resolve_process_roles = lambda *_args: baseline.context.routes
+        authority = _RuntimeIdentityAuthority()
         with tempfile.TemporaryDirectory() as temporary:
             settings = ServiceSettings(
                 StorageSettings.from_mapping({"path": f"{temporary}/maestro.sqlite3"}),
                 OwnerAuthenticationSettings("owner-local", "a" * 64),
                 agent_route_provider=self._configured_routes(),
             )
-            application = InstalledServiceApplication(settings, preflight)
+            application = InstalledServiceApplication(
+                settings, preflight, supervisor_units=LocalProcessUnits(),
+                runtime_identity_reporter=authority, runtime_identity_consumer=authority,
+            )
             assert application.registration_assessment is not None
+            supervisor = application.agent_supervisor
             definition = {
                 "maximum_fidelity_reviews": 2,
                 "initiation": {"policy": "registration_intake_or_idle_update"},
@@ -211,6 +236,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
             }
             snapshot = ProcessSnapshot("registration", json.dumps(definition), "a" * 64, BundleSnapshot("registration-process@1", "processDefinition", (("schema.json", "a" * 64),)))
             binding = application.registration_assessment
+            self.assertIs(binding.supervisor, application.agent_supervisor)
             intake = self._saved_intake()
             selections = RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1"))
             binding.save_intake("activity-1", "project-1", intake, selections)
@@ -229,20 +255,36 @@ class RegistrationAssessmentTest(unittest.TestCase):
             with self.assertRaisesRegex(RegistrationRecordError, "publication_branch"):
                 binding.validate_package("activity-1", manifest, {"summary.json": record})
             architect_operation = OperationIdentity("project-1", "activity-1", started.context.architect_run.assignment_id, started.context.architect_run.run_id)
-            with self.assertRaises(TypeError):
-                binding.accept_supervisor_runtime_identity(self._identity("project_architect"))
-            binding.accept_supervisor_runtime_identity(SupervisorRuntimeIdentity(architect_operation, self._identity("project_architect"), 10, "boot", "start", "invocation"))
+            self.assertFalse(hasattr(binding, "reserve_runtime_identity_callback"))
+            self.assertFalse(hasattr(supervisor, "runtime_identity_callback"))
+            self.assertEqual(architect_operation, binding.reserve_runtime_identity("activity-1", "project_architect"))
+            alternate = AgentSupervisor(
+                FileSupervisorJournal(Path(temporary) / "alternate-supervisor.json"), LocalProcessUnits(),
+            )
+            with self.assertRaisesRegex(AttributeError, "has no setter"):
+                binding.supervisor = alternate
+            with self.assertRaisesRegex(AttributeError, "authority is immutable"):
+                setattr(binding, "_RegistrationServiceBinding__supervisor_authority", alternate)
+            self.assertIs(binding.supervisor, application.agent_supervisor)
+            with application.database.read_connection() as connection:
+                self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])
+            supervisor.launch(LaunchRequest(architect_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
+            supervisor.report_runtime_identity(architect_operation, self._identity("project_architect"))
             architect = replace(_response("project_architect"), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
             binding.submit_architect(architect)
             recovered = binding.rehydrate(snapshot, "activity-1")
             self.assertEqual("awaiting_reviewer", recovered.status.state)
             reviewer_operation = OperationIdentity("project-1", "activity-1", recovered.context.reviewer_run.assignment_id, recovered.context.reviewer_run.run_id)
-            binding.accept_supervisor_runtime_identity(SupervisorRuntimeIdentity(reviewer_operation, self._identity("fidelity_reviewer"), 11, "boot", "start", "invocation"))
+            self.assertEqual(reviewer_operation, binding.reserve_runtime_identity("activity-1", "fidelity_reviewer"))
+            supervisor.launch(LaunchRequest(reviewer_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
+            supervisor.report_runtime_identity(reviewer_operation, self._identity("fidelity_reviewer"))
             reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE"), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
             status = binding.submit_reviewer(reviewer)
             self.assertTrue(status.execution_eligible)
             with application.database.read_connection() as connection:
                 self.assertEqual(2, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])
+            supervisor.stop(architect_operation, "test_complete")
+            supervisor.stop(reviewer_operation, "test_complete")
 
 
 if __name__ == "__main__":

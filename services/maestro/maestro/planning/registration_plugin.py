@@ -7,8 +7,9 @@ import uuid
 from typing import Any, Mapping
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity, verify_running_identity
+from maestro.agents.runtime_identity import ConfirmedRuntimeIdentity, PlanningIdentityConsumer, RuntimeIdentityProtocolError
 from maestro.agents.routes import ConfiguredAgentRouteProvider, PermittedDestination, RoleSelections, RouteRequirements, ToolModelSelection
-from maestro.agents.supervisor import AgentSupervisor, OperationIdentity, SupervisorRuntimeIdentity
+from maestro.agents.supervisor import AgentSupervisor, OperationIdentity
 from maestro.foundation import Database, DomainMigration, canonical_json
 from maestro.service.processes import ProcessHandlerRegistry, ProcessProvider, ProcessSnapshot
 
@@ -26,6 +27,8 @@ REGISTRATION_REQUIREMENTS = RouteRequirements(
     ("local_ai_box", "cloud"),
     65536,
 )
+_SUPERVISOR_AUTHORITY_ATTRIBUTE = "_RegistrationServiceBinding__supervisor_authority"
+_RUNTIME_IDENTITY_CONSUMER_ATTRIBUTE = "_RegistrationServiceBinding__runtime_identity_consumer"
 
 REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION = DomainMigration(
     domain="registration_assessment",
@@ -192,19 +195,36 @@ class RegistrationServiceBinding:
     identity into the process provider when accepting a response.
     """
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if name in {_SUPERVISOR_AUTHORITY_ATTRIBUTE, _RUNTIME_IDENTITY_CONSUMER_ATTRIBUTE} and hasattr(self, name):
+            raise AttributeError("registration runtime authority is immutable")
+        super().__setattr__(name, value)
+
     def __init__(
         self, database: Database, plugin: RegistrationProcessPlugin,
-        registry: ProcessHandlerRegistry,
+        registry: ProcessHandlerRegistry, supervisor: AgentSupervisor,
+        runtime_identity_consumer: PlanningIdentityConsumer | None,
     ) -> None:
         if not isinstance(database, Database) or not isinstance(plugin, RegistrationProcessPlugin):
             raise TypeError("registration service binding requires installed service dependencies")
         if not isinstance(registry, ProcessHandlerRegistry):
             raise TypeError("registration service binding requires process registry")
+        if type(supervisor) is not AgentSupervisor:
+            raise TypeError("registration service binding requires the installed supervisor")
+        if runtime_identity_consumer is not None and not callable(getattr(runtime_identity_consumer, "consume", None)):
+            raise TypeError("registration service binding requires the protected planning identity consumer")
+        self.__supervisor_authority = supervisor
+        self.__runtime_identity_consumer = runtime_identity_consumer
         self.database, self.plugin, self.registry = database, plugin, registry
         self.registry.register(plugin.provider)
         self.database.registry.register(REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION)
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
+
+    @property
+    def supervisor(self) -> AgentSupervisor:
+        """Return the installed runtime supervisor without permitting replacement."""
+        return self.__supervisor_authority
 
     def save_intake(
         self, activity_id: str, project_id: str, intake: RegistrationIntakeResult,
@@ -262,39 +282,19 @@ class RegistrationServiceBinding:
         self._assessments[context.activity_id] = assessment
         return assessment
 
-    def reserve_runtime_identity_callback(
-        self, supervisor: AgentSupervisor, activity_id: str, role: str,
+    def reserve_runtime_identity(
+        self, activity_id: str, role: str,
     ) -> OperationIdentity:
-        """Reserve the supervisor's one callback for the service-created run."""
-        if not isinstance(supervisor, AgentSupervisor):
-            raise TypeError("registration runtime callback requires the installed supervisor")
+        """Reserve the service-created run for protected identity publication."""
         assessment = self._assessment(activity_id)
         run = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run if role == "fidelity_reviewer" else None
         if run is None:
             raise RegistrationAssessmentError("registration role is invalid")
         route = assessment.context.routes.architect if role == "project_architect" else assessment.context.routes.fidelity_reviewer
         operation = OperationIdentity(assessment.context.project_id, activity_id, run.assignment_id, run.run_id)
-        supervisor.reserve_runtime_identity_callback(operation, route, self.accept_supervisor_runtime_identity)
-        return operation
 
-    def accept_supervisor_runtime_identity(self, delivery: SupervisorRuntimeIdentity) -> None:
-        """Accept identity only from the matching reserved supervisor callback."""
-        if not isinstance(delivery, SupervisorRuntimeIdentity):
-            raise TypeError("runtime identity is accepted only from the supervisor callback")
-        assessment = self._assessment(delivery.operation.activity_id)
-        role, route = self._role_for_assignment(assessment, delivery.operation)
-        try:
-            verify_running_identity(route, delivery.tool_identity)
-        except ValueError as error:
-            raise RegistrationAssessmentError("supervisor runtime identity differs from the saved route") from error
-        with self.database.transaction() as transaction:
-            updated = transaction.execute(
-                """UPDATE registration_assessment_runs SET runtime_identity_json = ?
-                   WHERE activity_id = ? AND role = ? AND assignment_id = ? AND run_id = ?""",
-                (canonical_json(_identity_mapping(delivery.tool_identity)), delivery.operation.activity_id, role, delivery.operation.assignment_id, delivery.operation.run_id),
-            )
-            if updated.rowcount != 1:
-                raise RegistrationAssessmentError("runtime identity does not match a current saved assignment run")
+        self.__supervisor_authority.reserve_runtime_identity(operation, route)
+        return operation
 
     def submit_architect(self, response: RegistrationAgentResponse) -> object:
         assessment = self._assessment_for_response(response, "project_architect")
@@ -350,17 +350,6 @@ class RegistrationServiceBinding:
         self._assessments[activity_id] = assessment
         return assessment
 
-    @staticmethod
-    def _role_for_assignment(assessment: RegistrationAssessment, operation: OperationIdentity):
-        context = assessment.context
-        if operation.project_id != context.project_id or operation.activity_id != context.activity_id:
-            raise RegistrationAssessmentError("operation is outside the saved registration assessment")
-        if (operation.assignment_id, operation.run_id) == (context.architect_run.assignment_id, context.architect_run.run_id):
-            return "project_architect", context.routes.architect
-        if (operation.assignment_id, operation.run_id) == (context.reviewer_run.assignment_id, context.reviewer_run.run_id):
-            return "fidelity_reviewer", context.routes.fidelity_reviewer
-        raise RegistrationAssessmentError("operation is not a current registration assignment run")
-
     def _assessment_for_response(self, response: RegistrationAgentResponse, role: str) -> RegistrationAssessment:
         if not isinstance(response, RegistrationAgentResponse) or response.role != role:
             raise RegistrationAssessmentError("response is not for the dispatched registration role")
@@ -376,13 +365,36 @@ class RegistrationServiceBinding:
                 "SELECT runtime_identity_json FROM registration_assessment_runs WHERE activity_id = ? AND role = ?",
                 (assessment.context.activity_id, role),
             ).fetchone()
-        if row is None or row[0] is None:
-            raise RegistrationAssessmentError("service has no verified runtime identity for the current run")
+        if row is None:
+            raise RegistrationAssessmentError("service has no saved runtime identity record for the current run")
+        if row[0] is None:
+            operation, route = self._operation_and_route(assessment, role)
+            if self.__runtime_identity_consumer is None:
+                raise RegistrationAssessmentError("protected runtime identity authority is unavailable")
+            try:
+                confirmed = self.__runtime_identity_consumer.consume(operation.key)
+            except RuntimeIdentityProtocolError as error:
+                raise RegistrationAssessmentError("service has no verified runtime identity for the current run") from error
+            _persist_protected_runtime_identity(self.database, operation, route, confirmed)
+            return self._saved_identity(assessment, role)
         try:
             value = json.loads(str(row[0]))
             return RunningToolIdentity(**value)
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             raise RegistrationAssessmentError("saved runtime identity is invalid") from error
+
+    @staticmethod
+    def _operation_and_route(
+        assessment: RegistrationAssessment, role: str,
+    ) -> tuple[OperationIdentity, ResolvedAgentRoute]:
+        context = assessment.context
+        if role == "project_architect":
+            run, route = context.architect_run, context.routes.architect
+        elif role == "fidelity_reviewer":
+            run, route = context.reviewer_run, context.routes.fidelity_reviewer
+        else:
+            raise RegistrationAssessmentError("registration role is invalid")
+        return OperationIdentity(context.project_id, context.activity_id, run.assignment_id, run.run_id), route
 
     def _assessment(self, activity_id: str) -> RegistrationAssessment:
         try:
@@ -426,6 +438,40 @@ def _identity_mapping(identity: RunningToolIdentity) -> dict[str, str]:
         "tool_version": identity.tool_version,
         "configuration_hash": identity.configuration_hash,
     }
+
+
+def _persist_protected_runtime_identity(
+    database: Database,
+    reserved: OperationIdentity,
+    route: ResolvedAgentRoute,
+    confirmed: ConfirmedRuntimeIdentity,
+) -> None:
+    """Persist a one-time identity consumed from protected core authority."""
+    if not isinstance(confirmed, ConfirmedRuntimeIdentity) or confirmed.operation_key != reserved.key:
+        raise RegistrationAssessmentError("protected runtime identity differs from the reserved operation")
+    try:
+        identity = verify_running_identity(route, RunningToolIdentity(
+            "tool_metadata", confirmed.provider, confirmed.model_id,
+            confirmed.tool_version, confirmed.configuration_hash,
+        ))
+    except ValueError as error:
+        raise RegistrationAssessmentError("protected runtime identity differs from the saved route") from error
+    roles = {"architect": "project_architect", "fidelity_reviewer": "fidelity_reviewer"}
+    try:
+        role = roles[route.role]
+    except KeyError as error:
+        raise RegistrationAssessmentError("saved registration route role is invalid") from error
+    with database.transaction() as transaction:
+        updated = transaction.execute(
+            """UPDATE registration_assessment_runs SET runtime_identity_json = ?
+               WHERE activity_id = ? AND role = ? AND assignment_id = ? AND run_id = ?""",
+            (
+                canonical_json(_identity_mapping(identity)), reserved.activity_id,
+                role, reserved.assignment_id, reserved.run_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError("runtime identity does not match a current saved assignment run")
 
 
 def _snapshot_for(assessment: RegistrationAssessment) -> ProcessSnapshot:

@@ -18,7 +18,9 @@ from typing import Mapping
 from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
 from maestro.agents.preflight import AgentRoutePreflight
+from maestro.agents.runtime_identity import PlanningIdentityConsumer, SupervisorIdentityReporter
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
+from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, SystemdUserUnits, UnitController
 from maestro.foundation import Database, StorageSettings
 from maestro.planning.registration_plugin import (
     RegistrationProcessPlugin,
@@ -189,9 +191,17 @@ class InstalledServiceApplication:
     def __init__(
         self, settings: ServiceSettings,
         registration_preflight: AgentRoutePreflight | None = None,
+        supervisor_units: UnitController | None = None,
+        runtime_identity_reporter: SupervisorIdentityReporter | None = None,
+        runtime_identity_consumer: PlanningIdentityConsumer | None = None,
     ) -> None:
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
+        self.agent_supervisor = AgentSupervisor(
+            FileSupervisorJournal(settings.storage.path.with_name("agent-supervisor.json")),
+            supervisor_units or SystemdUserUnits(),
+            runtime_identity_reporter=runtime_identity_reporter,
+        )
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
         self.process_registry = ProcessHandlerRegistry()
@@ -218,6 +228,8 @@ class InstalledServiceApplication:
             self.database,
             RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
             self.process_registry,
+            self.agent_supervisor,
+            runtime_identity_consumer,
         )
 
     @property
