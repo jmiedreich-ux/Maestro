@@ -11,14 +11,19 @@ import stat
 import sys
 import threading
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Mapping
 from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
 from maestro.agents.preflight import AgentRoutePreflight
-from maestro.agents.runtime_identity import PlanningIdentityConsumer, SupervisorIdentityReporter
+from maestro.agents.runtime_identity import (
+    PlanningIdentityConsumer,
+    RuntimeIdentityCore,
+    RuntimeIdentityServer,
+    SupervisorIdentityReporter,
+)
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
 from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, SystemdUserUnits, UnitController
 from maestro.foundation import Database, StorageSettings
@@ -76,6 +81,8 @@ class ServiceSettings:
     agent_user: str = "maestro-agent"
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
     agent_route_provider: ConfiguredAgentRouteProvider | None = None
+    runtime_identity_supervisor_uid: int = field(default_factory=os.getuid)
+    runtime_identity_planning_uid: int = field(default_factory=lambda: os.getuid() + 1)
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -88,6 +95,14 @@ class ServiceSettings:
             raise ServiceConfigurationError("service.agent_user is invalid")
         if not self.workspace_root.is_absolute():
             raise ServiceConfigurationError("workspace_root must be absolute")
+        for value, field_name in (
+            (self.runtime_identity_supervisor_uid, "service.runtime_identity_supervisor_uid"),
+            (self.runtime_identity_planning_uid, "service.runtime_identity_planning_uid"),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ServiceConfigurationError(f"{field_name} must be a nonnegative UID")
+        if self.runtime_identity_supervisor_uid == self.runtime_identity_planning_uid:
+            raise ServiceConfigurationError("runtime supervisor and planning UIDs must be distinct")
         if (
             self.agent_route_provider is not None
             and not isinstance(self.agent_route_provider, ConfiguredAgentRouteProvider)
@@ -144,7 +159,10 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
             f"missing service configuration table(s): {', '.join(sorted(missing))}"
         )
     service = _table(value["service"], "service")
-    unknown_service = set(service) - {"host", "port", "agent_user"}
+    unknown_service = set(service) - {
+        "host", "port", "agent_user", "runtime_identity_supervisor_uid",
+        "runtime_identity_planning_uid",
+    }
     if unknown_service:
         raise ServiceConfigurationError(
             f"unsupported service setting(s): {', '.join(sorted(unknown_service))}"
@@ -168,6 +186,8 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
     host = service.get("host", DEFAULT_HOST)
     port = service.get("port", DEFAULT_PORT)
     agent_user = service.get("agent_user", "maestro-agent")
+    supervisor_uid = service.get("runtime_identity_supervisor_uid", os.getuid())
+    planning_uid = service.get("runtime_identity_planning_uid", os.getuid() + 1)
     if not isinstance(host, str):
         raise ServiceConfigurationError("service.host must be text")
     if isinstance(port, bool) or not isinstance(port, int):
@@ -182,6 +202,8 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         agent_user=agent_user,
         workspace_root=Path(workspace_root),
         agent_route_provider=agent_route_provider,
+        runtime_identity_supervisor_uid=supervisor_uid,
+        runtime_identity_planning_uid=planning_uid,
     )
 
 
@@ -192,15 +214,32 @@ class InstalledServiceApplication:
         self, settings: ServiceSettings,
         registration_preflight: AgentRoutePreflight | None = None,
         supervisor_units: UnitController | None = None,
-        runtime_identity_reporter: SupervisorIdentityReporter | None = None,
-        runtime_identity_consumer: PlanningIdentityConsumer | None = None,
     ) -> None:
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
+        self.runtime_identity_socket: Path | None = None
+        self.runtime_identity_core: RuntimeIdentityCore | None = None
+        self.runtime_identity_server: RuntimeIdentityServer | None = None
+        reporter: SupervisorIdentityReporter | None = None
+        consumer: PlanningIdentityConsumer | None = None
+        if self._agent_route_provider is not None:
+            self.runtime_identity_socket = settings.storage.path.with_suffix(
+                settings.storage.path.suffix + ".runtime-identity.sock"
+            )
+            self.runtime_identity_core = RuntimeIdentityCore(
+                supervisor_uid=settings.runtime_identity_supervisor_uid,
+                planning_uid=settings.runtime_identity_planning_uid,
+            )
+            self.runtime_identity_server = RuntimeIdentityServer(
+                self.runtime_identity_socket, self.runtime_identity_core,
+            )
+            self.runtime_identity_server.start()
+            reporter = SupervisorIdentityReporter(self.runtime_identity_socket)
+            consumer = PlanningIdentityConsumer(self.runtime_identity_socket)
         self.agent_supervisor = AgentSupervisor(
             FileSupervisorJournal(settings.storage.path.with_name("agent-supervisor.json")),
             supervisor_units or SystemdUserUnits(),
-            runtime_identity_reporter=runtime_identity_reporter,
+            runtime_identity_reporter=reporter,
         )
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
@@ -229,7 +268,7 @@ class InstalledServiceApplication:
             RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
             self.process_registry,
             self.agent_supervisor,
-            runtime_identity_consumer,
+            consumer,
         )
 
     @property
@@ -246,6 +285,8 @@ class InstalledServiceApplication:
 
     def stop(self) -> None:
         self.event_application.stop()
+        if self.runtime_identity_server is not None:
+            self.runtime_identity_server.close()
 
     def handle(
         self,
