@@ -21,7 +21,7 @@ from maestro.agents.supervisor import (
     SystemdUserUnits,
     UnitIdentity,
 )
-from maestro.agents import RunningToolIdentity
+from maestro.agents import ResolvedAgentRoute, RunningToolIdentity
 
 
 class DurableSupervisionTest(unittest.TestCase):
@@ -38,6 +38,24 @@ class DurableSupervisionTest(unittest.TestCase):
 
     def request(self, script: str, *, timeout: float = 5, stall: float = 1) -> LaunchRequest:
         return LaunchRequest(self.identity, ("/bin/sh", "-c", script), str(self.root), timeout, stall)
+
+    @staticmethod
+    def route() -> ResolvedAgentRoute:
+        return ResolvedAgentRoute(
+            role="architect",
+            tool="codex",
+            requested_model_id="openai/gpt-5.6-codex-2026-09-01",
+            provider="openai",
+            tool_version="1.2.3",
+            executable="/usr/bin/codex",
+            credential_profile="credential-codex",
+            settings_profile="settings-codex",
+            location="cloud",
+            capabilities=("code_edit",),
+            context_limit_tokens=131072,
+            permitted_destinations=(),
+            configuration_hash="a" * 64,
+        )
 
     def test_journals_confirmed_identity_output_and_terminal_result(self) -> None:
         running = self.supervisor.launch(self.request("printf ready; sleep 0.05"))
@@ -173,7 +191,7 @@ class DurableSupervisionTest(unittest.TestCase):
 
     def test_runtime_identity_reaches_only_its_reserved_confirmed_callback(self) -> None:
         received = []
-        self.supervisor.reserve_runtime_identity_callback(self.identity, received.append)
+        self.supervisor.reserve_runtime_identity_callback(self.identity, self.route(), received.append)
         self.supervisor.launch(self.request("sleep 5"))
         report = self.supervisor.runtime_identity_callback(self.identity)
         identity = RunningToolIdentity(
@@ -197,14 +215,24 @@ class DurableSupervisionTest(unittest.TestCase):
 
     def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
         received = []
-        self.supervisor.reserve_runtime_identity_callback(self.identity, received.append)
+        self.supervisor.reserve_runtime_identity_callback(self.identity, self.route(), received.append)
         self.supervisor.launch(self.request("sleep 5"))
         report = self.supervisor.runtime_identity_callback(self.identity)
         with self.assertRaisesRegex(SupervisionError, "trusted tool metadata"):
             report(RunningToolIdentity("agent_text", "openai", "model", "1", "a" * 64))
+        with self.assertRaisesRegex(SupervisionError, "differs from the reserved route"):
+            report(RunningToolIdentity("tool_metadata", "openai", "different-model", "1.2.3", "a" * 64))
         self.units.stop(self.identity.unit_name)
         with self.assertRaisesRegex(SupervisionError, "cannot confirm"):
-            report(RunningToolIdentity("tool_metadata", "openai", "model", "1", "a" * 64))
+            report(
+                RunningToolIdentity(
+                    "tool_metadata",
+                    "openai",
+                    "openai/gpt-5.6-codex-2026-09-01",
+                    "1.2.3",
+                    "a" * 64,
+                )
+            )
         self.assertEqual([], received)
 
 

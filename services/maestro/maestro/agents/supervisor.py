@@ -21,7 +21,12 @@ from typing import Callable, Mapping, Protocol, Sequence
 
 from maestro.foundation import ContractError, canonical_identifier
 
-from .preflight import RunningToolIdentity
+from .preflight import (
+    ResolvedAgentRoute,
+    RunningToolIdentity,
+    verify_running_identity,
+)
+from .routes import AgentRouteError
 
 
 _START_FIELD = 21  # Linux /proc/<pid>/stat field 22, zero-indexed.
@@ -368,13 +373,18 @@ class AgentSupervisor:
     def __init__(self, journal: SupervisorJournal, units: UnitController, *, clock: Callable[[], float] = time.monotonic) -> None:
         self.journal, self.units, self.clock = journal, units, clock
         self._managed: dict[str, ManagedUnit] = {}
-        self._runtime_identity_callbacks: dict[str, RuntimeIdentityConsumer] = {}
+        self._runtime_identity_callbacks: dict[
+            str, tuple[ResolvedAgentRoute, RuntimeIdentityConsumer]
+        ] = {}
         self._runtime_identity_delivered: set[str] = set()
         self._lock = threading.RLock()
 
     @_synchronized
     def reserve_runtime_identity_callback(
-        self, identity: OperationIdentity, callback: RuntimeIdentityConsumer
+        self,
+        identity: OperationIdentity,
+        route: ResolvedAgentRoute,
+        callback: RuntimeIdentityConsumer,
     ) -> None:
         """Reserve the sole service callback that may receive one run's identity.
 
@@ -383,7 +393,11 @@ class AgentSupervisor:
         in-memory capability wiring: it is not agent input and is not recovered
         as a substitute for a new service-owned reservation.
         """
-        if not isinstance(identity, OperationIdentity) or not callable(callback):
+        if (
+            not isinstance(identity, OperationIdentity)
+            or not isinstance(route, ResolvedAgentRoute)
+            or not callable(callback)
+        ):
             raise SupervisionError(
                 "runtime_identity_callback_invalid",
                 "runtime identity callback reservation is invalid",
@@ -399,7 +413,7 @@ class AgentSupervisor:
                 "runtime_identity_callback_duplicate",
                 "operation already has a runtime identity callback",
             )
-        self._runtime_identity_callbacks[key] = callback
+        self._runtime_identity_callbacks[key] = (route, callback)
 
     @_synchronized
     def runtime_identity_callback(
@@ -440,12 +454,20 @@ class AgentSupervisor:
             )
         record = self._required(identity)
         key = identity.key
-        callback = self._runtime_identity_callbacks.get(key)
-        if record.state != "running" or callback is None or key in self._runtime_identity_delivered:
+        reservation = self._runtime_identity_callbacks.get(key)
+        if record.state != "running" or reservation is None or key in self._runtime_identity_delivered:
             raise SupervisionError(
                 "runtime_identity_callback_unavailable",
                 "runtime identity callback is not available for this operation",
             )
+        route, callback = reservation
+        try:
+            tool_identity = verify_running_identity(route, tool_identity)
+        except AgentRouteError as error:
+            raise SupervisionError(
+                "runtime_identity_mismatch",
+                "adapter runtime identity differs from the reserved route",
+            ) from error
         observed = self.units.inspect(record.unit_name)
         if observed is None or not observed.active or not observed.matches(record):
             raise SupervisionError(
