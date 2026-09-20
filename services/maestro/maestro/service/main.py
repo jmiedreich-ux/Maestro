@@ -19,6 +19,10 @@ from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
 from maestro.foundation import Database, StorageSettings
+from maestro.planning.registration_plugin import (
+    RegistrationProcessPlugin,
+    RegistrationServiceBinding,
+)
 
 from .activities import ActivityRepository
 from .authentication import (
@@ -30,6 +34,7 @@ from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamSe
 from .http import MAX_REQUEST_BYTES, HTTPResponse
 from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
+from .processes import ProcessHandlerRegistry
 from .registry import OperationRegistry
 from .requests import RequestService
 
@@ -180,11 +185,16 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
 class InstalledServiceApplication:
     """Compose authenticated reads, durable requests, and the event stream."""
 
-    def __init__(self, settings: ServiceSettings) -> None:
+    def __init__(
+        self, settings: ServiceSettings,
+        registration_plugin: RegistrationProcessPlugin | None = None,
+    ) -> None:
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
+        self.process_registry = ProcessHandlerRegistry()
+        self.registration_assessment: RegistrationServiceBinding | None = None
         self.authenticator = OwnerAuthenticator(settings.owner)
         self.questions = QuestionService(self.database)
         base_requests = RequestService(
@@ -200,6 +210,18 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
+        if registration_plugin is not None:
+            self.bind_registration_plugin(registration_plugin)
+
+    def bind_registration_plugin(
+        self, plugin: RegistrationProcessPlugin,
+    ) -> RegistrationServiceBinding:
+        """Install the registration provider on this service's durable database."""
+        if self.registration_assessment is not None:
+            raise ServiceConfigurationError("registration assessment plugin is already installed")
+        binding = RegistrationServiceBinding(self.database, plugin, self.process_registry)
+        self.registration_assessment = binding
+        return binding
 
     @property
     def agent_route_provider(self) -> ConfiguredAgentRouteProvider:
@@ -348,11 +370,14 @@ class InstalledServiceServer:
         self._server.shutdown()
 
 
-def build_application(settings: ServiceSettings) -> InstalledServiceApplication:
+def build_application(
+    settings: ServiceSettings,
+    registration_plugin: RegistrationProcessPlugin | None = None,
+) -> InstalledServiceApplication:
     """Build and initialize the real installed application boundary."""
     settings.storage.validate_host_path()
     _validate_workspace_root(settings.workspace_root)
-    application = InstalledServiceApplication(settings)
+    application = InstalledServiceApplication(settings, registration_plugin)
     details = os.lstat(settings.storage.path)
     if not stat.S_ISREG(details.st_mode):
         raise ServiceConfigurationError("configured storage is not a regular file")
