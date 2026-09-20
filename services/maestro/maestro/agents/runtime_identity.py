@@ -82,6 +82,10 @@ class RuntimeIdentityCore:
         self.supervisor_uid = supervisor_uid
         self.planning_uid = planning_uid
         self._identities: dict[str, ConfirmedRuntimeIdentity] = {}
+        # Keep operation keys after planning consumes their value.  Otherwise a
+        # compromised supervisor endpoint could replay a new identity for the
+        # same durable operation later in its lifecycle.
+        self._published_operations: set[str] = set()
         self._lock = threading.Lock()
 
     def publish(self, peer_uid: int, identity: ConfirmedRuntimeIdentity) -> None:
@@ -90,9 +94,10 @@ class RuntimeIdentityCore:
         if not isinstance(identity, ConfirmedRuntimeIdentity):
             raise RuntimeIdentityProtocolError("invalid_identity", "identity is invalid")
         with self._lock:
-            if identity.operation_key in self._identities:
+            if identity.operation_key in self._published_operations:
                 raise RuntimeIdentityProtocolError("identity_already_published", "runtime identity already exists")
             self._identities[identity.operation_key] = identity
+            self._published_operations.add(identity.operation_key)
 
     def consume(self, peer_uid: int, operation_key: str) -> ConfirmedRuntimeIdentity:
         if peer_uid != self.planning_uid:

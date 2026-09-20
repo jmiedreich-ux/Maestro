@@ -37,6 +37,8 @@ class RuntimeIdentityProtocolTest(unittest.TestCase):
         self.assertEqual(self.identity, core.consume(1002, self.identity.operation_key))
         with self.assertRaisesRegex(RuntimeIdentityProtocolError, "unavailable"):
             core.consume(1002, self.identity.operation_key)
+        with self.assertRaisesRegex(RuntimeIdentityProtocolError, "already exists"):
+            core.publish(1001, self.identity)
 
     def test_unix_protocol_uses_kernel_peer_identity_not_client_role_text(self) -> None:
         uid = os.getuid()
