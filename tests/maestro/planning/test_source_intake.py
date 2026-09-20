@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 import time
@@ -78,6 +79,16 @@ class _UnreadableDefaultReader(ExactSourceReader):
     @staticmethod
     def default_branch(_remote, **_kwargs):
         raise SourceIntakeError("source repository has no readable default branch")
+
+
+class _CountingReader(ExactSourceReader):
+    def __init__(self) -> None:
+        super().__init__()
+        self.registration_reads = 0
+
+    def read_registration(self, **kwargs):
+        self.registration_reads += 1
+        return super().read_registration(**kwargs)
 
 
 class ExactSourceIntakeTest(unittest.TestCase):
@@ -172,6 +183,63 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual("project-profile", result.destination_evidence["snapshot"]["profile_name"])
         self.assertNotIn("installation-token", repr(result.destination_evidence))
         self.assertEqual(["app", "installation", "token", "repository", "branch", "policy"], self.api.calls)
+
+    def test_successful_intake_round_trips_a_complete_immutable_record_without_rereading(self) -> None:
+        reader = _CountingReader()
+        intake = self._intake(reader)
+        result = intake.begin(self._request(), questions=_Questions())
+
+        saved = result.to_json()
+        saved_record = json.loads(saved)
+        self.assertEqual("owner/project", saved_record["repository"])
+        self.assertEqual(result.selection_decision_ref, saved_record["selection_decision_ref"])
+        self.assertEqual(64, len(saved_record["selection_decision_ref"]))
+        self.assertEqual(result.source_commit, saved_record["source_commit"])
+        self.assertEqual(result.overview_path, saved_record["overview_path"])
+        self.assertEqual(result.inventory.source_commit, saved_record["inventory"]["source_commit"])
+        self.assertEqual(
+            ["docs/overview.md", "docs/architecture.md", "docs/milestones.md"],
+            [blob["path"] for blob in saved_record["inventory"]["blobs"]],
+        )
+
+        restored = intake.rehydrate(saved)
+
+        self.assertEqual(1, reader.registration_reads)
+        self.assertEqual(result.repository, restored.repository)
+        self.assertEqual(result.selection_decision_ref, restored.selection_decision_ref)
+        self.assertEqual(result.inventory, restored.inventory)
+        self.assertIsNot(result.inventory, restored.inventory)
+        self.assertEqual(result.inventory.to_json(), restored.inventory.to_json())
+        with self.assertRaises(TypeError):
+            restored.destination_evidence["snapshot"]["branch"] = "other"
+        with self.assertRaises(TypeError):
+            restored.inventory.blobs[0] = restored.inventory.blobs[1]
+        detached = restored.to_record()
+        detached["inventory"]["blobs"][0]["path"] = "docs/changed.md"
+        self.assertEqual("docs/overview.md", restored.inventory.blobs[0].path)
+
+    def test_tampered_saved_intake_record_is_rejected(self) -> None:
+        result = self._intake().begin(self._request(), questions=_Questions())
+        tampered = json.loads(result.to_json())
+        tampered["inventory"]["blobs"][1]["sha256"] = "0" * 64
+
+        with self.assertRaisesRegex(IntakeError, "integrity check failed"):
+            RegistrationIntake.rehydrate(self._intake(), json.dumps(tampered))
+
+    def test_failed_attempt_rehydrates_without_inventory_or_a_second_source_read(self) -> None:
+        reader = _CountingReader()
+        intake = self._intake(reader)
+        with self.assertRaisesRegex(IntakeError, "does not contain") as raised:
+            intake.begin(self._request(overview_path="docs/missing.md"), questions=_Questions())
+
+        saved = raised.exception.attempt.to_json()
+        restored = intake.rehydrate(saved)
+
+        self.assertEqual(1, reader.registration_reads)
+        self.assertIsNone(restored.inventory)
+        self.assertIsNotNone(restored.failure)
+        self.assertEqual("owner/project", restored.repository)
+        self.assertIsNone(restored.selection_decision_ref)
 
     def test_missing_questions_prevent_provider_and_source_read(self) -> None:
         questions = _Questions()
