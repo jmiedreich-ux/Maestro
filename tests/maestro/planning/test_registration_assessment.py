@@ -7,10 +7,10 @@ import unittest
 from dataclasses import replace
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity
-from maestro.agents.routes import RoleSelections, ToolModelSelection
-from maestro.agents.supervisor import OperationIdentity
+from maestro.agents.routes import ConfiguredAgentRouteProvider, RoleSelections, ToolModelSelection
+from maestro.agents.supervisor import OperationIdentity, SupervisorRuntimeIdentity
 from maestro.foundation import StorageSettings
-from maestro.planning.intake import RegistrationIntakeResult
+from maestro.planning.intake import RegistrationIntakeResult, _selection_decision_reference
 from maestro.planning.registration import (
     AssessmentContext,
     AssessmentRun,
@@ -25,7 +25,7 @@ from maestro.planning.registration_records import (
     package_content_hash,
     validate_registration_package,
 )
-from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory
+from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.planning.registration_plugin import RegistrationProcessPlugin
 from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.main import InstalledServiceApplication, ServiceSettings
@@ -58,7 +58,11 @@ def _response(role: str, *, outcome: str | None = None, blocker: bool = False, c
 class RegistrationAssessmentTest(unittest.TestCase):
     def _assessment(self, limit: int = 2) -> RegistrationAssessment:
         blob = SourceBlob.from_bytes("docs/overview.md", b"# Overview\n")
-        inventory = SourceInventory("refs/heads/main", "b" * 40, "docs/overview.md", (blob,), outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),))
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md", (blob,),
+            source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
+            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+        )
         route = ResolvedAgentRoute("architect", "codex", "openai/model-1", "openai", "1", "/tool", "credential", "settings", "cloud", ("code_edit", "local_command", "repository_search", "approved_network"), 65536, (), "c" * 64)
         reviewer = replace(route, role="fidelity_reviewer", tool="claude_code", requested_model_id="anthropic/model-1", provider="anthropic")
         package_context = RegistrationPackageContext(
@@ -77,6 +81,26 @@ class RegistrationAssessmentTest(unittest.TestCase):
         if role == "project_architect":
             return RunningToolIdentity("tool_metadata", "openai", "openai/model-1", "1", "c" * 64)
         return RunningToolIdentity("tool_metadata", "anthropic", "anthropic/model-1", "1", "c" * 64)
+
+    def _configured_routes(self) -> ConfiguredAgentRouteProvider:
+        """A configured provider fixture; live inspection is isolated below."""
+        provider = object.__new__(ConfiguredAgentRouteProvider)
+        provider._registry = type("Routes", (), {"resolve": lambda _self, selection: selection})()
+        return provider
+
+    def _saved_intake(self) -> RegistrationIntakeResult:
+        inventory = self._assessment().context.source_inventory
+        snapshot = {"repository": "owner/project", "branch": "main", "binding_id": "binding-1"}
+        snapshot_reference = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        decision = _selection_decision_reference(
+            "owner/project", "supplied", inventory.source_ref, inventory.source_commit,
+            inventory.overview_path, "main", snapshot_reference,
+        )
+        return RegistrationIntakeResult(
+            inventory, (), "binding-1", "APP-PM1", "supplied", snapshot_reference,
+            {"decision": "allowed", "snapshot": snapshot, "observed_at": 1, "evidence_hashes": {}, "reason": None},
+            inventory.source_ref, "main", None, "owner/project", decision,
+        )
 
     def test_exact_assessment_and_independent_review_make_ready_candidate(self) -> None:
         assessment = self._assessment()
@@ -156,25 +180,15 @@ class RegistrationAssessmentTest(unittest.TestCase):
         with self.assertRaisesRegex(RegistrationRecordError, "source_commit"):
             validate_registration_package(manifest, {"summary.json": record}, context)
 
-    def test_process_provider_dispatches_start_and_both_response_roles(self) -> None:
-        baseline = self._assessment()
-        preflight = object.__new__(AgentRoutePreflight)
-        preflight.resolve_process_roles = lambda *_args: baseline.context.routes
-        plugin = RegistrationProcessPlugin(preflight)
+    def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
+        plugin = RegistrationProcessPlugin(self._configured_routes())
         snapshot = ProcessSnapshot("registration", "{}", "a" * 64, BundleSnapshot("registration-process@1", "processDefinition", (("schema.json", "a" * 64),)))
-        intake = RegistrationIntakeResult(baseline.context.source_inventory, (), "binding-1", "APP-PM1", "supplied", "snapshot-1", {"decision": "allowed"}, "refs/heads/main", "main")
-        started = plugin.provider.handlers["initiation"]["registration_intake_or_idle_update"](
-            snapshot, intake=intake, selections=RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1")),
-            project_id="project-1", activity_id="activity-1", decision_version="decision-1", architect_identity="architect-agent", reviewer_identity="reviewer-agent",
-            architect_assignment_id="project_architect-assignment", architect_run_id="project_architect-run", reviewer_assignment_id="fidelity_reviewer-assignment", reviewer_run_id="fidelity_reviewer-run",
-            source_repository="owner/project", selection_decision_ref="decision/source-selection-1",
-        )
-        self.assertIsInstance(started, RegistrationAssessment)
-        plugin.provider.handlers["agent_session"]["fixed_assignment_followups"](snapshot, assessment=started, response=_response("project_architect"), running_identity=self._identity("project_architect"))
-        status = plugin.provider.handlers["review"]["bounded_independent_fidelity"](snapshot, assessment=started, response=_response("fidelity_reviewer", outcome="APPROVE"), running_identity=self._identity("fidelity_reviewer"))
-        self.assertTrue(status.execution_eligible)
+        with self.assertRaisesRegex(RegistrationAssessmentError, "installed service binding"):
+            plugin.provider.handlers["initiation"]["registration_intake_or_idle_update"](
+                snapshot, intake=self._saved_intake(), source_repository="owner/project", decision_version="forged"
+            )
 
-    def test_installed_service_binds_durable_runs_and_dispatches_without_identity_arguments(self) -> None:
+    def test_service_rehydrates_saved_intake_and_accepts_only_supervisor_identity_delivery(self) -> None:
         baseline = self._assessment()
         preflight = object.__new__(AgentRoutePreflight)
         preflight.resolve_process_roles = lambda *_args: baseline.context.routes
@@ -182,8 +196,9 @@ class RegistrationAssessmentTest(unittest.TestCase):
             settings = ServiceSettings(
                 StorageSettings.from_mapping({"path": f"{temporary}/maestro.sqlite3"}),
                 OwnerAuthenticationSettings("owner-local", "a" * 64),
+                agent_route_provider=self._configured_routes(),
             )
-            application = InstalledServiceApplication(settings, RegistrationProcessPlugin(preflight))
+            application = InstalledServiceApplication(settings, preflight)
             assert application.registration_assessment is not None
             definition = {
                 "maximum_fidelity_reviews": 2,
@@ -195,31 +210,36 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 "recovery": {"policy": "reconcile_preserved_registration"},
             }
             snapshot = ProcessSnapshot("registration", json.dumps(definition), "a" * 64, BundleSnapshot("registration-process@1", "processDefinition", (("schema.json", "a" * 64),)))
-            intake = RegistrationIntakeResult(baseline.context.source_inventory, (), "binding-1", "APP-PM1", "supplied", "c" * 64, {"decision": "allowed"}, "refs/heads/main", "main")
             binding = application.registration_assessment
-            binding.start(
-                snapshot, intake=intake, selections=RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1")),
-                project_id="project-1", activity_id="activity-1", decision_version="decision-1", architect_identity="architect-agent", reviewer_identity="reviewer-agent",
-                architect_assignment_id="project_architect-assignment", architect_run_id="project_architect-run", reviewer_assignment_id="fidelity_reviewer-assignment", reviewer_run_id="fidelity_reviewer-run",
-                source_repository="owner/project", selection_decision_ref="decision/source-selection-1",
-            )
+            intake = self._saved_intake()
+            selections = RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1"))
+            binding.save_intake("activity-1", "project-1", intake, selections)
+            started = binding.start(snapshot, "activity-1")
             record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {}}
             record_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
             manifest = {
                 "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-                "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": "decision-1",
-                "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": "c" * 64,
-                "selection_decision_ref": "decision/source-selection-1", "content_hash": package_content_hash({"summary.json": record}),
+                "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": intake.selection_decision_ref,
+                "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": intake.destination_snapshot_reference,
+                "selection_decision_ref": intake.selection_decision_ref, "content_hash": package_content_hash({"summary.json": record}),
                 "files": [{"path": "summary.json", "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": record_hash}],
             }
             self.assertIs(binding.validate_package("activity-1", manifest, {"summary.json": record}), manifest)
             manifest["publication_branch"] = "wrong-branch"
             with self.assertRaisesRegex(RegistrationRecordError, "publication_branch"):
                 binding.validate_package("activity-1", manifest, {"summary.json": record})
-            binding.record_runtime_identity(OperationIdentity("project-1", "activity-1", "project_architect-assignment", "project_architect-run"), self._identity("project_architect"))
-            binding.submit_architect(_response("project_architect"))
-            binding.record_runtime_identity(OperationIdentity("project-1", "activity-1", "fidelity_reviewer-assignment", "fidelity_reviewer-run"), self._identity("fidelity_reviewer"))
-            status = binding.submit_reviewer(_response("fidelity_reviewer", outcome="APPROVE"))
+            architect_operation = OperationIdentity("project-1", "activity-1", started.context.architect_run.assignment_id, started.context.architect_run.run_id)
+            with self.assertRaises(TypeError):
+                binding.accept_supervisor_runtime_identity(self._identity("project_architect"))
+            binding.accept_supervisor_runtime_identity(SupervisorRuntimeIdentity(architect_operation, self._identity("project_architect"), 10, "boot", "start", "invocation"))
+            architect = replace(_response("project_architect"), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
+            binding.submit_architect(architect)
+            recovered = binding.rehydrate(snapshot, "activity-1")
+            self.assertEqual("awaiting_reviewer", recovered.status.state)
+            reviewer_operation = OperationIdentity("project-1", "activity-1", recovered.context.reviewer_run.assignment_id, recovered.context.reviewer_run.run_id)
+            binding.accept_supervisor_runtime_identity(SupervisorRuntimeIdentity(reviewer_operation, self._identity("fidelity_reviewer"), 11, "boot", "start", "invocation"))
+            reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE"), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
+            status = binding.submit_reviewer(reviewer)
             self.assertTrue(status.execution_eligible)
             with application.database.read_connection() as connection:
                 self.assertEqual(2, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])

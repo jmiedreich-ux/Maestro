@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Mapping
 
-from maestro.agents.preflight import AgentRoutePreflight, RunningToolIdentity, verify_running_identity
-from maestro.agents.routes import RoleSelections, RouteRequirements
-from maestro.agents.supervisor import OperationIdentity
+from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity, verify_running_identity
+from maestro.agents.routes import ConfiguredAgentRouteProvider, PermittedDestination, RoleSelections, RouteRequirements, ToolModelSelection
+from maestro.agents.supervisor import AgentSupervisor, OperationIdentity, SupervisorRuntimeIdentity
 from maestro.foundation import Database, DomainMigration, canonical_json
 from maestro.service.processes import ProcessHandlerRegistry, ProcessProvider, ProcessSnapshot
 
@@ -45,7 +46,15 @@ REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION = DomainMigration(
         """
         CREATE TABLE registration_assessment_intake(
             activity_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            selections_json TEXT NOT NULL,
             intake_json TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE registration_assessment_state(
+            activity_id TEXT PRIMARY KEY,
+            state_json TEXT NOT NULL
         )
         """,
     ),
@@ -76,9 +85,15 @@ def validate_registration_process_definition(definition: Mapping[str, Any]) -> N
 class RegistrationProcessPlugin:
     """A real minimal consumer of the source-intake and route contracts."""
 
-    def __init__(self, preflight: AgentRoutePreflight) -> None:
-        if not isinstance(preflight, AgentRoutePreflight):
-            raise TypeError("registration plugin requires the service-owned route preflight")
+    def __init__(
+        self, configured_routes: ConfiguredAgentRouteProvider | None,
+        preflight: AgentRoutePreflight | None = None,
+    ) -> None:
+        if configured_routes is not None and not isinstance(configured_routes, ConfiguredAgentRouteProvider):
+            raise TypeError("registration plugin requires the installed configured route provider")
+        if preflight is not None and not isinstance(preflight, AgentRoutePreflight):
+            raise TypeError("registration plugin requires a service-owned route preflight")
+        self.configured_routes = configured_routes
         self.preflight = preflight
         self._provider = ProcessProvider(
             "registration", "registration-process@1", validate_registration_process_definition,
@@ -96,50 +111,43 @@ class RegistrationProcessPlugin:
     def start_assessment(
         self,
         *,
-        intake: RegistrationIntakeResult,
         snapshot: ProcessSnapshot,
-        selections: RoleSelections,
-        project_id: str,
         activity_id: str,
-        decision_version: str,
-        architect_identity: str,
-        reviewer_identity: str,
-        architect_assignment_id: str,
-        architect_run_id: str,
-        reviewer_assignment_id: str,
-        reviewer_run_id: str,
-        source_repository: str,
-        selection_decision_ref: str,
+        project_id: str,
+        intake: RegistrationIntakeResult,
+        selections: RoleSelections,
     ) -> RegistrationAssessment:
         if not isinstance(intake, RegistrationIntakeResult) or intake.inventory is None:
             raise RegistrationAssessmentError("registration assessment cannot start without exact authorized source intake")
         if intake.missing_questions:
             raise RegistrationAssessmentError("registration assessment cannot start while intake questions remain")
+        if self.configured_routes is None or self.preflight is None:
+            raise RegistrationAssessmentError("registration assessment start requires installed configured runtime preflight")
+        # Check the service configuration before consulting live preflight.  A
+        # plugin cannot select a route that is absent from the one configured
+        # provider the installed service exposed to it.
+        self.configured_routes.resolve(selections.architect)
+        self.configured_routes.resolve(selections.fidelity_reviewer)
         routes = self.preflight.resolve_process_roles(
             self._provider, snapshot, selections,
             {"architect": REGISTRATION_REQUIREMENTS, "fidelity_reviewer": REGISTRATION_REQUIREMENTS},
         )
         review_limit = snapshot.definition.get("maximum_fidelity_reviews", 2)
-        package_context = RegistrationPackageContext.from_intake(
-            project_id=project_id,
-            source_repository=source_repository,
-            intake=intake,
-            decision_version=decision_version,
-            selection_decision_ref=selection_decision_ref,
-        )
+        package_context = _package_context(project_id, intake)
         return RegistrationAssessment(AssessmentContext(
-            project_id, activity_id, intake.inventory, decision_version, intake.selected_scope or "", architect_identity,
-            reviewer_identity, routes, AssessmentRun(architect_assignment_id, architect_run_id),
-            AssessmentRun(reviewer_assignment_id, reviewer_run_id), package_context, review_limit,
+            project_id, activity_id, intake.inventory, package_context.decision_version, intake.selected_scope or "", "project_architect",
+            "fidelity_reviewer", routes, _new_run("project_architect"),
+            _new_run("fidelity_reviewer"), package_context, review_limit,
         ))
 
     @property
     def provider(self) -> ProcessProvider:
         return self._provider
 
-    def _start_handler(self, snapshot: ProcessSnapshot, **kwargs: object) -> RegistrationAssessment:
-        """Dispatch the validated ``registration.start`` operation into assessment."""
-        return self.start_assessment(snapshot=snapshot, **kwargs)
+    def _start_handler(self, _snapshot: ProcessSnapshot, **_kwargs: object) -> RegistrationAssessment:
+        raise RegistrationAssessmentError(
+            "registration.start is available only through the installed service binding"
+        )
 
     @staticmethod
     def _architect_response_handler(
@@ -198,85 +206,149 @@ class RegistrationServiceBinding:
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
 
-    def start(self, snapshot: ProcessSnapshot, **arguments: object) -> RegistrationAssessment:
-        assessment = self.registry.dispatch(snapshot, "initiation", **arguments)
-        if not isinstance(assessment, RegistrationAssessment):
-            raise RegistrationAssessmentError("registration.start did not create an assessment")
+    def save_intake(
+        self, activity_id: str, project_id: str, intake: RegistrationIntakeResult,
+        selections: RoleSelections,
+    ) -> None:
+        """Persist completed intake before assessment; no source field is split out.
+
+        This boundary is used by the installed intake flow, not by agents.  The
+        assessment start operation subsequently accepts only the activity and
+        the service's saved process snapshot.
+        """
+        if not isinstance(activity_id, str) or not activity_id or not isinstance(project_id, str) or not project_id:
+            raise RegistrationAssessmentError("saved registration intake needs project and activity identities")
+        if not isinstance(intake, RegistrationIntakeResult) or intake.inventory is None:
+            raise RegistrationAssessmentError("registration assessment requires completed saved intake")
+        if not isinstance(selections, RoleSelections):
+            raise RegistrationAssessmentError("registration assessment requires saved role selections")
+        try:
+            intake_json = intake.to_json()
+        except ValueError as error:
+            raise RegistrationAssessmentError("registration assessment intake cannot be persisted") from error
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """INSERT INTO registration_assessment_intake(
+                       activity_id, project_id, selections_json, intake_json
+                   ) VALUES (?, ?, ?, ?)""",
+                (activity_id, project_id, canonical_json(_selections_mapping(selections)), intake_json),
+            )
+
+    def start(self, snapshot: ProcessSnapshot, activity_id: str) -> RegistrationAssessment:
+        """Start from service-persisted intake only; callers cannot supply facts."""
+        project_id, intake, selections = self._saved_intake(activity_id)
+        assessment = self.plugin.start_assessment(
+            snapshot=snapshot, activity_id=activity_id, project_id=project_id,
+            intake=intake, selections=selections,
+        )
         assessment.bind_process_snapshot(snapshot)
         context = assessment.context
         rows = (
             ("project_architect", context.architect_run, context.routes.architect),
             ("fidelity_reviewer", context.reviewer_run, context.routes.fidelity_reviewer),
         )
-        intake = context.package_context
         with self.database.transaction() as transaction:
-            transaction.execute(
-                "INSERT INTO registration_assessment_intake(activity_id, intake_json) VALUES (?, ?)",
-                (context.activity_id, canonical_json({
-                    "project_id": intake.project_id,
-                    "source_repository": intake.source_repository,
-                    "source_ref": intake.source_inventory.source_ref,
-                    "source_commit": intake.source_inventory.source_commit,
-                    "overview_path": intake.source_inventory.overview_path,
-                    "decision_version": intake.decision_version,
-                    "publication_branch": intake.publication_branch,
-                    "destination_snapshot_reference": intake.destination_snapshot_reference,
-                    "selection_decision_ref": intake.selection_decision_ref,
-                })),
-            )
             for role, run, route in rows:
                 transaction.execute(
                     """INSERT INTO registration_assessment_runs(
                         activity_id, role, assignment_id, run_id, route_json, runtime_identity_json
                     ) VALUES (?, ?, ?, ?, ?, NULL)""",
-                    (context.activity_id, role, run.assignment_id, run.run_id, canonical_json({
-                        "provider": route.provider,
-                        "model_id": route.requested_model_id,
-                        "tool_version": route.tool_version,
-                        "configuration_hash": route.configuration_hash,
-                    })),
+                    (context.activity_id, role, run.assignment_id, run.run_id, canonical_json(_route_mapping(route))),
                 )
+            transaction.execute(
+                "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
+                (context.activity_id, canonical_json(assessment.to_record())),
+            )
         self._assessments[context.activity_id] = assessment
         return assessment
 
-    def record_runtime_identity(self, operation: OperationIdentity, identity: RunningToolIdentity) -> None:
-        """Save tool metadata for the current service-reserved role/run only."""
-        if not isinstance(operation, OperationIdentity) or not isinstance(identity, RunningToolIdentity):
-            raise TypeError("runtime identity requires service operation and tool metadata")
-        assessment = self._assessment(operation.activity_id)
-        role, route = self._role_for_assignment(assessment, operation)
+    def reserve_runtime_identity_callback(
+        self, supervisor: AgentSupervisor, activity_id: str, role: str,
+    ) -> OperationIdentity:
+        """Reserve the supervisor's one callback for the service-created run."""
+        if not isinstance(supervisor, AgentSupervisor):
+            raise TypeError("registration runtime callback requires the installed supervisor")
+        assessment = self._assessment(activity_id)
+        run = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run if role == "fidelity_reviewer" else None
+        if run is None:
+            raise RegistrationAssessmentError("registration role is invalid")
+        route = assessment.context.routes.architect if role == "project_architect" else assessment.context.routes.fidelity_reviewer
+        operation = OperationIdentity(assessment.context.project_id, activity_id, run.assignment_id, run.run_id)
+        supervisor.reserve_runtime_identity_callback(operation, route, self.accept_supervisor_runtime_identity)
+        return operation
+
+    def accept_supervisor_runtime_identity(self, delivery: SupervisorRuntimeIdentity) -> None:
+        """Accept identity only from the matching reserved supervisor callback."""
+        if not isinstance(delivery, SupervisorRuntimeIdentity):
+            raise TypeError("runtime identity is accepted only from the supervisor callback")
+        assessment = self._assessment(delivery.operation.activity_id)
+        role, route = self._role_for_assignment(assessment, delivery.operation)
         try:
-            verify_running_identity(route, identity)
+            verify_running_identity(route, delivery.tool_identity)
         except ValueError as error:
-            raise RegistrationAssessmentError("running tool identity differs from service route") from error
+            raise RegistrationAssessmentError("supervisor runtime identity differs from the saved route") from error
         with self.database.transaction() as transaction:
             updated = transaction.execute(
                 """UPDATE registration_assessment_runs SET runtime_identity_json = ?
                    WHERE activity_id = ? AND role = ? AND assignment_id = ? AND run_id = ?""",
-                (canonical_json(_identity_mapping(identity)), operation.activity_id, role, operation.assignment_id, operation.run_id),
+                (canonical_json(_identity_mapping(delivery.tool_identity)), delivery.operation.activity_id, role, delivery.operation.assignment_id, delivery.operation.run_id),
             )
             if updated.rowcount != 1:
                 raise RegistrationAssessmentError("runtime identity does not match a current saved assignment run")
 
     def submit_architect(self, response: RegistrationAgentResponse) -> object:
         assessment = self._assessment_for_response(response, "project_architect")
-        return self.registry.dispatch(
+        result = self.registry.dispatch(
             _snapshot_for(assessment), "agent_session", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "project_architect"),
         )
+        self._save_assessment(assessment)
+        return result
 
     def submit_reviewer(self, response: RegistrationAgentResponse) -> object:
         assessment = self._assessment_for_response(response, "fidelity_reviewer")
-        return self.registry.dispatch(
+        result = self.registry.dispatch(
             _snapshot_for(assessment), "review", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "fidelity_reviewer"),
         )
+        self._save_assessment(assessment)
+        return result
 
     def validate_package(self, activity_id: str, manifest: object, records: object) -> object:
         assessment = self._assessment(activity_id)
         return self.registry.dispatch(
             _snapshot_for(assessment), "saved_outputs", assessment=assessment, manifest=manifest, records=records,
         )
+
+    def rehydrate(self, snapshot: ProcessSnapshot, activity_id: str) -> RegistrationAssessment:
+        """Restore exact saved intake, routes, runs, and assessment state offline."""
+        project_id, intake, _selections = self._saved_intake(activity_id)
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                "SELECT role, assignment_id, run_id, route_json FROM registration_assessment_runs WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchall()
+            state = connection.execute(
+                "SELECT state_json FROM registration_assessment_state WHERE activity_id = ?", (activity_id,)
+            ).fetchone()
+        if len(rows) != 2 or state is None:
+            raise RegistrationAssessmentError("saved registration assessment is incomplete")
+        try:
+            saved = {str(row[0]): (AssessmentRun(str(row[1]), str(row[2])), _route_from_mapping(json.loads(str(row[3])))) for row in rows}
+            if set(saved) != {"project_architect", "fidelity_reviewer"}:
+                raise ValueError
+            context = AssessmentContext(
+                project_id, activity_id, intake.inventory, _decision_version(intake), intake.selected_scope or "",
+                "project_architect", "fidelity_reviewer", ResolvedRoleRoutes(saved["project_architect"][1], saved["fidelity_reviewer"][1]),
+                saved["project_architect"][0], saved["fidelity_reviewer"][0], _package_context(project_id, intake),
+                snapshot.definition.get("maximum_fidelity_reviews", 2),
+            )
+            assessment = RegistrationAssessment.from_record(context, json.loads(str(state[0])))
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            raise RegistrationAssessmentError("saved registration assessment is invalid") from error
+        assessment.bind_process_snapshot(snapshot)
+        self._assessments[activity_id] = assessment
+        return assessment
 
     @staticmethod
     def _role_for_assignment(assessment: RegistrationAssessment, operation: OperationIdentity):
@@ -318,6 +390,33 @@ class RegistrationServiceBinding:
         except KeyError as error:
             raise RegistrationAssessmentError("registration assessment is unavailable for unsafe continuation") from error
 
+    def _saved_intake(self, activity_id: str) -> tuple[str, RegistrationIntakeResult, RoleSelections]:
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                "SELECT project_id, selections_json, intake_json FROM registration_assessment_intake WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone()
+        if row is None:
+            raise RegistrationAssessmentError("registration assessment has no saved intake")
+        try:
+            project_id = str(row[0])
+            intake = RegistrationIntakeResult.from_json(str(row[2]))
+            selections = _selections_from_mapping(json.loads(str(row[1])))
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            raise RegistrationAssessmentError("saved registration intake is invalid") from error
+        if intake.inventory is None:
+            raise RegistrationAssessmentError("saved registration intake is incomplete")
+        return project_id, intake, selections
+
+    def _save_assessment(self, assessment: RegistrationAssessment) -> None:
+        with self.database.transaction() as transaction:
+            updated = transaction.execute(
+                "UPDATE registration_assessment_state SET state_json = ? WHERE activity_id = ?",
+                (canonical_json(assessment.to_record()), assessment.context.activity_id),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError("saved registration assessment state is unavailable")
+
 
 def _identity_mapping(identity: RunningToolIdentity) -> dict[str, str]:
     return {
@@ -334,6 +433,76 @@ def _snapshot_for(assessment: RegistrationAssessment) -> ProcessSnapshot:
     return assessment.process_snapshot
 
 
-def registration_process_provider(preflight: AgentRoutePreflight) -> ProcessProvider:
+def registration_process_provider(
+    configured_routes: ConfiguredAgentRouteProvider | None,
+    preflight: AgentRoutePreflight | None = None,
+) -> ProcessProvider:
     """Entry point used by the shared process registry at installation."""
-    return RegistrationProcessPlugin(preflight).provider
+    return RegistrationProcessPlugin(configured_routes, preflight).provider
+
+
+def _new_run(role: str) -> AssessmentRun:
+    token = uuid.uuid4().hex
+    return AssessmentRun(f"{role}-{token}", f"{role}-{token}")
+
+
+def _decision_version(intake: RegistrationIntakeResult) -> str:
+    if not intake.selection_decision_ref:
+        raise RegistrationAssessmentError("saved intake lacks a selection decision reference")
+    return intake.selection_decision_ref
+
+
+def _package_context(project_id: str, intake: RegistrationIntakeResult) -> RegistrationPackageContext:
+    if intake.inventory is None or not intake.repository:
+        raise RegistrationAssessmentError("saved intake lacks an authorized repository inventory")
+    return RegistrationPackageContext.from_intake(
+        project_id=project_id, source_repository=intake.repository, intake=intake,
+        decision_version=_decision_version(intake), selection_decision_ref=_decision_version(intake),
+    )
+
+
+def _selections_mapping(value: RoleSelections) -> dict[str, dict[str, str]]:
+    return {
+        "architect": {"tool": value.architect.tool, "model_id": value.architect.model_id},
+        "fidelity_reviewer": {"tool": value.fidelity_reviewer.tool, "model_id": value.fidelity_reviewer.model_id},
+    }
+
+
+def _selections_from_mapping(value: object) -> RoleSelections:
+    if not isinstance(value, Mapping) or set(value) != {"architect", "fidelity_reviewer"}:
+        raise ValueError("saved role selections are invalid")
+    try:
+        return RoleSelections(
+            ToolModelSelection(**value["architect"]), ToolModelSelection(**value["fidelity_reviewer"]),
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError("saved role selections are invalid") from error
+
+
+def _route_mapping(route: ResolvedAgentRoute) -> dict[str, object]:
+    return {
+        "role": route.role, "tool": route.tool, "requested_model_id": route.requested_model_id,
+        "provider": route.provider, "tool_version": route.tool_version, "executable": route.executable,
+        "credential_profile": route.credential_profile, "settings_profile": route.settings_profile,
+        "location": route.location, "capabilities": list(route.capabilities),
+        "context_limit_tokens": route.context_limit_tokens,
+        "permitted_destinations": [item.as_dict() for item in route.permitted_destinations],
+        "configuration_hash": route.configuration_hash,
+    }
+
+
+def _route_from_mapping(value: object) -> ResolvedAgentRoute:
+    if not isinstance(value, Mapping):
+        raise ValueError("saved route is invalid")
+    try:
+        return ResolvedAgentRoute(
+            role=value["role"], tool=value["tool"], requested_model_id=value["requested_model_id"],
+            provider=value["provider"], tool_version=value["tool_version"], executable=value["executable"],
+            credential_profile=value["credential_profile"], settings_profile=value["settings_profile"],
+            location=value["location"], capabilities=tuple(value["capabilities"]),
+            context_limit_tokens=value["context_limit_tokens"],
+            permitted_destinations=tuple(PermittedDestination(**item) for item in value["permitted_destinations"]),
+            configuration_hash=value["configuration_hash"],
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("saved route is invalid") from error

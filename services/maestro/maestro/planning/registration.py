@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable
+from dataclasses import asdict, dataclass
+from typing import Iterable, Mapping
 
 from maestro.agents.preflight import (
     ResolvedRoleRoutes,
@@ -14,6 +14,7 @@ from maestro.service.processes import ProcessSnapshot
 
 from .registration_records import (
     ArtifactReference,
+    Finding,
     RegistrationAgentResponse,
     RegistrationPackageContext,
     RegistrationRecordError,
@@ -141,6 +142,60 @@ class RegistrationAssessment:
             raise RegistrationAssessmentError("run replacement is not eligible at this assessment step")
         self._current_runs[role] = run
 
+    def to_record(self) -> dict[str, object]:
+        """Return mutable state for durable recovery, separate from intake."""
+        return {
+            "state": self._state,
+            "review_count": self._review_count,
+            "candidate": _artifact_record(self._candidate),
+            "assessment": _artifact_record(self._assessment),
+            "architect_findings": [asdict(item) for item in self._architect_findings],
+            "review_findings": [asdict(item) for item in self._review_findings],
+            "reviewed_candidate": _artifact_record(self._reviewed_candidate),
+            "reviewed_assessment": _artifact_record(self._reviewed_assessment),
+            "current_runs": {
+                role: {"assignment_id": run.assignment_id, "run_id": run.run_id}
+                for role, run in self._current_runs.items()
+            },
+        }
+
+    @classmethod
+    def from_record(cls, context: AssessmentContext, value: object) -> "RegistrationAssessment":
+        """Rehydrate saved state without contacting or rereading the source."""
+        fields = {
+            "state", "review_count", "candidate", "assessment", "architect_findings",
+            "review_findings", "reviewed_candidate", "reviewed_assessment", "current_runs",
+        }
+        if not isinstance(value, Mapping) or set(value) != fields:
+            raise RegistrationAssessmentError("saved registration assessment state is invalid")
+        state, review_count = value["state"], value["review_count"]
+        states = {
+            "awaiting_architect", "awaiting_reviewer", "changes_requested", "clarification_required",
+            "technical_recovery", "ready", "blocked", "review_limit_owner_decision",
+        }
+        if state not in states or isinstance(review_count, bool) or not isinstance(review_count, int) or not 0 <= review_count <= context.review_limit:
+            raise RegistrationAssessmentError("saved registration assessment state is invalid")
+        runs = value["current_runs"]
+        if not isinstance(runs, Mapping) or set(runs) != {"project_architect", "fidelity_reviewer"}:
+            raise RegistrationAssessmentError("saved registration assessment runs are invalid")
+        try:
+            restored = cls(context)
+            restored._state = state
+            restored._review_count = review_count
+            restored._candidate = _artifact_from_record(value["candidate"])
+            restored._assessment = _artifact_from_record(value["assessment"])
+            restored._architect_findings = _findings_from_record(value["architect_findings"])
+            restored._review_findings = _findings_from_record(value["review_findings"])
+            restored._reviewed_candidate = _artifact_from_record(value["reviewed_candidate"])
+            restored._reviewed_assessment = _artifact_from_record(value["reviewed_assessment"])
+            restored._current_runs = {
+                role: AssessmentRun(runs[role]["assignment_id"], runs[role]["run_id"])
+                for role in ("project_architect", "fidelity_reviewer")
+            }
+        except (KeyError, TypeError, RegistrationRecordError) as error:
+            raise RegistrationAssessmentError("saved registration assessment state is invalid") from error
+        return restored
+
     def submit_architect(
         self, response: RegistrationAgentResponse, running_identity: RunningToolIdentity,
     ) -> AssessmentStatus:
@@ -219,6 +274,23 @@ class RegistrationAssessment:
             expected.project_id, expected.activity_id, expected.source_inventory.source_commit, expected.decision_version,
         ):
             raise RegistrationAssessmentError("response does not match the pinned project, source, or decisions")
+
+
+def _artifact_record(value: ArtifactReference | None) -> dict[str, str] | None:
+    return None if value is None else value.as_dict()
+
+
+def _artifact_from_record(value: object) -> ArtifactReference | None:
+    return None if value is None else ArtifactReference.from_mapping(value)
+
+
+def _findings_from_record(value: object) -> tuple[Finding, ...]:
+    if not isinstance(value, list):
+        raise RegistrationAssessmentError("saved registration assessment findings are invalid")
+    try:
+        return tuple(Finding(**item) for item in value)
+    except (TypeError, ValueError) as error:
+        raise RegistrationAssessmentError("saved registration assessment findings are invalid") from error
 
 
 def validate_completion_mapping(inventory: SourceInventory, included_outcomes: Iterable[str], completion_requirements: Iterable[str]) -> None:

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Mapping
 from urllib.parse import SplitResult, parse_qs, unquote, urlsplit
 
+from maestro.agents.preflight import AgentRoutePreflight
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
 from maestro.foundation import Database, StorageSettings
 from maestro.planning.registration_plugin import (
@@ -187,7 +188,7 @@ class InstalledServiceApplication:
 
     def __init__(
         self, settings: ServiceSettings,
-        registration_plugin: RegistrationProcessPlugin | None = None,
+        registration_preflight: AgentRoutePreflight | None = None,
     ) -> None:
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
@@ -210,18 +211,14 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
-        if registration_plugin is not None:
-            self.bind_registration_plugin(registration_plugin)
-
-    def bind_registration_plugin(
-        self, plugin: RegistrationProcessPlugin,
-    ) -> RegistrationServiceBinding:
-        """Install the registration provider on this service's durable database."""
-        if self.registration_assessment is not None:
-            raise ServiceConfigurationError("registration assessment plugin is already installed")
-        binding = RegistrationServiceBinding(self.database, plugin, self.process_registry)
-        self.registration_assessment = binding
-        return binding
+        # Production composition always installs the registration process.  A
+        # missing route configuration or live preflight blocks that process's
+        # start instead of creating a caller-selected fallback.
+        self.registration_assessment = RegistrationServiceBinding(
+            self.database,
+            RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
+            self.process_registry,
+        )
 
     @property
     def agent_route_provider(self) -> ConfiguredAgentRouteProvider:
@@ -370,14 +367,11 @@ class InstalledServiceServer:
         self._server.shutdown()
 
 
-def build_application(
-    settings: ServiceSettings,
-    registration_plugin: RegistrationProcessPlugin | None = None,
-) -> InstalledServiceApplication:
+def build_application(settings: ServiceSettings) -> InstalledServiceApplication:
     """Build and initialize the real installed application boundary."""
     settings.storage.validate_host_path()
     _validate_workspace_root(settings.workspace_root)
-    application = InstalledServiceApplication(settings, registration_plugin)
+    application = InstalledServiceApplication(settings)
     details = os.lstat(settings.storage.path)
     if not stat.S_ISREG(details.st_mode):
         raise ServiceConfigurationError("configured storage is not a regular file")
