@@ -23,10 +23,9 @@ from .routes import (
 from .runtime_identity import (
     ConfirmedRuntimeIdentity,
     PlanningIdentityConsumer,
-    RuntimeIdentityCore,
     RuntimeIdentityProtocolError,
-    RuntimeIdentityServer,
     SupervisorIdentityReporter,
+    compose_runtime_identity_endpoints,
 )
 
 __all__ = [
@@ -45,11 +44,10 @@ __all__ = [
     "RoleSelections",
     "RouteRequirements",
     "RunningToolIdentity",
-    "RuntimeIdentityCore",
     "RuntimeIdentityProtocolError",
-    "RuntimeIdentityServer",
     "SupervisorIdentityReporter",
     "ToolModelSelection",
     "ToolRoute",
+    "compose_runtime_identity_endpoints",
     "verify_running_identity",
 ]

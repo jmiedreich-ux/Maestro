@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -10,12 +9,6 @@ from pathlib import Path
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity
 from maestro.agents.routes import ConfiguredAgentRouteProvider, RoleSelections, ToolModelSelection
-from maestro.agents.runtime_identity import (
-    ConfirmedRuntimeIdentity,
-    PlanningIdentityConsumer,
-    RuntimeIdentityServer,
-    SupervisorIdentityReporter,
-)
 from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, LaunchRequest, LocalProcessUnits, OperationIdentity
 from maestro.foundation import StorageSettings
 from maestro.planning.intake import RegistrationIntakeResult, _selection_decision_reference
@@ -43,13 +36,6 @@ from maestro.service.resources import BundleSnapshot
 
 def _artifact(path: str, version: str) -> dict[str, str]:
     return {"path": path, "sha256": "a" * 64, "version": version}
-
-
-def _confirmed_identity(operation: OperationIdentity, identity: RunningToolIdentity) -> ConfirmedRuntimeIdentity:
-    return ConfirmedRuntimeIdentity(
-        operation.key, identity.provider, identity.model_id, identity.tool_version,
-        identity.configuration_hash, 10, "boot", "start", "invocation",
-    )
 
 
 def _response(role: str, *, outcome: str | None = None, blocker: bool = False, candidate: dict[str, str] | None = None) -> RegistrationAgentResponse:
@@ -203,29 +189,20 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 snapshot, intake=self._saved_intake(), source_repository="owner/project", decision_version="forged"
             )
 
-    def test_installed_service_composes_protected_runtime_socket_without_injection(self) -> None:
+    def test_installed_service_composes_non_interchangeable_runtime_identity_capabilities(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             settings = ServiceSettings(
                 StorageSettings.from_mapping({"path": f"{temporary}/maestro.sqlite3"}),
                 OwnerAuthenticationSettings("owner-local", "a" * 64),
                 agent_route_provider=self._configured_routes(),
-                runtime_identity_supervisor_uid=os.getuid() + 1,
-                runtime_identity_planning_uid=os.getuid(),
             )
             application = InstalledServiceApplication(settings, supervisor_units=LocalProcessUnits())
-            try:
-                self.assertIsInstance(application.runtime_identity_server, RuntimeIdentityServer)
-                self.assertIsNotNone(application.runtime_identity_socket)
-                assert application.runtime_identity_socket is not None
-                assert application.runtime_identity_core is not None
-                self.assertTrue(application.runtime_identity_socket.exists())
-                self.assertIsInstance(application.agent_supervisor._runtime_identity_reporter, SupervisorIdentityReporter)
-                operation = OperationIdentity("project-1", "activity-1", "assignment-1", "run-1")
-                expected = _confirmed_identity(operation, self._identity("project_architect"))
-                application.runtime_identity_core.publish(settings.runtime_identity_supervisor_uid, expected)
-                self.assertEqual(expected, PlanningIdentityConsumer(application.runtime_identity_socket).consume(operation.key))
-            finally:
-                application.stop()
+            self.assertTrue(callable(application.agent_supervisor._runtime_identity_reporter.publish))
+            self.assertFalse(hasattr(application, "runtime_identity_core"))
+            self.assertFalse(hasattr(application, "runtime_identity_server"))
+            self.assertFalse(hasattr(application, "runtime_identity_socket"))
+            self.assertFalse(hasattr(application.agent_supervisor._runtime_identity_reporter, "consume"))
+            application.stop()
 
     def test_service_rehydrates_saved_intake_and_rejects_forged_runtime_delivery(self) -> None:
         baseline = self._assessment()
@@ -236,13 +213,10 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 StorageSettings.from_mapping({"path": f"{temporary}/maestro.sqlite3"}),
                 OwnerAuthenticationSettings("owner-local", "a" * 64),
                 agent_route_provider=self._configured_routes(),
-                runtime_identity_supervisor_uid=os.getuid() + 1,
-                runtime_identity_planning_uid=os.getuid(),
             )
             application = InstalledServiceApplication(
                 settings, preflight, supervisor_units=LocalProcessUnits(),
             )
-            assert application.runtime_identity_core is not None
             assert application.registration_assessment is not None
             supervisor = application.agent_supervisor
             definition = {
@@ -289,10 +263,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
             with application.database.read_connection() as connection:
                 self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])
             supervisor.launch(LaunchRequest(architect_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
-            application.runtime_identity_core.publish(
-                settings.runtime_identity_supervisor_uid,
-                _confirmed_identity(architect_operation, self._identity("project_architect")),
-            )
+            supervisor.report_runtime_identity(architect_operation, self._identity("project_architect"))
             architect = replace(_response("project_architect"), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
             binding.submit_architect(architect)
             recovered = binding.rehydrate(snapshot, "activity-1")
@@ -300,10 +271,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
             reviewer_operation = OperationIdentity("project-1", "activity-1", recovered.context.reviewer_run.assignment_id, recovered.context.reviewer_run.run_id)
             self.assertEqual(reviewer_operation, binding.reserve_runtime_identity("activity-1", "fidelity_reviewer"))
             supervisor.launch(LaunchRequest(reviewer_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
-            application.runtime_identity_core.publish(
-                settings.runtime_identity_supervisor_uid,
-                _confirmed_identity(reviewer_operation, self._identity("fidelity_reviewer")),
-            )
+            supervisor.report_runtime_identity(reviewer_operation, self._identity("fidelity_reviewer"))
             reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE"), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
             status = binding.submit_reviewer(reviewer)
             self.assertTrue(status.execution_eligible)
