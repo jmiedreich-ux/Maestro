@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -68,7 +69,12 @@ from maestro.planning.sources import (
 from maestro.service.activities import ActivityAction, ActivityRecord, ProjectRecord
 from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.events import EventStreamService
-from maestro.service.installed_registration import InstalledToolInspector
+from maestro.service.installed_registration import (
+    InstalledToolInspector,
+    _claude_context_limit,
+    _codex_cached_context_limit,
+    _preflight_schema,
+)
 from maestro.service.main import (
     InstalledServiceApplication,
     ServiceSettings,
@@ -919,6 +925,87 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         self.assertEqual(self.root, profile.service_home)
         workspace.egress_command.assert_called_once_with(
             "codex", workspace.isolated_command.return_value
+        )
+
+    def test_codex_context_limit_uses_fresh_exact_tool_cache(self) -> None:
+        cache = self.root / "home" / ".codex" / "models_cache.json"
+        cache.parent.mkdir(parents=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "client_version": "0.155.1",
+                    "models": [
+                        {"slug": "gpt-5.6-sol", "context_window": 272000}
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertEqual(
+            272000,
+            _codex_cached_context_limit(
+                self.root, "gpt-5.6-sol", "codex-cli 0.155.1"
+            ),
+        )
+
+    def test_codex_context_limit_rejects_stale_or_mismatched_cache(self) -> None:
+        cache = self.root / "home" / ".codex" / "models_cache.json"
+        cache.parent.mkdir(parents=True)
+        evidence = {
+            "fetched_at": (
+                datetime.now(timezone.utc) - timedelta(minutes=6)
+            ).isoformat(),
+            "client_version": "0.155.1",
+            "models": [{"slug": "gpt-5.6-sol", "context_window": 272000}],
+        }
+        cache.write_text(json.dumps(evidence), encoding="utf-8")
+
+        self.assertIsNone(
+            _codex_cached_context_limit(
+                self.root, "gpt-5.6-sol", "codex-cli 0.155.1"
+            )
+        )
+        evidence["fetched_at"] = datetime.now(timezone.utc).isoformat()
+        cache.write_text(json.dumps(evidence), encoding="utf-8")
+        self.assertIsNone(
+            _codex_cached_context_limit(
+                self.root, "different-model", "codex-cli 0.155.1"
+            )
+        )
+        self.assertIsNone(
+            _codex_cached_context_limit(
+                self.root, "gpt-5.6-sol", "codex-cli 0.154.0"
+            )
+        )
+
+    def test_claude_context_limit_uses_exact_final_model_usage(self) -> None:
+        model_id = "claude-sonnet-4-5-20250929"
+        result = {
+            "modelUsage": {
+                "claude-haiku-4-5-20251001": {"contextWindow": 200000},
+                model_id: {"contextWindow": 200000},
+            }
+        }
+
+        self.assertEqual(200000, _claude_context_limit({}, result, model_id))
+        self.assertIsNone(
+            _claude_context_limit(
+                {"contextWindow": 65536}, result, model_id
+            )
+        )
+        self.assertIsNone(
+            _claude_context_limit(
+                {}, {"modelUsage": {"different-model": {"contextWindow": 200000}}},
+                model_id,
+            )
+        )
+
+    def test_tool_preflight_schema_declares_the_constant_string_type(self) -> None:
+        self.assertEqual(
+            {"type": "string", "const": "ok"},
+            _preflight_schema()["properties"]["preflight"],
         )
 
     def test_restarted_assignment_rejects_changed_repository_profile_before_fetch(self) -> None:
