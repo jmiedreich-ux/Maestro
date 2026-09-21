@@ -1144,6 +1144,16 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             )
         )
 
+        legacy = (
+            self.root / "registration-sources" / "project-one" / "activity-one.git"
+        )
+        legacy.parent.mkdir(parents=True)
+        subprocess.run(
+            ["git", "clone", "--quiet", "--bare", str(remote), str(legacy)],
+            check=True,
+            capture_output=True,
+        )
+
         cached = launcher._source_repository(assessment)
         inside_worktree = subprocess.run(
             ["git", "-C", str(cached), "rev-parse", "--is-inside-work-tree"],
@@ -1162,6 +1172,8 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         )
 
         self.assertEqual("true", inside_worktree)
+        self.assertTrue(legacy.is_dir())
+        self.assertEqual("activity-one.worktree", cached.name)
         self.assertEqual("# Real source\n", (workspace.paths.source / "README.md").read_text())
 
     def test_load_settings_composes_configured_registration_runtime(self) -> None:

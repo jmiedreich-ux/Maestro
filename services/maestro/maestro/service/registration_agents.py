@@ -363,9 +363,11 @@ class InstalledRegistrationAgentLauncher:
         ):
             raise ValueError("live repository profile differs from its saved intake snapshot")
         remote = self.transport.remote_for(authorization)
-        target = self.source_cache_root / context.project_id / f"{context.activity_id}.git"
+        cache_root = self.source_cache_root / context.project_id
+        target = cache_root / f"{context.activity_id}.worktree"
+        legacy = cache_root / f"{context.activity_id}.git"
         target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        if target.is_symlink():
+        if target.is_symlink() or legacy.is_symlink():
             raise ValueError("registration source cache is unsafe")
         with self.destination_provider.bind_transport(
             observed, self.transport, authorization
@@ -374,7 +376,18 @@ class InstalledRegistrationAgentLauncher:
                 *arguments, environment=bound.environment()
             )
             if not target.exists():
-                initialized = command("init", "--quiet", str(target))
+                if legacy.exists():
+                    legacy_kind = command(
+                        "-C", str(legacy), "rev-parse", "--is-bare-repository"
+                    )
+                    if legacy_kind.returncode or legacy_kind.stdout.strip() != b"true":
+                        raise ValueError("legacy registration source cache is invalid")
+                    initialized = command(
+                        "clone", "--quiet", "--local", "--no-hardlinks",
+                        "--no-checkout", str(legacy), str(target),
+                    )
+                else:
+                    initialized = command("init", "--quiet", str(target))
                 if initialized.returncode:
                     raise ValueError("registration source cache could not be initialized")
             fetched = command(
