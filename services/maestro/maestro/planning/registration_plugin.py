@@ -218,6 +218,7 @@ class RegistrationProcessPlugin:
     def _package_handler(
         _snapshot: ProcessSnapshot, *, assessment: RegistrationAssessment,
         manifest: object, records: object,
+        manifest_values: Mapping[str, object] | None = None,
     ) -> object:
         ready = assessment.status.state == "ready"
         return validate_registration_package(
@@ -226,6 +227,7 @@ class RegistrationProcessPlugin:
             assessment.context.package_context,
             review_context=assessment.package_review_context() if ready else None,
             require_review=ready,
+            manifest_values=manifest_values,
         )
 
     @staticmethod
@@ -494,6 +496,59 @@ class RegistrationServiceBinding:
                 (assessment.context.activity_id, role),
             ).fetchall()
         return tuple(str(row[0]) for row in rows)
+
+    def candidate_manifest_values(
+        self, assessment: RegistrationAssessment
+    ) -> dict[str, object]:
+        """Return the exact service-owned manifest values for the current architect run."""
+        if not isinstance(assessment, RegistrationAssessment):
+            raise TypeError("candidate manifest values require a registration assessment")
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                "SELECT package_ref_json FROM active_registrations WHERE project_id = ?",
+                (assessment.context.project_id,),
+            ).fetchone()
+        previous: Mapping[str, object] | None = None
+        registration_version = 1
+        if row is not None:
+            try:
+                decoded = json.loads(str(row[0]))
+            except json.JSONDecodeError as error:
+                raise RegistrationAssessmentError(
+                    "active registration package reference is invalid"
+                ) from error
+            previous_fields = {
+                "repository", "commit", "registration_version", "candidate_id",
+                "manifest_path", "manifest_sha256",
+            }
+            if (
+                not isinstance(decoded, Mapping)
+                or set(decoded) != previous_fields
+                or isinstance(decoded.get("registration_version"), bool)
+                or not isinstance(decoded.get("registration_version"), int)
+                or int(decoded["registration_version"]) < 1
+            ):
+                raise RegistrationAssessmentError(
+                    "active registration package reference is invalid"
+                )
+            previous = dict(decoded)
+            registration_version = int(decoded["registration_version"]) + 1
+        context = assessment.context.package_context
+        return {
+            "project_id": context.project_id,
+            "registration_version": registration_version,
+            "candidate_id": assessment.current_run("project_architect").assignment_id,
+            "previous_registration_ref": previous,
+            "source_repository": context.source_repository,
+            "source_commit": context.source_inventory.source_commit,
+            "overview_path": context.source_inventory.overview_path,
+            "decision_version": context.decision_version,
+            "source_ref": context.source_inventory.source_ref,
+            "publication_branch": context.publication_branch,
+            "destination_snapshot_reference": context.destination_snapshot_reference,
+            "selection_decision_ref": context.selection_decision_ref,
+            "scope_boundary": context.scope_boundary.as_dict(),
+        }
 
     def receive_answer(self, answer: DeliveredAnswer) -> None:
         """Accept linked answer delivery without treating it as confirmation."""
@@ -821,7 +876,9 @@ class RegistrationServiceBinding:
     def validate_package(self, activity_id: str, manifest: object, records: object) -> object:
         assessment = self._assessment(activity_id)
         return self.registry.dispatch(
-            _snapshot_for(assessment), "saved_outputs", assessment=assessment, manifest=manifest, records=records,
+            _snapshot_for(assessment), "saved_outputs", assessment=assessment,
+            manifest=manifest, records=records,
+            manifest_values=self.candidate_manifest_values(assessment),
         )
 
     def replace_ready_candidate(

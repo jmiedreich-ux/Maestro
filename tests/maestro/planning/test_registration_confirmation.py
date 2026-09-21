@@ -156,7 +156,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
                 None if previous is None else previous.as_dict()
             ),
             review_context={
-                "architect_assignment_id": "architect-assignment",
+                "architect_assignment_id": candidate_id,
                 "architect_run_id": "architect-run",
                 "assignment_id": "reviewer-assignment",
                 "run_id": "reviewer-run",
@@ -183,7 +183,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
             AssessmentContext(
                 "project-1", activity_id, inventory, "decision-1", "APP-PM1",
                 "architect-agent", "reviewer-agent", ResolvedRoleRoutes(route, reviewer),
-                AssessmentRun("architect-assignment", "architect-run"),
+                AssessmentRun(candidate_id, "architect-run"),
                 AssessmentRun("reviewer-assignment", "reviewer-run"), context,
             )
         )
@@ -699,7 +699,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
 def _response(role: str, activity_id: str, artifact: dict[str, str]) -> RegistrationAgentResponse:
     return RegistrationAgentResponse.from_mapping({
         "contract_version": 1,
-        "assignment_id": "architect-assignment" if role == "project_architect" else "reviewer-assignment",
+        "assignment_id": artifact["version"] if role == "project_architect" else "reviewer-assignment",
         "run_id": "architect-run" if role == "project_architect" else "reviewer-run",
         "project_id": "project-1",
         "activity_id": activity_id,

@@ -977,7 +977,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
                 None if previous is None else previous.as_dict()
             ),
             review_context={
-                "architect_assignment_id": "architect-assignment",
+                "architect_assignment_id": candidate_id,
                 "architect_run_id": "architect-run",
                 "assignment_id": "reviewer-assignment",
                 "run_id": "reviewer-run",
@@ -1004,7 +1004,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
         assessment = RegistrationAssessment(AssessmentContext(
             "project-1", activity_id, inventory, decision_reference, "APP-PM1",
             "architect-agent", "reviewer-agent", ResolvedRoleRoutes(route, reviewer),
-            AssessmentRun("architect-assignment", "architect-run"),
+            AssessmentRun(candidate_id, "architect-run"),
             AssessmentRun("reviewer-assignment", "reviewer-run"), context,
         ))
         assessment.submit_architect(
@@ -1074,7 +1074,7 @@ def _response(
 ) -> RegistrationAgentResponse:
     return RegistrationAgentResponse.from_mapping({
         "contract_version": 1,
-        "assignment_id": "architect-assignment" if role == "project_architect" else "reviewer-assignment",
+        "assignment_id": artifact["version"] if role == "project_architect" else "reviewer-assignment",
         "run_id": "architect-run" if role == "project_architect" else "reviewer-run",
         "project_id": "project-1",
         "activity_id": activity_id,

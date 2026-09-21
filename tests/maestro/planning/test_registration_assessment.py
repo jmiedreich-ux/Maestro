@@ -28,7 +28,7 @@ from maestro.planning.registration_records import (
     package_content_hash,
     validate_registration_package,
 )
-from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
+from maestro.planning.sources import DeclaredDependency, OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.planning.registration_plugin import RegistrationProcessPlugin
 from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.main import InstalledServiceApplication, ServiceSettings
@@ -42,7 +42,9 @@ def _artifact(path: str, version: str) -> dict[str, str]:
 
 
 def _response(role: str, *, outcome: str | None = None, blocker: bool = False, candidate: dict[str, str] | None = None) -> RegistrationAgentResponse:
-    candidate = candidate or _artifact("candidate/manifest.json", "candidate-1")
+    candidate = candidate or _artifact(
+        "candidate/manifest.json", "project_architect-assignment"
+    )
     finding = {
         "local_key": "dependency", "subject": "Missing essential dependency", "severity": "blocking",
         "explanation": "The selected outcome needs an unavailable service.", "impact": "Registration cannot claim readiness.",
@@ -143,13 +145,15 @@ class RegistrationAssessmentTest(unittest.TestCase):
         with self.assertRaisesRegex(RegistrationAssessmentError, "not waiting"):
             assessment.grant_one_review()
         assessment.continue_after_review(
-            AssessmentRun("project_architect-assignment", "project_architect-run-2")
+            AssessmentRun("project_architect-assignment-2", "project_architect-run-2")
         )
         amended = replace(
             _response("project_architect"),
+            assignment_id="project_architect-assignment-2",
             run_id="project_architect-run-2",
             candidate=type(_response("project_architect").candidate)(
-                "candidate/manifest-2.json", "a" * 64, "candidate-2"
+                "candidate/manifest-2.json", "a" * 64,
+                "project_architect-assignment-2"
             ),
         )
         assessment.submit_architect(amended, self._identity("project_architect"))
@@ -162,7 +166,10 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 "fidelity_reviewer",
                 outcome="REQUEST_CHANGES",
                 blocker=True,
-                candidate=_artifact("candidate/manifest-2.json", "candidate-2"),
+                candidate=_artifact(
+                    "candidate/manifest-2.json",
+                    "project_architect-assignment-2",
+                ),
             ),
             run_id="fidelity_reviewer-run-2",
         )
@@ -404,6 +411,84 @@ class RegistrationAssessmentTest(unittest.TestCase):
         with self.assertRaisesRegex(RegistrationRecordError, "confirmed intake boundary"):
             validate_registration_package(manifest, records, context)
 
+    def test_declared_dependencies_are_complete_and_cannot_be_substituted(self) -> None:
+        dependency = DeclaredDependency(
+            "APP-PM1", "Initial application", "APP-PM1 — Start", "Declared prerequisite.",
+            ("APP-PM1",),
+        )
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference(
+                    "APP", "Application", 3, "APP-PM2", "Continue", 2,
+                    (dependency,),
+                ),
+            ),
+        )
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1",
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        self.assertEqual(
+            ["APP-PM1"],
+            [
+                item["record_id"]
+                for item in records["milestones/APP-PM2.json"]["data"]["dependencies"]
+            ],
+        )
+
+        records["milestones/APP-PM2.json"]["data"]["dependencies"] = []
+        manifest["content_hash"] = package_content_hash(records)
+        manifest["files"] = [
+            {
+                "path": path,
+                "record_id": record["record_id"],
+                "record_type": record["record_type"],
+                "record_version": record["record_version"],
+                "subject": record["subject"],
+                "sha256": hashlib.sha256(canonical_record_bytes(record)).hexdigest(),
+            }
+            for path, record in sorted(records.items())
+        ]
+        with self.assertRaisesRegex(RegistrationRecordError, "dependencies"):
+            validate_registration_package(manifest, records, context)
+
+        with self.assertRaisesRegex(
+            RegistrationRecordError, "omits a declared outside dependency"
+        ):
+            RegistrationScopeBoundary.from_selection(json.dumps({
+                "confirmed": True,
+                "included_outcomes": ["APP-PM2"],
+                "excluded_outcomes": ["APP-PM1"],
+                "completion_outcomes": ["APP-PM2"],
+                "outside_dependencies": {"APP-PM2": []},
+            }), inventory)
+        substituted = {
+            "record_id": "APP-PM1",
+            "subject": "Different dependency",
+            "required_outcome": "APP-PM1 — Start",
+            "state": "missing",
+            "evidence": ["The excluded outcome is unavailable."],
+        }
+        with self.assertRaisesRegex(
+            RegistrationRecordError, "identity differs from the pinned source"
+        ):
+            RegistrationScopeBoundary.from_selection(json.dumps({
+                "confirmed": True,
+                "included_outcomes": ["APP-PM2"],
+                "excluded_outcomes": ["APP-PM1"],
+                "completion_outcomes": ["APP-PM2"],
+                "outside_dependencies": {"APP-PM2": [substituted]},
+            }), inventory)
+
     def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
         plugin = RegistrationProcessPlugin(self._configured_routes())
         snapshot = ProcessSnapshot("registration", "{}", "a" * 64, BundleSnapshot("registration-process@1", "processDefinition", (("schema.json", "a" * 64),)))
@@ -461,12 +546,19 @@ class RegistrationAssessmentTest(unittest.TestCase):
             manifest, records = complete_package(
                 started.context.package_context,
                 registration_version=1,
-                candidate_id="candidate-1",
+                candidate_id=started.context.architect_run.assignment_id,
             )
             self.assertIs(binding.validate_package("activity-1", manifest, records), manifest)
             manifest["publication_branch"] = "wrong-branch"
             with self.assertRaisesRegex(RegistrationRecordError, "publication_branch"):
                 binding.validate_package("activity-1", manifest, records)
+            manifest["publication_branch"] = "main"
+            manifest["registration_version"] = 2
+            with self.assertRaisesRegex(
+                RegistrationRecordError, "service-owned assignment values"
+            ):
+                binding.validate_package("activity-1", manifest, records)
+            manifest["registration_version"] = 1
             architect_operation = OperationIdentity("project-1", "activity-1", started.context.architect_run.assignment_id, started.context.architect_run.run_id)
             self.assertFalse(hasattr(binding, "reserve_runtime_identity_callback"))
             self.assertFalse(hasattr(supervisor, "runtime_identity_callback"))
@@ -483,7 +575,10 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])
             supervisor.launch(LaunchRequest(architect_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
             supervisor.report_runtime_identity(architect_operation, self._identity("project_architect"))
-            architect = replace(_response("project_architect"), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
+            assigned_candidate = _artifact(
+                "candidate/manifest.json", started.context.architect_run.assignment_id
+            )
+            architect = replace(_response("project_architect", candidate=assigned_candidate), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
             binding.submit_architect(architect)
             recovered = binding.rehydrate(snapshot, "activity-1")
             self.assertEqual("awaiting_reviewer", recovered.status.state)
@@ -491,7 +586,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
             self.assertEqual(reviewer_operation, binding.reserve_runtime_identity("activity-1", "fidelity_reviewer"))
             supervisor.launch(LaunchRequest(reviewer_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
             supervisor.report_runtime_identity(reviewer_operation, self._identity("fidelity_reviewer"))
-            reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE"), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
+            reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE", candidate=assigned_candidate), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
             status = binding.submit_reviewer(reviewer)
             self.assertTrue(status.execution_eligible)
             with application.database.read_connection() as connection:

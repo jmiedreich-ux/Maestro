@@ -239,6 +239,24 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         )
         binding = SimpleNamespace(
             database=application.database,
+            candidate_manifest_values=lambda _assessment: {
+                "project_id": project_id,
+                "registration_version": 1,
+                "candidate_id": current_run.assignment_id,
+                "previous_registration_ref": None,
+                "source_repository": "owner/project",
+                "source_commit": "a" * 40,
+                "overview_path": "docs/overview.md",
+                "decision_version": "decision-one",
+                "source_ref": "a" * 40,
+                "publication_branch": "main",
+                "destination_snapshot_reference": "b" * 64,
+                "selection_decision_ref": "decision-one",
+                "scope_boundary": {
+                    "confirmed": True,
+                    "included_outcomes": ["APP-PM1"],
+                },
+            },
             assignment_lineage=lambda _assessment, _role: {
                 "parent_assignment_id": "project-architect-assignment-one",
                 "continuation_question_id": None,
@@ -286,6 +304,10 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             initial_assignment.instructions["package_contract_path"],
         )
         self.assertIn("contract/registration-package-v1.json", initial_inputs)
+        self.assertEqual(
+            current_run.assignment_id,
+            initial_assignment.instructions["candidate_manifest_values"]["candidate_id"],
+        )
         assessment.status = saved_status
         binding.assignment_lineage = saved_lineage
 
@@ -2030,7 +2052,7 @@ automatic_recovery_attempts = 2
         manifest, package_records = complete_package(
             resumed.context.package_context,
             registration_version=1,
-            candidate_id="candidate-initial",
+            candidate_id=architect_operation.assignment_id,
             review_context={
                 **resumed.package_review_context(),
                 "architect_assignment_id": architect_operation.assignment_id,
@@ -2052,7 +2074,7 @@ automatic_recovery_attempts = 2
         candidate_ref = {
             "path": "candidate/manifest.json",
             "sha256": hashlib.sha256(manifest_bytes).hexdigest(),
-            "version": "candidate-initial",
+            "version": architect_operation.assignment_id,
         }
         assessment_ref = {
             "path": "assessment.json",
@@ -2136,8 +2158,14 @@ automatic_recovery_attempts = 2
                 (str(assessed_activity),),
             ).fetchone()
         self.assertTrue(detail["can_confirm"], (detail, tuple(presentation)))
-        self.assertEqual("candidate-initial", detail["package_ref"]["candidate_id"])
-        self.assertEqual("candidate-initial", detail["package_manifest"]["candidate_id"])
+        self.assertEqual(
+            architect_operation.assignment_id,
+            detail["package_ref"]["candidate_id"],
+        )
+        self.assertEqual(
+            architect_operation.assignment_id,
+            detail["package_manifest"]["candidate_id"],
+        )
         self.assertTrue(detail["package_records"])
         with application.database.read_connection() as connection:
             actions = {
@@ -2207,6 +2235,23 @@ automatic_recovery_attempts = 2
             "intake_reserved", reregistered.body["receipt"]["result"]["state"]
         )
         update_activity = str(reregistered.body["receipt"]["activity_id"])
+        update_assessment = application.registration_assessment.assessment(
+            update_activity
+        )
+        update_manifest_values = (
+            application.registration_assessment.candidate_manifest_values(
+                update_assessment
+            )
+        )
+        self.assertEqual(2, update_manifest_values["registration_version"])
+        self.assertEqual(
+            detail["package_ref"],
+            update_manifest_values["previous_registration_ref"],
+        )
+        self.assertEqual(
+            update_assessment.current_run("project_architect").assignment_id,
+            update_manifest_values["candidate_id"],
+        )
         update_operation = application.registration_assessment.reserve_runtime_identity(
             update_activity, "project_architect"
         )

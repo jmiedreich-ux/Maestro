@@ -2251,11 +2251,8 @@ class RegistrationCoordinator:
             candidate.sha256,
         )
         if any(record.get("record_type") == "review" for record in records.values()):
-            validate_registration_package(
-                manifest,
-                records,
-                assessment.context.package_context,
-                review_context=assessment.package_review_context(),
+            self.binding.validate_package(
+                assessment.context.activity_id, manifest, records
             )
             return candidate
         validate_registration_package(
@@ -2263,6 +2260,7 @@ class RegistrationCoordinator:
             records,
             assessment.context.package_context,
             require_review=False,
+            manifest_values=self.binding.candidate_manifest_values(assessment),
         )
         assessments = [
             (path, record)
@@ -2326,6 +2324,7 @@ class RegistrationCoordinator:
             finalized_records,
             assessment.context.package_context,
             review_context=review_context,
+            manifest_values=self.binding.candidate_manifest_values(assessment),
         )
         architect = assessment.current_run("project_architect")
         root = (

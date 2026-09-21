@@ -444,11 +444,13 @@ class InstalledRegistrationAgentLauncher:
             originals["prior_assessment"] = original
         relevant_answers = _answers(binding, context.activity_id)
         state = assessment.to_record()
+        manifest_values = binding.candidate_manifest_values(assessment)
         instructions = {
             "document_paths": [blob.path for blob in context.source_inventory.blobs],
             "selected_scope": context.selected_scope,
             "confirmed_scope_boundary": context.package_context.scope_boundary.as_dict(),
             "package_contract_path": f"input/{contract_relative}",
+            "candidate_manifest_values": manifest_values,
             "recorded_decisions": [item.to_record() for item in context.source_inventory.outcomes],
             "relevant_answers": relevant_answers,
             "outstanding_questions": _outstanding_questions(

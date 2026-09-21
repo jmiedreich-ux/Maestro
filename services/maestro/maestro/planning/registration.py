@@ -299,6 +299,10 @@ class RegistrationAssessment:
             self._state = "clarification_required"
             return self.status
         assert response.candidate is not None and response.assessment is not None
+        if response.candidate.version != self.current_run("project_architect").assignment_id:
+            raise RegistrationAssessmentError(
+                "candidate identity differs from the service-owned assignment value"
+            )
         if self._candidate is not None and response.candidate == self._candidate:
             raise RegistrationAssessmentError("an amendment must create a new immutable candidate")
         self._candidate, self._assessment = response.candidate, response.assessment

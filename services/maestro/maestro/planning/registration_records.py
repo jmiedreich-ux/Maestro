@@ -69,11 +69,13 @@ class RegistrationScopeBoundary:
                     raise RegistrationRecordError("selected scope outcome labels are ambiguous")
                 by_selector[normalized] = item.milestone
         dependencies: Mapping[str, object]
+        structured_boundary = False
         try:
             structured = json.loads(confirmation)
         except json.JSONDecodeError:
             structured = None
         if isinstance(structured, Mapping):
+            structured_boundary = True
             fields = {
                 "confirmed", "included_outcomes", "excluded_outcomes",
                 "completion_outcomes", "outside_dependencies",
@@ -126,14 +128,58 @@ class RegistrationScopeBoundary:
                 "confirmed scope must partition supplied outcomes and map completion for every included outcome"
             )
         frozen_dependencies: list[tuple[str, tuple[str, ...]]] = []
+        outcomes_by_id = {item.milestone: item for item in inventory.outcomes}
         for milestone in included:
             values = dependencies[milestone]
             if not isinstance(values, list):
                 raise RegistrationRecordError("outside scope dependencies must be arrays")
-            encoded: list[str] = []
+            supplied: dict[str, Mapping[str, object]] = {}
             for value in values:
-                _validate_dependency(value, "scope dependency")
-                encoded.append(canonical_record_bytes(value).decode("utf-8"))
+                validated = _validate_dependency(value, "scope dependency")
+                record_id = str(validated["record_id"])
+                if record_id in supplied:
+                    raise RegistrationRecordError("scope dependency identities must be unique")
+                supplied[record_id] = validated
+            encoded: list[str] = []
+            declared = outcomes_by_id[milestone].dependencies
+            declared_ids = {item.record_id for item in declared}
+            if set(supplied) - declared_ids:
+                raise RegistrationRecordError("scope dependency is not declared by the pinned source")
+            for item in declared:
+                internal = bool(item.referenced_outcomes) and set(
+                    item.referenced_outcomes
+                ).issubset(included)
+                selected = supplied.get(item.record_id)
+                if selected is not None:
+                    if (
+                        selected["subject"] != item.subject
+                        or selected["required_outcome"] != item.required_outcome
+                    ):
+                        raise RegistrationRecordError(
+                            "scope dependency identity differs from the pinned source"
+                        )
+                    dependency = selected
+                elif internal:
+                    dependency = {
+                        "record_id": item.record_id,
+                        "subject": item.subject,
+                        "required_outcome": item.required_outcome,
+                        "state": "included",
+                        "evidence": [item.evidence],
+                    }
+                elif structured_boundary:
+                    raise RegistrationRecordError(
+                        "confirmed scope omits a declared outside dependency"
+                    )
+                else:
+                    dependency = {
+                        "record_id": item.record_id,
+                        "subject": item.subject,
+                        "required_outcome": item.required_outcome,
+                        "state": "existing",
+                        "evidence": [item.evidence],
+                    }
+                encoded.append(canonical_record_bytes(dependency).decode("utf-8"))
             frozen_dependencies.append((milestone, tuple(encoded)))
         return cls(
             confirmation, included, excluded, completion,
@@ -665,6 +711,7 @@ def validate_registration_package(
     *,
     review_context: Mapping[str, object] | None = None,
     require_review: bool = True,
+    manifest_values: Mapping[str, object] | None = None,
 ) -> Mapping[str, Any]:
     """Validate a frozen candidate manifest against its exact record inventory.
 
@@ -719,6 +766,15 @@ def validate_registration_package(
     for field, value in expected.items():
         if manifest[field] != value:
             raise RegistrationRecordError(f"manifest {field} differs from saved intake context")
+    if manifest_values is not None:
+        service_fields = required - {"content_hash", "files"}
+        if set(manifest_values) != service_fields:
+            raise RegistrationRecordError("service-owned manifest values are incomplete")
+        for field, value in manifest_values.items():
+            if manifest[field] != value:
+                raise RegistrationRecordError(
+                    f"manifest {field} differs from service-owned assignment values"
+                )
     expected_content = package_content_hash(records)
     if manifest["content_hash"] != expected_content:
         raise RegistrationRecordError("manifest content_hash does not match frozen package records")

@@ -205,6 +205,29 @@ class ExactSourceIntakeTest(unittest.TestCase):
             self.api.calls,
         )
 
+    def test_retains_each_declared_milestone_dependency_from_the_pinned_source(self) -> None:
+        declaration = self.work / "docs" / "milestones.md"
+        declaration.write_text(
+            declaration.read_text(encoding="utf-8")
+            + "\n## APP-PM1 — Start application\n\n"
+            + "### Dependencies\n\n"
+            + "| Required dependency | Reference | Current state or delivery responsibility |\n"
+            + "| --- | --- | --- |\n"
+            + "| Runtime foundation | SVC-PM1 — Operate the runtime | Required preceding capability. |\n",
+            encoding="utf-8",
+        )
+        self._commit("declare milestone dependency")
+        self.api.head = self._output("git", "-C", str(self.work), "rev-parse", "HEAD")
+
+        result = self._intake().begin(self._request(), questions=_Questions())
+
+        dependency = result.inventory.outcomes[0].dependencies[0]
+        self.assertEqual("SVC-PM1", dependency.record_id)
+        self.assertEqual("Runtime foundation", dependency.subject)
+        self.assertEqual("SVC-PM1 — Operate the runtime", dependency.required_outcome)
+        self.assertEqual(("SVC-PM1",), dependency.referenced_outcomes)
+        self.assertEqual(result.inventory, type(result.inventory).from_json(result.inventory.to_json()))
+
     def test_missing_overview_path_is_collected_before_source_access(self) -> None:
         questions = _Questions()
 

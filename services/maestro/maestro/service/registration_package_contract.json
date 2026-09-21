@@ -29,6 +29,7 @@
       "files"
     ],
     "field_rules": {
+      "service_owned_values": "Copy every field supplied in instructions.candidate_manifest_values exactly. Only content_hash and files are computed from the candidate records.",
       "registration_version": "positive integer",
       "previous_registration_ref": "null or the exact prior package reference supplied by Maestro",
       "scope_boundary": "copy instructions.confirmed_scope_boundary exactly",
@@ -146,6 +147,7 @@
     "rule": "It must describe the same exact source, decision version, findings, and candidate returned in the response."
   },
   "package_rules": [
+    "Use instructions.candidate_manifest_values as the complete immutable manifest identity and lineage input; do not infer, replace, or omit any supplied value.",
     "Use only safe relative paths with no parent traversal.",
     "Use one summary and one naming-conventions record at their fixed paths.",
     "Include at least one declaration, milestone, requirement, assessment, and decision; a ready reviewed package also has exactly one current review.",
