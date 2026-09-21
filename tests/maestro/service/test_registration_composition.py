@@ -86,7 +86,10 @@ from maestro.service.registration import (
     RegistrationCoordinator,
     RegistrationRuntimeDependencies,
 )
-from maestro.service.registration_agents import InstalledRegistrationAgentLauncher
+from maestro.service.registration_agents import (
+    InstalledRegistrationAgentLauncher,
+    _runner_command,
+)
 from maestro.service.requests import RequestEnvelope
 from maestro.service.resources import BundleSnapshot
 from maestro.terminal.main import TerminalApplication
@@ -157,6 +160,22 @@ class _Inspector:
 
 
 class InstalledRegistrationCompositionTest(unittest.TestCase):
+    def test_runner_command_preserves_virtual_environment_entry_point(self) -> None:
+        entry_point = self.root / "venv" / "bin" / "python"
+        entry_point.parent.mkdir(parents=True)
+        entry_point.symlink_to(Path(sys.executable).resolve())
+
+        with mock.patch(
+            "maestro.service.registration_agents.sys.executable", str(entry_point)
+        ):
+            command = _runner_command(self.root / "plan.json")
+
+        self.assertEqual(str(entry_point), command[0])
+        self.assertEqual(
+            ("-m", "maestro.service.registration_runner", str(self.root / "plan.json")),
+            command[1:],
+        )
+
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

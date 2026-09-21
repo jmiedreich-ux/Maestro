@@ -158,10 +158,7 @@ class InstalledRegistrationAgentLauncher:
         identity, managed = binding.launch_agent(
             assessment.context.activity_id,
             role,
-            (
-                str(Path(sys.executable).resolve()), "-m",
-                "maestro.service.registration_runner", str(plan_path),
-            ),
+            _runner_command(plan_path),
             launch.cwd,
             timeout,
         )
@@ -680,6 +677,15 @@ def _route_mapping(route: ResolvedAgentRoute) -> dict[str, object]:
         ],
         "configuration_hash": route.configuration_hash,
     }
+
+
+def _runner_command(plan_path: Path) -> tuple[str, str, str, str]:
+    return (
+        sys.executable,
+        "-m",
+        "maestro.service.registration_runner",
+        str(plan_path),
+    )
 
 
 def _workspace_mapping(workspace: PreparedWorkspace) -> dict[str, object]:
