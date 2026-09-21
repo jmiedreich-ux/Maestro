@@ -374,7 +374,7 @@ class InstalledRegistrationAgentLauncher:
                 *arguments, environment=bound.environment()
             )
             if not target.exists():
-                initialized = command("init", "--bare", "--quiet", str(target))
+                initialized = command("init", "--quiet", str(target))
                 if initialized.returncode:
                     raise ValueError("registration source cache could not be initialized")
             fetched = command(
