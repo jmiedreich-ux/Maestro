@@ -1071,6 +1071,111 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             (self.root / "registration-sources" / "project-one" / "activity-one.git").exists()
         )
 
+    def test_assignment_source_cache_is_a_worktree_usable_for_exact_checkout(self) -> None:
+        remote = self.root / "source-remote.git"
+        source = self.root / "source-work"
+        subprocess.run(
+            ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "clone", "--quiet", str(remote), str(source)],
+            check=True,
+            capture_output=True,
+        )
+        for command in (
+            ["git", "-C", str(source), "config", "user.name", "Fixture"],
+            ["git", "-C", str(source), "config", "user.email", "fixture@example.invalid"],
+        ):
+            subprocess.run(command, check=True, capture_output=True)
+        (source / "README.md").write_text("# Real source\n", encoding="utf-8")
+        for command in (
+            ["git", "-C", str(source), "add", "README.md"],
+            ["git", "-C", str(source), "commit", "-m", "Add source"],
+            ["git", "-C", str(source), "push", "origin", "HEAD:main"],
+        ):
+            subprocess.run(command, check=True, capture_output=True)
+        commit = subprocess.run(
+            ["git", "-C", str(source), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        profile = RepositoryProfile(
+            "project", "github-app", ("owner/project",), ("main",)
+        )
+        authorizer = RepositoryAuthorizer(
+            {"project": profile},
+            (RepositoryBinding("binding", "owner/project", "project"),),
+        )
+        transport = ServiceGitTransport(
+            (ServiceGitRoute("owner/project", "github-app", str(remote)),),
+            lambda _reference: "unused",
+        )
+        destination = GitHubDestinationProvider(
+            GitHubAppDestinationProfile(
+                "project", "binding", GitHubAppCredential("github-app"),
+                1, 2, "maestro", ("owner/project",), ("main",),
+            ),
+            _DestinationApi(commit),
+        )
+        launcher = InstalledRegistrationAgentLauncher(
+            workspace_root=self.settings.workspace_root,
+            source_cache_root=self.root / "registration-sources",
+            service_home=self.root,
+            authorizer=authorizer,
+            transport=transport,
+            destination_provider=destination,
+        )
+        snapshot_reference = hashlib.sha256(
+            canonical_json(destination.profile.snapshot("owner/project", "main")).encode()
+        ).hexdigest()
+        assessment = SimpleNamespace(
+            context=SimpleNamespace(
+                project_id="project-one",
+                activity_id="activity-one",
+                source_inventory=SimpleNamespace(source_commit=commit),
+                package_context=SimpleNamespace(
+                    source_repository="owner/project",
+                    publication_branch="main",
+                    destination_snapshot_reference=snapshot_reference,
+                ),
+            )
+        )
+
+        legacy = (
+            self.root / "registration-sources" / "project-one" / "activity-one.git"
+        )
+        legacy.parent.mkdir(parents=True)
+        subprocess.run(
+            ["git", "clone", "--quiet", "--bare", str(remote), str(legacy)],
+            check=True,
+            capture_output=True,
+        )
+
+        cached = launcher._source_repository(assessment)
+        inside_worktree = subprocess.run(
+            ["git", "-C", str(cached), "rev-parse", "--is-inside-work-tree"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        workspace = launcher.workspaces.prepare(
+            project_id="project-one",
+            activity_id="activity-one",
+            run_id="run-one",
+            source_repository=cached,
+            source_commit=commit,
+            assignment_bytes=b"{}\n",
+            inputs={},
+        )
+
+        self.assertEqual("true", inside_worktree)
+        self.assertTrue(legacy.is_dir())
+        self.assertEqual("activity-one.worktree", cached.name)
+        self.assertEqual("# Real source\n", (workspace.paths.source / "README.md").read_text())
+
     def test_load_settings_composes_configured_registration_runtime(self) -> None:
         executable = self.root / "codex"
         executable.write_text(
