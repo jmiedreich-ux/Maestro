@@ -95,12 +95,12 @@ class RegistrationAssessmentTest(unittest.TestCase):
         snapshot_reference = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         decision = _selection_decision_reference(
             "owner/project", "supplied", inventory.source_ref, inventory.source_commit,
-            inventory.overview_path, "main", snapshot_reference,
+            inventory.overview_path, "main", snapshot_reference, "b" * 40,
         )
         return RegistrationIntakeResult(
             inventory, (), "binding-1", "APP-PM1", "supplied", snapshot_reference,
             {"decision": "allowed", "snapshot": snapshot, "observed_at": 1, "evidence_hashes": {}, "reason": None},
-            inventory.source_ref, "main", None, "owner/project", decision,
+            inventory.source_ref, "main", None, "owner/project", decision, "b" * 40,
         )
 
     def test_exact_assessment_and_independent_review_make_ready_candidate(self) -> None:

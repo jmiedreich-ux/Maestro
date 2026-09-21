@@ -820,7 +820,7 @@ class RegistrationCoordinator:
                 remote=dependencies.remote_for_repository(
                     assessment.context.package_context.source_repository
                 ),
-                expected_parent=active.package_ref.commit,
+                expected_parent=active.remote_commit,
                 operation_id=operation_id,
                 publication_request_id=(
                     f"registration-publication-{request.activity_id}-{ready.version}"
@@ -1158,6 +1158,18 @@ class RegistrationCoordinator:
                         }
                     )
             recovered = tuple(recovered_items)
+        try:
+            finalized_candidates = self._recover_candidate_finalizations()
+        except (
+            IntakeError,
+            RegistrationConfirmationError,
+            RegistrationRecoveryError,
+            ValueError,
+        ) as error:
+            finalized_candidates = ()
+            errors.append(
+                {"kind": "candidate finalization", "message": str(error)}
+            )
         recovery_activities: list[str] = []
         if self.recovery is not None:
             with self.database.read_connection() as connection:
@@ -1205,11 +1217,131 @@ class RegistrationCoordinator:
         return {
             "restored_assessments": restored,
             "recovered_publications": recovered,
+            "finalized_candidates": finalized_candidates,
             "unfinished_recoveries": tuple(recovery_activities),
             "finalized_confirmations": finalized_confirmations,
             "agent_assignments": tuple(assignment_recovery),
             "errors": tuple(errors),
         }
+
+    def _recover_candidate_finalizations(self) -> tuple[str, ...]:
+        if self.confirmation is None:
+            return ()
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT operation_id, activity_id, package_ref_json
+                   FROM registration_candidate_publications
+                   WHERE state = 'published'
+                   ORDER BY rowid"""
+            ).fetchall()
+        finalized: list[str] = []
+        for operation_id, activity_id, package_ref_json in rows:
+            with self.database.read_connection() as connection:
+                activity = connection.execute(
+                    """SELECT state FROM service_activities
+                       WHERE activity_id = ? AND kind = 'registration'""",
+                    (str(activity_id),),
+                ).fetchone()
+            if activity is None or str(activity[0]) in {
+                "completed", "cancelled", "failed"
+            }:
+                continue
+            if package_ref_json is None:
+                raise RegistrationConfirmationError(
+                    "published candidate finalization lacks its package reference"
+                )
+            package = RegistrationPackageReference.from_mapping(
+                json.loads(str(package_ref_json))
+            )
+            self._finalize_published_candidate(str(activity_id), package)
+            finalized.append(str(operation_id))
+        return tuple(finalized)
+
+    def _publication_parent(
+        self,
+        assessment: RegistrationAssessment,
+        active: ConfirmationResult | None,
+    ) -> str:
+        if active is not None:
+            return active.remote_commit
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT intake_json FROM registration_assessment_intake
+                   WHERE activity_id = ?""",
+                (assessment.context.activity_id,),
+            ).fetchone()
+        if row is None:
+            raise IntakeError(
+                "registration publication lacks its saved intake"
+            )
+        intake = RegistrationIntakeResult.from_json(str(row[0]))
+        context = assessment.context.package_context
+        if (
+            intake.repository != context.source_repository
+            or intake.publication_branch != context.publication_branch
+            or intake.publication_head is None
+        ):
+            raise IntakeError(
+                "registration publication parent differs from its saved intake"
+            )
+        return intake.publication_head
+
+    def _finalize_published_candidate(
+        self,
+        activity_id: str,
+        package: RegistrationPackageReference,
+    ) -> None:
+        with self.database.read_connection() as connection:
+            candidate = connection.execute(
+                """SELECT project_id, activity_version, package_ref_json
+                   FROM registration_candidate_publications
+                   WHERE activity_id = ? AND state = 'published'
+                     AND registration_version = ? AND candidate_id = ?""",
+                (activity_id, package.registration_version, package.candidate_id),
+            ).fetchone()
+            recovery_attempt = connection.execute(
+                """SELECT 1 FROM registration_recovery_attempts
+                   WHERE activity_id = ? AND state NOT IN ('cancelled', 'completed')""",
+                (activity_id,),
+            ).fetchone()
+        if candidate is None or RegistrationPackageReference.from_mapping(
+            json.loads(str(candidate[2]))
+        ) != package:
+            raise RegistrationConfirmationError(
+                "published candidate finalization differs from its saved reference"
+            )
+        if recovery_attempt is not None:
+            if self.recovery is None:
+                raise RegistrationRecoveryError(
+                    "re-registration candidate finalization is not configured"
+                )
+            self.recovery.record_candidate_from_saved_reasons(activity_id, package)
+        with self.database.transaction() as transaction:
+            activity = _activity_row(transaction, activity_id)
+            if str(activity[0]) != str(candidate[0]):
+                raise RegistrationConfirmationError(
+                    "published candidate finalization belongs to another project"
+                )
+            if int(activity[4]) != int(candidate[1]):
+                raise RegistrationConfirmationError(
+                    "published candidate finalization activity version changed"
+                )
+            if str(activity[2]) in {"completed", "cancelled", "failed"}:
+                return
+            self._set_activity_presentation_in(
+                transaction,
+                activity_id,
+                "waiting",
+                "Exact reviewed candidate is ready for confirmation",
+                (
+                    ActivityAction(
+                        "registration-confirm", "Confirm registration", "decision"
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
 
     def _recover_confirmation_finalizations(self) -> tuple[str, ...]:
         if self.confirmation is None:
@@ -1693,30 +1825,11 @@ class RegistrationCoordinator:
                 remote=dependencies.remote_for_repository(
                     assessment.context.package_context.source_repository
                 ),
-                expected_parent=(
-                    assessment.context.source_inventory.source_commit
-                    if active is None
-                    else active.package_ref.commit
-                ),
+                expected_parent=self._publication_parent(assessment, active),
                 operation_id=operation_id,
                 request_id=request_id,
             )
-            if active is not None:
-                assert self.recovery is not None
-                self.recovery.record_candidate_from_saved_reasons(activity_id, package)
-            self._set_activity_presentation(
-                activity_id,
-                "waiting",
-                "Exact reviewed candidate is ready for confirmation",
-                (
-                    ActivityAction(
-                        "registration-confirm", "Confirm registration", "decision"
-                    ),
-                    ActivityAction(
-                        "registration-cancel", "Cancel registration", "decision"
-                    ),
-                ),
-            )
+            self._finalize_published_candidate(activity_id, package)
         except (OSError, RuntimeError, ValueError) as error:
             try:
                 self._recover_publication_automatically(
@@ -1734,22 +1847,7 @@ class RegistrationCoordinator:
                 package = RegistrationPackageReference.from_mapping(
                     json.loads(str(published[0]))
                 )
-                if active is not None:
-                    assert self.recovery is not None
-                    self.recovery.record_candidate_from_saved_reasons(activity_id, package)
-                self._set_activity_presentation(
-                    activity_id,
-                    "waiting",
-                    "Exact reviewed candidate is ready for confirmation",
-                    (
-                        ActivityAction(
-                            "registration-confirm", "Confirm registration", "decision"
-                        ),
-                        ActivityAction(
-                            "registration-cancel", "Cancel registration", "decision"
-                        ),
-                    ),
-                )
+                self._finalize_published_candidate(activity_id, package)
             except (OSError, RuntimeError, ValueError) as recovery_error:
                 self._set_activity_presentation(
                     activity_id,
@@ -1988,7 +2086,7 @@ class RegistrationCoordinator:
                 f"assignment could not start: {error}",
                 isinstance(error, (OSError, RuntimeError))
                 and not isinstance(error, SupervisionError),
-                failed_launch=True,
+                failed_launch=not isinstance(error, SupervisionError),
             )
             return False
 
@@ -2027,7 +2125,7 @@ class RegistrationCoordinator:
                 "registration cancellation is paused with Stop unconfirmed; "
                 f"active agent state could not be reconciled: {error}"
             ) from error
-        if observed.state == "running":
+        if observed.state in {"running", "launch_uncertain"}:
             observed = self.binding.stop_current_agent(
                 assessment, role, "cancelled"
             )
@@ -2049,7 +2147,8 @@ class RegistrationCoordinator:
                 (activity_id,),
             ).fetchone()
             saved_failure = connection.execute(
-                """SELECT role, assignment_id, failed_run_id, reason, state
+                """SELECT role, assignment_id, failed_run_id, reason, state,
+                          failed_launch_evidence
                    FROM installed_registration_agent_failures
                    WHERE activity_id = ?""",
                 (activity_id,),
@@ -2071,6 +2170,38 @@ class RegistrationCoordinator:
                     ),
                 )
                 return {"activity_id": activity_id, "state": "paused-incomplete"}
+            if int(saved_failure[5]) == 0:
+                role = str(saved_failure[0])
+                try:
+                    observed = self.binding.poll_current_agent(assessment, role)
+                except SupervisionError as error:
+                    self._set_activity_presentation(
+                        activity_id,
+                        "paused",
+                        "Stop unconfirmed: the saved agent launch cannot yet be "
+                        f"reconciled ({error}).",
+                        (
+                            ActivityAction(
+                                "registration-cancel", "Cancel registration", "decision"
+                            ),
+                        ),
+                    )
+                    return {"activity_id": activity_id, "state": "stop-unconfirmed"}
+                if observed.state not in {
+                    "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+                }:
+                    self._set_activity_presentation(
+                        activity_id,
+                        "paused",
+                        "Stop unconfirmed: the saved agent launch is not terminal "
+                        f"({observed.state}).",
+                        (
+                            ActivityAction(
+                                "registration-cancel", "Cancel registration", "decision"
+                            ),
+                        ),
+                    )
+                    return {"activity_id": activity_id, "state": "stop-unconfirmed"}
             self._set_activity_presentation(
                 activity_id,
                 "paused",
@@ -2222,6 +2353,7 @@ class RegistrationCoordinator:
                 terminal_confirmed = observed.state in {
                     "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
                 }
+                stop_unconfirmed = not terminal_confirmed
                 if observed.state in {"cancelled", "timed_out"}:
                     automatic_eligible = False
         retry_request_id: str | None = None

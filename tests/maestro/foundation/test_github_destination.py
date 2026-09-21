@@ -47,6 +47,7 @@ class GitHubDestinationProviderTest(unittest.TestCase):
         durable = result.durable_record()
         self.assertEqual("owner/project", durable["snapshot"]["repository"])
         self.assertEqual("maestro-m3-authorized", durable["snapshot"]["branch"])
+        self.assertEqual("a" * 40, result.destination_head)
         self.assertNotIn("fixture-installation-token", repr(durable))
         self.assertNotIn("fixture-installation-token", repr(result))
         self.assertEqual(6, len(durable["evidence_hashes"]))
@@ -147,7 +148,7 @@ class _FixtureGitHubApi:
 
     def branch_identity(self, token, repository, branch):
         self._check()
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": "a" * 40}}
 
     def branch_policy(self, token, repository, branch):
         self._check()

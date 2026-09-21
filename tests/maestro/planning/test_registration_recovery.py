@@ -254,6 +254,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
             None,
             "owner/project",
             context.decision_version,
+            "b" * 40,
         )
         state = assessment.to_record()
         with self.database.transaction() as transaction:
@@ -1020,7 +1021,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
         decision_reference = _selection_decision_reference(
             "owner/project", "supplied", inventory.source_ref,
             inventory.source_commit, inventory.overview_path, "main",
-            snapshot_reference,
+            snapshot_reference, "b" * 40,
         )
         context = RegistrationPackageContext(
             "project-1", "owner/project", inventory, decision_reference, "main",
@@ -1195,7 +1196,7 @@ class _DestinationApi:
         return {"id": 1, "full_name": repository}
 
     def branch_identity(self, _token, _repository, branch):
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": "a" * 40}}
 
     def branch_policy(self, _token, _repository, _branch):
         if (

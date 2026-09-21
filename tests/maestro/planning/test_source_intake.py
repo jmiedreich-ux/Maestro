@@ -59,7 +59,7 @@ class _DestinationApi:
 
     def branch_identity(self, _token, _repository, branch):
         self.calls.append("branch")
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": self.head}}
 
     def branch_policy(self, _token, _repository, _branch):
         self.calls.append("policy")
@@ -136,6 +136,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
             (ServiceGitRoute("owner/project", "github-app", str(self.remote)),), lambda _reference: "unused",
         )
         self.api = _DestinationApi()
+        self.api.head = self.initial_commit
         profile = GitHubAppDestinationProfile(
             "project-profile", "project-binding", GitHubAppCredential("github-app"), 42, 99,
             "maestro", ("owner/project",), ("main",),
@@ -189,6 +190,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual(64, len(result.destination_snapshot_reference))
         self.assertEqual("allowed", result.destination_evidence["decision"])
         self.assertEqual("project-profile", result.destination_evidence["snapshot"]["profile_name"])
+        self.assertEqual(self.initial_commit, result.publication_head)
         self.assertNotIn("installation-token", repr(result.destination_evidence))
         self.assertEqual(["app", "installation", "token", "repository", "branch", "policy"], self.api.calls)
 

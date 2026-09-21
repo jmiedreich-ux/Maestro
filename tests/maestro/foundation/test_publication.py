@@ -618,7 +618,7 @@ class _FixtureDestinationApi:
         return {"id": 1, "full_name": repository}
 
     def branch_identity(self, token, repository, branch):
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": "a" * 40}}
 
     def branch_policy(self, token, repository, branch):
         if self.policy_sequence:

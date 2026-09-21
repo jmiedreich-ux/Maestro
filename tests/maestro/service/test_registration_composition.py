@@ -84,6 +84,9 @@ OWNER_TOKEN = "c" * 64
 
 
 class _DestinationApi:
+    def __init__(self, head: str = "a" * 40) -> None:
+        self.head = head
+
     def app_identity(self, _profile):
         return {"id": 1, "slug": "maestro"}
 
@@ -101,7 +104,7 @@ class _DestinationApi:
         return {"full_name": repository}
 
     def branch_identity(self, _token, _repository, branch):
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": self.head}}
 
     def branch_policy(self, _token, _repository, _branch):
         return BranchPolicyObservation(False, ())
@@ -167,6 +170,134 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Stop unconfirmed"):
             coordinator._stop_active_assignment_before_cancel("activity-one")
         coordinator.binding.stop_current_agent.assert_not_called()
+
+    def test_unconfirmed_launch_is_not_saved_as_proven_prelaunch_failure(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        launcher = mock.Mock(
+            side_effect=SupervisionError(
+                "launch_unconfirmed", "agent launch was not acknowledged"
+            )
+        )
+        coordinator.dependencies = SimpleNamespace(assignment_launcher=launcher)
+        coordinator.recovery = None
+        coordinator.binding = mock.Mock()
+        coordinator._assignment_failed = mock.Mock()
+        run = SimpleNamespace(
+            assignment_id="architect-assignment",
+            run_id="architect-run",
+        )
+        assessment = mock.Mock()
+        assessment.context.activity_id = "activity-one"
+        assessment.current_run.return_value = run
+
+        self.assertFalse(coordinator._launch_assignment(assessment, "project_architect"))
+
+        coordinator._assignment_failed.assert_called_once()
+        self.assertFalse(
+            coordinator._assignment_failed.call_args.kwargs["failed_launch"]
+        )
+
+    def test_active_confirmation_commit_is_the_update_publication_parent(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        active = ConfirmationResult(
+            "Registered",
+            RegistrationPackageReference(
+                "owner/project", "1" * 40, 1, "candidate-one",
+                ".maestro/registrations/versions/1/candidates/candidate-one/manifest.json",
+                "2" * 64,
+            ),
+            ConfirmationReference(
+                "confirmation-one",
+                ".maestro/registrations/confirmations/confirmation-one.json",
+                "3" * 64,
+            ),
+            "4" * 40,
+            2,
+        )
+
+        self.assertEqual(
+            active.remote_commit,
+            coordinator._publication_parent(mock.Mock(), active),
+        )
+
+    def test_published_candidate_startup_finalization_is_idempotent(self) -> None:
+        application = InstalledServiceApplication(self.settings)
+        application.registration.confirmation = mock.Mock()
+        package = RegistrationPackageReference(
+            "owner/project",
+            "1" * 40,
+            1,
+            "candidate-one",
+            ".maestro/registrations/versions/1/candidates/candidate-one/manifest.json",
+            "2" * 64,
+        )
+        with application.database.transaction() as transaction:
+            application.activities.create_project(
+                transaction,
+                ProjectRecord("project-one", "Project one", "registering", 1),
+            )
+            application.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one", "project-one", "registration",
+                    "Register Project one", "running", 3,
+                    waiting_reason="Publishing reviewed registration candidate",
+                ),
+            )
+            transaction.execute(
+                "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
+                ("activity-one", 3),
+            )
+            transaction.execute(
+                """INSERT INTO registration_candidate_publications(
+                       project_id, activity_id, activity_version,
+                       registration_version, candidate_id, repository, branch,
+                       remote, destination_snapshot_reference, manifest_path,
+                       manifest_sha256, content_hash, assessment_candidate_sha256,
+                       operation_id, request_id, expected_parent, state,
+                       remote_commit, package_ref_json,
+                       previous_registration_ref_json
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                             'published', ?, ?, NULL)""",
+                (
+                    "project-one", "activity-one", 3, 1, "candidate-one",
+                    "owner/project", "main", "https://github.com/owner/project.git",
+                    "5" * 64, package.manifest_path, package.manifest_sha256,
+                    "6" * 64, package.manifest_sha256,
+                    "candidate-operation-one", "candidate-request-one", "0" * 40,
+                    package.commit, canonical_json(package.as_dict()),
+                ),
+            )
+
+        first = application.registration.rehydrate()
+        second = application.registration.rehydrate()
+        self.assertEqual(
+            ("candidate-operation-one",), first["finalized_candidates"]
+        )
+        self.assertEqual(
+            ("candidate-operation-one",), second["finalized_candidates"]
+        )
+        with application.database.read_connection() as connection:
+            activity = connection.execute(
+                """SELECT state, waiting_reason, version FROM service_activities
+                   WHERE activity_id = ?""",
+                ("activity-one",),
+            ).fetchone()
+            actions = tuple(
+                str(row[0])
+                for row in connection.execute(
+                    """SELECT action_id FROM service_activity_actions
+                       WHERE activity_id = ? ORDER BY sequence""",
+                    ("activity-one",),
+                ).fetchall()
+            )
+        self.assertEqual(
+            ("waiting", "Exact reviewed candidate is ready for confirmation", 3),
+            tuple(activity),
+        )
+        self.assertEqual(
+            ("registration-confirm", "registration-cancel"), actions
+        )
 
     def test_confirmed_pointer_startup_atomically_finalizes_request_and_actions(self) -> None:
         application = InstalledServiceApplication(self.settings)
@@ -696,7 +827,7 @@ automatic_recovery_attempts = 2
             mock.patch.object(
                 GitHubRestDestinationApi,
                 "branch_identity",
-                return_value={"name": "main"},
+                return_value={"name": "main", "commit": {"sha": "a" * 40}},
             ),
             mock.patch.object(
                 GitHubRestDestinationApi,
@@ -993,7 +1124,12 @@ automatic_recovery_attempts = 2
                 "project", "binding", GitHubAppCredential("github-app"),
                 1, 2, "maestro", ("owner/project",), ("main",),
             ),
-            _DestinationApi(),
+            _DestinationApi(
+                subprocess.run(
+                    ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/main"],
+                    check=True, capture_output=True, text=True,
+                ).stdout.strip()
+            ),
         )
         definition = {
             "initiation": {"policy": "registration_intake_or_idle_update"},

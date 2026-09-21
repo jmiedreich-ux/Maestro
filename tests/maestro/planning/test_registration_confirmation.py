@@ -665,7 +665,7 @@ class _DestinationApi:
         return {"id": 1, "full_name": repository}
 
     def branch_identity(self, _token, _repository, branch):
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": "a" * 40}}
 
     def branch_policy(self, _token, _repository, _branch):
         return self.policy

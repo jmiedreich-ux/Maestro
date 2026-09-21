@@ -28,6 +28,7 @@ from .credentials import (
     normalize_repository,
     validate_branch,
 )
+from .git_read import GitReadError, validate_object_id
 
 
 class GitHubDestinationError(RuntimeError):
@@ -205,6 +206,7 @@ class GitHubDestinationAuthorization:
     observed_at: float
     evidence_hashes: Mapping[str, str]
     reason: str | None = None
+    destination_head: str | None = None
     _token: GitHubInstallationToken | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -216,6 +218,11 @@ class GitHubDestinationAuthorization:
             raise ValueError("destination evidence hashes are invalid")
         if self.decision == "allowed" and self._token is None:
             raise ValueError("allowed destination result requires an ephemeral installation token")
+        if self.decision == "allowed":
+            try:
+                validate_object_id(self.destination_head, "destination head")
+            except GitReadError as error:
+                raise ValueError(str(error)) from error
 
     def durable_record(self) -> dict[str, Any]:
         """Return the only form that callers may persist or expose."""
@@ -263,6 +270,11 @@ class GitHubDestinationProvider:
             branch_identity = self._api.branch_identity(token, repository, branch)
             if branch_identity.get("name") != branch:
                 return self._result("blocked", snapshot, observed_at, {"repository": _digest(repository_identity), "branch": _digest(branch_identity)}, "GitHub destination branch does not exist")
+            commit = branch_identity.get("commit")
+            destination_head = validate_object_id(
+                commit.get("sha") if isinstance(commit, Mapping) else None,
+                "destination head",
+            )
             policy = self._api.branch_policy(token, repository, branch)
             evidence = {
                 "app": _digest(app), "installation": _digest(installation),
@@ -274,8 +286,11 @@ class GitHubDestinationProvider:
                 return self._result("blocked", snapshot, observed_at, evidence, "GitHub branch protection or an active ruleset blocks direct publication")
             if token.expires_at <= observed_at:
                 return self._result("unverifiable", snapshot, observed_at, evidence, "GitHub installation token is already expired")
-            return GitHubDestinationAuthorization("allowed", snapshot, observed_at, evidence, _token=token)
-        except (GitHubDestinationError, RepositoryCredentialError, OSError, ValueError, TypeError, urllib.error.URLError) as error:
+            return GitHubDestinationAuthorization(
+                "allowed", snapshot, observed_at, evidence,
+                destination_head=destination_head, _token=token,
+            )
+        except (GitHubDestinationError, GitReadError, RepositoryCredentialError, OSError, ValueError, TypeError, urllib.error.URLError) as error:
             return self._result("unverifiable", snapshot, observed_at, {}, f"GitHub destination could not be verified: {type(error).__name__}")
 
     def require_fresh_match(

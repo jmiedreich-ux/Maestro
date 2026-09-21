@@ -119,6 +119,36 @@ class DurableSupervisionTest(unittest.TestCase):
             self.supervisor.launch(acknowledged)
         self.units.stop(acknowledged_id.unit_name)
 
+    def test_unacknowledged_started_unit_is_reconciled_and_stopped_by_exact_identity(self) -> None:
+        class StartedWithoutAcknowledgement(LocalProcessUnits):
+            visible = False
+
+            def launch(self, request):
+                self.managed = super().launch(request)
+                raise OSError("acknowledgement interrupted")
+
+            def inspect(self, unit_name):
+                if not self.visible:
+                    return None
+                return super().inspect(unit_name)
+
+        units = StartedWithoutAcknowledgement()
+        supervisor = AgentSupervisor(self.journal, units)
+        with self.assertRaisesRegex(SupervisionError, "acknowledged"):
+            supervisor.launch(self.request("sleep 5"))
+
+        self.assertEqual("launch_uncertain", supervisor.poll(self.identity).state)
+        self.assertEqual(
+            "stop_unconfirmed", supervisor.stop(self.identity, "cancelled").state
+        )
+        units.visible = True
+        reconciled = supervisor.poll(self.identity)
+        self.assertEqual("running", reconciled.state)
+        self.assertTrue(reconciled.invocation_id)
+        stopped = supervisor.stop(self.identity, "cancelled")
+        self.assertEqual("cancelled", stopped.state)
+        self.assertTrue(units.inspect(self.identity.unit_name).cgroup_empty)
+
     def test_cancel_and_deadline_stop_confirmed_process_group_before_recovery(self) -> None:
         running = self.supervisor.launch(self.request("trap '' TERM; sleep 5"))
         cancelled = self.supervisor.stop(self.identity, "cancelled")

@@ -16,7 +16,7 @@ from maestro.foundation.credentials import (
     normalize_repository,
     validate_branch,
 )
-from maestro.foundation.git_read import run_git
+from maestro.foundation.git_read import GitReadError, run_git, validate_object_id
 from maestro.foundation.github_destination import (
     GitHubDestination,
     GitHubDestinationAuthorization,
@@ -81,6 +81,7 @@ class RegistrationIntakeResult:
     failure: str | None = None
     repository: str | None = None
     selection_decision_ref: str | None = None
+    publication_head: str | None = None
 
     @property
     def selection_decision_reference(self) -> str | None:
@@ -117,6 +118,7 @@ class RegistrationIntakeResult:
             "source_commit": self.source_commit,
             "overview_path": self.overview_path,
             "publication_branch": self.publication_branch,
+            "publication_head": self.publication_head,
             "inventory": None if self.inventory is None else self.inventory.to_record(),
             "missing_questions": [
                 {"field": item.field, "subject": item.subject, "prompt": item.prompt}
@@ -137,7 +139,7 @@ class RegistrationIntakeResult:
             "schema_version", "repository", "repository_binding_id", "selected_scope",
             "source_selection", "selection_decision_ref", "destination_snapshot_reference",
             "destination_evidence", "source_ref", "source_commit", "overview_path",
-            "publication_branch", "inventory",
+            "publication_branch", "publication_head", "inventory",
             "missing_questions", "failure", "integrity_sha256",
         }
         if not isinstance(value, MappingABC) or set(value) != fields:
@@ -179,6 +181,7 @@ class RegistrationIntakeResult:
             _optional_text(value, "failure"),
             _optional_text(value, "repository"),
             _optional_text(value, "selection_decision_ref"),
+            _optional_text(value, "publication_head"),
         )
         source_commit = _optional_text(value, "source_commit")
         overview_path = _optional_text(value, "overview_path")
@@ -256,6 +259,7 @@ class RegistrationIntakeResult:
             "destination_evidence": self.destination_evidence,
             "source_ref": self.source_ref,
             "publication_branch": self.publication_branch,
+            "publication_head": self.publication_head,
         }
         text_fields = {key: value for key, value in required.items() if key != "destination_evidence"}
         if any(not isinstance(value, str) or not value for value in text_fields.values()) or not isinstance(self.destination_evidence, MappingABC):
@@ -267,6 +271,11 @@ class RegistrationIntakeResult:
         assert self.destination_snapshot_reference is not None
         assert self.destination_evidence is not None
         assert self.selection_decision_ref is not None
+        assert self.publication_head is not None
+        try:
+            validate_object_id(self.publication_head, "saved publication head")
+        except GitReadError as error:
+            raise IntakeError(str(error)) from error
         if normalize_repository(self.repository) != self.repository:
             raise IntakeError("saved intake repository is not normalized")
         validate_branch(self.publication_branch)
@@ -283,7 +292,8 @@ class RegistrationIntakeResult:
         )
         if _selection_decision_reference(
             self.repository, self.source_selection, self.source_ref, self.inventory.source_commit,
-            self.inventory.overview_path, self.publication_branch, self.destination_snapshot_reference,
+            self.inventory.overview_path, self.publication_branch,
+            self.destination_snapshot_reference, self.publication_head,
         ) != self.selection_decision_ref:
             raise IntakeError("saved intake selection decision reference does not match its selection")
 
@@ -344,9 +354,17 @@ class RegistrationIntake:
                 request, authorization, source_selection, self._attempted_source_ref(request), provider_result
             )
             self._destination_provider.require_fresh_match(provider_result, authorization)
+            if provider_result.destination_head is None:
+                raise IntakeError("publication branch head is unavailable")
             selector, source_selection = self._source_selection(request, authorization, provider_result)
             selector = validate_source_ref(selector)
-            attempt = replace(attempt, source_selection=source_selection, source_ref=selector)
+            publication_head = provider_result.destination_head
+            attempt = replace(
+                attempt,
+                source_selection=source_selection,
+                source_ref=selector,
+                publication_head=publication_head,
+            )
             with self._destination_provider.bind_transport(
                 provider_result, self._transport, authorization
             ) as bound:
@@ -377,8 +395,10 @@ class RegistrationIntake:
             repository=authorization.repository,
             selection_decision_ref=_selection_decision_reference(
                 authorization.repository, source_selection, inventory.source_ref, inventory.source_commit,
-                inventory.overview_path, authorization.branch, attempt.destination_snapshot_reference,
+                inventory.overview_path, authorization.branch,
+                attempt.destination_snapshot_reference, publication_head,
             ),
+            publication_head=publication_head,
         )
 
     def rehydrate(self, saved_record: str | bytes | bytearray) -> RegistrationIntakeResult:
@@ -501,18 +521,24 @@ def _validate_destination_evidence(
 
 def _selection_decision_reference(
     repository: str, source_selection: str, source_ref: str, source_commit: str,
-    overview_path: str, publication_branch: str, destination_snapshot_reference: str | None,
+    overview_path: str, publication_branch: str,
+    destination_snapshot_reference: str | None, publication_head: str | None,
 ) -> str:
     if destination_snapshot_reference is None:
         raise IntakeError("saved intake destination snapshot reference is missing")
+    try:
+        publication_head = validate_object_id(publication_head, "publication head")
+    except GitReadError as error:
+        raise IntakeError(str(error)) from error
     return hashlib.sha256(_canonical_json({
-        "kind": "registration_source_selection_v1",
+        "kind": "registration_source_selection_v2",
         "repository": repository,
         "source_selection": source_selection,
         "source_ref": source_ref,
         "source_commit": source_commit,
         "overview_path": overview_path,
         "publication_branch": publication_branch,
+        "publication_head": publication_head,
         "destination_snapshot_reference": destination_snapshot_reference,
     }).encode("utf-8")).hexdigest()
 

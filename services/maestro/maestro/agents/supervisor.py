@@ -528,12 +528,19 @@ class AgentSupervisor:
     @_synchronized
     def poll(self, identity: OperationIdentity) -> RunRecord:
         record = self._required(identity)
-        if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped", "stop_unconfirmed", "recovery_required"}:
+        if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped", "stop_unconfirmed", "recovery_required"} and not (
+            record.state == "stop_unconfirmed"
+            and record.pid is None
+            and record.invocation_id is None
+        ):
             return record
         now = self.clock()
         if now >= record.launched_monotonic + record.timeout_seconds:
             return self.stop(identity, "timed_out")
         unit = self.units.inspect(record.unit_name)
+        record = self._reconcile_uncertain_launch(record, unit)
+        if record.state == "launch_uncertain":
+            return record
         if unit is None or not unit.matches(record):
             return self._terminal(record, "stop_unconfirmed", "identity_unknown")
         if not unit.active and unit.cgroup_empty:
@@ -575,6 +582,7 @@ class AgentSupervisor:
         if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped"}:
             return record
         unit = self.units.inspect(record.unit_name)
+        record = self._reconcile_uncertain_launch(record, unit)
         if unit is None or not unit.matches(record):
             return self._terminal(record, "stop_unconfirmed", "identity_unknown")
         if interrupt is not None:
@@ -591,6 +599,41 @@ class AgentSupervisor:
         stopped = self._terminal(self._required(identity), state, reason)
         self._close_managed(identity.key)
         return stopped
+
+    def _reconcile_uncertain_launch(
+        self, record: RunRecord, observed: UnitIdentity | None
+    ) -> RunRecord:
+        if record.state not in {"launch_uncertain", "stop_unconfirmed"} or observed is None:
+            return record
+        if record.state == "stop_unconfirmed" and (
+            record.pid is not None or record.invocation_id is not None
+        ):
+            return record
+        if (
+            observed.unit_name != record.unit_name
+            or not observed.boot_id
+            or not observed.invocation_id
+            or (observed.active and (
+                observed.pid <= 0 or not observed.start_identity
+            ))
+            or (not observed.active and not observed.cgroup_empty)
+        ):
+            return record
+        return self._save(
+            replace(
+                record,
+                state="running",
+                pid=observed.pid,
+                boot_id=observed.boot_id,
+                start_identity=observed.start_identity,
+                invocation_id=observed.invocation_id,
+                last_activity_monotonic=self.clock(),
+                events=(
+                    *record.events,
+                    self._event("launch_reconciled", pid=observed.pid),
+                ),
+            )
+        )
 
     def _drain(self, key: str, managed: ManagedUnit, stream_name: str) -> None:
         stream = getattr(managed, stream_name)
