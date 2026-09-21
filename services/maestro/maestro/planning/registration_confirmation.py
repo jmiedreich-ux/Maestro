@@ -16,12 +16,14 @@ from maestro.foundation import (
     canonical_json,
 )
 from maestro.foundation.git_publication import (
+    PublicationError,
     PublicationJournal,
     PublicationResult,
     PublicationStateError,
 )
 from maestro.foundation.github_destination import (
     GitHubDestinationAuthorization,
+    GitHubDestinationError,
     GitHubDestinationProvider,
 )
 from maestro.foundation.git_read import GitReadError, validate_object_id
@@ -482,6 +484,123 @@ class RegistrationConfirmationService:
     def history(self, project_id: str) -> tuple[ConfirmationReference, ...]:
         canonical_identifier(project_id, "project_id")
         return tuple(_confirmation_ref(item) for item in self._confirmed_refs(project_id))
+
+    def recover_pending(
+        self,
+        activity_id: str | None = None,
+        *,
+        continue_on_error: bool = False,
+    ) -> tuple[dict[str, object], ...]:
+        """Reconcile saved unfinished publications without reconstructing inputs.
+
+        Every byte and destination fact comes from the journal and the
+        service-owned registration rows.  Startup recovery never rereads source
+        files or invents a replacement candidate.
+        """
+        if activity_id is not None:
+            canonical_identifier(activity_id, "activity_id")
+        parameters: tuple[object, ...] = () if activity_id is None else (activity_id,)
+        activity_filter = "" if activity_id is None else " AND activity_id = ?"
+        with self.database.read_connection() as connection:
+            candidates = connection.execute(
+                """SELECT operation_id, request_id, repository, branch,
+                          destination_snapshot_reference, registration_version,
+                          candidate_id, manifest_path, manifest_sha256
+                   FROM registration_candidate_publications
+                   WHERE state = 'prepared'"""
+                + activity_filter
+                + " ORDER BY operation_id",
+                parameters,
+            ).fetchall()
+        recovered: list[dict[str, object]] = []
+        for row in candidates:
+            try:
+                result = self._write_or_recover(
+                    str(row[0]), str(row[2]), str(row[3]), str(row[4])
+                )
+                package = RegistrationPackageReference(
+                    str(row[2]), result.remote_commit, int(row[5]), str(row[6]),
+                    str(row[7]), str(row[8]),
+                )
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE registration_candidate_publications
+                           SET state = 'published', remote_commit = ?, package_ref_json = ?
+                           WHERE operation_id = ? AND state = 'prepared'""",
+                        (
+                            result.remote_commit,
+                            canonical_json(package.as_dict()),
+                            str(row[0]),
+                        ),
+                    )
+                    self.journal.mark_applied(
+                        transaction,
+                        operation_id=str(row[0]),
+                        request_id=str(row[1]),
+                    )
+                recovered.append(
+                    {
+                        "kind": "candidate",
+                        "operation_id": str(row[0]),
+                        "state": "published",
+                    }
+                )
+            except (
+                GitHubDestinationError,
+                PublicationError,
+                RegistrationConfirmationError,
+            ) as error:
+                if not continue_on_error:
+                    raise
+                recovered.append(
+                    {
+                        "kind": "candidate",
+                        "operation_id": str(row[0]),
+                        "state": "paused",
+                        "error": str(error),
+                    }
+                )
+
+        with self.database.read_connection() as connection:
+            confirmations = connection.execute(
+                """SELECT confirmation_id, request_id, operation_id, project_id,
+                          activity_id, expected_activity_version, owner_id, confirmed_at,
+                          package_ref_json, previous_confirmation_ref_json,
+                          receipt_path, receipt_sha256, receipt_bytes, index_bytes,
+                          expected_index_bytes, state, remote_commit,
+                          confirmation_ref_json
+                   FROM registration_confirmations
+                   WHERE state = 'pending'"""
+                + activity_filter
+                + " ORDER BY sequence",
+                parameters,
+            ).fetchall()
+        for row in confirmations:
+            try:
+                result = self._complete_confirmation(tuple(row))
+                recovered.append(
+                    {
+                        "kind": "confirmation",
+                        "confirmation_id": str(row[0]),
+                        "state": result.status,
+                    }
+                )
+            except (
+                GitHubDestinationError,
+                PublicationError,
+                RegistrationConfirmationError,
+            ) as error:
+                if not continue_on_error:
+                    raise
+                recovered.append(
+                    {
+                        "kind": "confirmation",
+                        "confirmation_id": str(row[0]),
+                        "state": "paused",
+                        "error": str(error),
+                    }
+                )
+        return tuple(recovered)
 
     def _complete_confirmation(self, row: sqlite3.Row | tuple[object, ...]) -> ConfirmationResult:
         state = str(row[15])

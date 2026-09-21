@@ -26,10 +26,13 @@ from maestro.agents.runtime_identity import (
 from maestro.agents.routes import AgentRouteError, ConfiguredAgentRouteProvider
 from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, SystemdUserUnits, UnitController
 from maestro.foundation import Database, StorageSettings
+from maestro.foundation.git_publication import publication_migrations
+from maestro.planning.registration_confirmation import registration_confirmation_migrations
 from maestro.planning.registration_plugin import (
     RegistrationProcessPlugin,
     RegistrationServiceBinding,
 )
+from maestro.planning.registration_recovery import registration_recovery_migrations
 
 from .activities import ActivityRepository
 from .authentication import (
@@ -42,8 +45,15 @@ from .http import MAX_REQUEST_BYTES, HTTPResponse
 from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
 from .processes import ProcessHandlerRegistry
+from .processes import PROCESS_POLICY_MIGRATION
 from .registry import OperationRegistry
 from .requests import RequestService
+from .registration import (
+    REGISTRATION_COMPOSITION_MIGRATION,
+    RegistrationCoordinator,
+    RegistrationRuntimeDependencies,
+    build_registration_publication,
+)
 
 
 DEFAULT_CONFIG_PATH = Path("/etc/maestro/agents.toml")
@@ -80,6 +90,7 @@ class ServiceSettings:
     agent_user: str = "maestro-agent"
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
     agent_route_provider: ConfiguredAgentRouteProvider | None = None
+    registration_runtime: RegistrationRuntimeDependencies | None = None
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -97,6 +108,11 @@ class ServiceSettings:
             and not isinstance(self.agent_route_provider, ConfiguredAgentRouteProvider)
         ):
             raise ServiceConfigurationError("agent route provider is invalid")
+        if (
+            self.registration_runtime is not None
+            and not isinstance(self.registration_runtime, RegistrationRuntimeDependencies)
+        ):
+            raise ServiceConfigurationError("registration runtime is invalid")
 
 
 def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
@@ -195,10 +211,31 @@ class InstalledServiceApplication:
     def __init__(
         self, settings: ServiceSettings,
         registration_preflight: AgentRoutePreflight | None = None,
+        registration_runtime: RegistrationRuntimeDependencies | None = None,
         supervisor_units: UnitController | None = None,
     ) -> None:
+        if registration_runtime is None:
+            registration_runtime = settings.registration_runtime
+        if registration_runtime is not None:
+            if (
+                registration_preflight is not None
+                and registration_preflight is not registration_runtime.preflight
+            ):
+                raise ServiceConfigurationError(
+                    "registration runtime and explicit preflight differ"
+                )
+            registration_preflight = registration_runtime.preflight
         self._agent_route_provider = settings.agent_route_provider
         self.database = Database(settings.storage)
+        for migration in (
+            *publication_migrations(),
+            *registration_confirmation_migrations(),
+            *registration_recovery_migrations(),
+            PROCESS_POLICY_MIGRATION,
+            REGISTRATION_COMPOSITION_MIGRATION,
+        ):
+            self.database.registry.register(migration)
+        self.database.initialize()
         reporter: SupervisorIdentityReporter | None = None
         consumer: PlanningIdentityConsumer | None = None
         if self._agent_route_provider is not None:
@@ -211,13 +248,45 @@ class InstalledServiceApplication:
         # Register the currently installed core domain before final initialization.
         self.activities = ActivityRepository(self.database)
         self.process_registry = ProcessHandlerRegistry()
-        self.registration_assessment: RegistrationServiceBinding | None = None
+        self.registration_assessment = RegistrationServiceBinding(
+            self.database,
+            RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
+            self.process_registry,
+            self.agent_supervisor,
+            consumer,
+        )
         self.authenticator = OwnerAuthenticator(settings.owner)
         self.questions = QuestionService(self.database)
+        self.registration_assessment.connect_questions(self.questions)
+        self.publication_journal = None
+        self.registration_confirmation = None
+        self.registration_recovery = None
+        if registration_runtime is not None:
+            (
+                self.publication_journal,
+                self.registration_confirmation,
+                self.registration_recovery,
+            ) = build_registration_publication(self.database, registration_runtime)
+        self.registration = RegistrationCoordinator(
+            self.database,
+            self.activities,
+            self.questions,
+            self.registration_assessment,
+            settings.owner.owner_id,
+            registration_runtime,
+            self.registration_confirmation,
+            self.registration_recovery,
+        )
+        self.questions.register_recipient(
+            "registration-process", self.registration.receive_answer
+        )
         base_requests = RequestService(
             self.database,
             self.authenticator,
-            OperationRegistry(self.questions.operation_handlers),
+            OperationRegistry(
+                self.questions.operation_handlers
+                + self.registration.operation_handlers
+            ),
         )
         self.requests = QuestionRequestService(base_requests, self.questions)
         self.projections = ProjectionReader(self.database)
@@ -227,16 +296,7 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
-        # Production composition always installs the registration process.  A
-        # missing route configuration or live preflight blocks that process's
-        # start instead of creating a caller-selected fallback.
-        self.registration_assessment = RegistrationServiceBinding(
-            self.database,
-            RegistrationProcessPlugin(self._agent_route_provider, registration_preflight),
-            self.process_registry,
-            self.agent_supervisor,
-            consumer,
-        )
+        self.startup_recovery: Mapping[str, object] | None = None
 
     @property
     def agent_route_provider(self) -> ConfiguredAgentRouteProvider:
@@ -248,6 +308,8 @@ class InstalledServiceApplication:
         return self._agent_route_provider
 
     def start(self) -> None:
+        self.startup_recovery = self.registration.rehydrate()
+        self.questions.deliver_pending()
         self.event_application.start()
 
     def stop(self) -> None:
@@ -261,12 +323,85 @@ class InstalledServiceApplication:
         body: bytes = b"",
     ) -> HTTPResponse | EventHTTPResponse:
         parsed = urlsplit(path)
+        registration = self._registration_response(method, parsed, headers)
+        if registration is not None:
+            return registration
         projection = self._projection_response(method, parsed, headers)
         if projection is not None:
             return projection
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
+
+    def _registration_response(
+        self,
+        method: str,
+        parsed: SplitResult,
+        headers: Mapping[str, str],
+    ) -> HTTPResponse | None:
+        if method != "GET":
+            return None
+        parts = parsed.path.split("/")
+        activity_id: str | None = None
+        project_id: str | None = None
+        if len(parts) == 5 and parts[:4] == ["", "api", "v1", "registrations"]:
+            activity_id = unquote(parts[4])
+        elif (
+            len(parts) == 6
+            and parts[:4] == ["", "api", "v1", "projects"]
+            and parts[5] == "registration"
+        ):
+            project_id = unquote(parts[4])
+        if activity_id is None:
+            if project_id is None:
+                return None
+        try:
+            if parsed.query or parsed.fragment:
+                raise ProjectionError(
+                    "invalid_query", "registration route does not accept a query"
+                )
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+            if project_id is not None:
+                with self.database.read_connection() as connection:
+                    row = connection.execute(
+                        """SELECT activity_id FROM service_activities
+                           WHERE project_id = ? AND kind = 'registration'
+                           ORDER BY rowid DESC LIMIT 1""",
+                        (project_id,),
+                    ).fetchone()
+                if row is None:
+                    return HTTPResponse(
+                        404,
+                        {
+                            "error": {
+                                "code": "registration_not_found",
+                                "message": "the project has no registration",
+                            }
+                        },
+                        {"Content-Type": "application/json; charset=utf-8"},
+                    )
+                activity_id = str(row[0])
+            assert activity_id is not None
+            detail = self.registration.detail(activity_id)
+            with self.database.read_connection() as connection:
+                event = connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0) FROM outbox_events"
+                ).fetchone()
+            return HTTPResponse(
+                200,
+                {"data": detail, "event_cursor": int(event[0])},
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
+        except HTTPRejection as error:
+            response_headers = {"Content-Type": "application/json; charset=utf-8"}
+            response_headers.update(error.headers)
+            return HTTPResponse(error.status_code, error.as_body(), response_headers)
+        except ProjectionError as error:
+            return HTTPResponse(
+                400,
+                {"error": {"code": error.code, "message": str(error), "fields": error.fields}},
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
     def _projection_response(
         self,
@@ -389,7 +524,9 @@ def build_application(settings: ServiceSettings) -> InstalledServiceApplication:
     """Build and initialize the real installed application boundary."""
     settings.storage.validate_host_path()
     _validate_workspace_root(settings.workspace_root)
-    application = InstalledServiceApplication(settings)
+    application = InstalledServiceApplication(
+        settings, registration_runtime=settings.registration_runtime
+    )
     details = os.lstat(settings.storage.path)
     if not stat.S_ISREG(details.st_mode):
         raise ServiceConfigurationError("configured storage is not a regular file")

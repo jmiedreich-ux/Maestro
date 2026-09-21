@@ -546,9 +546,15 @@ class Workspace:
         if name == "help":
             return ("projects", "attention", "findings") + self.extensions.command_names
         self._require_online()
-        return self.extensions.invoke_command(
+        result = self.extensions.invoke_command(
             name, ExtensionContext(self.client, self), arguments
         )
+        if name in self.extensions.view_names:
+            self.extension_view_name = name
+            self.extension_view_content = result
+            self.view = View.EXTENSION
+            self.focus = 0
+        return result
 
     def open_extension_view(self, name: str, arguments: str = "") -> object:
         self._require_online()

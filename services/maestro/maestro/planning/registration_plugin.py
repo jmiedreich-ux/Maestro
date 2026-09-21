@@ -11,7 +11,15 @@ from maestro.agents.runtime_identity import ConfirmedRuntimeIdentity, PlanningId
 from maestro.agents.routes import ConfiguredAgentRouteProvider, PermittedDestination, RoleSelections, RouteRequirements, ToolModelSelection
 from maestro.agents.supervisor import AgentSupervisor, OperationIdentity
 from maestro.foundation import Database, DomainMigration, canonical_json
+from maestro.foundation import Transaction
+from maestro.service.questions import (
+    AnswerChoice,
+    DeliveredAnswer,
+    LinkedQuestion,
+    QuestionService,
+)
 from maestro.service.processes import ProcessHandlerRegistry, ProcessProvider, ProcessSnapshot
+from maestro.service.resources import BundleSnapshot
 
 from .intake import RegistrationIntakeResult
 from .registration import AssessmentContext, AssessmentRun, RegistrationAssessment, RegistrationAssessmentError
@@ -220,6 +228,17 @@ class RegistrationServiceBinding:
         self.database.registry.register(REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION)
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
+        self._questions: QuestionService | None = None
+
+    def connect_questions(self, questions: QuestionService) -> None:
+        """Connect the installed durable question boundary once."""
+        if not isinstance(questions, QuestionService):
+            raise TypeError("registration questions require QuestionService")
+        if self._questions is not None and self._questions is not questions:
+            raise RegistrationAssessmentError(
+                "registration question service is already connected"
+            )
+        self._questions = questions
 
     @property
     def supervisor(self) -> AgentSupervisor:
@@ -247,12 +266,36 @@ class RegistrationServiceBinding:
         except ValueError as error:
             raise RegistrationAssessmentError("registration assessment intake cannot be persisted") from error
         with self.database.transaction() as transaction:
-            transaction.execute(
-                """INSERT INTO registration_assessment_intake(
-                       activity_id, project_id, selections_json, intake_json
-                   ) VALUES (?, ?, ?, ?)""",
-                (activity_id, project_id, canonical_json(_selections_mapping(selections)), intake_json),
+            self.save_intake_in(
+                transaction, activity_id, project_id, intake, selections
             )
+
+    def save_intake_in(
+        self,
+        transaction: Transaction,
+        activity_id: str,
+        project_id: str,
+        intake: RegistrationIntakeResult,
+        selections: RoleSelections,
+    ) -> None:
+        """Save completed intake inside the caller's request transaction."""
+        if not isinstance(transaction, Transaction):
+            raise TypeError("registration intake requires the service transaction")
+        if not activity_id or not project_id or intake.inventory is None:
+            raise RegistrationAssessmentError(
+                "registration assessment requires completed saved intake"
+            )
+        transaction.execute(
+            """INSERT INTO registration_assessment_intake(
+                   activity_id, project_id, selections_json, intake_json
+               ) VALUES (?, ?, ?, ?)""",
+            (
+                activity_id,
+                project_id,
+                canonical_json(_selections_mapping(selections)),
+                intake.to_json(),
+            ),
+        )
 
     def start(self, snapshot: ProcessSnapshot, activity_id: str) -> RegistrationAssessment:
         """Start from service-persisted intake only; callers cannot supply facts."""
@@ -282,14 +325,97 @@ class RegistrationServiceBinding:
         self._assessments[context.activity_id] = assessment
         return assessment
 
+    def install_started(
+        self,
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+    ) -> None:
+        """Persist an already-preflighted assessment in the request transaction."""
+        if not isinstance(transaction, Transaction):
+            raise TypeError("registration assessment requires the service transaction")
+        if not isinstance(assessment, RegistrationAssessment):
+            raise TypeError("registration assessment is invalid")
+        context = assessment.context
+        rows = (
+            ("project_architect", context.architect_run, context.routes.architect),
+            ("fidelity_reviewer", context.reviewer_run, context.routes.fidelity_reviewer),
+        )
+        for role, run, route in rows:
+            transaction.execute(
+                """INSERT INTO registration_assessment_runs(
+                    activity_id, role, assignment_id, run_id, route_json,
+                    runtime_identity_json
+                ) VALUES (?, ?, ?, ?, ?, NULL)""",
+                (
+                    context.activity_id,
+                    role,
+                    run.assignment_id,
+                    run.run_id,
+                    canonical_json(_route_mapping(route)),
+                ),
+            )
+        transaction.execute(
+            "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
+            (context.activity_id, canonical_json(assessment.to_record())),
+        )
+        self._assessments[context.activity_id] = assessment
+
+    def assessment(self, activity_id: str) -> RegistrationAssessment:
+        """Return only a safely loaded assessment for an installed operation."""
+        return self._assessment(activity_id)
+
+    def receive_answer(self, answer: DeliveredAnswer) -> None:
+        """Accept linked answer delivery without treating it as confirmation."""
+        if not isinstance(answer, DeliveredAnswer):
+            raise TypeError("registration answer delivery is invalid")
+        assessment = self._assessment(answer.activity_id)
+        if assessment.context.project_id != answer.project_id:
+            raise RegistrationAssessmentError(
+                "registration answer belongs to another project"
+            )
+        # Answer text remains authoritative in QuestionService.  Registration
+        # only records that the exact linked answer reached the paused process;
+        # dispatch of a new assignment remains service-owned.
+        if assessment.status.state != "clarification_required":
+            raise RegistrationAssessmentError(
+                "registration is not waiting for a clarification answer"
+            )
+        role = answer.requester
+        if role not in {"project_architect", "fidelity_reviewer"}:
+            raise RegistrationAssessmentError(
+                "registration clarification requester is invalid"
+            )
+        with self.database.read_connection() as connection:
+            unanswered = connection.execute(
+                """SELECT 1 FROM service_questions
+                   WHERE activity_id = ? AND requester = ?
+                     AND status IN ('awaiting_answer', 'clarification_required')
+                   LIMIT 1""",
+                (answer.activity_id, role),
+            ).fetchone()
+        if unanswered is not None:
+            return
+        run = _new_run(role)
+        assessment.continue_after_clarification(role, run)
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_assessment_runs
+                   SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                (run.assignment_id, run.run_id, answer.activity_id, role),
+            )
+            transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(assessment.to_record()), answer.activity_id),
+            )
+
     def reserve_runtime_identity(
         self, activity_id: str, role: str,
     ) -> OperationIdentity:
         """Reserve the service-created run for protected identity publication."""
         assessment = self._assessment(activity_id)
-        run = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run if role == "fidelity_reviewer" else None
-        if run is None:
-            raise RegistrationAssessmentError("registration role is invalid")
+        run = assessment.current_run(role)
         route = assessment.context.routes.architect if role == "project_architect" else assessment.context.routes.fidelity_reviewer
         operation = OperationIdentity(assessment.context.project_id, activity_id, run.assignment_id, run.run_id)
 
@@ -302,7 +428,7 @@ class RegistrationServiceBinding:
             _snapshot_for(assessment), "agent_session", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "project_architect"),
         )
-        self._save_assessment(assessment)
+        self._save_assessment(assessment, response)
         return result
 
     def submit_reviewer(self, response: RegistrationAgentResponse) -> object:
@@ -311,7 +437,7 @@ class RegistrationServiceBinding:
             _snapshot_for(assessment), "review", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "fidelity_reviewer"),
         )
-        self._save_assessment(assessment)
+        self._save_assessment(assessment, response)
         return result
 
     def validate_package(self, activity_id: str, manifest: object, records: object) -> object:
@@ -344,17 +470,50 @@ class RegistrationServiceBinding:
                 snapshot.definition.get("maximum_fidelity_reviews", 2),
             )
             assessment = RegistrationAssessment.from_record(context, json.loads(str(state[0])))
+            if any(
+                assessment.current_run(role) != saved[role][0]
+                for role in ("project_architect", "fidelity_reviewer")
+            ):
+                raise ValueError
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             raise RegistrationAssessmentError("saved registration assessment is invalid") from error
         assessment.bind_process_snapshot(snapshot)
         self._assessments[activity_id] = assessment
         return assessment
 
+    def rehydrate_saved(self) -> tuple[str, ...]:
+        """Restore every saved assessment from its immutable process snapshot."""
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT intake.activity_id, snapshots.process_name,
+                          snapshots.definition_json,
+                          snapshots.definition_sha256,
+                          snapshots.bundle_snapshot_json
+                   FROM registration_assessment_intake AS intake
+                   JOIN service_process_snapshots AS snapshots
+                     ON snapshots.activity_id = intake.activity_id
+                   ORDER BY intake.activity_id"""
+            ).fetchall()
+        restored: list[str] = []
+        for row in rows:
+            try:
+                bundle = BundleSnapshot.from_dict(json.loads(str(row[4])))
+                snapshot = ProcessSnapshot(
+                    str(row[1]), str(row[2]), str(row[3]), bundle
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                raise RegistrationAssessmentError(
+                    "saved registration process snapshot is invalid"
+                ) from error
+            self.rehydrate(snapshot, str(row[0]))
+            restored.append(str(row[0]))
+        return tuple(restored)
+
     def _assessment_for_response(self, response: RegistrationAgentResponse, role: str) -> RegistrationAssessment:
         if not isinstance(response, RegistrationAgentResponse) or response.role != role:
             raise RegistrationAssessmentError("response is not for the dispatched registration role")
         assessment = self._assessment(response.activity_id)
-        expected = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run
+        expected = assessment.current_run(role)
         if (response.assignment_id, response.run_id) != (expected.assignment_id, expected.run_id):
             raise RegistrationAssessmentError("response does not match the service-saved current run")
         return assessment
@@ -389,9 +548,9 @@ class RegistrationServiceBinding:
     ) -> tuple[OperationIdentity, ResolvedAgentRoute]:
         context = assessment.context
         if role == "project_architect":
-            run, route = context.architect_run, context.routes.architect
+            run, route = assessment.current_run(role), context.routes.architect
         elif role == "fidelity_reviewer":
-            run, route = context.reviewer_run, context.routes.fidelity_reviewer
+            run, route = assessment.current_run(role), context.routes.fidelity_reviewer
         else:
             raise RegistrationAssessmentError("registration role is invalid")
         return OperationIdentity(context.project_id, context.activity_id, run.assignment_id, run.run_id), route
@@ -420,14 +579,60 @@ class RegistrationServiceBinding:
             raise RegistrationAssessmentError("saved registration intake is incomplete")
         return project_id, intake, selections
 
-    def _save_assessment(self, assessment: RegistrationAssessment) -> None:
+    def _save_assessment(
+        self,
+        assessment: RegistrationAssessment,
+        response: RegistrationAgentResponse,
+    ) -> None:
         with self.database.transaction() as transaction:
             updated = transaction.execute(
                 "UPDATE registration_assessment_state SET state_json = ? WHERE activity_id = ?",
                 (canonical_json(assessment.to_record()), assessment.context.activity_id),
             )
             if updated.rowcount != 1:
-                raise RegistrationAssessmentError("saved registration assessment state is unavailable")
+                raise RegistrationAssessmentError(
+                    "saved registration assessment state is unavailable"
+                )
+            if response.result == "clarification_required":
+                if self._questions is None:
+                    raise RegistrationAssessmentError(
+                        "registration question service is unavailable"
+                    )
+                for question in response.questions:
+                    identity = "registration-question-" + uuid.uuid5(
+                        uuid.NAMESPACE_URL,
+                        "/".join(
+                            (
+                                response.activity_id,
+                                response.assignment_id,
+                                response.run_id,
+                                question.local_key,
+                            )
+                        ),
+                    ).hex
+                    self._questions.publish(
+                        transaction,
+                        LinkedQuestion(
+                            identity,
+                            response.project_id,
+                            response.activity_id,
+                            question.subject,
+                            question.question,
+                            response.role,
+                            "registration-process",
+                            choices=tuple(
+                                AnswerChoice(
+                                    str(option["local_key"]),
+                                    str(option["label"]),
+                                    str(option["tradeoff"]),
+                                    None
+                                    if option["recommendation_reason"] is None
+                                    else str(option["recommendation_reason"]),
+                                )
+                                for option in question.options
+                            ),
+                        ),
+                    )
 
 
 def _identity_mapping(identity: RunningToolIdentity) -> dict[str, str]:

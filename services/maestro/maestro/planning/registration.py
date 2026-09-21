@@ -142,6 +142,27 @@ class RegistrationAssessment:
             raise RegistrationAssessmentError("run replacement is not eligible at this assessment step")
         self._current_runs[role] = run
 
+    def continue_after_clarification(self, role: str, run: AssessmentRun) -> None:
+        """Resume the answered role with a new saved assignment identity."""
+        if self._state != "clarification_required":
+            raise RegistrationAssessmentError(
+                "registration is not waiting for clarification"
+            )
+        if role not in self._current_runs or not isinstance(run, AssessmentRun):
+            raise RegistrationAssessmentError("clarification continuation is invalid")
+        self._current_runs[role] = run
+        self._state = (
+            "awaiting_architect"
+            if role == "project_architect"
+            else "awaiting_reviewer"
+        )
+
+    def current_run(self, role: str) -> AssessmentRun:
+        try:
+            return self._current_runs[role]
+        except KeyError as error:
+            raise RegistrationAssessmentError("registration role is invalid") from error
+
     def to_record(self) -> dict[str, object]:
         """Return mutable state for durable recovery, separate from intake."""
         return {

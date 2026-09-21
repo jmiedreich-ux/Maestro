@@ -82,15 +82,17 @@ class RegistrationInteraction:
             return "No registration selected."
         detail = self.detail
         package = detail["package_ref"]
-        assert isinstance(package, Mapping)
         lines = [
             f"Registration — {detail['project_id']}",
             f"State: {detail['state']}",
-            (
+        ]
+        if isinstance(package, Mapping):
+            lines.append(
                 f"Candidate: version {package['registration_version']} / "
                 f"{package['candidate_id']} / {package['manifest_sha256']}"
-            ),
-        ]
+            )
+        else:
+            lines.append("Candidate: not yet available")
         history = detail["history"]
         assert isinstance(history, list)
         lines.append(f"Confirmed history: {len(history)}")
@@ -98,8 +100,10 @@ class RegistrationInteraction:
             assert isinstance(item, Mapping)
             lines.append(f"- {item['confirmation_id']} — {item['sha256']}")
         if bool(detail["can_confirm"]):
+            assert isinstance(package, Mapping)
             lines.append(
-                f"Confirm explicitly with: registration-confirm {package['candidate_id']}"
+                "Confirm registration action is available for exact candidate "
+                f"{package['candidate_id']}."
             )
         if self.status:
             lines.append(self.status)
@@ -115,7 +119,8 @@ class RegistrationInteraction:
         if not bool(detail["can_confirm"]):
             raise ValueError("registration is not currently eligible for confirmation")
         package = detail["package_ref"]
-        assert isinstance(package, Mapping)
+        if not isinstance(package, Mapping):
+            raise ValueError("registration has no candidate to confirm")
         if candidate_id.strip() != package["candidate_id"]:
             raise ValueError("confirmation must name the displayed exact candidate")
         if self.pending is not None and not self._pending_matches(
@@ -153,9 +158,36 @@ class RegistrationInteraction:
         self.pending = None
         return response
 
-    def retry(self, context: ExtensionContext) -> Mapping[str, object]:
+    def retry(
+        self,
+        context: ExtensionContext,
+        publication_operation_id: str | None = None,
+        intervention: str | None = None,
+    ) -> Mapping[str, object]:
         if self.pending is None:
-            raise ValueError("no unconfirmed registration request is available")
+            if self.detail is None:
+                raise ValueError("open the registration before retrying it")
+            operation_id = _identifier(
+                publication_operation_id, "publication_operation_id"
+            )
+            reason = _text(intervention, "intervention")
+            project_id, activity_id = _selection(context)
+            response = context.client.submit(
+                {
+                    "request_id": self._request_id_factory(),
+                    "operation": "registration.retry",
+                    "project_id": project_id,
+                    "activity_id": activity_id,
+                    "question_id": None,
+                    "expected_version": self.detail["activity_version"],
+                    "payload": {
+                        "publication_operation_id": operation_id,
+                        "intervention": reason,
+                    },
+                }
+            )
+            self.status = "Registration recovery reconciled from saved state."
+            return response
         try:
             response = context.client.get_json(
                 f"/requests/{urllib.parse.quote(self.pending.request_id, safe='')}"
@@ -183,6 +215,42 @@ class RegistrationInteraction:
         self.pending = None
         return response
 
+    def start(self, context: ExtensionContext, repository: str) -> Mapping[str, object]:
+        repository = repository.strip()
+        if not repository:
+            raise ValueError("register requires an owner/repository")
+        response = context.client.submit(
+            {
+                "request_id": self._request_id_factory(),
+                "operation": "registration.start",
+                "project_id": None,
+                "activity_id": None,
+                "question_id": None,
+                "expected_version": None,
+                "payload": {"repository": repository},
+            }
+        )
+        self.status = "Registration intake saved."
+        return response
+
+    def cancel(self, context: ExtensionContext) -> Mapping[str, object]:
+        if self.detail is None:
+            raise ValueError("open the registration before cancelling it")
+        project_id, activity_id = _selection(context)
+        response = context.client.submit(
+            {
+                "request_id": self._request_id_factory(),
+                "operation": "registration.cancel",
+                "project_id": project_id,
+                "activity_id": activity_id,
+                "question_id": None,
+                "expected_version": self.detail["activity_version"],
+                "payload": {},
+            }
+        )
+        self.status = "Registration cancelled; confirmed history is unchanged."
+        return response
+
     def _pending_matches(
         self,
         project_id: str,
@@ -193,7 +261,8 @@ class RegistrationInteraction:
         if pending is None:
             return True
         package = detail["package_ref"]
-        assert isinstance(package, Mapping)
+        if not isinstance(package, Mapping):
+            return False
         envelope = pending.envelope
         return (
             envelope["request_id"] == pending.request_id
@@ -207,8 +276,8 @@ class RegistrationInteraction:
         assert self.pending is not None
         return (
             "A different registration confirmation request remains unresolved "
-            f"({self.pending.request_id}). Use registration-retry before confirming "
-            "this candidate."
+            f"({self.pending.request_id}). Use the registration retry action before "
+            "confirming this candidate."
         )
 
 
@@ -217,15 +286,20 @@ class RegistrationExtension:
         self.interaction = interaction or RegistrationInteraction()
 
     def install(self, registry: ExtensionRegistry) -> None:
+        registry.register_command("register", self._start)
         registry.register_command("registration", self._open)
         registry.register_view("registration", self._view)
         registry.register_action("registration-confirm", self._confirm)
         registry.register_action("registration-retry", self._retry)
+        registry.register_action("registration-cancel", self._cancel)
 
     def _open(self, context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():
             raise ValueError("registration command takes no arguments")
         return self.interaction.open(context)
+
+    def _start(self, context: ExtensionContext, arguments: str) -> object:
+        return self.interaction.start(context, arguments)
 
     def _view(self, _context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():
@@ -236,9 +310,25 @@ class RegistrationExtension:
         return self.interaction.confirm(context, arguments.strip())
 
     def _retry(self, context: ExtensionContext, arguments: str) -> object:
+        if self.interaction.pending is not None:
+            if arguments.strip():
+                raise ValueError(
+                    "confirmation reconciliation retry takes no arguments"
+                )
+            return self.interaction.retry(context)
+        operation_id, separator, intervention = arguments.strip().partition(" ")
+        if not separator or not intervention.strip():
+            raise ValueError(
+                "registration retry requires an operation ID and intervention"
+            )
+        return self.interaction.retry(
+            context, operation_id, intervention.strip()
+        )
+
+    def _cancel(self, context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():
-            raise ValueError("registration retry takes no arguments")
-        return self.interaction.retry(context)
+            raise ValueError("registration cancel takes no arguments")
+        return self.interaction.cancel(context)
 
 
 def _selection(context: ExtensionContext) -> tuple[str, str]:
@@ -252,8 +342,16 @@ def _selection(context: ExtensionContext) -> tuple[str, str]:
 
 
 def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
-    if set(response) != {"data"} or not isinstance(response["data"], Mapping):
+    if set(response) not in ({"data"}, {"data", "event_cursor"}) or not isinstance(
+        response["data"], Mapping
+    ):
         raise ValueError("registration response is invalid")
+    if "event_cursor" in response and (
+        isinstance(response["event_cursor"], bool)
+        or not isinstance(response["event_cursor"], int)
+        or response["event_cursor"] < 0
+    ):
+        raise ValueError("registration event_cursor must be nonnegative")
     detail = dict(response["data"])
     fields = {
         "project_id", "activity_id", "activity_version", "state",
@@ -271,7 +369,10 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
         raise ValueError("registration activity_version must be positive")
     if not isinstance(detail["can_confirm"], bool):
         raise ValueError("registration can_confirm must be boolean")
-    _package_ref(detail["package_ref"])
+    if detail["package_ref"] is not None:
+        _package_ref(detail["package_ref"])
+    elif detail["can_confirm"]:
+        raise ValueError("registration cannot confirm without a package reference")
     history = detail["history"]
     if not isinstance(history, list):
         raise ValueError("registration history must be an array")
