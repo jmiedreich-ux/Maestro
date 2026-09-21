@@ -131,6 +131,40 @@ ACTIVITY_ACTIONS_MIGRATION = DomainMigration(
     ),
 )
 
+ACTIVITY_SCOPED_ACTIONS_MIGRATION = DomainMigration(
+    domain="service_activities",
+    version=3,
+    identity="service-activity-scoped-actions-v3",
+    statements=(
+        "ALTER TABLE service_activity_actions RENAME TO service_activity_actions_v2",
+        "DROP INDEX service_activity_actions_context",
+        """
+        CREATE TABLE service_activity_actions(
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_id TEXT NOT NULL,
+            activity_id TEXT NOT NULL
+                REFERENCES service_activities(activity_id) ON DELETE CASCADE,
+            project_id TEXT NOT NULL
+                REFERENCES service_projects(project_id) ON DELETE RESTRICT,
+            kind TEXT NOT NULL CHECK(kind IN ('action', 'decision', 'recovery')),
+            label TEXT NOT NULL,
+            UNIQUE(activity_id, action_id)
+        )
+        """,
+        """
+        INSERT INTO service_activity_actions(
+            sequence, action_id, activity_id, project_id, kind, label
+        ) SELECT sequence, action_id, activity_id, project_id, kind, label
+          FROM service_activity_actions_v2
+        """,
+        "DROP TABLE service_activity_actions_v2",
+        """
+        CREATE INDEX service_activity_actions_context
+            ON service_activity_actions(project_id, activity_id, sequence)
+        """,
+    ),
+)
+
 
 class ActivityRecordError(ValueError):
     """A typed domain rejection that leaves the caller's transaction intact."""
@@ -221,6 +255,7 @@ class ActivityRepository:
         self.database = database
         self.database.registry.register(ACTIVITY_RECORDS_MIGRATION)
         self.database.registry.register(ACTIVITY_ACTIONS_MIGRATION)
+        self.database.registry.register(ACTIVITY_SCOPED_ACTIONS_MIGRATION)
         self.database.initialize()
 
     def create_project(self, transaction: Transaction, record: ProjectRecord) -> None:

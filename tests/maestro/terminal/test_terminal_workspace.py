@@ -50,6 +50,7 @@ from maestro.terminal.connection import (
 )
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.rendering import TerminalRenderer, TerminalSize
+from maestro.terminal.registration import RegistrationExtension, RegistrationInteraction
 from maestro.terminal.workspace import View, Workspace, WorkspaceError
 
 
@@ -295,6 +296,29 @@ class TerminalWorkspaceTest(unittest.TestCase):
             },
         )
 
+    def test_registration_command_requires_and_submits_the_overview_path(self) -> None:
+        submitted: list[dict[str, object]] = []
+
+        class Client:
+            def submit(self, envelope):
+                submitted.append(dict(envelope))
+                return {"receipt": {"request_id": envelope["request_id"], "status": "accepted"}}
+
+        context = ExtensionContext(Client(), object())
+        interaction = RegistrationInteraction(request_id_factory=lambda: "register-one")
+
+        with self.assertRaisesRegex(ValueError, "overview-path"):
+            interaction.start(context, "owner/project")
+        interaction.start(context, "owner/project docs/project-overview.md")
+
+        self.assertEqual(
+            {
+                "repository": "owner/project",
+                "overview_path": "docs/project-overview.md",
+            },
+            submitted[0]["payload"],
+        )
+
     def test_real_service_snapshots_select_page_and_render_workspace(self) -> None:
         self.create_project("project-one", "Project One")
         workspace = Workspace(self.client)
@@ -317,6 +341,143 @@ class TerminalWorkspaceTest(unittest.TestCase):
         self.assertEqual(
             "Enlarge the terminal to continue.",
             TerminalRenderer().render(workspace, TerminalSize(79, 24)),
+        )
+
+    def test_registration_extension_view_exposes_connected_activity_controls(self) -> None:
+        self.create_project("project-controls", "Project Controls")
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                "DELETE FROM service_activity_actions WHERE activity_id = ?",
+                ("activity-project-controls",),
+            )
+            transaction.executemany(
+                """INSERT INTO service_activity_actions(
+                       action_id, activity_id, project_id, kind, label
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (
+                    (
+                        "registration-confirm", "activity-project-controls",
+                        "project-controls", "decision", "Confirm registration",
+                    ),
+                    (
+                        "registration-cancel", "activity-project-controls",
+                        "project-controls", "decision", "Cancel registration",
+                    ),
+                    (
+                        "registration-retry.publication-one", "activity-project-controls",
+                        "project-controls", "recovery", "Retry publication",
+                    ),
+                ),
+            )
+        workspace = Workspace(self.client)
+        RegistrationExtension().install(workspace.extensions)
+        workspace.refresh()
+        workspace.select_project("project-controls")
+        workspace.extension_view_name = "registration"
+        workspace.extension_view_content = "State: Ready"
+        workspace.view = View.EXTENSION
+
+        controls = {
+            target.identity for target in workspace.focus_targets()
+            if target.kind == "action"
+        }
+        rendered = TerminalRenderer().render(workspace, TerminalSize(100, 30))
+        self.assertEqual(
+            {
+                "registration-confirm",
+                "registration-cancel",
+                "registration-retry.publication-one",
+            },
+            controls,
+        )
+        self.assertIn("Confirm registration", rendered)
+        self.assertIn("Cancel registration", rendered)
+        self.assertIn("Retry publication", rendered)
+
+        workspace.invoke_activity_action("registration-retry.publication-one")
+        self.assertEqual("publication-one", workspace.input.action_id)
+        self.assertIn(
+            "Describe the intervention",
+            str(workspace.selected_attention_detail["prompt"]),
+        )
+
+    def test_registration_command_reloads_controls_for_its_exact_activity(self) -> None:
+        self.create_project("project-registration", "Project Registration")
+        with self.database.transaction() as transaction:
+            self.records.create_activity(
+                transaction,
+                ActivityRecord(
+                    "registration-project-registration",
+                    "project-registration",
+                    "registration",
+                    "Confirm registration",
+                    "ready_to_confirm",
+                    1,
+                    available_actions=(
+                        ActivityAction(
+                            "registration-confirm", "Confirm registration", "decision"
+                        ),
+                    ),
+                ),
+            )
+
+        underlying = self.client
+
+        class RegistrationClient:
+            def workspace(self, *, connect_timeout: bool = False):
+                return underlying.workspace(connect_timeout=connect_timeout)
+
+            def get_json(self, path: str, *, timeout: int = 15):
+                if path == "/projects/project-registration/registration":
+                    return {
+                        "data": {
+                            "project_id": "project-registration",
+                            "activity_id": "registration-project-registration",
+                            "activity_version": 1,
+                            "state": "Ready to confirm",
+                            "package_ref": {
+                                "repository": "owner/project",
+                                "commit": "a" * 40,
+                                "registration_version": 1,
+                                "candidate_id": "candidate-one",
+                                "manifest_path": "manifest.json",
+                                "manifest_sha256": "b" * 64,
+                            },
+                            "comparison": None,
+                            "agent_retry": None,
+                            "history": [],
+                            "can_confirm": True,
+                        }
+                    }
+                return underlying.get_json(path, timeout=timeout)
+
+            def submit(self, envelope):
+                return underlying.submit(envelope)
+
+        workspace = Workspace(RegistrationClient())
+        RegistrationExtension().install(workspace.extensions)
+        workspace.refresh()
+        workspace.select_project("project-registration")
+        workspace.select_activity("activity-project-registration")
+        self.assertEqual(
+            "activity-project-registration", workspace.selected_activity_id
+        )
+
+        workspace.run_command("registration")
+
+        self.assertEqual(
+            "registration-project-registration", workspace.selected_activity_id
+        )
+        self.assertEqual(
+            "registration-project-registration", workspace.activity_detail["activity_id"]
+        )
+        self.assertEqual(
+            {"registration-confirm"},
+            {
+                target.identity
+                for target in workspace.focus_targets()
+                if target.kind == "action"
+            },
         )
 
     def test_workspace_follows_bounded_project_and_attention_pages(self) -> None:

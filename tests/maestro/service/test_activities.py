@@ -213,6 +213,11 @@ class ProjectActivityRecordsTest(unittest.TestCase):
                 [
                     ("service_activities", 1, "service-activity-records-v1"),
                     ("service_activities", 2, "service-activity-actions-v2"),
+                    (
+                        "service_activities",
+                        3,
+                        "service-activity-scoped-actions-v3",
+                    ),
                 ],
                 connection.execute(
                     """

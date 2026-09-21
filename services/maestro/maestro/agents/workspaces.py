@@ -410,6 +410,94 @@ class WorkspaceManager:
             # Preserve an interrupted/failed workspace for diagnosis; callers choose cleanup.
             raise
 
+    def prepare_preflight(
+        self,
+        *,
+        activity_id: str,
+        run_id: str,
+        assignment_bytes: bytes,
+    ) -> PreparedWorkspace:
+        """Prepare an empty isolated workspace for live route preflight."""
+        project_id = "registration-preflight"
+        for value, field in (
+            (activity_id, "activity_id"),
+            (run_id, "run_id"),
+        ):
+            canonical_identifier(value, field)
+        if not isinstance(assignment_bytes, bytes) or not assignment_bytes:
+            raise WorkspaceError("invalid_assignment", "preflight assignment must be nonempty")
+        try:
+            assignment_bytes.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise WorkspaceError(
+                "invalid_assignment", "preflight assignment must be UTF-8"
+            ) from error
+        run = self.root / project_id / activity_id / "runs" / run_id
+        if run.exists() or run.is_symlink():
+            raise WorkspaceError("workspace_exists", "preflight workspace already exists")
+        self.root.chmod(0o711)
+        run.mkdir(parents=True, mode=0o701)
+        for directory in _path_chain(self.root, run):
+            directory.chmod(0o701)
+        paths = WorkspacePaths(
+            run,
+            run / "source",
+            run / "input",
+            run / "output",
+            run / "scratch",
+            run / "assignment.json",
+        )
+        paths.source.mkdir(mode=0o701)
+        paths.input.mkdir(mode=0o701)
+        paths.output.mkdir(mode=0o707)
+        paths.scratch.mkdir(mode=0o707)
+        paths.assignment.write_bytes(assignment_bytes)
+        _make_read_only(paths.source)
+        _make_read_only(paths.input)
+        paths.assignment.chmod(0o404)
+        immutable = _hash_tree(paths.root, ("source", "input", "assignment.json"))
+        return PreparedWorkspace(
+            project_id,
+            activity_id,
+            run_id,
+            "0" * 40,
+            paths,
+            hashlib.sha256(assignment_bytes).hexdigest(),
+            tuple(sorted(immutable.items())),
+            self.isolation_executable,
+            self.root,
+        )
+
+    def open_existing(
+        self,
+        *,
+        project_id: str,
+        activity_id: str,
+        run_id: str,
+        source_commit: str,
+        assignment_bytes: bytes,
+    ) -> PreparedWorkspace:
+        """Verify and reopen one preserved run without changing any workspace bytes."""
+        for value, field in (
+            (project_id, "project_id"), (activity_id, "activity_id"), (run_id, "run_id")
+        ):
+            canonical_identifier(value, field)
+        run = self.root / project_id / activity_id / "runs" / run_id
+        paths = WorkspacePaths(
+            run, run / "source", run / "input", run / "output", run / "scratch",
+            run / "assignment.json",
+        )
+        if run.is_symlink() or not run.is_dir() or not paths.assignment.is_file():
+            raise WorkspaceError("workspace_missing", "preserved run workspace is unavailable")
+        if paths.assignment.read_bytes() != assignment_bytes:
+            raise WorkspaceError("invalid_assignment", "preserved assignment bytes differ")
+        immutable = _hash_tree(run, ("source", "input", "assignment.json"))
+        return PreparedWorkspace(
+            project_id, activity_id, run_id, source_commit, paths,
+            hashlib.sha256(assignment_bytes).hexdigest(),
+            tuple(sorted(immutable.items())), self.isolation_executable, self.root,
+        )
+
     @staticmethod
     def _checkout(repository: Path, commit: str, destination: Path) -> None:
         try:

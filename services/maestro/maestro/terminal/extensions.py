@@ -19,6 +19,8 @@ class ProjectedState(Protocol):
     selected_project_id: str | None
     selected_activity_id: str | None
 
+    def select_activity(self, activity_id: str) -> None: ...
+
 
 @dataclass(frozen=True)
 class ExtensionContext:
@@ -38,6 +40,14 @@ class InputSubmission:
 
     text: str
     selection_id: str | None = None
+
+
+@dataclass(frozen=True)
+class ActionInput:
+    """An activity action that deliberately opens extension-owned text input."""
+
+    extension_name: str
+    identity: str
 
 
 InputOpenCallback = Callable[[ExtensionContext, str], Mapping[str, object]]

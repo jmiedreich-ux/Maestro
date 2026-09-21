@@ -45,6 +45,7 @@ from maestro.planning.registration_records import (
 )
 from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.service.authentication import VerifiedActor
+from tests.maestro.registration_package_fixture import complete_package
 from maestro.terminal.connection import TerminalConnectionError
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.registration import RegistrationExtension, RegistrationInteraction
@@ -130,23 +131,13 @@ class RegistrationConfirmationTest(unittest.TestCase):
         candidate_id: str,
         previous: RegistrationPackageReference | None = None,
     ) -> tuple[RegistrationAssessment, dict[str, object], dict[str, dict[str, object]]]:
-        record = {
-            "schema_version": 1,
-            "record_type": "summary",
-            "record_id": f"summary-{registration_version}",
-            "subject": "Project summary",
-            "record_version": registration_version,
-            "data": {},
-        }
-        record_hash = hashlib.sha256(canonical_record_bytes(record)).hexdigest()
-        records = {"summary.json": record}
         inventory = SourceInventory(
             "refs/heads/main",
             "b" * 40,
             "docs/overview.md",
             (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
             source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
-            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+            outcomes=(OutcomeReference("APP", "Application", 1, "APP-PM1", "Start", 1),),
         )
         context = RegistrationPackageContext(
             "project-1",
@@ -157,31 +148,23 @@ class RegistrationConfirmationTest(unittest.TestCase):
             self.snapshot_reference,
             "decision/source-selection-1",
         )
-        manifest: dict[str, object] = {
-            "project_id": "project-1",
-            "registration_version": registration_version,
-            "candidate_id": candidate_id,
-            "previous_registration_ref": None if previous is None else previous.as_dict(),
-            "source_repository": "owner/project",
-            "source_commit": inventory.source_commit,
-            "overview_path": inventory.overview_path,
-            "decision_version": "decision-1",
-            "source_ref": inventory.source_ref,
-            "publication_branch": "main",
-            "destination_snapshot_reference": self.snapshot_reference,
-            "selection_decision_ref": "decision/source-selection-1",
-            "content_hash": package_content_hash(records),
-            "files": [
-                {
-                    "path": "summary.json",
-                    "record_id": record["record_id"],
-                    "record_type": record["record_type"],
-                    "record_version": record["record_version"],
-                    "subject": record["subject"],
-                    "sha256": record_hash,
-                }
-            ],
-        }
+        manifest, records = complete_package(
+            context,
+            registration_version=registration_version,
+            candidate_id=candidate_id,
+            previous_registration_ref=(
+                None if previous is None else previous.as_dict()
+            ),
+            review_context={
+                "architect_assignment_id": candidate_id,
+                "architect_run_id": "architect-run",
+                "assignment_id": "reviewer-assignment",
+                "run_id": "reviewer-run",
+                "reviewer_identity": "reviewer-agent",
+                "review_round": 1,
+                "review_limit": 2,
+            },
+        )
         manifest_hash = hashlib.sha256(canonical_record_bytes(manifest)).hexdigest()
         route = ResolvedAgentRoute(
             "architect", "codex", "openai/model-1", "openai", "1", "/tool",
@@ -200,7 +183,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
             AssessmentContext(
                 "project-1", activity_id, inventory, "decision-1", "APP-PM1",
                 "architect-agent", "reviewer-agent", ResolvedRoleRoutes(route, reviewer),
-                AssessmentRun("architect-assignment", "architect-run"),
+                AssessmentRun(candidate_id, "architect-run"),
                 AssessmentRun("reviewer-assignment", "reviewer-run"), context,
             )
         )
@@ -445,10 +428,11 @@ class RegistrationConfirmationTest(unittest.TestCase):
             "data": {
                 "project_id": "project-1", "activity_id": "activity-1",
                 "activity_version": 3, "state": "Ready to confirm",
-                "package_ref": package, "history": [], "can_confirm": True,
+                "package_ref": package, "comparison": None, "agent_retry": None,
+                "history": [], "can_confirm": True,
             }
         })
-        state = _TerminalState("project-1", "activity-1")
+        state = _TerminalState("project-1", "unrelated-activity")
         context = ExtensionContext(client, state)
         registry = ExtensionRegistry()
         interaction = RegistrationInteraction(
@@ -460,6 +444,10 @@ class RegistrationConfirmationTest(unittest.TestCase):
 
         rendered = registry.invoke_command("registration", context)
         self.assertIn("candidate-1", rendered)
+        self.assertEqual("activity-1", state.selected_activity_id)
+        self.assertEqual(
+            "/projects/project-1/registration", client.requested_paths[0]
+        )
         with self.assertRaisesRegex(ValueError, "displayed exact candidate"):
             registry.invoke_action("registration-confirm", context, "candidate-other")
         registry.invoke_action("registration-confirm", context, "candidate-1")
@@ -467,6 +455,108 @@ class RegistrationConfirmationTest(unittest.TestCase):
         self.assertEqual("registration.confirm", client.submissions[0]["operation"])
         self.assertEqual(package, client.submissions[0]["payload"]["package_ref"])
         self.assertEqual(3, client.submissions[0]["expected_version"])
+
+    def test_terminal_renders_authoritative_review_package_and_source_details(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        detail = _terminal_detail("project-1", "activity-1", package)
+        detail["data"].update({
+            "assessment": {
+                "current_step": "ready", "working_agent": None,
+                "review_round": 2, "base_review_limit": 2,
+                "review_grants": 1, "effective_review_limit": 3,
+                "blockers": [],
+                "architect_findings": [{
+                    "local_key": "finding-one", "severity": "non_blocking",
+                    "subject": "Preserved dependency", "explanation": "Exact evidence.",
+                    "impact": "No blocker.", "requested_correction": "None.",
+                    "missing_information": None, "source_refs": [{"path": "docs/overview.md"}],
+                    "affected_items": [{"record_id": "APP-PM1"}],
+                }],
+                "review_findings": [],
+            },
+            "package_manifest": {
+                "candidate_id": "candidate-1", "content_hash": "c" * 64,
+            },
+            "package_records": [{
+                "path": "reviews/review-one.json", "record_type": "review",
+                "record_id": "review-one", "record_version": 2,
+                "subject": "Independent review",
+                "data": {
+                    "assignment_id": "reviewer-assignment", "run_id": "reviewer-run",
+                    "reviewer_identity": "reviewer-agent", "review_round": 2,
+                    "review_limit": 3, "reviewed_content_hash": "c" * 64,
+                    "outcome": "APPROVE", "findings": [],
+                },
+            }],
+            "provenance": {
+                "source_repository": "owner/project", "source_selection": "supplied",
+                "source_ref": "refs/heads/main", "source_commit": "a" * 40,
+                "publication_branch": "main",
+                "destination_snapshot_reference": "d" * 64,
+                "selection_decision_ref": "decision-one",
+                "architect_identity": "architect-agent",
+                "reviewer_identity": "reviewer-agent",
+            },
+        })
+        interaction = RegistrationInteraction()
+        rendered = interaction.open(
+            ExtensionContext(_TerminalClient(detail), _TerminalState("project-1", "activity-1"))
+        )
+        self.assertIn("Exact evidence.", rendered)
+        self.assertIn("Package manifest:", rendered)
+        self.assertIn("reviewer-assignment", rendered)
+        self.assertIn("reviewed_content_hash", rendered)
+        self.assertIn("(supplied)", rendered)
+
+    def test_terminal_cancel_requires_separate_confirmation_and_supports_go_back(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        client = _TerminalClient(_terminal_detail("project-1", "activity-1", package))
+        state = _TerminalState(
+            "project-1", "activity-1", {"available_actions": []}
+        )
+        context = ExtensionContext(client, state)
+        registry = ExtensionRegistry()
+        RegistrationExtension().install(registry)
+        registry.invoke_command("registration", context)
+
+        view = registry.invoke_action("registration-cancel", context)
+        self.assertIn("Choose Cancel registration or Go back", view)
+        self.assertEqual([], client.submissions)
+        self.assertEqual(
+            ["registration-cancel-confirm", "registration-cancel-back"],
+            [item["action_id"] for item in state.activity_detail["available_actions"]],
+        )
+        registry.invoke_action("registration-cancel-back", context)
+        self.assertEqual([], client.submissions)
+        registry.invoke_action("registration-cancel", context)
+        registry.invoke_action("registration-cancel-confirm", context)
+        self.assertEqual("registration.cancel", client.submissions[0]["operation"])
+
+    def test_terminal_requires_explicit_source_choice_before_confirmation(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        detail = _terminal_detail("project-1", "activity-1", package)
+        detail["data"]["can_confirm"] = False
+        detail["data"]["source_consistency"] = {
+            "state": "changed", "source_ref": "refs/heads/main",
+            "reviewed_commit": "a" * 40, "observed_commit": "c" * 40,
+            "changed_paths": ["docs/architecture.md"], "retained": False,
+        }
+        client = _TerminalClient(detail)
+        state = _TerminalState("project-1", "activity-1")
+        context = ExtensionContext(client, state)
+        registry = ExtensionRegistry()
+        RegistrationExtension().install(registry)
+        registry.invoke_command("registration", context)
+
+        view = registry.invoke_action("registration-confirm", context)
+        self.assertIn("Choose whether to retain", view)
+        self.assertEqual([], client.submissions)
+        registry.invoke_action(
+            "registration-source-choice", context, "include_updated_source"
+        )
+        self.assertEqual("registration.source-choice", client.submissions[0]["operation"])
+        self.assertEqual("a" * 40, client.submissions[0]["payload"]["reviewed_commit"])
+        self.assertEqual("c" * 40, client.submissions[0]["payload"]["observed_commit"])
 
     def test_terminal_preserves_lost_acknowledgment_across_projects(self) -> None:
         package1 = _terminal_package("candidate-1", "a")
@@ -501,6 +591,56 @@ class RegistrationConfirmationTest(unittest.TestCase):
         }
         registry.invoke_action("registration-retry", context)
         self.assertIsNone(interaction.pending)
+
+    def test_terminal_shows_exact_update_and_retries_displayed_agent_run(self) -> None:
+        active = _terminal_package("candidate-active", "a")
+        candidate = _terminal_package("candidate-update", "c")
+        candidate["registration_version"] = 2
+        detail = _terminal_detail("project-1", "activity-2", candidate)
+        detail["data"]["comparison"] = {
+            "active_package_ref": active,
+            "candidate_package_ref": candidate,
+            "differences": [
+                {
+                    "kind": "changed",
+                    "item_id": "scope-one",
+                    "subject": "Registration scope",
+                    "area": "scope",
+                    "previous_version": 1,
+                    "candidate_version": 2,
+                    "reason_refs": ["decision-one"],
+                }
+            ],
+        }
+        detail["data"]["agent_retry"] = {
+            "assignment_id": "architect-assignment-one",
+            "failed_run_id": "architect-run-one",
+            "role": "project_architect",
+            "reason": "tool exited",
+            "automatic_limit": 2,
+            "automatic_consumed": 1,
+            "manual_consumed": 0,
+            "state": "paused",
+        }
+        client = _TerminalClient(detail)
+        state = _TerminalState("project-1", "unrelated-activity")
+        context = ExtensionContext(client, state)
+        interaction = RegistrationInteraction(request_id_factory=lambda: "retry-one")
+
+        rendered = interaction.open(context)
+        self.assertIn("candidate-active -> candidate candidate-update", rendered)
+        self.assertIn("changed: Registration scope", rendered)
+        self.assertIn("architect-assignment-one / failed run architect-run-one", rendered)
+        interaction.retry(context, "agent", "Operator verified the credential.")
+
+        self.assertEqual(
+            {
+                "assignment_id": "architect-assignment-one",
+                "failed_run_id": "architect-run-one",
+                "intervention": "Operator verified the credential.",
+            },
+            client.submissions[0]["payload"],
+        )
 
     def test_terminal_preserves_lost_acknowledgment_when_candidate_changes(self) -> None:
         package1 = _terminal_package("candidate-1", "a")
@@ -559,7 +699,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
 def _response(role: str, activity_id: str, artifact: dict[str, str]) -> RegistrationAgentResponse:
     return RegistrationAgentResponse.from_mapping({
         "contract_version": 1,
-        "assignment_id": "architect-assignment" if role == "project_architect" else "reviewer-assignment",
+        "assignment_id": artifact["version"] if role == "project_architect" else "reviewer-assignment",
         "run_id": "architect-run" if role == "project_architect" else "reviewer-run",
         "project_id": "project-1",
         "activity_id": activity_id,
@@ -610,7 +750,7 @@ class _DestinationApi:
         return {"id": 1, "full_name": repository}
 
     def branch_identity(self, _token, _repository, branch):
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": "a" * 40}}
 
     def branch_policy(self, _token, _repository, _branch):
         return self.policy
@@ -620,16 +760,22 @@ class _DestinationApi:
 class _TerminalState:
     selected_project_id: str | None
     selected_activity_id: str | None
+    activity_detail: Mapping[str, object] | None = None
+
+    def select_activity(self, activity_id: str) -> None:
+        self.selected_activity_id = activity_id
 
 
 class _TerminalClient:
     def __init__(self, detail):
         self.detail = detail
         self.submissions: list[dict[str, object]] = []
+        self.requested_paths: list[str] = []
         self.connection_failures = 0
         self.request_response = None
 
     def get_json(self, path: str, *, timeout: int = 15):
+        self.requested_paths.append(path)
         if path.startswith("/requests/") and self.request_response is not None:
             return self.request_response
         return self.detail
@@ -665,6 +811,8 @@ def _terminal_detail(
             "activity_version": 3,
             "state": "Ready to confirm",
             "package_ref": package,
+            "comparison": None,
+            "agent_retry": None,
             "history": [],
             "can_confirm": True,
         }

@@ -16,13 +16,17 @@ from maestro.foundation import (
     canonical_json,
 )
 from maestro.foundation.git_publication import (
+    PublicationError,
     PublicationJournal,
     PublicationResult,
     PublicationStateError,
 )
 from maestro.foundation.github_destination import (
+    GitHubDestination,
     GitHubDestinationAuthorization,
+    GitHubDestinationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
 )
 from maestro.foundation.git_read import GitReadError, validate_object_id
 from maestro.service.authentication import OWNER_AUTHORITY, VerifiedActor
@@ -31,6 +35,8 @@ from .registration import RegistrationAssessment
 from .registration_records import (
     RegistrationRecordError,
     canonical_record_bytes,
+    package_content_hash,
+    validate_package_record,
     validate_registration_package,
 )
 
@@ -227,13 +233,15 @@ class RegistrationConfirmationService:
         self,
         database: Database,
         journal: PublicationJournal,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         if not isinstance(database, Database):
             raise TypeError("registration confirmation requires the service Database")
         if not isinstance(journal, PublicationJournal):
             raise TypeError("registration confirmation requires PublicationJournal")
-        if not isinstance(destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
             raise TypeError("registration confirmation requires GitHubDestinationProvider")
         self.database = database
         self.journal = journal
@@ -253,6 +261,7 @@ class RegistrationConfirmationService:
         expected_parent: str,
         operation_id: str,
         request_id: str,
+        recovery_write_reserved: bool = False,
     ) -> RegistrationPackageReference:
         """Publish and record one complete immutable eligible candidate."""
         assessment = _assessment(assessment)
@@ -266,7 +275,10 @@ class RegistrationConfirmationService:
         ready = assessment.require_ready_candidate()
         try:
             validated = validate_registration_package(
-                manifest, records, assessment.context.package_context
+                manifest,
+                records,
+                assessment.context.package_context,
+                review_context=assessment.package_review_context(),
             )
         except RegistrationRecordError as error:
             raise RegistrationConfirmationError(str(error)) from error
@@ -340,6 +352,7 @@ class RegistrationConfirmationService:
             context.source_repository,
             context.publication_branch,
             context.destination_snapshot_reference,
+            recovery_write_reserved=recovery_write_reserved,
         )
         package_ref = RegistrationPackageReference(
             context.source_repository,
@@ -378,6 +391,8 @@ class RegistrationConfirmationService:
         assessment: RegistrationAssessment,
         actor: VerifiedActor,
         action: OwnerConfirmation,
+        *,
+        recovery_write_reserved: bool = False,
     ) -> ConfirmationResult:
         """Publish the explicit Owner receipt/index and atomically activate it."""
         assessment = _assessment(assessment)
@@ -393,7 +408,9 @@ class RegistrationConfirmationService:
         existing = self._confirmation_by_request(action.request_id)
         if existing is not None:
             self._require_same_confirmation(existing, action, actor)
-            return self._complete_confirmation(existing)
+            return self._complete_confirmation(
+                existing, recovery_write_reserved=recovery_write_reserved
+            )
         self._eligible_candidate(assessment, action)
         pending = self._pending_confirmation(action.project_id)
         if pending is not None:
@@ -466,7 +483,9 @@ class RegistrationConfirmationService:
             ) from error
         row = self._confirmation_by_request(action.request_id)
         assert row is not None
-        return self._complete_confirmation(row)
+        return self._complete_confirmation(
+            row, recovery_write_reserved=recovery_write_reserved
+        )
 
     def active(self, project_id: str) -> ConfirmationResult | None:
         canonical_identifier(project_id, "project_id")
@@ -483,7 +502,237 @@ class RegistrationConfirmationService:
         canonical_identifier(project_id, "project_id")
         return tuple(_confirmation_ref(item) for item in self._confirmed_refs(project_id))
 
-    def _complete_confirmation(self, row: sqlite3.Row | tuple[object, ...]) -> ConfirmationResult:
+    def package_detail(
+        self, package: RegistrationPackageReference,
+    ) -> tuple[Mapping[str, Any], Mapping[str, Mapping[str, Any]]]:
+        """Load one exact published package from the service-owned publication journal."""
+        if not isinstance(package, RegistrationPackageReference):
+            raise TypeError("package detail requires RegistrationPackageReference")
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT operation_id, manifest_sha256, content_hash,
+                          remote_commit, package_ref_json, state, project_id
+                   FROM registration_candidate_publications
+                   WHERE repository = ? AND registration_version = ?
+                     AND candidate_id = ? AND package_ref_json = ?""",
+                (
+                    package.repository,
+                    package.registration_version,
+                    package.candidate_id,
+                    canonical_json(package.as_dict()),
+                ),
+            ).fetchone()
+        if (
+            row is None
+            or str(row[1]) != package.manifest_sha256
+            or str(row[3]) != package.commit
+            or str(row[5]) != "published"
+        ):
+            raise RegistrationConfirmationError(
+                "registration detail package is not the exact published package"
+            )
+        operation = self.journal.operation(str(row[0]))
+        if (
+            operation.operation_type != "registration_candidate"
+            or operation.remote_commit != package.commit
+            or operation.state not in {"verified", "applied"}
+            or package.manifest_path not in operation.files
+        ):
+            raise RegistrationConfirmationError(
+                "registration detail package publication is not verified"
+            )
+        manifest_bytes = operation.files[package.manifest_path]
+        if hashlib.sha256(manifest_bytes).hexdigest() != package.manifest_sha256:
+            raise RegistrationConfirmationError(
+                "registration detail manifest differs from its exact reference"
+            )
+        try:
+            manifest = json.loads(manifest_bytes)
+            if (
+                not isinstance(manifest, Mapping)
+                or manifest.get("project_id") != str(row[6])
+                or manifest.get("registration_version") != package.registration_version
+                or manifest.get("candidate_id") != package.candidate_id
+                or manifest.get("content_hash") != str(row[2])
+                or not isinstance(manifest.get("files"), list)
+                or canonical_record_bytes(manifest) != manifest_bytes
+            ):
+                raise RegistrationRecordError("published package manifest identity is invalid")
+            root = package.manifest_path.rsplit("/", 1)[0]
+            records: dict[str, Mapping[str, Any]] = {}
+            for entry in manifest["files"]:
+                if (
+                    not isinstance(entry, Mapping)
+                    or set(entry) != {
+                        "path", "record_id", "record_type", "record_version",
+                        "subject", "sha256",
+                    }
+                    or not isinstance(entry.get("path"), str)
+                ):
+                    raise RegistrationRecordError("manifest file entry is invalid")
+                relative = str(entry["path"])
+                target = f"{root}/{relative}"
+                if target not in operation.files:
+                    raise RegistrationRecordError("manifest record bytes are missing")
+                raw = operation.files[target]
+                record = validate_package_record(json.loads(raw))
+                if canonical_record_bytes(record) != raw:
+                    raise RegistrationRecordError("package record bytes are not canonical")
+                if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
+                    raise RegistrationRecordError("manifest record hash differs")
+                if any(
+                    entry.get(field) != record[field]
+                    for field in (
+                        "record_id", "record_type", "record_version", "subject"
+                    )
+                ):
+                    raise RegistrationRecordError("manifest record identity differs")
+                records[relative] = record
+            if len(records) != len(manifest["files"]):
+                raise RegistrationRecordError("manifest file inventory is not unique")
+            if set(operation.files) != {
+                package.manifest_path, *(f"{root}/{path}" for path in records)
+            }:
+                raise RegistrationRecordError("published package contains untracked files")
+            if package_content_hash(records) != str(row[2]):
+                raise RegistrationRecordError("published package content hash differs")
+        except (
+            KeyError, TypeError, ValueError, UnicodeDecodeError,
+            json.JSONDecodeError, RegistrationRecordError,
+        ) as error:
+            raise RegistrationConfirmationError(
+                "registration detail package inventory is invalid"
+            ) from error
+        return manifest, records
+
+    def recover_pending(
+        self,
+        activity_id: str | None = None,
+        *,
+        continue_on_error: bool = False,
+        reserved_operation_ids: frozenset[str] = frozenset(),
+    ) -> tuple[dict[str, object], ...]:
+        """Reconcile saved unfinished publications without reconstructing inputs.
+
+        Every byte and destination fact comes from the journal and the
+        service-owned registration rows.  Startup recovery never rereads source
+        files or invents a replacement candidate.
+        """
+        if activity_id is not None:
+            canonical_identifier(activity_id, "activity_id")
+        parameters: tuple[object, ...] = () if activity_id is None else (activity_id,)
+        activity_filter = "" if activity_id is None else " AND activity_id = ?"
+        with self.database.read_connection() as connection:
+            candidates = connection.execute(
+                """SELECT operation_id, request_id, repository, branch,
+                          destination_snapshot_reference, registration_version,
+                          candidate_id, manifest_path, manifest_sha256
+                   FROM registration_candidate_publications
+                   WHERE state = 'prepared'"""
+                + activity_filter
+                + " ORDER BY operation_id",
+                parameters,
+            ).fetchall()
+        recovered: list[dict[str, object]] = []
+        for row in candidates:
+            try:
+                result = self._write_or_recover(
+                    str(row[0]), str(row[2]), str(row[3]), str(row[4]),
+                    recovery_write_reserved=str(row[0]) in reserved_operation_ids,
+                )
+                package = RegistrationPackageReference(
+                    str(row[2]), result.remote_commit, int(row[5]), str(row[6]),
+                    str(row[7]), str(row[8]),
+                )
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE registration_candidate_publications
+                           SET state = 'published', remote_commit = ?, package_ref_json = ?
+                           WHERE operation_id = ? AND state = 'prepared'""",
+                        (
+                            result.remote_commit,
+                            canonical_json(package.as_dict()),
+                            str(row[0]),
+                        ),
+                    )
+                    self.journal.mark_applied(
+                        transaction,
+                        operation_id=str(row[0]),
+                        request_id=str(row[1]),
+                    )
+                recovered.append(
+                    {
+                        "kind": "candidate",
+                        "operation_id": str(row[0]),
+                        "state": "published",
+                    }
+                )
+            except (
+                GitHubDestinationError,
+                PublicationError,
+                RegistrationConfirmationError,
+            ) as error:
+                if not continue_on_error:
+                    raise
+                recovered.append(
+                    {
+                        "kind": "candidate",
+                        "operation_id": str(row[0]),
+                        "state": "paused",
+                        "error": str(error),
+                    }
+                )
+
+        with self.database.read_connection() as connection:
+            confirmations = connection.execute(
+                """SELECT confirmation_id, request_id, operation_id, project_id,
+                          activity_id, expected_activity_version, owner_id, confirmed_at,
+                          package_ref_json, previous_confirmation_ref_json,
+                          receipt_path, receipt_sha256, receipt_bytes, index_bytes,
+                          expected_index_bytes, state, remote_commit,
+                          confirmation_ref_json
+                   FROM registration_confirmations
+                   WHERE state = 'pending'"""
+                + activity_filter
+                + " ORDER BY sequence",
+                parameters,
+            ).fetchall()
+        for row in confirmations:
+            try:
+                result = self._complete_confirmation(
+                    tuple(row),
+                    recovery_write_reserved=str(row[2]) in reserved_operation_ids,
+                )
+                recovered.append(
+                    {
+                        "kind": "confirmation",
+                        "confirmation_id": str(row[0]),
+                        "state": result.status,
+                    }
+                )
+            except (
+                GitHubDestinationError,
+                PublicationError,
+                RegistrationConfirmationError,
+            ) as error:
+                if not continue_on_error:
+                    raise
+                recovered.append(
+                    {
+                        "kind": "confirmation",
+                        "confirmation_id": str(row[0]),
+                        "state": "paused",
+                        "error": str(error),
+                    }
+                )
+        return tuple(recovered)
+
+    def _complete_confirmation(
+        self,
+        row: sqlite3.Row | tuple[object, ...],
+        *,
+        recovery_write_reserved: bool = False,
+    ) -> ConfirmationResult:
         state = str(row[15])
         package_ref = RegistrationPackageReference.from_mapping(json.loads(str(row[8])))
         if state == "confirmed":
@@ -520,7 +769,8 @@ class RegistrationConfirmationService:
             authorization=authorization,
         )
         result = self._write_or_recover(
-            str(row[2]), repository, branch, snapshot_reference
+            str(row[2]), repository, branch, snapshot_reference,
+            recovery_write_reserved=recovery_write_reserved,
         )
         confirmation_ref = ConfirmationReference(
             str(row[0]), str(row[10]), str(row[11])
@@ -597,31 +847,23 @@ class RegistrationConfirmationService:
     def _write_or_recover(
         self, operation_id: str, repository: str, branch: str,
         snapshot_reference: str,
+        *,
+        recovery_write_reserved: bool = False,
     ) -> PublicationResult:
         operation = self.journal.operation(operation_id)
         authorization = self._fresh_authorization(repository, branch, snapshot_reference)
         if operation.state in {"verified", "applied"}:
             return self.journal.attempt(operation_id, authorization)
-        if operation.state in {"prepared", "reconciled"}:
-            try:
-                return self.journal.attempt(operation_id, authorization)
-            except PublicationStateError:
-                if self.journal.operation(operation_id).state != "reconciled":
-                    raise
-                authorization = self._fresh_authorization(
-                    repository, branch, snapshot_reference
+        if operation.state == "prepared":
+            return self.journal.attempt(operation_id, authorization)
+        if operation.state == "reconciled":
+            if not recovery_write_reserved:
+                raise PublicationStateError(
+                    "publication retry requires a saved retry reservation"
                 )
-                return self.journal.attempt(operation_id, authorization)
+            return self.journal.attempt(operation_id, authorization)
         if operation.state in {"writing", "paused"}:
-            try:
-                return self.journal.reconcile(operation_id, authorization)
-            except PublicationStateError:
-                if self.journal.operation(operation_id).state != "reconciled":
-                    raise
-                authorization = self._fresh_authorization(
-                    repository, branch, snapshot_reference
-                )
-                return self.journal.attempt(operation_id, authorization)
+            return self.journal.reconcile(operation_id, authorization)
         raise RegistrationConfirmationError("publication operation has an invalid state")
 
     def _fresh_authorization(

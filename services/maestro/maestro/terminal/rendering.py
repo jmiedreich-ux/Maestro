@@ -169,11 +169,22 @@ class TerminalRenderer:
             rendered = content.splitlines() or [""]
         else:
             rendered = [str(content)]
-        return [title] + rendered
+        lines = [title] + rendered
+        detail = workspace.selected_attention_detail
+        if isinstance(detail, dict) and isinstance(detail.get("prompt"), str):
+            lines.append(f"Action: {detail['prompt']}")
+        for target in workspace.focus_targets():
+            if target.kind == "action":
+                lines.append(
+                    f"{_focus(workspace, target.kind, target.identity)} {target.label}"
+                )
+        return lines
 
     @staticmethod
     def _input(workspace: Workspace) -> list[str]:
-        if workspace.input.question_id:
+        if workspace.input.action_id:
+            context = f"Complete action {workspace.input.action_id}"
+        elif workspace.input.question_id:
             context = f"Answer question {workspace.input.question_id}"
         elif workspace.selected_project_id:
             context = "Commands only"

@@ -21,6 +21,7 @@ from maestro.foundation import (
     DomainMigration,
     Transaction,
     canonical_identifier,
+    canonical_json,
     positive_version,
 )
 
@@ -146,6 +147,7 @@ class DeliveredAnswer:
     choice_id: str | None
     original_question_id: str | None
     previous_answer_id: str | None
+    requester: str
 
 
 class Recipient(Protocol):
@@ -175,6 +177,16 @@ class QuestionService:
             canonical_identifier(identity, "recipient")
             if not callable(recipient):
                 raise TypeError("question recipient must be callable")
+
+    def register_recipient(self, identity: str, recipient: Recipient) -> None:
+        """Install one process recipient during application composition."""
+        canonical_identifier(identity, "recipient")
+        if not callable(recipient):
+            raise TypeError("question recipient must be callable")
+        existing = self._recipients.get(identity)
+        if existing is not None and existing is not recipient:
+            raise ValueError(f"question recipient is already installed: {identity}")
+        self._recipients[identity] = recipient
 
     @property
     def operation_handler(self) -> OperationHandler:
@@ -395,7 +407,13 @@ class QuestionService:
             apply=apply,
         )
 
-    def publish(self, transaction: Transaction, question: LinkedQuestion) -> None:
+    def publish(
+        self,
+        transaction: Transaction,
+        question: LinkedQuestion,
+        *,
+        emit_event: bool = False,
+    ) -> None:
         """Publish a visible question and its answer contract atomically."""
         self._validate_question(question)
         if question.original_question_id is not None:
@@ -456,6 +474,22 @@ class QuestionService:
             "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
             (question.question_id, question.version),
         )
+        if emit_event:
+            transaction.execute(
+                """INSERT INTO outbox_events(
+                       schema_version, event_id, occurred_at, project_id,
+                       activity_id, type, data_json
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    1,
+                    f"question-published-{question.question_id}",
+                    _utc_now(),
+                    question.project_id,
+                    question.activity_id,
+                    "question.published",
+                    canonical_json({"question_id": question.question_id}),
+                ),
+            )
 
     def prepare_answer(self, request: RequestEnvelope) -> PreparedOperation:
         if (
@@ -598,8 +632,13 @@ class QuestionService:
             )
         delivered: list[str] = []
         for identity in identities:
-            if self.deliver_answer(identity):
-                delivered.append(identity)
+            try:
+                if self.deliver_answer(identity):
+                    delivered.append(identity)
+            except RecipientDeliveryInterrupted:
+                # One unavailable process must not prevent other installed
+                # recipients from reconciling their saved answers at startup.
+                continue
         return tuple(delivered)
 
     def _accept_answer(
@@ -766,10 +805,12 @@ class QuestionService:
                 """
                 SELECT a.answer_id, a.request_id, a.question_id, a.project_id,
                        a.activity_id, d.recipient, a.question_version, a.text,
-                       a.choice_id, q.original_question_id, q.previous_answer_id
+                       a.choice_id, q.original_question_id, q.previous_answer_id,
+                       questions.requester
                 FROM service_question_answers AS a
                 JOIN service_question_deliveries AS d USING(answer_id)
                 JOIN service_question_details AS q USING(question_id)
+                JOIN service_questions AS questions USING(question_id)
                 WHERE a.answer_id = ? AND d.state = 'pending'
                 """,
                 (answer_id,),
@@ -788,6 +829,7 @@ class QuestionService:
             choice_id=None if row[8] is None else str(row[8]),
             original_question_id=None if row[9] is None else str(row[9]),
             previous_answer_id=None if row[10] is None else str(row[10]),
+            requester=str(row[11]),
         )
 
     @staticmethod

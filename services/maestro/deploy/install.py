@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import grp
 import hashlib
 import importlib.metadata
@@ -16,6 +17,8 @@ import stat
 import subprocess
 import sys
 import tempfile
+import tomllib
+from io import StringIO
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Sequence
@@ -113,6 +116,7 @@ class Installation:
     port: int
     schema_sources: tuple[Path, ...] = ()
     production: bool = False
+    registration_configuration: str | None = None
 
     def validate(self) -> None:
         accounts = {self.operator.name, self.service.name, self.agent.name}
@@ -138,6 +142,8 @@ class Installation:
             raise InstallationError("service port must be between 1 and 65535")
         for source in self.schema_sources:
             _validate_schema_source(source)
+        if self.registration_configuration is not None:
+            _validate_registration_configuration(self.registration_configuration)
 
 
 def install(configuration: Installation, *, replace: bool = False) -> str:
@@ -164,6 +170,10 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
             raise InstallationError(f"refusing linked installation target: {path}")
         _reject_linked_components(path, paths.root)
     _preflight_schema_bundles(configuration.schema_sources, paths.schema_dir, replace)
+    if configuration.production:
+        subprocess.run(
+            ["loginctl", "enable-linger", configuration.service.name], check=True
+        )
 
     token = secrets.token_hex(32)
     digest = hashlib.sha256(token.encode("ascii")).hexdigest()
@@ -180,11 +190,18 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
     unit = (
         unit_template.replace("@SERVICE_USER@", configuration.service.name)
         .replace("@SERVICE_GROUP@", configuration.service.name)
+        .replace("@SERVICE_UID@", str(configuration.service.uid))
         .replace("@SERVICE_EXECUTABLE@", str(configuration.service_executable))
         .replace("@CONFIG_FILE@", str(paths.config_file))
         .replace("@DATA_DIR@", str(paths.data_dir))
     )
-    if "@" in unit:
+    if any(
+        marker in unit
+        for marker in (
+            "@SERVICE_USER@", "@SERVICE_GROUP@", "@SERVICE_UID@",
+            "@SERVICE_EXECUTABLE@", "@CONFIG_FILE@", "@DATA_DIR@",
+        )
+    ):
         raise InstallationError("systemd unit contains an unresolved installation value")
 
     _secure_directory(paths.config_dir, 0o750, 0, configuration.service.gid)
@@ -218,6 +235,8 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
         agent_user=configuration.agent.name,
         port=configuration.port,
     )
+    if configuration.registration_configuration is not None:
+        service_config += "\n" + configuration.registration_configuration.rstrip() + "\n"
     cli_config = (
         f'service_url = "http://localhost:{configuration.port}"\n'
         f'owner_credential_file = "{paths.owner_token}"\n'
@@ -250,15 +269,26 @@ def discover_installed_schema_sources() -> tuple[Path, ...]:
         distribution = importlib.metadata.distribution("maestro")
     except importlib.metadata.PackageNotFoundError:
         return ()
+    entries = [str(entry) for entry in distribution.files or ()]
+    record = distribution.read_text("RECORD")
+    if record is not None:
+        entries.extend(row[0] for row in csv.reader(StringIO(record)) if row)
     sources: list[Path] = []
-    for entry in distribution.files or ():
-        parts = PurePosixPath(str(entry)).parts
+    distribution_root = Path(distribution.locate_file(""))
+    for entry in entries:
+        parts = PurePosixPath(entry).parts
         for index, part in enumerate(parts):
             if part == "schemas":
-                candidate = Path(distribution.locate_file(entry))
                 relative = parts[index + 1 :]
                 if len(relative) >= 3 and relative[-1] == "schema.json":
-                    sources.append(candidate.parent)
+                    candidates = (
+                        Path(distribution.locate_file(entry)),
+                        distribution_root.joinpath(*parts[index:]),
+                    )
+                    for candidate in candidates:
+                        if candidate.is_file():
+                            sources.append(candidate.parent)
+                            break
                 break
     return tuple(sorted(set(sources)))
 
@@ -323,6 +353,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--agent-uid", type=int)
     parser.add_argument("--agent-gid", type=int)
     parser.add_argument(
+        "--registration-config",
+        type=Path,
+        help=(
+            "TOML file containing the complete tools, repositories, "
+            "repository_bindings, and registration tables"
+        ),
+    )
+    parser.add_argument(
         "--verify-installed-host",
         action="store_true",
         help="read-only check for required real installed-host evidence",
@@ -378,6 +416,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         operator_home = arguments.operator_home or Path(pwd.getpwnam(operator.name).pw_dir)
         paths = InstallationPaths.build(arguments.root, operator_home)
         sources = discover_installed_schema_sources()
+        registration_configuration = (
+            None
+            if arguments.registration_config is None
+            else _read_registration_configuration(arguments.registration_config)
+        )
         configuration = Installation(
             paths=paths,
             operator=operator,
@@ -387,6 +430,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             owner_id=arguments.owner_id,
             port=arguments.port,
             schema_sources=sources,
+            registration_configuration=registration_configuration,
             production=not arguments.staged_test,
         )
         install(configuration, replace=arguments.replace)
@@ -407,6 +451,7 @@ def verify_installed_host(operator_name: str | None) -> int:
     reasons: list[str] = []
     operator: Account | None = None
     operator_home: Path | None = None
+    service: Account | None = None
     if not operator_name:
         reasons.append("--operator-user is required for Owner credential checks")
     else:
@@ -457,6 +502,23 @@ def verify_installed_host(operator_name: str | None) -> int:
         else:
             if result.returncode != 0:
                 reasons.append(f"systemd unit is not {check.removeprefix('is-')}")
+
+    if service is not None:
+        user_unit = f"user@{service.uid}.service"
+        try:
+            user_manager = subprocess.run(
+                ["systemctl", "is-active", "--quiet", user_unit],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            reasons.append(f"persistent service user manager check unavailable: {error}")
+        else:
+            if user_manager.returncode != 0:
+                reasons.append("persistent service user manager is not active")
+        if not Path(f"/run/user/{service.uid}/bus").exists():
+            reasons.append("persistent service user manager bus is unavailable")
 
     if os.geteuid() != 0:
         reasons.append(
@@ -509,6 +571,53 @@ def _service_configuration(
         f'id = "{owner_id}"\n'
         f'token_sha256 = "{digest}"\n'
     )
+
+
+def _read_registration_configuration(path: Path) -> str:
+    path = Path(path).absolute()
+    try:
+        details = os.lstat(path)
+        if stat.S_ISLNK(details.st_mode) or not stat.S_ISREG(details.st_mode):
+            raise InstallationError(
+                "registration configuration must be a regular file, not a link"
+            )
+        if stat.S_IMODE(details.st_mode) & 0o022:
+            raise InstallationError(
+                "registration configuration must not be writable by group or other"
+            )
+        if details.st_size > 1024 * 1024:
+            raise InstallationError("registration configuration is too large")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            raw = os.read(descriptor, 1024 * 1024 + 1)
+        finally:
+            os.close(descriptor)
+        value = raw.decode("utf-8")
+    except InstallationError:
+        raise
+    except (OSError, UnicodeError) as error:
+        raise InstallationError(
+            f"registration configuration cannot be read: {path}"
+        ) from error
+    _validate_registration_configuration(value)
+    return value
+
+
+def _validate_registration_configuration(value: str) -> None:
+    try:
+        decoded = tomllib.loads(value)
+    except tomllib.TOMLDecodeError as error:
+        raise InstallationError("registration configuration is not valid TOML") from error
+    required = {"tools", "repositories", "repository_bindings", "registration"}
+    if set(decoded) != required:
+        raise InstallationError(
+            "registration configuration must contain only the complete tools, "
+            "repositories, repository_bindings, and registration tables"
+        )
+    if any(not isinstance(decoded[name], dict) or not decoded[name] for name in required):
+        raise InstallationError(
+            "registration configuration tables must be nonempty"
+        )
 
 
 def _deploy_template(name: str) -> str:

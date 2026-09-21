@@ -22,3 +22,4 @@ maestro = ["**/*.json"]
 
 [tool.setuptools.data-files]
 "share/maestro/deploy" = ["deploy/install.py", "deploy/maestro.service", "deploy/README.md", "deploy/maestro-agent-egress", "deploy/maestro-agent-egress.sudoers"]
+"schemas/registration-process/1" = ["schemas/registration-process/1/schema.json"]

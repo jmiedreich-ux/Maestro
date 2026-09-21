@@ -8,6 +8,7 @@ provider instance and is consumed by the bound Git transport immediately.
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import time
@@ -27,6 +28,7 @@ from .credentials import (
     normalize_repository,
     validate_branch,
 )
+from .git_read import GitReadError, validate_object_id
 
 
 class GitHubDestinationError(RuntimeError):
@@ -103,7 +105,11 @@ class GitHubAppDestinationProfile:
         _positive(self.installation_id, "installation_id")
         slug = _identifier(self.app_slug, "app_slug").lower()
         repositories = tuple(normalize_repository(item) for item in self.allowed_repositories)
-        branches = tuple(validate_branch(item) for item in self.allowed_branches)
+        branches = tuple(self.allowed_branches)
+        if any(not isinstance(item, str) or not item for item in branches):
+            raise GitHubDestinationConfigurationError(
+                "allowed_branches must be branch-name patterns"
+            )
         if not repositories or len(set(repositories)) != len(repositories):
             raise GitHubDestinationConfigurationError("allowed_repositories must be unique and nonempty")
         if not branches or len(set(branches)) != len(branches):
@@ -114,7 +120,9 @@ class GitHubAppDestinationProfile:
         object.__setattr__(self, "api_base_url", _api_base_url(self.api_base_url))
 
     def allows(self, repository: str, branch: str) -> bool:
-        return repository in self.allowed_repositories and branch in self.allowed_branches
+        return repository in self.allowed_repositories and any(
+            fnmatch.fnmatchcase(branch, pattern) for pattern in self.allowed_branches
+        )
 
     @property
     def configuration_hash(self) -> str:
@@ -198,6 +206,7 @@ class GitHubDestinationAuthorization:
     observed_at: float
     evidence_hashes: Mapping[str, str]
     reason: str | None = None
+    destination_head: str | None = None
     _token: GitHubInstallationToken | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -209,6 +218,11 @@ class GitHubDestinationAuthorization:
             raise ValueError("destination evidence hashes are invalid")
         if self.decision == "allowed" and self._token is None:
             raise ValueError("allowed destination result requires an ephemeral installation token")
+        if self.decision == "allowed":
+            try:
+                validate_object_id(self.destination_head, "destination head")
+            except GitReadError as error:
+                raise ValueError(str(error)) from error
 
     def durable_record(self) -> dict[str, Any]:
         """Return the only form that callers may persist or expose."""
@@ -256,6 +270,11 @@ class GitHubDestinationProvider:
             branch_identity = self._api.branch_identity(token, repository, branch)
             if branch_identity.get("name") != branch:
                 return self._result("blocked", snapshot, observed_at, {"repository": _digest(repository_identity), "branch": _digest(branch_identity)}, "GitHub destination branch does not exist")
+            commit = branch_identity.get("commit")
+            destination_head = validate_object_id(
+                commit.get("sha") if isinstance(commit, Mapping) else None,
+                "destination head",
+            )
             policy = self._api.branch_policy(token, repository, branch)
             evidence = {
                 "app": _digest(app), "installation": _digest(installation),
@@ -267,8 +286,11 @@ class GitHubDestinationProvider:
                 return self._result("blocked", snapshot, observed_at, evidence, "GitHub branch protection or an active ruleset blocks direct publication")
             if token.expires_at <= observed_at:
                 return self._result("unverifiable", snapshot, observed_at, evidence, "GitHub installation token is already expired")
-            return GitHubDestinationAuthorization("allowed", snapshot, observed_at, evidence, _token=token)
-        except (GitHubDestinationError, RepositoryCredentialError, OSError, ValueError, TypeError, urllib.error.URLError) as error:
+            return GitHubDestinationAuthorization(
+                "allowed", snapshot, observed_at, evidence,
+                destination_head=destination_head, _token=token,
+            )
+        except (GitHubDestinationError, GitReadError, RepositoryCredentialError, OSError, ValueError, TypeError, urllib.error.URLError) as error:
             return self._result("unverifiable", snapshot, observed_at, {}, f"GitHub destination could not be verified: {type(error).__name__}")
 
     def require_fresh_match(
@@ -312,6 +334,91 @@ class GitHubDestinationProvider:
         hashes: Mapping[str, str], reason: str,
     ) -> GitHubDestinationAuthorization:
         return GitHubDestinationAuthorization(decision, snapshot, observed_at, hashes, reason)
+
+
+class GitHubDestinationRouter:
+    """Route each exact repository to its one configured destination provider."""
+
+    def __init__(self, providers: Mapping[str, GitHubDestinationProvider]) -> None:
+        checked: dict[str, GitHubDestinationProvider] = {}
+        for repository, provider in providers.items():
+            normalized = normalize_repository(repository)
+            if not isinstance(provider, GitHubDestinationProvider):
+                raise TypeError("GitHub destination routes require configured providers")
+            if normalized in checked or normalized not in provider.profile.allowed_repositories:
+                raise GitHubDestinationConfigurationError(
+                    "each repository requires one matching GitHub destination provider"
+                )
+            checked[normalized] = provider
+        if not checked:
+            raise GitHubDestinationConfigurationError(
+                "at least one GitHub destination route is required"
+            )
+        self._providers = checked
+
+    @property
+    def providers(self) -> tuple[GitHubDestinationProvider, ...]:
+        return tuple(dict.fromkeys(self._providers.values()))
+
+    def provider_for(self, repository: str) -> GitHubDestinationProvider:
+        normalized = normalize_repository(repository)
+        try:
+            return self._providers[normalized]
+        except KeyError as error:
+            raise GitHubDestinationConfigurationError(
+                "repository has no configured GitHub destination route"
+            ) from error
+
+    def authorize(
+        self, repository: str, branch: str, *, now: float | None = None
+    ) -> GitHubDestinationAuthorization:
+        return self.provider_for(repository).authorize(repository, branch, now=now)
+
+    def require_fresh_match(
+        self,
+        result: GitHubDestinationAuthorization,
+        authorization: AuthorizedRepository,
+        *,
+        now: float | None = None,
+    ) -> None:
+        self.provider_for(authorization.repository).require_fresh_match(
+            result, authorization, now=now
+        )
+
+    def bind_transport(
+        self,
+        result: GitHubDestinationAuthorization,
+        transport: ServiceGitTransport,
+        authorization: AuthorizedRepository,
+        *,
+        now: float | None = None,
+    ):
+        return self.provider_for(authorization.repository).bind_transport(
+            result, transport, authorization, now=now
+        )
+
+
+GitHubDestination = GitHubDestinationProvider | GitHubDestinationRouter
+
+
+def destination_provider_for(
+    destination: GitHubDestination, repository: str
+) -> GitHubDestinationProvider:
+    if isinstance(destination, GitHubDestinationRouter):
+        return destination.provider_for(repository)
+    if isinstance(destination, GitHubDestinationProvider):
+        return destination
+    raise TypeError("GitHub destination provider is invalid")
+
+
+def destination_providers(
+    destination: GitHubDestination,
+) -> tuple[GitHubDestinationProvider, ...]:
+    if isinstance(destination, GitHubDestinationRouter):
+        return destination.providers
+    if isinstance(destination, GitHubDestinationProvider):
+        return (destination,)
+    raise TypeError("GitHub destination provider is invalid")
 
 
 class GitHubRestDestinationApi:

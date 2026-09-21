@@ -18,6 +18,7 @@ from maestro.foundation.git_publication import (
 from maestro.foundation.github_destination import (
     GitHubDestinationAuthorization,
     GitHubDestinationProvider,
+    destination_provider_for,
 )
 from maestro.service.authentication import VerifiedActor
 from maestro.service.processes import ProcessSnapshot
@@ -112,11 +113,32 @@ REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_RECOVERY_START_RESERVATION_MIGRATION = DomainMigration(
+    domain="registration_recovery",
+    version=3,
+    identity="registration-recovery-start-reservation-v3",
+    statements=(
+        """
+        CREATE TABLE registration_project_reservations(
+            activity_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('reserved', 'bound', 'released'))
+        )
+        """,
+        """
+        CREATE UNIQUE INDEX registration_project_active_reservation
+        ON registration_project_reservations(project_id)
+        WHERE state != 'released'
+        """,
+    ),
+)
+
 
 def registration_recovery_migrations() -> tuple[DomainMigration, ...]:
     return (
         REGISTRATION_RECOVERY_MIGRATION,
         REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION,
+        REGISTRATION_RECOVERY_START_RESERVATION_MIGRATION,
     )
 
 
@@ -313,6 +335,10 @@ class HistoricalDestinationProfiles:
             )
         route = self._routes.get(snapshot_reference)
         if route is None:
+            configuration_hash = snapshot.get("configuration_hash")
+            if isinstance(configuration_hash, str):
+                route = self._routes.get(configuration_hash)
+        if route is None:
             raise RegistrationRecoverySetupError(
                 "saved destination-profile identity is unavailable"
             )
@@ -360,6 +386,35 @@ class RegistrationRecoveryService:
         canonical_identifier(activity_id, "activity_id")
         with self.database.read_connection() as connection:
             return self._authoritative_continuity_in(connection, project_id, activity_id)
+
+    def reserve_intake_in(
+        self, transaction: Transaction, project_id: str, activity_id: str
+    ) -> None:
+        """Atomically prove idleness and reserve before re-registration intake."""
+        canonical_identifier(project_id, "project_id")
+        canonical_identifier(activity_id, "activity_id")
+        self._require_idle(transaction, project_id, activity_id)
+        try:
+            transaction.execute(
+                """INSERT INTO registration_project_reservations(
+                       activity_id, project_id, state
+                   ) VALUES (?, ?, 'reserved')""",
+                (activity_id, project_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise RegistrationRecoveryError(
+                "another project-work start already holds the project reservation"
+            ) from error
+
+    def release_intake_reservation_in(
+        self, transaction: Transaction, activity_id: str
+    ) -> None:
+        canonical_identifier(activity_id, "activity_id")
+        transaction.execute(
+            """UPDATE registration_project_reservations SET state = 'released'
+               WHERE activity_id = ? AND state != 'released'""",
+            (activity_id,),
+        )
 
     def begin(
         self,
@@ -465,6 +520,11 @@ class RegistrationRecoveryService:
                         canonical_json(authoritative_process_record),
                     ),
                 )
+                transaction.execute(
+                    """UPDATE registration_project_reservations SET state = 'bound'
+                       WHERE activity_id = ? AND project_id = ? AND state = 'reserved'""",
+                    (activity_id, project_id),
+                )
             except sqlite3.IntegrityError as error:
                 raise RegistrationRecoveryError(
                     "another re-registration start already holds the project reservation"
@@ -485,6 +545,15 @@ class RegistrationRecoveryService:
         if row is not None and str(row[0]) != activity_id:
             raise RegistrationRecoveryError(
                 "project work cannot start while re-registration is reserved"
+            )
+        early = transaction.execute(
+            """SELECT activity_id FROM registration_project_reservations
+               WHERE project_id = ? AND state != 'released'""",
+            (project_id,),
+        ).fetchone()
+        if early is not None and str(early[0]) != activity_id:
+            raise RegistrationRecoveryError(
+                "project work cannot start while re-registration intake is reserved"
             )
 
     def record_candidate(
@@ -551,6 +620,64 @@ class RegistrationRecoveryService:
                 (canonical_json(continuity.as_dict()), activity_id),
             )
         return comparison
+
+    def record_candidate_from_saved_reasons(
+        self,
+        activity_id: str,
+        candidate_package_ref: RegistrationPackageReference,
+    ) -> RegistrationComparison:
+        """Build comparison reasons only from the published package records."""
+        with self.database.read_connection() as connection:
+            row = self._attempt_in(connection, activity_id)
+            active = RegistrationPackageReference.from_mapping(json.loads(str(row[3])))
+            _active_records, active_items = self._package_records_in(connection, active)
+            candidate_records, candidate_items = self._package_records_in(
+                connection, candidate_package_ref
+            )
+        before = _unique_items(active_items)
+        after = _unique_items(candidate_items)
+        changed = {
+            item_id
+            for item_id in set(before) | set(after)
+            if before.get(item_id) != after.get(item_id)
+        }
+        affected: dict[str, list[str]] = {item_id: [] for item_id in changed}
+        fallback: list[str] = []
+        for record in candidate_records.values():
+            record_type = record.get("record_type")
+            identifier = record.get("record_id")
+            data = record.get("data")
+            if record_type == "decision" and isinstance(identifier, str):
+                fallback.append(identifier)
+                refs = data.get("affected_refs") if isinstance(data, Mapping) else None
+                if isinstance(refs, list):
+                    for item_id in changed & {str(value) for value in refs}:
+                        affected[item_id].append(identifier)
+            elif record_type in {"assessment", "review"} and isinstance(data, Mapping):
+                findings = data.get("findings")
+                if isinstance(findings, list):
+                    for finding in findings:
+                        if not isinstance(finding, Mapping):
+                            continue
+                        identifier = finding.get("finding_id", finding.get("local_key"))
+                        if isinstance(identifier, str) and identifier:
+                            fallback.append(identifier)
+                            items = finding.get("affected_items", [])
+                            if isinstance(items, list):
+                                for item in items:
+                                    if isinstance(item, Mapping):
+                                        item_id = item.get("record_id")
+                                        if item_id in affected:
+                                            affected[str(item_id)].append(identifier)
+        if not fallback and changed:
+            raise RegistrationRecoveryError(
+                "changed registration candidate lacks saved finding or decision reasons"
+            )
+        reasons = {
+            item_id: tuple(dict.fromkeys(values or fallback[:1]))
+            for item_id, values in affected.items()
+        }
+        return self.record_candidate(activity_id, candidate_package_ref, reasons)
 
     def bind_publication(self, activity_id: str, operation_id: str) -> None:
         canonical_identifier(activity_id, "activity_id")
@@ -624,7 +751,10 @@ class RegistrationRecoveryService:
             route, authorization = self._route_for(row, operation_id)
             if (
                 confirmation_service.journal is not route.journal
-                or confirmation_service.destination_provider is not route.destination_provider
+                or destination_provider_for(
+                    confirmation_service.destination_provider,
+                    str(authorization.snapshot["repository"]),
+                ) is not route.destination_provider
             ):
                 raise RegistrationRecoverySetupError(
                     "candidate service is not bound to the saved destination profile"
@@ -647,6 +777,7 @@ class RegistrationRecoveryService:
                 expected_parent=expected_parent,
                 operation_id=operation_id,
                 request_id=publication_request_id,
+                recovery_write_reserved=reserved,
             )
             if reserved:
                 self._complete_retry(retry_request_id, activity_id)
@@ -782,7 +913,10 @@ class RegistrationRecoveryService:
             raise
         if (
             confirmation_service.journal is not route.journal
-            or confirmation_service.destination_provider is not route.destination_provider
+            or destination_provider_for(
+                confirmation_service.destination_provider,
+                str(authorization.snapshot["repository"]),
+            ) is not route.destination_provider
         ):
             error = RegistrationRecoverySetupError(
                 "confirmation service is not bound to the saved destination profile"
@@ -814,7 +948,12 @@ class RegistrationRecoveryService:
                 (activity_id,),
             )
         try:
-            result = confirmation_service.confirm(assessment, actor, action)
+            result = confirmation_service.confirm(
+                assessment,
+                actor,
+                action,
+                recovery_write_reserved=reserved,
+            )
         except Exception as error:
             self._pause(activity_id, str(error))
             raise
@@ -835,6 +974,57 @@ class RegistrationRecoveryService:
             self._complete_retry(retry_request_id, activity_id, preserve_completed=True)
         else:
             self._finish_retry_request_if_present(retry_request_id)
+        return result
+
+    def confirm_replacement(
+        self,
+        activity_id: str,
+        confirmation_service: RegistrationConfirmationService,
+        assessment: RegistrationAssessment,
+        actor: VerifiedActor,
+        action: OwnerConfirmation,
+    ) -> ConfirmationResult:
+        """Confirm a compared replacement while retaining the old active record."""
+        canonical_identifier(activity_id, "activity_id")
+        if not isinstance(confirmation_service, RegistrationConfirmationService):
+            raise TypeError("replacement confirmation requires RegistrationConfirmationService")
+        row = self._attempt(activity_id)
+        candidate = _optional_package(row[10])
+        if (
+            str(row[9]) != "candidate_ready"
+            or candidate is None
+            or action.activity_id != activity_id
+            or action.project_id != str(row[2])
+            or action.package_ref != candidate
+        ):
+            raise RegistrationRecoveryError(
+                "replacement confirmation differs from the saved compared candidate"
+            )
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET state = 'pending_confirmation', failure = NULL
+                   WHERE activity_id = ? AND state = 'candidate_ready'""",
+                (activity_id,),
+            )
+        try:
+            result = confirmation_service.confirm(assessment, actor, action)
+        except Exception as error:
+            self._pause(activity_id, str(error))
+            raise
+        with self.database.transaction() as transaction:
+            current = self._active_in(transaction, action.project_id)
+            if current is None or RegistrationPackageReference.from_mapping(
+                json.loads(str(current[1]))
+            ) != candidate:
+                raise RegistrationRecoveryError(
+                    "replacement confirmation did not activate the exact candidate"
+                )
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET state = 'completed', failure = NULL WHERE activity_id = ?""",
+                (activity_id,),
+            )
         return result
 
     def status(self, activity_id: str) -> RegistrationRecoveryStatus:
@@ -1052,7 +1242,19 @@ class RegistrationRecoveryService:
             "architect_findings", "review_findings", "reviewed_candidate",
             "reviewed_assessment", "current_runs",
         }
-        if set(state) != expected_state_fields or state.get("state") != "ready":
+        if (
+            not expected_state_fields.issubset(state)
+            or set(state) - expected_state_fields - {
+                "review_grants", "review_limit_resume"
+            }
+            or state.get("state") != "ready"
+            or isinstance(state.get("review_grants", 0), bool)
+            or not isinstance(state.get("review_grants", 0), int)
+            or int(state.get("review_grants", 0)) < 0
+            or state.get("review_limit_resume") not in {
+                None, "changes_requested", "awaiting_reviewer"
+            }
+        ):
             raise RegistrationRecoveryError(
                 "saved registration assessment and review are not complete"
             )

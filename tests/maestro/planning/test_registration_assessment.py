@@ -20,18 +20,21 @@ from maestro.planning.registration import (
     validate_completion_mapping,
 )
 from maestro.planning.registration_records import (
+    canonical_record_bytes,
     RegistrationAgentResponse,
     RegistrationRecordError,
     RegistrationPackageContext,
+    RegistrationScopeBoundary,
     package_content_hash,
     validate_registration_package,
 )
-from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
+from maestro.planning.sources import DeclaredDependency, OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.planning.registration_plugin import RegistrationProcessPlugin
 from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.main import InstalledServiceApplication, ServiceSettings
 from maestro.service.processes import ProcessSnapshot
 from maestro.service.resources import BundleSnapshot
+from tests.maestro.registration_package_fixture import complete_package
 
 
 def _artifact(path: str, version: str) -> dict[str, str]:
@@ -39,7 +42,9 @@ def _artifact(path: str, version: str) -> dict[str, str]:
 
 
 def _response(role: str, *, outcome: str | None = None, blocker: bool = False, candidate: dict[str, str] | None = None) -> RegistrationAgentResponse:
-    candidate = candidate or _artifact("candidate/manifest.json", "candidate-1")
+    candidate = candidate or _artifact(
+        "candidate/manifest.json", "project_architect-assignment"
+    )
     finding = {
         "local_key": "dependency", "subject": "Missing essential dependency", "severity": "blocking",
         "explanation": "The selected outcome needs an unavailable service.", "impact": "Registration cannot claim readiness.",
@@ -62,7 +67,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
         inventory = SourceInventory(
             "refs/heads/main", "b" * 40, "docs/overview.md", (blob,),
             source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
-            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+            outcomes=(OutcomeReference("APP", "Application", 1, "APP-PM1", "Start", 1),),
         )
         route = ResolvedAgentRoute("architect", "codex", "openai/model-1", "openai", "1", "/tool", "credential", "settings", "cloud", ("code_edit", "local_command", "repository_search", "approved_network"), 65536, (), "c" * 64)
         reviewer = replace(route, role="fidelity_reviewer", tool="claude_code", requested_model_id="anthropic/model-1", provider="anthropic")
@@ -95,12 +100,13 @@ class RegistrationAssessmentTest(unittest.TestCase):
         snapshot_reference = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         decision = _selection_decision_reference(
             "owner/project", "supplied", inventory.source_ref, inventory.source_commit,
-            inventory.overview_path, "main", snapshot_reference,
+            inventory.overview_path, "main", snapshot_reference, "b" * 40,
+            selected_scope="APP-PM1",
         )
         return RegistrationIntakeResult(
             inventory, (), "binding-1", "APP-PM1", "supplied", snapshot_reference,
             {"decision": "allowed", "snapshot": snapshot, "observed_at": 1, "evidence_hashes": {}, "reason": None},
-            inventory.source_ref, "main", None, "owner/project", decision,
+            inventory.source_ref, "main", None, "owner/project", decision, "b" * 40,
         )
 
     def test_exact_assessment_and_independent_review_make_ready_candidate(self) -> None:
@@ -122,6 +128,79 @@ class RegistrationAssessmentTest(unittest.TestCase):
         with self.assertRaisesRegex(RegistrationAssessmentError, "not eligible"):
             assessment.require_ready_candidate()
 
+    def test_one_owner_grant_adds_exactly_one_review_without_resetting_use(self) -> None:
+        assessment = self._assessment(limit=1)
+        assessment.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        first = assessment.submit_reviewer(
+            _response("fidelity_reviewer", outcome="REQUEST_CHANGES", blocker=True),
+            self._identity("fidelity_reviewer"),
+        )
+        self.assertEqual("review_limit_owner_decision", first.state)
+        granted = assessment.grant_one_review()
+        self.assertEqual((1, 1, 2), (
+            granted.review_count, granted.review_grants, granted.review_limit
+        ))
+        with self.assertRaisesRegex(RegistrationAssessmentError, "not waiting"):
+            assessment.grant_one_review()
+        assessment.continue_after_review(
+            AssessmentRun("project_architect-assignment-2", "project_architect-run-2")
+        )
+        amended = replace(
+            _response("project_architect"),
+            assignment_id="project_architect-assignment-2",
+            run_id="project_architect-run-2",
+            candidate=type(_response("project_architect").candidate)(
+                "candidate/manifest-2.json", "a" * 64,
+                "project_architect-assignment-2"
+            ),
+        )
+        assessment.submit_architect(amended, self._identity("project_architect"))
+        assessment.set_current_run(
+            "fidelity_reviewer",
+            AssessmentRun("fidelity_reviewer-assignment", "fidelity_reviewer-run-2"),
+        )
+        second_review = replace(
+            _response(
+                "fidelity_reviewer",
+                outcome="REQUEST_CHANGES",
+                blocker=True,
+                candidate=_artifact(
+                    "candidate/manifest-2.json",
+                    "project_architect-assignment-2",
+                ),
+            ),
+            run_id="fidelity_reviewer-run-2",
+        )
+        exhausted = assessment.submit_reviewer(
+            second_review, self._identity("fidelity_reviewer")
+        )
+        self.assertEqual("review_limit_owner_decision", exhausted.state)
+        self.assertEqual(2, exhausted.review_count)
+
+    def test_exhausted_updated_source_review_resumes_at_reviewer_after_grant(self) -> None:
+        previous = self._assessment(limit=1)
+        previous.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        previous.submit_reviewer(
+            _response("fidelity_reviewer", outcome="APPROVE"),
+            self._identity("fidelity_reviewer"),
+        )
+        replacement = self._assessment(limit=1)
+        replacement.carry_review_accounting_from(previous)
+        replacement.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        paused = replacement.pause_for_review_limit()
+        self.assertEqual("review_limit_owner_decision", paused.state)
+        granted = replacement.grant_one_review()
+        self.assertEqual("awaiting_reviewer", granted.state)
+        self.assertEqual((1, 1, 2), (
+            granted.review_count, granted.review_grants, granted.review_limit
+        ))
+
     def test_reviewer_must_cover_exact_immutable_architect_artifacts(self) -> None:
         assessment = self._assessment()
         assessment.submit_architect(_response("project_architect"), self._identity("project_architect"))
@@ -139,20 +218,12 @@ class RegistrationAssessmentTest(unittest.TestCase):
             assessment.submit_architect(response, unverified)
 
     def test_package_manifest_hashes_exact_record_bytes(self) -> None:
-        record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {"purpose": "Start"}}
-        records = {"summary.json": record}
-        file_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        manifest = {
-            "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-            "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": "decision-1",
-            "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": "c" * 64,
-            "selection_decision_ref": "decision/source-selection-1",
-            "content_hash": package_content_hash(records),
-            "files": [{"path": "summary.json", "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": file_hash}],
-        }
         context = RegistrationPackageContext(
             "project-1", "owner/project", self._assessment().context.source_inventory, "decision-1", "main", "c" * 64,
             "decision/source-selection-1",
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
         )
         self.assertIs(validate_registration_package(manifest, records, context), manifest)
         manifest["content_hash"] = "0" * 64
@@ -160,26 +231,263 @@ class RegistrationAssessmentTest(unittest.TestCase):
             validate_registration_package(manifest, records, context)
 
     def test_package_rejects_context_substitution_and_duplicate_record_id(self) -> None:
-        record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {}}
-        second = dict(record)
-        records = {"summary.json": record, "also-summary.json": second}
-        entry_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        manifest = {
-            "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-            "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": "decision-1",
-            "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": "c" * 64,
-            "selection_decision_ref": "decision/source-selection-1", "content_hash": package_content_hash(records),
-            "files": [
-                {"path": path, "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": entry_hash}
-                for path in records
-            ],
-        }
         context = RegistrationPackageContext("project-1", "owner/project", self._assessment().context.source_inventory, "decision-1", "main", "c" * 64, "decision/source-selection-1")
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        duplicate = dict(records["summary.json"])
+        records["also-summary.json"] = duplicate
+        manifest["files"].append({
+            "path": "also-summary.json",
+            "record_id": duplicate["record_id"],
+            "record_type": duplicate["record_type"],
+            "record_version": duplicate["record_version"],
+            "subject": duplicate["subject"],
+            "sha256": hashlib.sha256(
+                json.dumps(duplicate, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+            ).hexdigest(),
+        })
+        manifest["content_hash"] = package_content_hash(records)
         with self.assertRaisesRegex(RegistrationRecordError, "record_id"):
             validate_registration_package(manifest, records, context)
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
         manifest["source_commit"] = "d" * 40
         with self.assertRaisesRegex(RegistrationRecordError, "source_commit"):
-            validate_registration_package(manifest, {"summary.json": record}, context)
+            validate_registration_package(manifest, records, context)
+
+    def test_package_rejects_missing_typed_topology_and_unknown_manifest_fields(self) -> None:
+        context = self._assessment().context.package_context
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        requirement_path = next(
+            path for path, record in records.items()
+            if record["record_type"] == "requirement"
+        )
+        del records[requirement_path]
+        manifest["files"] = [
+            item for item in manifest["files"]
+            if item["path"] != requirement_path
+        ]
+        manifest["content_hash"] = package_content_hash(records)
+        with self.assertRaisesRegex(RegistrationRecordError, "requirement"):
+            validate_registration_package(manifest, records, context)
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        manifest["agent_readiness"] = True
+        with self.assertRaisesRegex(RegistrationRecordError, "manifest fields"):
+            validate_registration_package(manifest, records, context)
+
+    def test_package_rejects_source_subject_declaration_version_and_order_changes(self) -> None:
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference("APP", "Application", 3, "APP-PM2", "Continue", 2),
+            ),
+        )
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1",
+        )
+
+        def rehash(
+            manifest: dict[str, object], records: dict[str, dict[str, object]]
+        ) -> None:
+            manifest["content_hash"] = package_content_hash(records)
+            manifest["files"] = [
+                {
+                    "path": path,
+                    "record_id": record["record_id"],
+                    "record_type": record["record_type"],
+                    "record_version": record["record_version"],
+                    "subject": record["subject"],
+                    "sha256": hashlib.sha256(
+                        canonical_record_bytes(record)
+                    ).hexdigest(),
+                }
+                for path, record in sorted(records.items())
+            ]
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["milestones/APP-PM1.json"]["subject"] = "Different outcome"
+        records["requirements/APP-PM1-completion.json"]["data"]["applies_to"]["subject"] = "Different outcome"
+        records["declarations/APP.json"]["data"]["milestone_refs"][0]["subject"] = "Different outcome"
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "subject"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["record_version"] = 4
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration version"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["subject"] = "Different declaration"
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration.*subject"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["data"]["milestone_refs"].reverse()
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration order"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+    def test_partial_package_is_bound_to_confirmed_scope_dependencies_and_completion(self) -> None:
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference("APP", "Application", 3, "APP-PM2", "Continue", 2),
+            ),
+        )
+        boundary = RegistrationScopeBoundary.from_selection(json.dumps({
+            "confirmed": True,
+            "included_outcomes": ["APP-PM1"],
+            "excluded_outcomes": ["APP-PM2"],
+            "completion_outcomes": ["APP-PM1"],
+            "outside_dependencies": {"APP-PM1": []},
+        }), inventory)
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1", boundary,
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-partial"
+        )
+        self.assertIs(validate_registration_package(manifest, records, context), manifest)
+        self.assertEqual(
+            {"included": ["Start"], "excluded": ["Continue"]},
+            records["summary.json"]["data"]["scope"],
+        )
+        records["summary.json"]["data"]["scope"] = {
+            "included": ["Continue"], "excluded": ["Start"]
+        }
+        manifest["content_hash"] = package_content_hash(records)
+        manifest["files"] = [
+            {
+                "path": path,
+                "record_id": record["record_id"],
+                "record_type": record["record_type"],
+                "record_version": record["record_version"],
+                "subject": record["subject"],
+                "sha256": hashlib.sha256(canonical_record_bytes(record)).hexdigest(),
+            }
+            for path, record in sorted(records.items())
+        ]
+        with self.assertRaisesRegex(RegistrationRecordError, "confirmed intake boundary"):
+            validate_registration_package(manifest, records, context)
+
+    def test_declared_dependencies_are_complete_and_cannot_be_substituted(self) -> None:
+        dependency = DeclaredDependency(
+            "APP-PM1", "Initial application", "APP-PM1 — Start", "Declared prerequisite.",
+            ("APP-PM1",),
+        )
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference(
+                    "APP", "Application", 3, "APP-PM2", "Continue", 2,
+                    (dependency,),
+                ),
+            ),
+        )
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1",
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        self.assertEqual(
+            ["APP-PM1"],
+            [
+                item["record_id"]
+                for item in records["milestones/APP-PM2.json"]["data"]["dependencies"]
+            ],
+        )
+
+        records["milestones/APP-PM2.json"]["data"]["dependencies"] = []
+        manifest["content_hash"] = package_content_hash(records)
+        manifest["files"] = [
+            {
+                "path": path,
+                "record_id": record["record_id"],
+                "record_type": record["record_type"],
+                "record_version": record["record_version"],
+                "subject": record["subject"],
+                "sha256": hashlib.sha256(canonical_record_bytes(record)).hexdigest(),
+            }
+            for path, record in sorted(records.items())
+        ]
+        with self.assertRaisesRegex(RegistrationRecordError, "dependencies"):
+            validate_registration_package(manifest, records, context)
+
+        with self.assertRaisesRegex(
+            RegistrationRecordError, "omits a declared outside dependency"
+        ):
+            RegistrationScopeBoundary.from_selection(json.dumps({
+                "confirmed": True,
+                "included_outcomes": ["APP-PM2"],
+                "excluded_outcomes": ["APP-PM1"],
+                "completion_outcomes": ["APP-PM2"],
+                "outside_dependencies": {"APP-PM2": []},
+            }), inventory)
+        substituted = {
+            "record_id": "APP-PM1",
+            "subject": "Different dependency",
+            "required_outcome": "APP-PM1 — Start",
+            "state": "missing",
+            "evidence": ["The excluded outcome is unavailable."],
+        }
+        with self.assertRaisesRegex(
+            RegistrationRecordError, "identity differs from the pinned source"
+        ):
+            RegistrationScopeBoundary.from_selection(json.dumps({
+                "confirmed": True,
+                "included_outcomes": ["APP-PM2"],
+                "excluded_outcomes": ["APP-PM1"],
+                "completion_outcomes": ["APP-PM2"],
+                "outside_dependencies": {"APP-PM2": [substituted]},
+            }), inventory)
 
     def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
         plugin = RegistrationProcessPlugin(self._configured_routes())
@@ -235,19 +543,22 @@ class RegistrationAssessmentTest(unittest.TestCase):
             selections = RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1"))
             binding.save_intake("activity-1", "project-1", intake, selections)
             started = binding.start(snapshot, "activity-1")
-            record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {}}
-            record_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-            manifest = {
-                "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-                "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": intake.selection_decision_ref,
-                "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": intake.destination_snapshot_reference,
-                "selection_decision_ref": intake.selection_decision_ref, "content_hash": package_content_hash({"summary.json": record}),
-                "files": [{"path": "summary.json", "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": record_hash}],
-            }
-            self.assertIs(binding.validate_package("activity-1", manifest, {"summary.json": record}), manifest)
+            manifest, records = complete_package(
+                started.context.package_context,
+                registration_version=1,
+                candidate_id=started.context.architect_run.assignment_id,
+            )
+            self.assertIs(binding.validate_package("activity-1", manifest, records), manifest)
             manifest["publication_branch"] = "wrong-branch"
             with self.assertRaisesRegex(RegistrationRecordError, "publication_branch"):
-                binding.validate_package("activity-1", manifest, {"summary.json": record})
+                binding.validate_package("activity-1", manifest, records)
+            manifest["publication_branch"] = "main"
+            manifest["registration_version"] = 2
+            with self.assertRaisesRegex(
+                RegistrationRecordError, "service-owned assignment values"
+            ):
+                binding.validate_package("activity-1", manifest, records)
+            manifest["registration_version"] = 1
             architect_operation = OperationIdentity("project-1", "activity-1", started.context.architect_run.assignment_id, started.context.architect_run.run_id)
             self.assertFalse(hasattr(binding, "reserve_runtime_identity_callback"))
             self.assertFalse(hasattr(supervisor, "runtime_identity_callback"))
@@ -264,7 +575,10 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM registration_assessment_runs WHERE runtime_identity_json IS NOT NULL").fetchone()[0])
             supervisor.launch(LaunchRequest(architect_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
             supervisor.report_runtime_identity(architect_operation, self._identity("project_architect"))
-            architect = replace(_response("project_architect"), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
+            assigned_candidate = _artifact(
+                "candidate/manifest.json", started.context.architect_run.assignment_id
+            )
+            architect = replace(_response("project_architect", candidate=assigned_candidate), assignment_id=started.context.architect_run.assignment_id, run_id=started.context.architect_run.run_id, decision_version=intake.selection_decision_ref)
             binding.submit_architect(architect)
             recovered = binding.rehydrate(snapshot, "activity-1")
             self.assertEqual("awaiting_reviewer", recovered.status.state)
@@ -272,7 +586,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
             self.assertEqual(reviewer_operation, binding.reserve_runtime_identity("activity-1", "fidelity_reviewer"))
             supervisor.launch(LaunchRequest(reviewer_operation, ("/bin/sh", "-c", "sleep 5"), temporary, 5, 2))
             supervisor.report_runtime_identity(reviewer_operation, self._identity("fidelity_reviewer"))
-            reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE"), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
+            reviewer = replace(_response("fidelity_reviewer", outcome="APPROVE", candidate=assigned_candidate), assignment_id=recovered.context.reviewer_run.assignment_id, run_id=recovered.context.reviewer_run.run_id, decision_version=intake.selection_decision_ref)
             status = binding.submit_reviewer(reviewer)
             self.assertTrue(status.execution_eligible)
             with application.database.read_connection() as connection:

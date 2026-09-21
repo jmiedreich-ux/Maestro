@@ -99,6 +99,7 @@ class UnitIdentity:
     invocation_id: str
     active: bool
     cgroup_empty: bool
+    exit_status: int | None = None
 
     def matches(self, saved: "RunRecord") -> bool:
         invocation_matches = bool(self.invocation_id) and self.invocation_id == saved.invocation_id
@@ -237,6 +238,7 @@ class SystemdUserUnits:
             self.systemd_run, "--user", "--unit", unit, "--quiet", "--pipe",
             "--property=KillMode=control-group", "--property=TimeoutStopSec=30s",
             "--property=SendSIGKILL=yes", "--property=RemainAfterExit=yes",
+            f"--property=RuntimeMaxSec={request.timeout_seconds}s",
             f"--working-directory={request.cwd}", "--", *request.command,
         )
         process = subprocess.Popen(
@@ -262,7 +264,10 @@ class SystemdUserUnits:
         completed = subprocess.run(
             (
                 self.systemctl, "--user", "show", unit_name,
-                "--property=MainPID", "--property=ActiveState", "--property=ControlGroup", "--property=InvocationID",
+                "--property=MainPID", "--property=ActiveState",
+                "--property=ControlGroup", "--property=InvocationID",
+                "--property=Result", "--property=ExecMainCode",
+                "--property=ExecMainStatus",
             ),
             capture_output=True, text=True, check=False, env=self._user_bus_environment(),
         )
@@ -275,9 +280,21 @@ class SystemdUserUnits:
             return None
         active = pid > 0 and fields.get("ActiveState") in {"active", "activating", "deactivating"}
         invocation_id = fields.get("InvocationID", "")
+        exit_status: int | None = None
+        if not active and fields.get("Result") == "success" and fields.get("ExecMainCode") == "1":
+            try:
+                exit_status = int(fields.get("ExecMainStatus", ""))
+            except ValueError:
+                exit_status = None
         if pid <= 0:
-            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
-        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
+            return UnitIdentity(
+                unit_name, 0, _boot_id(), "", invocation_id, active,
+                self._cgroup_empty(fields.get("ControlGroup", "")), exit_status,
+            )
+        return UnitIdentity(
+            unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id,
+            active, self._cgroup_empty(fields.get("ControlGroup", "")), exit_status,
+        )
 
     def stop(self, unit_name: str) -> None:
         completed = subprocess.run(
@@ -336,6 +353,7 @@ class LocalProcessUnits:
             invocation_id,
             active,
             _process_group_empty(process.pid),
+            None if active else process.returncode,
         )
 
     def stop(self, unit_name: str) -> None:
@@ -404,6 +422,24 @@ class AgentSupervisor:
         self._runtime_identity_routes[key] = route
 
     @_synchronized
+    def restore_runtime_identity_reservation(
+        self, identity: OperationIdentity, route: ResolvedAgentRoute
+    ) -> None:
+        """Restore the exact saved route after service restart without relaunching."""
+        if self.journal.get(identity.key) is None:
+            raise SupervisionError(
+                "runtime_identity_reservation_unavailable",
+                "saved operation is unavailable for identity reservation recovery",
+            )
+        current = self._runtime_identity_routes.get(identity.key)
+        if current is not None and current != route:
+            raise SupervisionError(
+                "runtime_identity_reservation_mismatch",
+                "restored runtime identity route differs from the saved reservation",
+            )
+        self._runtime_identity_routes[identity.key] = route
+
+    @_synchronized
     def report_runtime_identity(
         self, identity: OperationIdentity, tool_identity: RunningToolIdentity,
     ) -> None:
@@ -412,7 +448,7 @@ class AgentSupervisor:
             raise SupervisionError("runtime_identity_reservation_invalid", "operation identity is invalid")
         record = self._required(identity)
         key = identity.key
-        if record.state != "running" or key not in self._runtime_identity_routes:
+        if record.state not in {"running", "completed"} or key not in self._runtime_identity_routes:
             raise SupervisionError(
                 "runtime_identity_reservation_unavailable",
                 "runtime identity reservation is not available for this operation",
@@ -438,7 +474,12 @@ class AgentSupervisor:
                 "adapter runtime identity differs from the reserved route",
             ) from error
         observed = self.units.inspect(record.unit_name)
-        if observed is None or not observed.active or not observed.matches(record):
+        if (
+            observed is None
+            or not observed.matches(record)
+            or (record.state == "running" and not observed.active)
+            or (record.state == "completed" and (observed.active or not observed.cgroup_empty))
+        ):
             raise SupervisionError(
                 "runtime_identity_unconfirmed",
                 "supervisor cannot confirm the operation receiving runtime identity",
@@ -472,6 +513,17 @@ class AgentSupervisor:
 
     @_synchronized
     def launch(self, request: LaunchRequest) -> RunRecord:
+        running, managed = self._launch(request)
+        self._drain(request.identity.key, managed, "stdout")
+        self._drain(request.identity.key, managed, "stderr")
+        return running
+
+    @_synchronized
+    def launch_protocol(self, request: LaunchRequest) -> tuple[RunRecord, ManagedUnit]:
+        """Launch while leaving the tool pipes with its protocol adapter."""
+        return self._launch(request)
+
+    def _launch(self, request: LaunchRequest) -> tuple[RunRecord, ManagedUnit]:
         key = request.identity.key
         existing = self.journal.get(key)
         if existing is not None:
@@ -512,19 +564,24 @@ class AgentSupervisor:
         )
         running = self._save(running)
         self._managed[key] = managed
-        self._drain(key, managed, "stdout")
-        self._drain(key, managed, "stderr")
-        return running
+        return running, managed
 
     @_synchronized
     def poll(self, identity: OperationIdentity) -> RunRecord:
         record = self._required(identity)
-        if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped", "stop_unconfirmed", "recovery_required"}:
+        if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped", "stop_unconfirmed", "recovery_required"} and not (
+            record.state == "stop_unconfirmed"
+            and record.pid is None
+            and record.invocation_id is None
+        ):
             return record
         now = self.clock()
         if now >= record.launched_monotonic + record.timeout_seconds:
             return self.stop(identity, "timed_out")
         unit = self.units.inspect(record.unit_name)
+        record = self._reconcile_uncertain_launch(record, unit)
+        if record.state == "launch_uncertain":
+            return record
         if unit is None or not unit.matches(record):
             return self._terminal(record, "stop_unconfirmed", "identity_unknown")
         if not unit.active and unit.cgroup_empty:
@@ -539,7 +596,7 @@ class AgentSupervisor:
             self._join_readers(identity.key)
             record = self._required(identity)
             managed = self._managed.get(identity.key)
-            completed = self._terminal(record, "completed", _exit_reason(managed))
+            completed = self._terminal(record, "completed", _exit_reason(managed, unit))
             self._close_managed(identity.key)
             return completed
         if now - (record.last_activity_monotonic or record.launched_monotonic) >= record.stall_seconds:
@@ -561,11 +618,33 @@ class AgentSupervisor:
         )
 
     @_synchronized
+    def record_protocol_event(
+        self, identity: OperationIdentity, stream_name: str, raw: bytes
+    ) -> RunRecord:
+        """Durably number protocol output before an in-service adapter consumes it."""
+        if stream_name not in {"stdout", "stderr"} or not isinstance(raw, bytes):
+            raise SupervisionError("invalid_protocol_event", "protocol event is invalid")
+        record = self._required(identity)
+        if record.state != "running":
+            raise SupervisionError(
+                "protocol_event_rejected", "only a running operation can record protocol output"
+            )
+        event = self._event(stream_name, data=raw.decode("utf-8", "replace"))
+        return self._save(
+            replace(
+                record,
+                events=(*record.events, event),
+                last_activity_monotonic=self.clock(),
+            )
+        )
+
+    @_synchronized
     def stop(self, identity: OperationIdentity, reason: str, *, interrupt: Callable[[], None] | None = None) -> RunRecord:
         record = self._required(identity)
         if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped"}:
             return record
         unit = self.units.inspect(record.unit_name)
+        record = self._reconcile_uncertain_launch(record, unit)
         if unit is None or not unit.matches(record):
             return self._terminal(record, "stop_unconfirmed", "identity_unknown")
         if interrupt is not None:
@@ -582,6 +661,41 @@ class AgentSupervisor:
         stopped = self._terminal(self._required(identity), state, reason)
         self._close_managed(identity.key)
         return stopped
+
+    def _reconcile_uncertain_launch(
+        self, record: RunRecord, observed: UnitIdentity | None
+    ) -> RunRecord:
+        if record.state not in {"launch_uncertain", "stop_unconfirmed"} or observed is None:
+            return record
+        if record.state == "stop_unconfirmed" and (
+            record.pid is not None or record.invocation_id is not None
+        ):
+            return record
+        if (
+            observed.unit_name != record.unit_name
+            or not observed.boot_id
+            or not observed.invocation_id
+            or (observed.active and (
+                observed.pid <= 0 or not observed.start_identity
+            ))
+            or (not observed.active and not observed.cgroup_empty)
+        ):
+            return record
+        return self._save(
+            replace(
+                record,
+                state="running",
+                pid=observed.pid,
+                boot_id=observed.boot_id,
+                start_identity=observed.start_identity,
+                invocation_id=observed.invocation_id,
+                last_activity_monotonic=self.clock(),
+                events=(
+                    *record.events,
+                    self._event("launch_reconciled", pid=observed.pid),
+                ),
+            )
+        )
 
     def _drain(self, key: str, managed: ManagedUnit, stream_name: str) -> None:
         stream = getattr(managed, stream_name)
@@ -669,10 +783,17 @@ def _process_group_empty(process_group: int) -> bool:
     return False
 
 
-def _exit_reason(managed: ManagedUnit | None) -> str:
-    if managed is None or managed.process is None or managed.process.returncode is None:
+def _exit_reason(managed: ManagedUnit | None, unit: UnitIdentity) -> str:
+    status = unit.exit_status
+    if (
+        managed is not None
+        and managed.process is not None
+        and managed.process.returncode is not None
+    ):
+        status = managed.process.returncode
+    if status is None:
         return "unit_ended"
-    return "exit_0" if managed.process.returncode == 0 else f"exit_{managed.process.returncode}"
+    return "exit_0" if status == 0 else f"exit_{status}"
 
 
 def _record_mapping(record: RunRecord) -> dict[str, object]:

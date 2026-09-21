@@ -4,18 +4,33 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity, verify_running_identity
 from maestro.agents.runtime_identity import ConfirmedRuntimeIdentity, PlanningIdentityConsumer, RuntimeIdentityProtocolError
 from maestro.agents.routes import ConfiguredAgentRouteProvider, PermittedDestination, RoleSelections, RouteRequirements, ToolModelSelection
-from maestro.agents.supervisor import AgentSupervisor, OperationIdentity
+from maestro.agents.supervisor import (
+    AgentSupervisor,
+    LaunchRequest,
+    ManagedUnit,
+    OperationIdentity,
+    RunRecord,
+)
 from maestro.foundation import Database, DomainMigration, canonical_json
+from maestro.foundation import Transaction
+from maestro.service.questions import (
+    AnswerChoice,
+    DeliveredAnswer,
+    LinkedQuestion,
+    QuestionService,
+)
 from maestro.service.processes import ProcessHandlerRegistry, ProcessProvider, ProcessSnapshot
+from maestro.service.resources import BundleSnapshot
 
 from .intake import RegistrationIntakeResult
 from .registration import AssessmentContext, AssessmentRun, RegistrationAssessment, RegistrationAssessmentError
 from .registration_records import (
+    ArtifactReference,
     RegistrationAgentResponse,
     RegistrationPackageContext,
     validate_registration_package,
@@ -59,6 +74,39 @@ REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION = DomainMigration(
             activity_id TEXT PRIMARY KEY,
             state_json TEXT NOT NULL
         )
+        """,
+    ),
+)
+
+REGISTRATION_ASSIGNMENT_LINEAGE_MIGRATION = DomainMigration(
+    domain="registration_assessment",
+    version=2,
+    identity="registration-assignment-lineage-v2",
+    statements=(
+        """
+        CREATE TABLE registration_assignment_lineage(
+            activity_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('project_architect', 'fidelity_reviewer')),
+            assignment_id TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            parent_assignment_id TEXT,
+            continuation_question_id TEXT,
+            previous_answer_id TEXT,
+            PRIMARY KEY(activity_id, role, assignment_id, run_id),
+            CHECK(
+                (continuation_question_id IS NULL AND previous_answer_id IS NULL)
+                OR
+                (continuation_question_id IS NOT NULL AND previous_answer_id IS NOT NULL)
+            )
+        )
+        """,
+        """
+        INSERT INTO registration_assignment_lineage(
+            activity_id, role, assignment_id, run_id, parent_assignment_id,
+            continuation_question_id, previous_answer_id
+        )
+        SELECT activity_id, role, assignment_id, run_id, NULL, NULL, NULL
+          FROM registration_assessment_runs
         """,
     ),
 )
@@ -170,8 +218,17 @@ class RegistrationProcessPlugin:
     def _package_handler(
         _snapshot: ProcessSnapshot, *, assessment: RegistrationAssessment,
         manifest: object, records: object,
+        manifest_values: Mapping[str, object] | None = None,
     ) -> object:
-        return validate_registration_package(manifest, records, assessment.context.package_context)
+        ready = assessment.status.state == "ready"
+        return validate_registration_package(
+            manifest,
+            records,
+            assessment.context.package_context,
+            review_context=assessment.package_review_context() if ready else None,
+            require_review=ready,
+            manifest_values=manifest_values,
+        )
 
     @staticmethod
     def _confirmation_handler(
@@ -218,8 +275,33 @@ class RegistrationServiceBinding:
         self.database, self.plugin, self.registry = database, plugin, registry
         self.registry.register(plugin.provider)
         self.database.registry.register(REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION)
+        self.database.registry.register(REGISTRATION_ASSIGNMENT_LINEAGE_MIGRATION)
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
+        self._questions: QuestionService | None = None
+        self._assessment_listener: Callable[[RegistrationAssessment], None] | None = None
+
+    def connect_assessment_listener(
+        self, listener: Callable[[RegistrationAssessment], None]
+    ) -> None:
+        """Connect the installed lifecycle boundary exactly once."""
+        if not callable(listener):
+            raise TypeError("registration assessment listener must be callable")
+        if self._assessment_listener is not None and self._assessment_listener is not listener:
+            raise RegistrationAssessmentError(
+                "registration assessment listener is already connected"
+            )
+        self._assessment_listener = listener
+
+    def connect_questions(self, questions: QuestionService) -> None:
+        """Connect the installed durable question boundary once."""
+        if not isinstance(questions, QuestionService):
+            raise TypeError("registration questions require QuestionService")
+        if self._questions is not None and self._questions is not questions:
+            raise RegistrationAssessmentError(
+                "registration question service is already connected"
+            )
+        self._questions = questions
 
     @property
     def supervisor(self) -> AgentSupervisor:
@@ -247,12 +329,36 @@ class RegistrationServiceBinding:
         except ValueError as error:
             raise RegistrationAssessmentError("registration assessment intake cannot be persisted") from error
         with self.database.transaction() as transaction:
-            transaction.execute(
-                """INSERT INTO registration_assessment_intake(
-                       activity_id, project_id, selections_json, intake_json
-                   ) VALUES (?, ?, ?, ?)""",
-                (activity_id, project_id, canonical_json(_selections_mapping(selections)), intake_json),
+            self.save_intake_in(
+                transaction, activity_id, project_id, intake, selections
             )
+
+    def save_intake_in(
+        self,
+        transaction: Transaction,
+        activity_id: str,
+        project_id: str,
+        intake: RegistrationIntakeResult,
+        selections: RoleSelections,
+    ) -> None:
+        """Save completed intake inside the caller's request transaction."""
+        if not isinstance(transaction, Transaction):
+            raise TypeError("registration intake requires the service transaction")
+        if not activity_id or not project_id or intake.inventory is None:
+            raise RegistrationAssessmentError(
+                "registration assessment requires completed saved intake"
+            )
+        transaction.execute(
+            """INSERT INTO registration_assessment_intake(
+                   activity_id, project_id, selections_json, intake_json
+               ) VALUES (?, ?, ?, ?)""",
+            (
+                activity_id,
+                project_id,
+                canonical_json(_selections_mapping(selections)),
+                intake.to_json(),
+            ),
+        )
 
     def start(self, snapshot: ProcessSnapshot, activity_id: str) -> RegistrationAssessment:
         """Start from service-persisted intake only; callers cannot supply facts."""
@@ -275,6 +381,7 @@ class RegistrationServiceBinding:
                     ) VALUES (?, ?, ?, ?, ?, NULL)""",
                     (context.activity_id, role, run.assignment_id, run.run_id, canonical_json(_route_mapping(route))),
                 )
+                self._record_lineage_in(transaction, context.activity_id, role, run)
             transaction.execute(
                 "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
                 (context.activity_id, canonical_json(assessment.to_record())),
@@ -282,19 +389,465 @@ class RegistrationServiceBinding:
         self._assessments[context.activity_id] = assessment
         return assessment
 
+    def install_started(
+        self,
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+    ) -> None:
+        """Persist an already-preflighted assessment in the request transaction."""
+        if not isinstance(transaction, Transaction):
+            raise TypeError("registration assessment requires the service transaction")
+        if not isinstance(assessment, RegistrationAssessment):
+            raise TypeError("registration assessment is invalid")
+        context = assessment.context
+        rows = (
+            ("project_architect", context.architect_run, context.routes.architect),
+            ("fidelity_reviewer", context.reviewer_run, context.routes.fidelity_reviewer),
+        )
+        for role, run, route in rows:
+            transaction.execute(
+                """INSERT INTO registration_assessment_runs(
+                    activity_id, role, assignment_id, run_id, route_json,
+                    runtime_identity_json
+                ) VALUES (?, ?, ?, ?, ?, NULL)""",
+                (
+                    context.activity_id,
+                    role,
+                    run.assignment_id,
+                    run.run_id,
+                    canonical_json(_route_mapping(route)),
+                ),
+            )
+            self._record_lineage_in(transaction, context.activity_id, role, run)
+        transaction.execute(
+            "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
+            (context.activity_id, canonical_json(assessment.to_record())),
+        )
+        self._assessments[context.activity_id] = assessment
+
+    def assessment(self, activity_id: str) -> RegistrationAssessment:
+        """Return only a safely loaded assessment for an installed operation."""
+        return self._assessment(activity_id)
+
+    @staticmethod
+    def _record_lineage_in(
+        transaction: Transaction,
+        activity_id: str,
+        role: str,
+        run: AssessmentRun,
+        *,
+        parent_assignment_id: str | None = None,
+        continuation_question_id: str | None = None,
+        previous_answer_id: str | None = None,
+    ) -> None:
+        transaction.execute(
+            """INSERT INTO registration_assignment_lineage(
+                   activity_id, role, assignment_id, run_id, parent_assignment_id,
+                   continuation_question_id, previous_answer_id
+               ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                activity_id,
+                role,
+                run.assignment_id,
+                run.run_id,
+                parent_assignment_id,
+                continuation_question_id,
+                previous_answer_id,
+            ),
+        )
+
+    def assignment_lineage(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> dict[str, str | None]:
+        """Return the durable predecessor and clarification link for the current run."""
+        run = assessment.current_run(role)
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT parent_assignment_id, continuation_question_id,
+                          previous_answer_id
+                   FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = ?
+                     AND assignment_id = ? AND run_id = ?""",
+                (
+                    assessment.context.activity_id,
+                    role,
+                    run.assignment_id,
+                    run.run_id,
+                ),
+            ).fetchone()
+        if row is None:
+            raise RegistrationAssessmentError(
+                "current registration assignment lineage is unavailable"
+            )
+        return {
+            "parent_assignment_id": None if row[0] is None else str(row[0]),
+            "continuation_question_id": None if row[1] is None else str(row[1]),
+            "previous_answer_id": None if row[2] is None else str(row[2]),
+        }
+
+    def assignment_runs(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> tuple[str, ...]:
+        """Return newest-first durable run history for locating immutable artifacts."""
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT run_id FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = ? ORDER BY rowid DESC""",
+                (assessment.context.activity_id, role),
+            ).fetchall()
+        return tuple(str(row[0]) for row in rows)
+
+    def candidate_manifest_values(
+        self, assessment: RegistrationAssessment
+    ) -> dict[str, object]:
+        """Return the exact service-owned manifest values for the current architect run."""
+        if not isinstance(assessment, RegistrationAssessment):
+            raise TypeError("candidate manifest values require a registration assessment")
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                "SELECT package_ref_json FROM active_registrations WHERE project_id = ?",
+                (assessment.context.project_id,),
+            ).fetchone()
+        previous: Mapping[str, object] | None = None
+        registration_version = 1
+        if row is not None:
+            try:
+                decoded = json.loads(str(row[0]))
+            except json.JSONDecodeError as error:
+                raise RegistrationAssessmentError(
+                    "active registration package reference is invalid"
+                ) from error
+            previous_fields = {
+                "repository", "commit", "registration_version", "candidate_id",
+                "manifest_path", "manifest_sha256",
+            }
+            if (
+                not isinstance(decoded, Mapping)
+                or set(decoded) != previous_fields
+                or isinstance(decoded.get("registration_version"), bool)
+                or not isinstance(decoded.get("registration_version"), int)
+                or int(decoded["registration_version"]) < 1
+            ):
+                raise RegistrationAssessmentError(
+                    "active registration package reference is invalid"
+                )
+            previous = dict(decoded)
+            registration_version = int(decoded["registration_version"]) + 1
+        context = assessment.context.package_context
+        return {
+            "project_id": context.project_id,
+            "registration_version": registration_version,
+            "candidate_id": assessment.current_run("project_architect").assignment_id,
+            "previous_registration_ref": previous,
+            "source_repository": context.source_repository,
+            "source_commit": context.source_inventory.source_commit,
+            "overview_path": context.source_inventory.overview_path,
+            "decision_version": context.decision_version,
+            "source_ref": context.source_inventory.source_ref,
+            "publication_branch": context.publication_branch,
+            "destination_snapshot_reference": context.destination_snapshot_reference,
+            "selection_decision_ref": context.selection_decision_ref,
+            "scope_boundary": context.scope_boundary.as_dict(),
+        }
+
+    def receive_answer(self, answer: DeliveredAnswer) -> None:
+        """Accept linked answer delivery without treating it as confirmation."""
+        if not isinstance(answer, DeliveredAnswer):
+            raise TypeError("registration answer delivery is invalid")
+        assessment = self._assessment(answer.activity_id)
+        if assessment.context.project_id != answer.project_id:
+            raise RegistrationAssessmentError(
+                "registration answer belongs to another project"
+            )
+        # Answer text remains authoritative in QuestionService.  Registration
+        # only records that the exact linked answer reached the paused process;
+        # dispatch of a new assignment remains service-owned.
+        if assessment.status.state != "clarification_required":
+            raise RegistrationAssessmentError(
+                "registration is not waiting for a clarification answer"
+            )
+        role = answer.requester
+        if role not in {"project_architect", "fidelity_reviewer"}:
+            raise RegistrationAssessmentError(
+                "registration clarification requester is invalid"
+            )
+        with self.database.read_connection() as connection:
+            unanswered = connection.execute(
+                """SELECT 1 FROM service_questions
+                   WHERE activity_id = ? AND requester = ?
+                     AND status IN ('awaiting_answer', 'clarification_required')
+                   LIMIT 1""",
+                (answer.activity_id, role),
+            ).fetchone()
+        if unanswered is not None:
+            return
+        previous = assessment.current_run(role)
+        run = _new_run(role)
+        assessment.continue_after_clarification(role, run)
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_assessment_runs
+                   SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                (run.assignment_id, run.run_id, answer.activity_id, role),
+            )
+            self._record_lineage_in(
+                transaction,
+                answer.activity_id,
+                role,
+                run,
+                parent_assignment_id=previous.assignment_id,
+                continuation_question_id=(
+                    answer.original_question_id or answer.question_id
+                ),
+                previous_answer_id=answer.answer_id,
+            )
+            transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(assessment.to_record()), answer.activity_id),
+            )
+        self._notify_assessment(assessment)
+
     def reserve_runtime_identity(
         self, activity_id: str, role: str,
     ) -> OperationIdentity:
         """Reserve the service-created run for protected identity publication."""
         assessment = self._assessment(activity_id)
-        run = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run if role == "fidelity_reviewer" else None
-        if run is None:
-            raise RegistrationAssessmentError("registration role is invalid")
+        run = assessment.current_run(role)
         route = assessment.context.routes.architect if role == "project_architect" else assessment.context.routes.fidelity_reviewer
         operation = OperationIdentity(assessment.context.project_id, activity_id, run.assignment_id, run.run_id)
 
         self.__supervisor_authority.reserve_runtime_identity(operation, route)
         return operation
+
+    def launch_agent(
+        self,
+        activity_id: str,
+        role: str,
+        command: tuple[str, ...],
+        cwd: str,
+        timeout_seconds: float,
+    ) -> tuple[OperationIdentity, ManagedUnit]:
+        """Reserve and launch the current assignment through service authority."""
+        operation = self.reserve_runtime_identity(activity_id, role)
+        _record, managed = self.__supervisor_authority.launch_protocol(
+            LaunchRequest(
+                operation,
+                command,
+                cwd,
+                timeout_seconds,
+                timeout_seconds,
+            )
+        )
+        return operation, managed
+
+    def report_agent_identity(
+        self, operation: OperationIdentity, identity: RunningToolIdentity
+    ) -> None:
+        self.__supervisor_authority.report_runtime_identity(operation, identity)
+
+    def restore_agent_identity_reservation(
+        self, operation: OperationIdentity, route: ResolvedAgentRoute
+    ) -> None:
+        self.__supervisor_authority.restore_runtime_identity_reservation(
+            operation, route
+        )
+
+    def has_saved_agent_identity(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> bool:
+        run = assessment.current_run(role)
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT runtime_identity_json FROM registration_assessment_runs
+                   WHERE activity_id = ? AND role = ? AND assignment_id = ? AND run_id = ?""",
+                (
+                    assessment.context.activity_id, role,
+                    run.assignment_id, run.run_id,
+                ),
+            ).fetchone()
+        return row is not None and row[0] is not None
+
+    def poll_agent(self, operation: OperationIdentity) -> RunRecord:
+        return self.__supervisor_authority.poll(operation)
+
+    def record_agent_protocol_event(
+        self, operation: OperationIdentity, stream_name: str, raw: bytes
+    ) -> RunRecord:
+        return self.__supervisor_authority.record_protocol_event(
+            operation, stream_name, raw
+        )
+
+    def stop_agent(self, operation: OperationIdentity, reason: str) -> RunRecord:
+        return self.__supervisor_authority.stop(operation, reason)
+
+    def current_operation(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> OperationIdentity:
+        return self._operation_and_route(assessment, role)[0]
+
+    def poll_current_agent(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> RunRecord:
+        return self.__supervisor_authority.poll(
+            self.current_operation(assessment, role)
+        )
+
+    def stop_current_agent(
+        self, assessment: RegistrationAssessment, role: str, reason: str
+    ) -> RunRecord:
+        return self.__supervisor_authority.stop(
+            self.current_operation(assessment, role), reason
+        )
+
+    def pause_technical(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> None:
+        with self.database.transaction() as transaction:
+            self.pause_technical_in(transaction, assessment, role)
+
+    @staticmethod
+    def pause_technical_in(
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+        role: str,
+    ) -> None:
+        assessment.pause_for_technical_recovery(role)
+        updated = transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (
+                canonical_json(assessment.to_record()),
+                assessment.context.activity_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "saved registration assessment state is unavailable"
+            )
+
+    def retry_technical_in(
+        self,
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+        role: str,
+        failed: AssessmentRun,
+        replacement_run_id: str,
+    ) -> AssessmentRun:
+        lineage = transaction.execute(
+            """SELECT parent_assignment_id, continuation_question_id,
+                      previous_answer_id
+               FROM registration_assignment_lineage
+               WHERE activity_id = ? AND role = ?
+                 AND assignment_id = ? AND run_id = ?""",
+            (
+                assessment.context.activity_id,
+                role,
+                failed.assignment_id,
+                failed.run_id,
+            ),
+        ).fetchone()
+        if lineage is None:
+            raise RegistrationAssessmentError(
+                "registration failed run lineage is unavailable"
+            )
+        replacement = assessment.retry_technical_run(
+            role, failed, replacement_run_id
+        )
+        updated = transaction.execute(
+            """UPDATE registration_assessment_runs
+               SET run_id = ?, runtime_identity_json = NULL
+               WHERE activity_id = ? AND role = ?
+                 AND assignment_id = ? AND run_id = ?""",
+            (
+                replacement.run_id,
+                assessment.context.activity_id,
+                role,
+                failed.assignment_id,
+                failed.run_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "registration failed run is no longer current"
+            )
+        self._record_lineage_in(
+            transaction,
+            assessment.context.activity_id,
+            role,
+            replacement,
+            parent_assignment_id=(
+                None if lineage[0] is None else str(lineage[0])
+            ),
+            continuation_question_id=(
+                None if lineage[1] is None else str(lineage[1])
+            ),
+            previous_answer_id=None if lineage[2] is None else str(lineage[2]),
+        )
+        transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (
+                canonical_json(assessment.to_record()),
+                assessment.context.activity_id,
+            ),
+        )
+        return replacement
+
+    def continue_after_review(
+        self, assessment: RegistrationAssessment
+    ) -> RegistrationAssessment:
+        """Persist the service-created architect correction assignment."""
+        run = _new_run("project_architect")
+        assessment.continue_after_review(run)
+        self._replace_run(assessment, "project_architect", run)
+        return assessment
+
+    def prepare_next_review(
+        self, assessment: RegistrationAssessment
+    ) -> RegistrationAssessment:
+        """Persist a fresh independent-review run after an amendment."""
+        run = _new_run("fidelity_reviewer")
+        assessment.set_current_run("fidelity_reviewer", run)
+        self._replace_run(assessment, "fidelity_reviewer", run)
+        return assessment
+
+    def _replace_run(
+        self, assessment: RegistrationAssessment, role: str, run: AssessmentRun
+    ) -> None:
+        with self.database.transaction() as transaction:
+            previous = transaction.execute(
+                """SELECT assignment_id FROM registration_assessment_runs
+                   WHERE activity_id = ? AND role = ?""",
+                (assessment.context.activity_id, role),
+            ).fetchone()
+            if previous is None:
+                raise RegistrationAssessmentError(
+                    "registration assignment run is unavailable"
+                )
+            updated = transaction.execute(
+                """UPDATE registration_assessment_runs
+                   SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                (run.assignment_id, run.run_id, assessment.context.activity_id, role),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "registration assignment run is unavailable"
+                )
+            self._record_lineage_in(
+                transaction,
+                assessment.context.activity_id,
+                role,
+                run,
+                parent_assignment_id=str(previous[0]),
+            )
+            transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(assessment.to_record()), assessment.context.activity_id),
+            )
 
     def submit_architect(self, response: RegistrationAgentResponse) -> object:
         assessment = self._assessment_for_response(response, "project_architect")
@@ -302,7 +855,8 @@ class RegistrationServiceBinding:
             _snapshot_for(assessment), "agent_session", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "project_architect"),
         )
-        self._save_assessment(assessment)
+        self._save_assessment(assessment, response)
+        self._notify_assessment(assessment)
         return result
 
     def submit_reviewer(self, response: RegistrationAgentResponse) -> object:
@@ -311,14 +865,181 @@ class RegistrationServiceBinding:
             _snapshot_for(assessment), "review", assessment=assessment,
             response=response, running_identity=self._saved_identity(assessment, "fidelity_reviewer"),
         )
-        self._save_assessment(assessment)
+        self._save_assessment(assessment, response)
+        self._notify_assessment(assessment)
         return result
+
+    def _notify_assessment(self, assessment: RegistrationAssessment) -> None:
+        if self._assessment_listener is not None:
+            self._assessment_listener(assessment)
 
     def validate_package(self, activity_id: str, manifest: object, records: object) -> object:
         assessment = self._assessment(activity_id)
         return self.registry.dispatch(
-            _snapshot_for(assessment), "saved_outputs", assessment=assessment, manifest=manifest, records=records,
+            _snapshot_for(assessment), "saved_outputs", assessment=assessment,
+            manifest=manifest, records=records,
+            manifest_values=self.candidate_manifest_values(assessment),
         )
+
+    def replace_ready_candidate(
+        self, assessment: RegistrationAssessment, candidate: ArtifactReference
+    ) -> None:
+        """Persist the service-built review-bearing form of an approved candidate."""
+        assessment.replace_ready_candidate(candidate)
+        with self.database.transaction() as transaction:
+            updated = transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (
+                    canonical_json(assessment.to_record()),
+                    assessment.context.activity_id,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "saved registration assessment state is unavailable"
+                )
+
+    def grant_one_review(self, assessment: RegistrationAssessment) -> object:
+        """Persist one Owner-authorized review allowance without resetting counts."""
+        with self.database.transaction() as transaction:
+            status = self.grant_one_review_in(transaction, assessment)
+        self._notify_assessment(assessment)
+        return status
+
+    def pause_for_review_limit(
+        self, assessment: RegistrationAssessment
+    ) -> object:
+        status = assessment.pause_for_review_limit()
+        with self.database.transaction() as transaction:
+            updated = transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (
+                    canonical_json(assessment.to_record()),
+                    assessment.context.activity_id,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "saved registration assessment state is unavailable"
+                )
+        return status
+
+    def prepare_source_update(
+        self,
+        previous: RegistrationAssessment,
+        intake: RegistrationIntakeResult,
+    ) -> tuple[RegistrationAssessment, RoleSelections]:
+        """Build an exact-source replacement assessment without resetting review use."""
+        project_id, _saved, selections = self._saved_intake(
+            previous.context.activity_id
+        )
+        replacement = self.plugin.start_assessment(
+            snapshot=previous.process_snapshot,
+            activity_id=previous.context.activity_id,
+            project_id=project_id,
+            intake=intake,
+            selections=selections,
+        )
+        replacement.bind_process_snapshot(previous.process_snapshot)
+        replacement.carry_review_accounting_from(previous)
+        return replacement, selections
+
+    def replace_source_update_in(
+        self,
+        transaction: Transaction,
+        replacement: RegistrationAssessment,
+        intake: RegistrationIntakeResult,
+        selections: RoleSelections,
+    ) -> None:
+        """Persist updated source and new exact assignments in the request transaction."""
+        activity_id = replacement.context.activity_id
+        updated = transaction.execute(
+            """UPDATE registration_assessment_intake
+               SET intake_json = ?, selections_json = ? WHERE activity_id = ?""",
+            (
+                intake.to_json(),
+                canonical_json(_selections_mapping(selections)),
+                activity_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "source update has no saved registration intake"
+            )
+        for role, run, route in (
+            (
+                "project_architect",
+                replacement.context.architect_run,
+                replacement.context.routes.architect,
+            ),
+            (
+                "fidelity_reviewer",
+                replacement.context.reviewer_run,
+                replacement.context.routes.fidelity_reviewer,
+            ),
+        ):
+            previous = transaction.execute(
+                """SELECT assignment_id FROM registration_assessment_runs
+                   WHERE activity_id = ? AND role = ?""",
+                (activity_id, role),
+            ).fetchone()
+            if previous is None:
+                raise RegistrationAssessmentError(
+                    "source update registration assignment is unavailable"
+                )
+            changed = transaction.execute(
+                """UPDATE registration_assessment_runs
+                   SET assignment_id = ?, run_id = ?, route_json = ?,
+                       runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                (
+                    run.assignment_id,
+                    run.run_id,
+                    canonical_json(_route_mapping(route)),
+                    activity_id,
+                    role,
+                ),
+            )
+            if changed.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "source update registration assignment is unavailable"
+                )
+            self._record_lineage_in(
+                transaction,
+                activity_id,
+                role,
+                run,
+                parent_assignment_id=str(previous[0]),
+            )
+        transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (canonical_json(replacement.to_record()), activity_id),
+        )
+
+    def adopt_source_update(self, replacement: RegistrationAssessment) -> None:
+        self._assessments[replacement.context.activity_id] = replacement
+
+    @staticmethod
+    def grant_one_review_in(
+        transaction: Transaction, assessment: RegistrationAssessment
+    ) -> object:
+        status = assessment.grant_one_review()
+        updated = transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (
+                canonical_json(assessment.to_record()),
+                assessment.context.activity_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "saved registration assessment state is unavailable"
+            )
+        return status
 
     def rehydrate(self, snapshot: ProcessSnapshot, activity_id: str) -> RegistrationAssessment:
         """Restore exact saved intake, routes, runs, and assessment state offline."""
@@ -344,17 +1065,50 @@ class RegistrationServiceBinding:
                 snapshot.definition.get("maximum_fidelity_reviews", 2),
             )
             assessment = RegistrationAssessment.from_record(context, json.loads(str(state[0])))
+            if any(
+                assessment.current_run(role) != saved[role][0]
+                for role in ("project_architect", "fidelity_reviewer")
+            ):
+                raise ValueError
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             raise RegistrationAssessmentError("saved registration assessment is invalid") from error
         assessment.bind_process_snapshot(snapshot)
         self._assessments[activity_id] = assessment
         return assessment
 
+    def rehydrate_saved(self) -> tuple[str, ...]:
+        """Restore every saved assessment from its immutable process snapshot."""
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT intake.activity_id, snapshots.process_name,
+                          snapshots.definition_json,
+                          snapshots.definition_sha256,
+                          snapshots.bundle_snapshot_json
+                   FROM registration_assessment_intake AS intake
+                   JOIN service_process_snapshots AS snapshots
+                     ON snapshots.activity_id = intake.activity_id
+                   ORDER BY intake.activity_id"""
+            ).fetchall()
+        restored: list[str] = []
+        for row in rows:
+            try:
+                bundle = BundleSnapshot.from_dict(json.loads(str(row[4])))
+                snapshot = ProcessSnapshot(
+                    str(row[1]), str(row[2]), str(row[3]), bundle
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                raise RegistrationAssessmentError(
+                    "saved registration process snapshot is invalid"
+                ) from error
+            self.rehydrate(snapshot, str(row[0]))
+            restored.append(str(row[0]))
+        return tuple(restored)
+
     def _assessment_for_response(self, response: RegistrationAgentResponse, role: str) -> RegistrationAssessment:
         if not isinstance(response, RegistrationAgentResponse) or response.role != role:
             raise RegistrationAssessmentError("response is not for the dispatched registration role")
         assessment = self._assessment(response.activity_id)
-        expected = assessment.context.architect_run if role == "project_architect" else assessment.context.reviewer_run
+        expected = assessment.current_run(role)
         if (response.assignment_id, response.run_id) != (expected.assignment_id, expected.run_id):
             raise RegistrationAssessmentError("response does not match the service-saved current run")
         return assessment
@@ -389,9 +1143,9 @@ class RegistrationServiceBinding:
     ) -> tuple[OperationIdentity, ResolvedAgentRoute]:
         context = assessment.context
         if role == "project_architect":
-            run, route = context.architect_run, context.routes.architect
+            run, route = assessment.current_run(role), context.routes.architect
         elif role == "fidelity_reviewer":
-            run, route = context.reviewer_run, context.routes.fidelity_reviewer
+            run, route = assessment.current_run(role), context.routes.fidelity_reviewer
         else:
             raise RegistrationAssessmentError("registration role is invalid")
         return OperationIdentity(context.project_id, context.activity_id, run.assignment_id, run.run_id), route
@@ -420,14 +1174,87 @@ class RegistrationServiceBinding:
             raise RegistrationAssessmentError("saved registration intake is incomplete")
         return project_id, intake, selections
 
-    def _save_assessment(self, assessment: RegistrationAssessment) -> None:
+    def saved_intake_result(self, activity_id: str) -> RegistrationIntakeResult:
+        """Return the durable complete intake for service-owned consistency checks."""
+        return self._saved_intake(activity_id)[1]
+
+    def _save_assessment(
+        self,
+        assessment: RegistrationAssessment,
+        response: RegistrationAgentResponse,
+    ) -> None:
         with self.database.transaction() as transaction:
             updated = transaction.execute(
                 "UPDATE registration_assessment_state SET state_json = ? WHERE activity_id = ?",
                 (canonical_json(assessment.to_record()), assessment.context.activity_id),
             )
             if updated.rowcount != 1:
-                raise RegistrationAssessmentError("saved registration assessment state is unavailable")
+                raise RegistrationAssessmentError(
+                    "saved registration assessment state is unavailable"
+                )
+            if response.result == "clarification_required":
+                if self._questions is None:
+                    raise RegistrationAssessmentError(
+                        "registration question service is unavailable"
+                    )
+                lineage = transaction.execute(
+                    """SELECT continuation_question_id, previous_answer_id
+                       FROM registration_assignment_lineage
+                       WHERE activity_id = ? AND role = ?
+                         AND assignment_id = ? AND run_id = ?""",
+                    (
+                        assessment.context.activity_id,
+                        response.role,
+                        response.assignment_id,
+                        response.run_id,
+                    ),
+                ).fetchone()
+                if lineage is None:
+                    raise RegistrationAssessmentError(
+                        "registration clarification assignment lineage is unavailable"
+                    )
+                original_question_id = (
+                    None if lineage[0] is None else str(lineage[0])
+                )
+                previous_answer_id = None if lineage[1] is None else str(lineage[1])
+                for question in response.questions:
+                    identity = "registration-question-" + uuid.uuid5(
+                        uuid.NAMESPACE_URL,
+                        "/".join(
+                            (
+                                response.activity_id,
+                                response.assignment_id,
+                                response.run_id,
+                                question.local_key,
+                            )
+                        ),
+                    ).hex
+                    self._questions.publish(
+                        transaction,
+                        LinkedQuestion(
+                            identity,
+                            response.project_id,
+                            response.activity_id,
+                            question.subject,
+                            question.question,
+                            response.role,
+                            "registration-process",
+                            choices=tuple(
+                                AnswerChoice(
+                                    str(option["local_key"]),
+                                    str(option["label"]),
+                                    str(option["tradeoff"]),
+                                    None
+                                    if option["recommendation_reason"] is None
+                                    else str(option["recommendation_reason"]),
+                                )
+                                for option in question.options
+                            ),
+                            original_question_id=original_question_id,
+                            previous_answer_id=previous_answer_id,
+                        ),
+                        emit_event=True,
+                    )
 
 
 def _identity_mapping(identity: RunningToolIdentity) -> dict[str, str]:

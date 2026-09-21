@@ -20,6 +20,7 @@ from .connection import (
 )
 from .extensions import ExtensionRegistry
 from .questions import QuestionsExtension
+from .registration import RegistrationExtension
 from .rendering import TerminalRenderer, TerminalSize
 from .workspace import Workspace, WorkspaceError
 
@@ -46,6 +47,7 @@ class TerminalApplication:
         self.output = output_stream
         extensions = ExtensionRegistry()
         QuestionsExtension().install(extensions)
+        RegistrationExtension().install(extensions)
         self.workspace = Workspace(self.connection.client, extensions=extensions)
         self.renderer = TerminalRenderer()
         self._lock = threading.RLock()

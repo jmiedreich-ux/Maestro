@@ -119,6 +119,36 @@ class DurableSupervisionTest(unittest.TestCase):
             self.supervisor.launch(acknowledged)
         self.units.stop(acknowledged_id.unit_name)
 
+    def test_unacknowledged_started_unit_is_reconciled_and_stopped_by_exact_identity(self) -> None:
+        class StartedWithoutAcknowledgement(LocalProcessUnits):
+            visible = False
+
+            def launch(self, request):
+                self.managed = super().launch(request)
+                raise OSError("acknowledgement interrupted")
+
+            def inspect(self, unit_name):
+                if not self.visible:
+                    return None
+                return super().inspect(unit_name)
+
+        units = StartedWithoutAcknowledgement()
+        supervisor = AgentSupervisor(self.journal, units)
+        with self.assertRaisesRegex(SupervisionError, "acknowledged"):
+            supervisor.launch(self.request("sleep 5"))
+
+        self.assertEqual("launch_uncertain", supervisor.poll(self.identity).state)
+        self.assertEqual(
+            "stop_unconfirmed", supervisor.stop(self.identity, "cancelled").state
+        )
+        units.visible = True
+        reconciled = supervisor.poll(self.identity)
+        self.assertEqual("running", reconciled.state)
+        self.assertTrue(reconciled.invocation_id)
+        stopped = supervisor.stop(self.identity, "cancelled")
+        self.assertEqual("cancelled", stopped.state)
+        self.assertTrue(units.inspect(self.identity.unit_name).cgroup_empty)
+
     def test_cancel_and_deadline_stop_confirmed_process_group_before_recovery(self) -> None:
         running = self.supervisor.launch(self.request("trap '' TERM; sleep 5"))
         cancelled = self.supervisor.stop(self.identity, "cancelled")
@@ -236,6 +266,39 @@ class DurableSupervisionTest(unittest.TestCase):
         with self.assertRaisesRegex(SupervisionError, "already published"):
             self.supervisor.report_runtime_identity(self.identity, tool_identity)
 
+    def test_restart_restores_route_and_accepts_durable_completed_runner_identity(self) -> None:
+        self.supervisor.reserve_runtime_identity(self.identity, self.route())
+        self.supervisor.launch(self.request("exit 0"))
+        for _ in range(30):
+            completed = self.supervisor.poll(self.identity)
+            if completed.state == "completed":
+                break
+            time.sleep(0.02)
+        self.assertEqual("completed", completed.state)
+
+        published = []
+        publisher = type("Publisher", (), {"publish": lambda _self, value: published.append(value)})()
+        restarted = AgentSupervisor(
+            self.journal, self.units, runtime_identity_reporter=publisher
+        )
+        restarted.restore_runtime_identity_reservation(self.identity, self.route())
+        restarted.report_runtime_identity(
+            self.identity,
+            RunningToolIdentity(
+                "tool_metadata", "openai", "openai/gpt-5.6-codex-2026-09-01",
+                "1.2.3", "a" * 64,
+            ),
+        )
+        self.assertEqual(self.identity.key, published[0].operation_key)
+
+    def test_restart_preserves_success_status_when_runner_exits_after_service(self) -> None:
+        self.supervisor.launch(self.request("sleep 0.05; exit 0"))
+        restarted = AgentSupervisor(self.journal, self.units)
+        time.sleep(0.1)
+        completed = restarted.poll(self.identity)
+        self.assertEqual("completed", completed.state)
+        self.assertEqual("exit_0", completed.terminal_reason)
+
     def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
         self.supervisor.reserve_runtime_identity(self.identity, self.route())
         self.supervisor.launch(self.request("sleep 5"))
@@ -270,6 +333,7 @@ class SystemdUserUnitsTest(unittest.TestCase):
         environment = popen.call_args.kwargs["env"]
         self.assertNotIn("--collect", arguments)
         self.assertIn("--property=RemainAfterExit=yes", arguments)
+        self.assertIn("--property=RuntimeMaxSec=5s", arguments)
         self.assertEqual(f"/run/user/{os.getuid()}", environment["XDG_RUNTIME_DIR"])
         self.assertEqual(f"unix:path=/run/user/{os.getuid()}/bus", environment["DBUS_SESSION_BUS_ADDRESS"])
 
@@ -283,6 +347,24 @@ class SystemdUserUnitsTest(unittest.TestCase):
         assert observed is not None
         self.assertEqual("invocation", observed.invocation_id)
         self.assertEqual(f"/run/user/{os.getuid()}", run.call_args.kwargs["env"]["XDG_RUNTIME_DIR"])
+
+    def test_inspection_retains_successful_exit_status_after_restart(self) -> None:
+        controller = SystemdUserUnits(systemctl="systemctl-test")
+        output = (
+            "MainPID=0\nActiveState=inactive\nControlGroup=/user.slice/test\n"
+            "InvocationID=invocation\nResult=success\nExecMainCode=1\n"
+            "ExecMainStatus=0\n"
+        )
+        with (
+            patch("maestro.agents.supervisor.subprocess.run") as run,
+            patch("maestro.agents.supervisor._boot_id", return_value="boot"),
+            patch.object(controller, "_cgroup_empty", return_value=True),
+        ):
+            run.return_value.returncode = 0
+            run.return_value.stdout = output
+            observed = controller.inspect("maestro-agent-run-one.service")
+        assert observed is not None
+        self.assertEqual(0, observed.exit_status)
 
 
 if __name__ == "__main__":

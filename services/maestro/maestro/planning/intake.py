@@ -16,11 +16,18 @@ from maestro.foundation.credentials import (
     normalize_repository,
     validate_branch,
 )
-from maestro.foundation.git_read import run_git
+from maestro.foundation.git_read import (
+    GitReadError,
+    run_git,
+    validate_object_id,
+    validate_repository_path,
+)
 from maestro.foundation.github_destination import (
+    GitHubDestination,
     GitHubDestinationAuthorization,
     GitHubDestinationAuthorizationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
 )
 
 from .sources import ExactSourceReader, SourceIntakeError, SourceInventory, validate_source_ref
@@ -53,7 +60,7 @@ class IntakeQuestionPublisher(Protocol):
 class RegistrationIntakeRequest:
     repository: str
     remote: str
-    overview_path: str
+    overview_path: str | None
     referenced_paths: tuple[str, ...] = ()
     source_ref: str | None = None
     prior_source_ref: str | None = None
@@ -79,6 +86,9 @@ class RegistrationIntakeResult:
     failure: str | None = None
     repository: str | None = None
     selection_decision_ref: str | None = None
+    publication_head: str | None = None
+    resolved_source_commit: str | None = None
+    selected_overview_path: str | None = None
 
     @property
     def selection_decision_reference(self) -> str | None:
@@ -87,11 +97,19 @@ class RegistrationIntakeResult:
 
     @property
     def source_commit(self) -> str | None:
-        return None if self.inventory is None else self.inventory.source_commit
+        return (
+            self.resolved_source_commit
+            if self.inventory is None
+            else self.inventory.source_commit
+        )
 
     @property
     def overview_path(self) -> str | None:
-        return None if self.inventory is None else self.inventory.overview_path
+        return (
+            self.selected_overview_path
+            if self.inventory is None
+            else self.inventory.overview_path
+        )
 
     def to_record(self) -> dict[str, object]:
         """Return the complete detached JSON record for this intake state.
@@ -115,6 +133,7 @@ class RegistrationIntakeResult:
             "source_commit": self.source_commit,
             "overview_path": self.overview_path,
             "publication_branch": self.publication_branch,
+            "publication_head": self.publication_head,
             "inventory": None if self.inventory is None else self.inventory.to_record(),
             "missing_questions": [
                 {"field": item.field, "subject": item.subject, "prompt": item.prompt}
@@ -135,7 +154,7 @@ class RegistrationIntakeResult:
             "schema_version", "repository", "repository_binding_id", "selected_scope",
             "source_selection", "selection_decision_ref", "destination_snapshot_reference",
             "destination_evidence", "source_ref", "source_commit", "overview_path",
-            "publication_branch", "inventory",
+            "publication_branch", "publication_head", "inventory",
             "missing_questions", "failure", "integrity_sha256",
         }
         if not isinstance(value, MappingABC) or set(value) != fields:
@@ -177,13 +196,16 @@ class RegistrationIntakeResult:
             _optional_text(value, "failure"),
             _optional_text(value, "repository"),
             _optional_text(value, "selection_decision_ref"),
+            _optional_text(value, "publication_head"),
+            _optional_text(value, "source_commit"),
+            _optional_text(value, "overview_path"),
         )
         source_commit = _optional_text(value, "source_commit")
         overview_path = _optional_text(value, "overview_path")
-        if inventory is None:
-            if source_commit is not None or overview_path is not None:
-                raise IntakeError("an incomplete intake cannot have saved source inventory details")
-        elif source_commit != inventory.source_commit or overview_path != inventory.overview_path:
+        if inventory is not None and (
+            source_commit != inventory.source_commit
+            or overview_path != inventory.overview_path
+        ):
             raise IntakeError("saved intake source details do not match its inventory")
         try:
             result._validate_persisted_state()
@@ -204,6 +226,75 @@ class RegistrationIntakeResult:
         if not isinstance(self.missing_questions, tuple) or any(not isinstance(item, IntakeQuestion) for item in self.missing_questions):
             raise IntakeError("saved intake questions are invalid")
         if self.inventory is None:
+            reserved = self.source_commit is not None or self.overview_path is not None
+            if reserved:
+                required = {
+                    "repository": self.repository,
+                    "repository_binding_id": self.repository_binding_id,
+                    "selected_scope": self.selected_scope,
+                    "source_selection": self.source_selection,
+                    "selection_decision_ref": self.selection_decision_ref,
+                    "destination_snapshot_reference": self.destination_snapshot_reference,
+                    "destination_evidence": self.destination_evidence,
+                    "source_ref": self.source_ref,
+                    "source_commit": self.source_commit,
+                    "overview_path": self.overview_path,
+                    "publication_branch": self.publication_branch,
+                    "publication_head": self.publication_head,
+                }
+                text_fields = {
+                    key: value for key, value in required.items()
+                    if key != "destination_evidence"
+                }
+                if (
+                    self.missing_questions
+                    or any(not isinstance(value, str) or not value for value in text_fields.values())
+                    or not isinstance(self.destination_evidence, MappingABC)
+                ):
+                    raise IntakeError("a reserved intake record is incomplete")
+                assert self.repository is not None
+                assert self.source_selection is not None
+                assert self.source_ref is not None
+                assert self.source_commit is not None
+                assert self.overview_path is not None
+                assert self.publication_branch is not None
+                assert self.destination_snapshot_reference is not None
+                assert self.destination_evidence is not None
+                assert self.selection_decision_ref is not None
+                assert self.publication_head is not None
+                if normalize_repository(self.repository) != self.repository:
+                    raise IntakeError("saved intake repository is not normalized")
+                validate_branch(self.publication_branch)
+                if self.source_selection not in {
+                    "supplied", "inherited", "defaulted"
+                }:
+                    raise IntakeError("saved intake source selection is invalid")
+                validate_source_ref(self.source_ref)
+                try:
+                    validate_object_id(self.source_commit, "saved source commit")
+                    validate_object_id(self.publication_head, "saved publication head")
+                    validate_repository_path(self.overview_path)
+                except GitReadError as error:
+                    raise IntakeError(str(error)) from error
+                _validate_destination_evidence(
+                    self.destination_evidence, self.repository,
+                    self.repository_binding_id, self.publication_branch,
+                    self.destination_snapshot_reference,
+                )
+                if _selection_decision_reference(
+                    self.repository, self.source_selection, self.source_ref,
+                    self.source_commit, self.overview_path,
+                    self.publication_branch, self.destination_snapshot_reference,
+                    self.publication_head, selected_scope=self.selected_scope,
+                ) != self.selection_decision_ref:
+                    raise IntakeError(
+                        "saved intake selection decision reference does not match its reservation"
+                    )
+                if self.failure is not None and (
+                    not isinstance(self.failure, str) or not self.failure.strip()
+                ):
+                    raise IntakeError("a failed intake record is invalid")
+                return
             if self.selection_decision_ref is not None:
                 raise IntakeError("an incomplete intake cannot have a selection decision reference")
             if self.failure is None:
@@ -254,6 +345,7 @@ class RegistrationIntakeResult:
             "destination_evidence": self.destination_evidence,
             "source_ref": self.source_ref,
             "publication_branch": self.publication_branch,
+            "publication_head": self.publication_head,
         }
         text_fields = {key: value for key, value in required.items() if key != "destination_evidence"}
         if any(not isinstance(value, str) or not value for value in text_fields.values()) or not isinstance(self.destination_evidence, MappingABC):
@@ -265,6 +357,11 @@ class RegistrationIntakeResult:
         assert self.destination_snapshot_reference is not None
         assert self.destination_evidence is not None
         assert self.selection_decision_ref is not None
+        assert self.publication_head is not None
+        try:
+            validate_object_id(self.publication_head, "saved publication head")
+        except GitReadError as error:
+            raise IntakeError(str(error)) from error
         if normalize_repository(self.repository) != self.repository:
             raise IntakeError("saved intake repository is not normalized")
         validate_branch(self.publication_branch)
@@ -281,7 +378,9 @@ class RegistrationIntakeResult:
         )
         if _selection_decision_reference(
             self.repository, self.source_selection, self.source_ref, self.inventory.source_commit,
-            self.inventory.overview_path, self.publication_branch, self.destination_snapshot_reference,
+            self.inventory.overview_path, self.publication_branch,
+            self.destination_snapshot_reference, self.publication_head,
+            selected_scope=self.selected_scope,
         ) != self.selection_decision_ref:
             raise IntakeError("saved intake selection decision reference does not match its selection")
 
@@ -294,7 +393,7 @@ class RegistrationIntake:
         sources: ExactSourceReader,
         authorizer: RepositoryAuthorizer,
         transport: ServiceGitTransport,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         if not isinstance(sources, ExactSourceReader):
             raise TypeError("registration intake requires an exact source reader")
@@ -302,7 +401,9 @@ class RegistrationIntake:
             raise TypeError("registration intake requires a repository authorizer")
         if not isinstance(transport, ServiceGitTransport):
             raise TypeError("registration intake requires service Git transport")
-        if not isinstance(destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
             raise TypeError("registration intake requires the publication-owned GitHub destination provider")
         self._sources = sources
         self._authorizer = authorizer
@@ -312,6 +413,16 @@ class RegistrationIntake:
     def begin(
         self, request: RegistrationIntakeRequest, *, questions: IntakeQuestionPublisher,
     ) -> RegistrationIntakeResult:
+        """Reserve source identity, then read the exact reserved commit."""
+        reserved = self.reserve(request, questions=questions)
+        if reserved.missing_questions:
+            return reserved
+        return self.complete(request, reserved)
+
+    def reserve(
+        self, request: RegistrationIntakeRequest, *, questions: IntakeQuestionPublisher,
+    ) -> RegistrationIntakeResult:
+        """Resolve and return durable intake identity without reading planning files."""
         if not isinstance(request, RegistrationIntakeRequest):
             raise TypeError("registration intake requires RegistrationIntakeRequest")
         if questions is None or not hasattr(questions, "publish_intake_question"):
@@ -324,6 +435,7 @@ class RegistrationIntake:
             return RegistrationIntakeResult(None, missing, None, request.scope, source_selection, None, None)
 
         assert request.publication_branch is not None
+        assert request.overview_path is not None
         attempt: RegistrationIntakeResult | None = None
         try:
             authorization = self._authorizer.authorize(request.repository, request.publication_branch)
@@ -340,19 +452,23 @@ class RegistrationIntake:
                 request, authorization, source_selection, self._attempted_source_ref(request), provider_result
             )
             self._destination_provider.require_fresh_match(provider_result, authorization)
+            if provider_result.destination_head is None:
+                raise IntakeError("publication branch head is unavailable")
             selector, source_selection = self._source_selection(request, authorization, provider_result)
             selector = validate_source_ref(selector)
-            attempt = replace(attempt, source_selection=source_selection, source_ref=selector)
+            publication_head = provider_result.destination_head
+            attempt = replace(
+                attempt,
+                source_selection=source_selection,
+                source_ref=selector,
+                publication_head=publication_head,
+            )
             with self._destination_provider.bind_transport(
                 provider_result, self._transport, authorization
             ) as bound:
                 command = lambda *arguments: run_git(*arguments, environment=bound.environment())
-                inventory = self._sources.read_registration(
-                    remote=remote,
-                    source_ref=selector,
-                    overview_path=request.overview_path,
-                    referenced_paths=request.referenced_paths,
-                    command=command,
+                source_commit = self._sources.resolve(
+                    remote=remote, source_ref=selector, command=command
                 )
         except (
             SourceIntakeError,
@@ -369,13 +485,92 @@ class RegistrationIntake:
         assert attempt is not None
         return replace(
             attempt,
-            inventory=inventory,
             repository=authorization.repository,
             selection_decision_ref=_selection_decision_reference(
-                authorization.repository, source_selection, inventory.source_ref, inventory.source_commit,
-                inventory.overview_path, authorization.branch, attempt.destination_snapshot_reference,
+                authorization.repository, source_selection, selector, source_commit,
+                request.overview_path, authorization.branch,
+                attempt.destination_snapshot_reference, publication_head,
+                selected_scope=request.scope,
             ),
+            publication_head=publication_head,
+            resolved_source_commit=source_commit,
+            selected_overview_path=request.overview_path,
         )
+
+    def complete(
+        self,
+        request: RegistrationIntakeRequest,
+        reservation: RegistrationIntakeResult,
+    ) -> RegistrationIntakeResult:
+        """Read all authoritative planning files from one persisted reservation."""
+        if not isinstance(request, RegistrationIntakeRequest):
+            raise TypeError("registration intake requires RegistrationIntakeRequest")
+        if not isinstance(reservation, RegistrationIntakeResult):
+            raise TypeError("registration intake completion requires a saved reservation")
+        reservation._validate_persisted_state()
+        if reservation.inventory is not None:
+            return reservation
+        if reservation.missing_questions or reservation.failure is not None:
+            raise IntakeError("registration intake reservation is not ready for source reading")
+        assert reservation.repository is not None
+        assert reservation.repository_binding_id is not None
+        assert reservation.publication_branch is not None
+        assert reservation.source_ref is not None
+        assert reservation.source_commit is not None
+        assert reservation.overview_path is not None
+        attempt = reservation
+        try:
+            authorization = self._authorizer.authorize(
+                reservation.repository, reservation.publication_branch
+            )
+            if authorization.binding_id != reservation.repository_binding_id:
+                raise IntakeError("saved source reservation binding is no longer authoritative")
+            remote = self._transport.remote_for(authorization)
+            if remote != request.remote:
+                raise IntakeError("source remote does not match the saved repository profile")
+            provider_result = self._destination_provider.authorize(
+                authorization.repository, authorization.branch
+            )
+            self._destination_provider.require_fresh_match(
+                provider_result, authorization
+            )
+            with self._destination_provider.bind_transport(
+                provider_result, self._transport, authorization
+            ) as bound:
+                command = lambda *arguments: run_git(
+                    *arguments, environment=bound.environment()
+                )
+                inventory = self._sources.read_registration_at(
+                    remote=remote,
+                    source_ref=reservation.source_ref,
+                    source_commit=reservation.source_commit,
+                    overview_path=reservation.overview_path,
+                    referenced_paths=request.referenced_paths,
+                    command=command,
+                )
+            # A partial boundary is accepted only when the Owner supplied the
+            # complete, explicitly confirmed outcome/dependency/completion map.
+            # The same immutable interpretation is later copied into package
+            # context and checked against every candidate.
+            from .registration_records import (
+                RegistrationRecordError,
+                RegistrationScopeBoundary,
+            )
+            try:
+                RegistrationScopeBoundary.from_selection(
+                    reservation.selected_scope or "", inventory
+                )
+            except RegistrationRecordError as error:
+                raise IntakeError(str(error)) from error
+        except (
+            SourceIntakeError,
+            RepositoryCredentialError,
+            GitHubDestinationAuthorizationError,
+            IntakeError,
+        ) as error:
+            failed = replace(attempt, failure=str(error))
+            raise IntakeError(str(error), attempt=failed) from error
+        return replace(reservation, inventory=inventory)
 
     def rehydrate(self, saved_record: str | bytes | bytearray) -> RegistrationIntakeResult:
         """Rebuild saved intake state without authorizing or reading a source."""
@@ -442,6 +637,7 @@ class RegistrationIntake:
     @staticmethod
     def _missing(request: RegistrationIntakeRequest) -> Iterable[IntakeQuestion]:
         fields = (
+            ("overview_path", request.overview_path, "Choose project overview", "Which repository-relative project overview contains the authoritative source table?"),
             ("scope", request.scope, "Choose registration scope", "Which supplied project outcomes are included in this registration?"),
             ("publication_branch", request.publication_branch, "Choose publication branch", "Which authorized existing branch may receive registration outputs?"),
             ("architect_selection", request.architect_selection, "Choose registration architect", "Which configured tool and exact model will assess this registration?"),
@@ -497,19 +693,27 @@ def _validate_destination_evidence(
 
 def _selection_decision_reference(
     repository: str, source_selection: str, source_ref: str, source_commit: str,
-    overview_path: str, publication_branch: str, destination_snapshot_reference: str | None,
+    overview_path: str, publication_branch: str,
+    destination_snapshot_reference: str | None, publication_head: str | None,
+    *, selected_scope: str | None = None,
 ) -> str:
     if destination_snapshot_reference is None:
         raise IntakeError("saved intake destination snapshot reference is missing")
+    try:
+        publication_head = validate_object_id(publication_head, "publication head")
+    except GitReadError as error:
+        raise IntakeError(str(error)) from error
     return hashlib.sha256(_canonical_json({
-        "kind": "registration_source_selection_v1",
+        "kind": "registration_source_and_scope_selection_v3",
         "repository": repository,
         "source_selection": source_selection,
         "source_ref": source_ref,
         "source_commit": source_commit,
         "overview_path": overview_path,
         "publication_branch": publication_branch,
+        "publication_head": publication_head,
         "destination_snapshot_reference": destination_snapshot_reference,
+        "selected_scope": selected_scope,
     }).encode("utf-8")).hexdigest()
 
 

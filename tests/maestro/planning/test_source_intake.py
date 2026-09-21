@@ -59,7 +59,7 @@ class _DestinationApi:
 
     def branch_identity(self, _token, _repository, branch):
         self.calls.append("branch")
-        return {"name": branch}
+        return {"name": branch, "commit": {"sha": self.head}}
 
     def branch_policy(self, _token, _repository, _branch):
         self.calls.append("policy")
@@ -90,6 +90,10 @@ class _CountingReader(ExactSourceReader):
     def read_registration(self, **kwargs):
         self.registration_reads += 1
         return super().read_registration(**kwargs)
+
+    def read_registration_at(self, **kwargs):
+        self.registration_reads += 1
+        return super().read_registration_at(**kwargs)
 
 
 class ExactSourceIntakeTest(unittest.TestCase):
@@ -136,6 +140,7 @@ class ExactSourceIntakeTest(unittest.TestCase):
             (ServiceGitRoute("owner/project", "github-app", str(self.remote)),), lambda _reference: "unused",
         )
         self.api = _DestinationApi()
+        self.api.head = self.initial_commit
         profile = GitHubAppDestinationProfile(
             "project-profile", "project-binding", GitHubAppCredential("github-app"), 42, 99,
             "maestro", ("owner/project",), ("main",),
@@ -184,13 +189,55 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertEqual(self.initial_commit, result.inventory.source_commit)
         self.assertEqual(("docs/overview.md", "docs/architecture.md", "docs/milestones.md"), tuple(blob.path for blob in result.inventory.blobs))
         self.assertEqual((("APP-PM1", "Start application", 3),), tuple((item.milestone, item.subject, item.version) for item in result.inventory.outcomes))
+        self.assertEqual("APP", result.inventory.outcomes[0].declaration)
+        self.assertEqual(
+            "Application", result.inventory.outcomes[0].declaration_subject
+        )
         self.assertEqual("supplied", result.source_selection)
         self.assertEqual("project-binding", result.repository_binding_id)
         self.assertEqual(64, len(result.destination_snapshot_reference))
         self.assertEqual("allowed", result.destination_evidence["decision"])
         self.assertEqual("project-profile", result.destination_evidence["snapshot"]["profile_name"])
+        self.assertEqual(self.initial_commit, result.publication_head)
         self.assertNotIn("installation-token", repr(result.destination_evidence))
-        self.assertEqual(["app", "installation", "token", "repository", "branch", "policy"], self.api.calls)
+        self.assertEqual(
+            ["app", "installation", "token", "repository", "branch", "policy"] * 2,
+            self.api.calls,
+        )
+
+    def test_retains_each_declared_milestone_dependency_from_the_pinned_source(self) -> None:
+        declaration = self.work / "docs" / "milestones.md"
+        declaration.write_text(
+            declaration.read_text(encoding="utf-8")
+            + "\n## APP-PM1 — Start application\n\n"
+            + "### Dependencies\n\n"
+            + "| Required dependency | Reference | Current state or delivery responsibility |\n"
+            + "| --- | --- | --- |\n"
+            + "| Runtime foundation | SVC-PM1 — Operate the runtime | Required preceding capability. |\n",
+            encoding="utf-8",
+        )
+        self._commit("declare milestone dependency")
+        self.api.head = self._output("git", "-C", str(self.work), "rev-parse", "HEAD")
+
+        result = self._intake().begin(self._request(), questions=_Questions())
+
+        dependency = result.inventory.outcomes[0].dependencies[0]
+        self.assertEqual("SVC-PM1", dependency.record_id)
+        self.assertEqual("Runtime foundation", dependency.subject)
+        self.assertEqual("SVC-PM1 — Operate the runtime", dependency.required_outcome)
+        self.assertEqual(("SVC-PM1",), dependency.referenced_outcomes)
+        self.assertEqual(result.inventory, type(result.inventory).from_json(result.inventory.to_json()))
+
+    def test_missing_overview_path_is_collected_before_source_access(self) -> None:
+        questions = _Questions()
+
+        result = self._intake().begin(
+            self._request(overview_path=None), questions=questions
+        )
+
+        self.assertIsNone(result.inventory)
+        self.assertIn("overview_path", {item.field for item in questions.questions})
+        self.assertEqual([], self.api.calls)
 
     def test_successful_intake_round_trips_a_complete_immutable_record_without_rereading(self) -> None:
         reader = _CountingReader()
@@ -247,7 +294,8 @@ class ExactSourceIntakeTest(unittest.TestCase):
         self.assertIsNone(restored.inventory)
         self.assertIsNotNone(restored.failure)
         self.assertEqual("owner/project", restored.repository)
-        self.assertIsNone(restored.selection_decision_ref)
+        self.assertIsNotNone(restored.selection_decision_ref)
+        self.assertEqual(self.initial_commit, restored.source_commit)
 
     def test_failed_attempt_reload_rejects_semantically_tampered_common_state(self) -> None:
         with self.assertRaisesRegex(IntakeError, "does not contain") as raised:

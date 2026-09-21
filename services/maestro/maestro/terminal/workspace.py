@@ -15,7 +15,7 @@ from .connection import (
     ServiceError,
     TerminalConnectionError,
 )
-from .extensions import ExtensionContext, ExtensionRegistry, InputSubmission
+from .extensions import ActionInput, ExtensionContext, ExtensionRegistry, InputSubmission
 
 
 class WorkspaceError(ValueError):
@@ -143,6 +143,7 @@ class InputBuffer:
     cursor: int = 0
     question_id: str | None = None
     extension_name: str | None = None
+    action_id: str | None = None
     choice_id: str | None = None
 
     def clear(self) -> None:
@@ -150,6 +151,7 @@ class InputBuffer:
         self.cursor = 0
         self.question_id = None
         self.extension_name = None
+        self.action_id = None
         self.choice_id = None
 
     def insert(self, value: str) -> None:
@@ -472,6 +474,8 @@ class Workspace:
                 targets.append(FocusTarget("control", "new-messages", "New messages"))
             targets.extend(self._choice_targets())
             targets.extend(self._activity_action_targets())
+        elif self.view == View.EXTENSION:
+            targets.extend(self._activity_action_targets())
         targets.append(FocusTarget("editor", "input", "Input"))
         return tuple(targets)
 
@@ -510,9 +514,9 @@ class Workspace:
         if not text:
             return None
         if not text.startswith("/"):
-            if self.input.question_id is None:
+            if self.input.question_id is None and self.input.action_id is None:
                 raise WorkspaceError(
-                    "input accepts commands until a question is selected"
+                    "input accepts commands until a question or action is selected"
                 )
             if self.input.extension_name in self.extensions.input_names:
                 self._require_online()
@@ -546,9 +550,15 @@ class Workspace:
         if name == "help":
             return ("projects", "attention", "findings") + self.extensions.command_names
         self._require_online()
-        return self.extensions.invoke_command(
+        result = self.extensions.invoke_command(
             name, ExtensionContext(self.client, self), arguments
         )
+        if name in self.extensions.view_names:
+            self.extension_view_name = name
+            self.extension_view_content = result
+            self.view = View.EXTENSION
+            self.focus = 0
+        return result
 
     def open_extension_view(self, name: str, arguments: str = "") -> object:
         self._require_online()
@@ -590,7 +600,30 @@ class Workspace:
         kind = action.get("kind")
         if not isinstance(kind, str) or not kind:
             raise WorkspaceError("activity action kind is unavailable")
-        return self.invoke_action(kind, action_id)
+        extension_name = kind
+        arguments = action_id
+        if action_id in self.extensions.action_names:
+            extension_name, arguments = action_id, ""
+        else:
+            candidate, separator, remainder = action_id.partition(".")
+            if separator and candidate in self.extensions.action_names:
+                extension_name, arguments = candidate, remainder
+        result = self.invoke_action(extension_name, arguments)
+        if isinstance(result, ActionInput):
+            if result.extension_name not in self.extensions.input_names:
+                raise WorkspaceError("activity action input is not installed")
+            self.input.clear()
+            self.input.extension_name = result.extension_name
+            self.input.action_id = result.identity
+            self.selected_attention_detail = dict(
+                self.extensions.open_input(
+                    result.extension_name,
+                    ExtensionContext(self.client, self),
+                    result.identity,
+                )
+            )
+            self._focus_editor()
+        return result
 
     def _require_online(self) -> None:
         if self.connection_state != ConnectionState.CONNECTED or self.stale:
