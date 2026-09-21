@@ -661,9 +661,14 @@ automatic_recovery_attempts = 2
         tool_directory.mkdir()
         executable = tool_directory / "codex"
         companion = tool_directory / "codex-code-mode-host"
-        sensitive = self.root / "service-data" / "agent-config.toml"
-        sensitive.parent.mkdir()
-        for path in (executable, companion, sensitive):
+        protected = (
+            self.root / "service-data" / "agents.toml",
+            self.root / "service-data" / "maestro.sqlite3",
+            self.root / "service-data" / "owner.token",
+            self.root / "service-data" / "github-app-private-key.pem",
+        )
+        protected[0].parent.mkdir()
+        for path in (executable, companion, *protected):
             path.write_text("fixture", encoding="ascii")
         executable.chmod(0o700)
         companion.chmod(0o700)
@@ -694,44 +699,31 @@ automatic_recovery_attempts = 2
         self.assertEqual(str(executable), rewritten[2])
         self.assertEqual(str(companion), rewritten[5])
 
-        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failed:
-            egress.profile_data_mounts(
-                [
-                    egress.BWRAP,
-                    "--ro-bind",
-                    str(executable),
-                    str(executable),
-                    "--ro-bind",
-                    str(sensitive),
-                    str(sensitive),
-                    "--",
-                    str(executable),
-                ],
-                self.paths.workspace_dir,
-                "run-guard",
-                Path("/run/maestro/agent-egress/run-guard/hosts"),
-                "codex",
-                configured_executable,
-            )
-        self.assertEqual(64, failed.exception.code)
-
-        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failed:
-            egress.profile_data_mounts(
-                [
-                    egress.BWRAP,
-                    "--ro-bind",
-                    str(sensitive),
-                    str(sensitive),
-                    "--",
-                    str(sensitive),
-                ],
-                self.paths.workspace_dir,
-                "run-guard",
-                Path("/run/maestro/agent-egress/run-guard/hosts"),
-                "codex",
-                configured_executable,
-            )
-        self.assertEqual(64, failed.exception.code)
+        for sensitive in protected:
+            with (
+                self.subTest(sensitive=sensitive.name),
+                redirect_stderr(io.StringIO()),
+                self.assertRaises(SystemExit) as failed,
+            ):
+                egress.profile_data_mounts(
+                    [
+                        egress.BWRAP,
+                        "--ro-bind",
+                        str(executable),
+                        str(executable),
+                        "--ro-bind",
+                        str(sensitive),
+                        str(sensitive),
+                        "--",
+                        str(executable),
+                    ],
+                    self.paths.workspace_dir,
+                    "run-guard",
+                    Path("/run/maestro/agent-egress/run-guard/hosts"),
+                    "codex",
+                    configured_executable,
+                )
+            self.assertEqual(64, failed.exception.code)
 
     def test_egress_runner_rejects_agent_uid_alias_of_service(self) -> None:
         helper_source = installer._render_egress_helper(

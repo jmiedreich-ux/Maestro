@@ -705,7 +705,7 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         )
 
         observation = InstalledToolInspector(
-            "codex", "openai", self.root
+            "codex", "openai", self.root, self.root / "workspaces"
         ).inspect(route, "1" * 64)
 
         self.assertFalse(observation.available)
@@ -714,6 +714,110 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         self.assertFalse(observation.exact_model_enforcement)
         self.assertFalse(observation.substitution_disabled)
         self.assertEqual({}, observation.context_limits)
+
+    def test_tool_preflight_uses_isolated_root_supervised_egress(self) -> None:
+        executable = self.root / "codex"
+        executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        executable.chmod(0o700)
+        route = ToolRoute(
+            "codex",
+            executable,
+            "agent-credential",
+            "agent-settings",
+            ("openai/model-1",),
+            (PermittedDestination("api.openai.com", 443),),
+        )
+        inspector = InstalledToolInspector(
+            "codex", "openai", self.root, self.root / "workspaces"
+        )
+        workspace = mock.Mock()
+        workspace.paths.scratch = self.root / "preflight-scratch"
+        workspace.isolated_command.return_value = ("/usr/bin/bwrap", "--", str(executable))
+        workspace.egress_command.return_value = (
+            "/usr/bin/sudo", "-n", "/usr/local/libexec/maestro-agent-egress"
+        )
+        inspector.workspaces.prepare_preflight = mock.Mock(return_value=workspace)
+
+        command, cwd = inspector._isolated_launch(
+            route, (str(executable), "app-server")
+        )
+
+        self.assertEqual(workspace.egress_command.return_value, command)
+        self.assertEqual(workspace.paths.scratch, cwd)
+        workspace.isolated_command.assert_called_once()
+        self.assertEqual(
+            (str(executable), "app-server"),
+            workspace.isolated_command.call_args.args[0],
+        )
+        profile = workspace.isolated_command.call_args.kwargs["profile"]
+        self.assertEqual("codex", profile.tool)
+        self.assertEqual(self.root, profile.service_home)
+        workspace.egress_command.assert_called_once_with(
+            "codex", workspace.isolated_command.return_value
+        )
+
+    def test_restarted_assignment_rejects_changed_repository_profile_before_fetch(self) -> None:
+        profile = RepositoryProfile(
+            "current-profile", "github-app", ("owner/project",), ("main",)
+        )
+        authorizer = RepositoryAuthorizer(
+            {"current-profile": profile},
+            (RepositoryBinding("binding", "owner/project", "current-profile"),),
+        )
+        transport = ServiceGitTransport(
+            (
+                ServiceGitRoute(
+                    "owner/project", "github-app", str(self.root / "remote.git")
+                ),
+            ),
+            lambda _reference: "unused",
+        )
+        destination = GitHubDestinationProvider(
+            GitHubAppDestinationProfile(
+                "current-profile",
+                "binding",
+                GitHubAppCredential("github-app"),
+                1,
+                2,
+                "maestro",
+                ("owner/project",),
+                ("main",),
+            ),
+            _DestinationApi(),
+        )
+        launcher = InstalledRegistrationAgentLauncher(
+            workspace_root=self.root / "workspaces",
+            source_cache_root=self.root / "registration-sources",
+            service_home=self.root,
+            authorizer=authorizer,
+            transport=transport,
+            destination_provider=destination,
+        )
+        assessment = SimpleNamespace(
+            context=SimpleNamespace(
+                project_id="project-one",
+                activity_id="activity-one",
+                source_inventory=SimpleNamespace(source_commit="a" * 40),
+                package_context=SimpleNamespace(
+                    source_repository="owner/project",
+                    publication_branch="main",
+                    destination_snapshot_reference="f" * 64,
+                ),
+            )
+        )
+
+        with (
+            mock.patch(
+                "maestro.service.registration_agents.run_git"
+            ) as source_command,
+            self.assertRaisesRegex(ValueError, "profile changed since registration intake"),
+        ):
+            launcher._source_repository(assessment)
+
+        source_command.assert_not_called()
+        self.assertFalse(
+            (self.root / "registration-sources" / "project-one" / "activity-one.git").exists()
+        )
 
     def test_load_settings_composes_configured_registration_runtime(self) -> None:
         executable = self.root / "codex"
@@ -888,6 +992,11 @@ automatic_recovery_attempts = 2
             return inventory
 
         with (
+            mock.patch.object(
+                InstalledToolInspector,
+                "_isolated_launch",
+                return_value=((str(executable), "app-server"), self.root),
+            ),
             mock.patch.object(
                 GitHubRestDestinationApi,
                 "app_identity",

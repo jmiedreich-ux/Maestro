@@ -30,6 +30,7 @@ from maestro.foundation.github_destination import (
     GitHubDestination,
     GitHubDestinationProvider,
     GitHubDestinationRouter,
+    destination_provider_for,
 )
 from maestro.planning.registration import RegistrationAssessment
 from maestro.planning.registration_plugin import RegistrationServiceBinding
@@ -333,9 +334,33 @@ class InstalledRegistrationAgentLauncher:
         context = assessment.context
         repository = context.package_context.source_repository
         branch = context.package_context.publication_branch
+        configured_provider = destination_provider_for(
+            self.destination_provider, repository
+        )
+        configured_snapshot_reference = hashlib.sha256(
+            canonical_json(
+                configured_provider.profile.snapshot(repository, branch)
+            ).encode("utf-8")
+        ).hexdigest()
+        if (
+            configured_snapshot_reference
+            != context.package_context.destination_snapshot_reference
+        ):
+            raise ValueError(
+                "repository profile changed since registration intake; "
+                "assignment source access is paused"
+            )
         authorization = self.authorizer.authorize(repository, branch)
         observed = self.destination_provider.authorize(repository, branch)
         self.destination_provider.require_fresh_match(observed, authorization)
+        observed_snapshot_reference = hashlib.sha256(
+            canonical_json(dict(observed.snapshot)).encode("utf-8")
+        ).hexdigest()
+        if (
+            observed_snapshot_reference
+            != context.package_context.destination_snapshot_reference
+        ):
+            raise ValueError("live repository profile differs from its saved intake snapshot")
         remote = self.transport.remote_for(authorization)
         target = self.source_cache_root / context.project_id / f"{context.activity_id}.git"
         target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)

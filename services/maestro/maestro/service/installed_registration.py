@@ -8,12 +8,14 @@ import os
 import selectors
 import stat
 import subprocess
+import uuid
 from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from maestro.agents.preflight import AdapterObservation, InstalledAdapter
 from maestro.agents.routes import ConfiguredAgentRouteProvider, ToolRoute
+from maestro.agents.workspaces import ServiceProfileBinding, WorkspaceManager
 from maestro.foundation import canonical_json
 from maestro.foundation.credentials import (
     GitHubAppCredential,
@@ -50,10 +52,13 @@ _CAPABILITIES = (
 class InstalledToolInspector:
     """Obtain live tool-native route evidence without reading project sources."""
 
-    def __init__(self, tool: str, provider: str, service_home: Path) -> None:
+    def __init__(
+        self, tool: str, provider: str, service_home: Path, workspace_root: Path
+    ) -> None:
         self.tool = tool
         self.provider = provider
         self.service_home = Path(service_home)
+        self.workspaces = WorkspaceManager(workspace_root)
 
     def inspect(self, route: ToolRoute, configuration_hash: str) -> AdapterObservation:
         try:
@@ -91,12 +96,14 @@ class InstalledToolInspector:
     def _inspect_codex(
         self, route: ToolRoute
     ) -> tuple[tuple[str, ...], dict[str, int], str]:
+        command, cwd = self._isolated_launch(route, (str(route.executable), "app-server"))
         process = subprocess.Popen(
-            (str(route.executable), "app-server"),
+            command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0,
+            cwd=cwd,
             env=self._environment(),
         )
         try:
@@ -157,7 +164,7 @@ class InstalledToolInspector:
                         "method": "thread/start",
                         "params": {
                             "model": model_id,
-                            "cwd": str(self.service_home),
+                            "cwd": str(cwd),
                             "approvalPolicy": "never",
                             "sandbox": "read-only",
                         },
@@ -210,7 +217,8 @@ class InstalledToolInspector:
         limits: dict[str, int] = {}
         observed_version: str | None = None
         for model_id in route.allowed_model_ids:
-            completed = subprocess.run(
+            command, cwd = self._isolated_launch(
+                route,
                 (
                     str(route.executable),
                     "--print",
@@ -223,10 +231,14 @@ class InstalledToolInspector:
                     "--json-schema",
                     json.dumps(_preflight_schema(), separators=(",", ":")),
                 ),
+            )
+            completed = subprocess.run(
+                command,
                 check=False,
                 capture_output=True,
                 text=True,
                 timeout=30,
+                cwd=cwd,
                 env=self._environment(),
             )
             if completed.returncode != 0:
@@ -265,7 +277,32 @@ class InstalledToolInspector:
         return tuple(verified), limits, observed_version
 
     def _environment(self) -> dict[str, str]:
-        return {"HOME": str(self.service_home), "PATH": "/usr/bin:/bin"}
+        return {"PATH": "/usr/bin:/bin"}
+
+    def _isolated_launch(
+        self, route: ToolRoute, tool_arguments: tuple[str, ...]
+    ) -> tuple[tuple[str, ...], Path]:
+        """Build one fail-closed root-supervised preflight command."""
+        run_id = f"preflight-{self.tool}-{uuid.uuid4().hex}"
+        workspace = self.workspaces.prepare_preflight(
+            activity_id=f"preflight-{self.tool}",
+            run_id=run_id,
+            assignment_bytes=canonical_json(
+                {
+                    "kind": "installed-tool-preflight",
+                    "tool": self.tool,
+                    "run_id": run_id,
+                }
+            ).encode("utf-8"),
+        )
+        profile = ServiceProfileBinding(
+            route.tool,
+            route.credential_profile,
+            route.settings_profile,
+            self.service_home,
+        )
+        isolated = workspace.isolated_command(tool_arguments, profile=profile)
+        return workspace.egress_command(route.tool, isolated), workspace.paths.scratch
 
     @staticmethod
     def _write_json(process: subprocess.Popen[bytes], value: Mapping[str, object]) -> None:
@@ -405,7 +442,9 @@ def compose_installed_registration(
             raise ValueError(f"installed registration adapter is unsupported: {tool}")
         adapters[str(tool)] = (
             InstalledAdapter(str(tool), provider, "cloud", _CAPABILITIES),
-            InstalledToolInspector(str(tool), provider, service_home),
+            InstalledToolInspector(
+                str(tool), provider, service_home, workspace_root
+            ),
         )
         credential_files[credential] = files
         settings_fingerprints[settings] = hashlib.sha256(
