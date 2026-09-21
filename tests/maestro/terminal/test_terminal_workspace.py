@@ -50,7 +50,7 @@ from maestro.terminal.connection import (
 )
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.rendering import TerminalRenderer, TerminalSize
-from maestro.terminal.registration import RegistrationExtension
+from maestro.terminal.registration import RegistrationExtension, RegistrationInteraction
 from maestro.terminal.workspace import View, Workspace, WorkspaceError
 
 
@@ -294,6 +294,29 @@ class TerminalWorkspaceTest(unittest.TestCase):
                     "name": name,
                 },
             },
+        )
+
+    def test_registration_command_requires_and_submits_the_overview_path(self) -> None:
+        submitted: list[dict[str, object]] = []
+
+        class Client:
+            def submit(self, envelope):
+                submitted.append(dict(envelope))
+                return {"receipt": {"request_id": envelope["request_id"], "status": "accepted"}}
+
+        context = ExtensionContext(Client(), object())
+        interaction = RegistrationInteraction(request_id_factory=lambda: "register-one")
+
+        with self.assertRaisesRegex(ValueError, "overview-path"):
+            interaction.start(context, "owner/project")
+        interaction.start(context, "owner/project docs/project-overview.md")
+
+        self.assertEqual(
+            {
+                "repository": "owner/project",
+                "overview_path": "docs/project-overview.md",
+            },
+            submitted[0]["payload"],
         )
 
     def test_real_service_snapshots_select_page_and_render_workspace(self) -> None:

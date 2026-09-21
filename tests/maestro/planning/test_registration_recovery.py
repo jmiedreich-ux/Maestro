@@ -953,7 +953,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "refs/heads/main", "b" * 40, "docs/overview.md",
             (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
             source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
-            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+            outcomes=(OutcomeReference("APP", "Application", 1, "APP-PM1", "Start", 1),),
         )
         snapshot_reference = getattr(self, "snapshot_reference", None)
         if snapshot_reference is None:

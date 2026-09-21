@@ -137,7 +137,7 @@ class RegistrationConfirmationTest(unittest.TestCase):
             "docs/overview.md",
             (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
             source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
-            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+            outcomes=(OutcomeReference("APP", "Application", 1, "APP-PM1", "Start", 1),),
         )
         context = RegistrationPackageContext(
             "project-1",

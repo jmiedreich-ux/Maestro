@@ -150,13 +150,14 @@ class OutcomeReference:
     """One ordered, versioned outcome retained from a declaration."""
 
     declaration: str
+    declaration_subject: str
     declaration_version: int
     milestone: str
     subject: str
     version: int
 
     def __post_init__(self) -> None:
-        for field in ("declaration", "milestone", "subject"):
+        for field in ("declaration", "declaration_subject", "milestone", "subject"):
             value = getattr(self, field)
             if not isinstance(value, str) or not value.strip():
                 raise SourceIntakeError(f"outcome {field} is invalid")
@@ -168,6 +169,7 @@ class OutcomeReference:
     def to_record(self) -> dict[str, object]:
         return {
             "declaration": self.declaration,
+            "declaration_subject": self.declaration_subject,
             "declaration_version": self.declaration_version,
             "milestone": self.milestone,
             "subject": self.subject,
@@ -176,12 +178,14 @@ class OutcomeReference:
 
     @classmethod
     def from_record(cls, value: object) -> "OutcomeReference":
-        record = _record_object(value, {"declaration", "declaration_version", "milestone", "subject", "version"}, "outcome")
+        record = _record_object(value, {"declaration", "declaration_subject", "declaration_version", "milestone", "subject", "version"}, "outcome")
         integers = ("declaration_version", "version")
         if any(isinstance(record[field], bool) or not isinstance(record[field], int) for field in integers):
             raise SourceIntakeError("outcome version is invalid")
         return cls(
-            _record_text(record, "declaration", "outcome"), record["declaration_version"],
+            _record_text(record, "declaration", "outcome"),
+            _record_text(record, "declaration_subject", "outcome"),
+            record["declaration_version"],
             _record_text(record, "milestone", "outcome"), _record_text(record, "subject", "outcome"), record["version"],
         )
 
@@ -349,6 +353,62 @@ class ExactSourceReader:
             raise SourceIntakeError("authoritative declarations contain no milestones")
         return SourceInventory(inventory.source_ref, inventory.source_commit, inventory.overview_path, inventory.blobs, references, outcomes)
 
+    def resolve(
+        self, *, remote: str, source_ref: str,
+        command: Callable[..., object] = run_git,
+    ) -> str:
+        """Resolve a selector without reading any planning document bytes."""
+        if not isinstance(remote, str) or not remote or "\x00" in remote:
+            raise SourceIntakeError("source repository remote must be nonempty text")
+        return self._resolve(remote, validate_source_ref(source_ref), command)
+
+    def read_registration_at(
+        self, *, remote: str, source_ref: str, source_commit: str,
+        overview_path: str, referenced_paths: Iterable[str] = (),
+        command: Callable[..., object] = run_git,
+    ) -> SourceInventory:
+        """Read registration inputs only from a previously resolved exact commit."""
+        if not isinstance(remote, str) or not remote or "\x00" in remote:
+            raise SourceIntakeError("source repository remote must be nonempty text")
+        selector = validate_source_ref(source_ref)
+        try:
+            commit = validate_object_id(source_commit, "source_commit")
+        except GitReadError as error:
+            raise SourceIntakeError(str(error)) from error
+        first = self._read_exact(
+            remote, selector, commit, overview_path, self._paths(overview_path, ()), command
+        )
+        references = _parse_overview_references(first.content_for(first.overview_path))
+        declared_paths = tuple(reference.path for reference in references)
+        supplied = tuple(referenced_paths)
+        if supplied and supplied != declared_paths:
+            raise SourceIntakeError("overview references contradict supplied source locations")
+        inventory = self._read_exact(
+            remote, selector, commit, first.overview_path,
+            (first.overview_path, *declared_paths), command,
+        )
+        architecture = tuple(
+            item for item in references if item.source_type == "Architecture"
+        )
+        declarations = tuple(
+            item for item in references if item.source_type == "Milestone declaration"
+        )
+        if len(architecture) != 1 or not declarations:
+            raise SourceIntakeError(
+                "overview must name one architecture and at least one milestone declaration"
+            )
+        outcomes = tuple(
+            outcome for declaration in declarations
+            for outcome in _parse_declaration(
+                declaration, inventory.content_for(declaration.path), architecture[0].path
+            )
+        )
+        if not outcomes:
+            raise SourceIntakeError("authoritative declarations contain no milestones")
+        return SourceInventory(
+            selector, commit, inventory.overview_path, inventory.blobs, references, outcomes
+        )
+
     @staticmethod
     def _paths(overview_path: str, referenced_paths: Iterable[str]) -> tuple[str, ...]:
         try:
@@ -433,10 +493,13 @@ def _parse_overview_references(content: bytes) -> tuple[SourceReference, ...]:
 
 def _parse_declaration(reference: SourceReference, content: bytes, architecture_path: str) -> tuple[OutcomeReference, ...]:
     identity = {row[0]: row[1] for row in _table_rows(content, "Declaration identity") if len(row) == 2}
-    declaration = identity.get("Declaration")
+    qualified_declaration = identity.get("Declaration")
     version = _positive_version(identity.get("Declaration version"), "declaration version")
-    if not declaration or declaration != reference.subject:
+    if not qualified_declaration or qualified_declaration != reference.subject:
         raise SourceIntakeError("declaration identity contradicts the overview")
+    declaration, declaration_subject = _qualified_subject(
+        qualified_declaration, "declaration"
+    )
     architecture = identity.get("Architecture source")
     if architecture is None or _location_path(architecture) != architecture_path:
         raise SourceIntakeError("declaration architecture source contradicts the overview")
@@ -453,7 +516,12 @@ def _parse_declaration(reference: SourceReference, content: bytes, architecture_
             raise SourceIntakeError("declaration milestone positions must be ordered")
         expected_position += 1
         milestone, subject = _qualified_subject(row[1], "milestone")
-        outcomes.append(OutcomeReference(declaration, version, milestone, subject, _positive_version(row[2], "milestone version")))
+        outcomes.append(
+            OutcomeReference(
+                declaration, declaration_subject, version, milestone, subject,
+                _positive_version(row[2], "milestone version"),
+            )
+        )
     return tuple(outcomes)
 
 

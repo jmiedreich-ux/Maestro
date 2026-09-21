@@ -52,6 +52,7 @@ from maestro.planning.registration_confirmation import (
     RegistrationConfirmationService,
     RegistrationPackageReference,
 )
+from maestro.planning.intake import RegistrationIntakeResult
 from maestro.planning.registration_recovery import RegistrationRecoveryService
 from maestro.planning.registration_records import RegistrationAgentResponse
 from maestro.planning.sources import (
@@ -868,8 +869,24 @@ automatic_recovery_attempts = 2
                     "Milestone declaration", "Milestones", "docs/milestones.md"
                 ),
             ),
-            (OutcomeReference("Milestones", 1, "M1", "First outcome", 1),),
+            (OutcomeReference("Milestones", "Milestones", 1, "M1", "First outcome", 1),),
         )
+        reserved_before_read: list[str] = []
+
+        def read_reserved_source(**_kwargs):
+            with application.database.read_connection() as connection:
+                saved = connection.execute(
+                    """SELECT intake_json FROM installed_registration_intake
+                       WHERE request_id = 'configured-registration-start'
+                         AND state = 'waiting_for_intake'"""
+                ).fetchone()
+            self.assertIsNotNone(saved)
+            reserved = RegistrationIntakeResult.from_json(str(saved[0]))
+            self.assertIsNone(reserved.inventory)
+            self.assertEqual("a" * 40, reserved.source_commit)
+            reserved_before_read.append(str(reserved.selection_decision_ref))
+            return inventory
+
         with (
             mock.patch.object(
                 GitHubRestDestinationApi,
@@ -906,7 +923,10 @@ automatic_recovery_attempts = 2
                 return_value=BranchPolicyObservation(False, ()),
             ),
             mock.patch.object(
-                ExactSourceReader, "read_registration", return_value=inventory
+                ExactSourceReader, "resolve", return_value="a" * 40
+            ),
+            mock.patch.object(
+                ExactSourceReader, "read_registration_at", side_effect=read_reserved_source
             ),
             mock.patch.object(
                 InstalledRegistrationAgentLauncher, "__call__", autospec=True
@@ -941,9 +961,10 @@ automatic_recovery_attempts = 2
             )
         self.assertEqual(202, response.status_code, response.body)
         self.assertEqual(
-            "assessment_started", response.body["receipt"]["result"]["state"]
+            "intake_reserved", response.body["receipt"]["result"]["state"]
         )
         self.assertEqual(1, launched.call_count)
+        self.assertEqual(1, len(reserved_before_read))
 
     def test_installed_schema_and_two_repository_production_composition(self) -> None:
         installed_root = self.root / "installed"
@@ -1093,7 +1114,7 @@ automatic_recovery_attempts = 2
             )
             self.assertEqual(202, response.status_code, response.body)
             self.assertEqual(
-                "waiting_for_intake", response.body["receipt"]["result"]["state"]
+                "intake_reserved", response.body["receipt"]["result"]["state"]
             )
 
     def test_typed_runtime_constructs_real_publication_confirmation_and_recovery(self) -> None:
@@ -1365,8 +1386,8 @@ automatic_recovery_attempts = 2
                 }
             ).encode(),
         )
-        self.assertEqual(200, cancelled.status_code)
-        self.assertEqual("cancelled", cancelled.body["receipt"]["result"]["state"])
+        self.assertEqual(202, cancelled.status_code)
+        self.assertEqual("stopping", cancelled.body["receipt"]["result"]["state"])
         with application.database.read_connection() as connection:
             cancelled_questions = {
                 str(row[0])
@@ -1414,7 +1435,7 @@ automatic_recovery_attempts = 2
         )
         self.assertEqual(202, preflighted.status_code)
         self.assertEqual(
-            "assessment_started",
+            "intake_reserved",
             preflighted.body["receipt"]["result"]["state"],
         )
         assessed_activity = preflighted.body["receipt"]["activity_id"]
@@ -1689,6 +1710,11 @@ automatic_recovery_attempts = 2
                 "fidelity_reviewer", reviewer_operation, reviewed=True
             )
         )
+        reviewed_root = (
+            self.settings.workspace_root / project_id / str(assessed_activity)
+            / "runs" / architect_operation.run_id / "output" / "reviewed-candidate"
+        )
+        (reviewed_root / "manifest.json").write_bytes(b"{}\n")
         detail = application.registration.detail(str(assessed_activity))
         with application.database.read_connection() as connection:
             presentation = connection.execute(
@@ -1697,6 +1723,8 @@ automatic_recovery_attempts = 2
             ).fetchone()
         self.assertTrue(detail["can_confirm"], (detail, tuple(presentation)))
         self.assertEqual("candidate-initial", detail["package_ref"]["candidate_id"])
+        self.assertEqual("candidate-initial", detail["package_manifest"]["candidate_id"])
+        self.assertTrue(detail["package_records"])
         with application.database.read_connection() as connection:
             actions = {
                 str(row[0]) for row in connection.execute(
@@ -1784,23 +1812,42 @@ automatic_recovery_attempts = 2
         )
         self.assertEqual("Paused", application.registration.detail(update_activity)["state"])
         update_detail = application.registration.detail(update_activity)
-        cancelled_update = application.handle(
-            "POST",
-            "/api/v1/requests",
-            authorization,
-            json.dumps(
-                {
-                    "request_id": "connected-registration-update-cancel",
-                    "operation": "registration.cancel",
-                    "project_id": project_id,
-                    "activity_id": update_activity,
-                    "question_id": None,
-                    "expected_version": update_detail["activity_version"],
-                    "payload": {},
-                }
-            ).encode(),
-        )
-        self.assertEqual(200, cancelled_update.status_code, cancelled_update.body)
+        original_stop = application.registration_assessment.stop_current_agent
+        cancellation_state_before_stop: list[str] = []
+
+        def stop_after_intent(*args, **kwargs):
+            with application.database.read_connection() as connection:
+                intent = connection.execute(
+                    """SELECT state FROM installed_registration_cancellations
+                       WHERE activity_id = ?""",
+                    (update_activity,),
+                ).fetchone()
+            cancellation_state_before_stop.append(str(intent[0]))
+            return original_stop(*args, **kwargs)
+
+        with mock.patch.object(
+            application.registration_assessment,
+            "stop_current_agent",
+            side_effect=stop_after_intent,
+        ):
+            cancelled_update = application.handle(
+                "POST",
+                "/api/v1/requests",
+                authorization,
+                json.dumps(
+                    {
+                        "request_id": "connected-registration-update-cancel",
+                        "operation": "registration.cancel",
+                        "project_id": project_id,
+                        "activity_id": update_activity,
+                        "question_id": None,
+                        "expected_version": update_detail["activity_version"],
+                        "payload": {},
+                    }
+                ).encode(),
+            )
+        self.assertEqual(202, cancelled_update.status_code, cancelled_update.body)
+        self.assertEqual(["stopping"], cancellation_state_before_stop)
         self.assertEqual(
             "cancelled",
             application.agent_supervisor.poll(update_operation).state,

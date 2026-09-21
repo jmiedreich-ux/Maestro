@@ -64,7 +64,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
         inventory = SourceInventory(
             "refs/heads/main", "b" * 40, "docs/overview.md", (blob,),
             source_references=(SourceReference("Architecture", "Overview", "docs/overview.md"),),
-            outcomes=(OutcomeReference("APP", 1, "APP-PM1", "Start", 1),),
+            outcomes=(OutcomeReference("APP", "Application", 1, "APP-PM1", "Start", 1),),
         )
         route = ResolvedAgentRoute("architect", "codex", "openai/model-1", "openai", "1", "/tool", "credential", "settings", "cloud", ("code_edit", "local_command", "repository_search", "approved_network"), 65536, (), "c" * 64)
         reviewer = replace(route, role="fidelity_reviewer", tool="claude_code", requested_model_id="anthropic/model-1", provider="anthropic")
@@ -280,8 +280,8 @@ class RegistrationAssessmentTest(unittest.TestCase):
                 SourceReference("Architecture", "Overview", "docs/overview.md"),
             ),
             outcomes=(
-                OutcomeReference("APP", 3, "APP-PM1", "Start", 1),
-                OutcomeReference("APP", 3, "APP-PM2", "Continue", 2),
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference("APP", "Application", 3, "APP-PM2", "Continue", 2),
             ),
         )
         context = RegistrationPackageContext(
@@ -327,6 +327,17 @@ class RegistrationAssessmentTest(unittest.TestCase):
         records["declarations/APP.json"]["record_version"] = 4
         rehash(manifest, records)
         with self.assertRaisesRegex(RegistrationRecordError, "declaration version"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["subject"] = "Different declaration"
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration.*subject"):
             validate_registration_package(
                 manifest, records, context, require_review=False
             )

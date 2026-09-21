@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping
@@ -335,10 +336,16 @@ class RegistrationInteraction:
         self.pending = None
         return response
 
-    def start(self, context: ExtensionContext, repository: str) -> Mapping[str, object]:
-        repository = repository.strip()
-        if not repository:
-            raise ValueError("register requires an owner/repository")
+    def start(self, context: ExtensionContext, arguments: str) -> Mapping[str, object]:
+        try:
+            values = shlex.split(arguments)
+        except ValueError as error:
+            raise ValueError("register arguments are invalid") from error
+        if len(values) != 2:
+            raise ValueError(
+                "register requires: /register <owner/repository> <overview-path>"
+            )
+        repository, overview_path = values
         response = context.client.submit(
             {
                 "request_id": self._request_id_factory(),
@@ -347,7 +354,10 @@ class RegistrationInteraction:
                 "activity_id": None,
                 "question_id": None,
                 "expected_version": None,
-                "payload": {"repository": repository},
+                "payload": {
+                    "repository": repository,
+                    "overview_path": overview_path,
+                },
             }
         )
         self.status = "Registration intake saved."
@@ -368,7 +378,13 @@ class RegistrationInteraction:
                 "payload": {},
             }
         )
-        self.status = "Registration cancelled; confirmed history is unchanged."
+        result = response.get("result")
+        state = result.get("state") if isinstance(result, Mapping) else None
+        self.status = (
+            "Stopping registration; reopen it to confirm the saved outcome."
+            if state == "stopping"
+            else "Registration cancelled; confirmed history is unchanged."
+        )
         self.cancel_confirmation = False
         return response
 

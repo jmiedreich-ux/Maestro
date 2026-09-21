@@ -706,9 +706,15 @@ def _validate_package_topology(
             item for item in outcomes if item.declaration == designation
         ]
         expected_versions = {item.declaration_version for item in expected_order}
-        if len(expected_versions) != 1 or declaration["record_version"] not in expected_versions:
+        expected_subjects = {item.declaration_subject for item in expected_order}
+        if (
+            len(expected_versions) != 1
+            or declaration["record_version"] not in expected_versions
+            or len(expected_subjects) != 1
+            or declaration["subject"] not in expected_subjects
+        ):
             raise RegistrationRecordError(
-                "candidate declaration version differs from the exact source declaration"
+                "candidate declaration version or subject differs from the exact source declaration"
             )
         actual_order = [
             str(reference["record_id"])

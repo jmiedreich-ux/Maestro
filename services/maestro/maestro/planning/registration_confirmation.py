@@ -35,6 +35,8 @@ from .registration import RegistrationAssessment
 from .registration_records import (
     RegistrationRecordError,
     canonical_record_bytes,
+    package_content_hash,
+    validate_package_record,
     validate_registration_package,
 )
 
@@ -499,6 +501,109 @@ class RegistrationConfirmationService:
     def history(self, project_id: str) -> tuple[ConfirmationReference, ...]:
         canonical_identifier(project_id, "project_id")
         return tuple(_confirmation_ref(item) for item in self._confirmed_refs(project_id))
+
+    def package_detail(
+        self, package: RegistrationPackageReference,
+    ) -> tuple[Mapping[str, Any], Mapping[str, Mapping[str, Any]]]:
+        """Load one exact published package from the service-owned publication journal."""
+        if not isinstance(package, RegistrationPackageReference):
+            raise TypeError("package detail requires RegistrationPackageReference")
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT operation_id, manifest_sha256, content_hash,
+                          remote_commit, package_ref_json, state, project_id
+                   FROM registration_candidate_publications
+                   WHERE repository = ? AND registration_version = ?
+                     AND candidate_id = ? AND package_ref_json = ?""",
+                (
+                    package.repository,
+                    package.registration_version,
+                    package.candidate_id,
+                    canonical_json(package.as_dict()),
+                ),
+            ).fetchone()
+        if (
+            row is None
+            or str(row[1]) != package.manifest_sha256
+            or str(row[3]) != package.commit
+            or str(row[5]) != "published"
+        ):
+            raise RegistrationConfirmationError(
+                "registration detail package is not the exact published package"
+            )
+        operation = self.journal.operation(str(row[0]))
+        if (
+            operation.operation_type != "registration_candidate"
+            or operation.remote_commit != package.commit
+            or operation.state not in {"verified", "applied"}
+            or package.manifest_path not in operation.files
+        ):
+            raise RegistrationConfirmationError(
+                "registration detail package publication is not verified"
+            )
+        manifest_bytes = operation.files[package.manifest_path]
+        if hashlib.sha256(manifest_bytes).hexdigest() != package.manifest_sha256:
+            raise RegistrationConfirmationError(
+                "registration detail manifest differs from its exact reference"
+            )
+        try:
+            manifest = json.loads(manifest_bytes)
+            if (
+                not isinstance(manifest, Mapping)
+                or manifest.get("project_id") != str(row[6])
+                or manifest.get("registration_version") != package.registration_version
+                or manifest.get("candidate_id") != package.candidate_id
+                or manifest.get("content_hash") != str(row[2])
+                or not isinstance(manifest.get("files"), list)
+                or canonical_record_bytes(manifest) != manifest_bytes
+            ):
+                raise RegistrationRecordError("published package manifest identity is invalid")
+            root = package.manifest_path.rsplit("/", 1)[0]
+            records: dict[str, Mapping[str, Any]] = {}
+            for entry in manifest["files"]:
+                if (
+                    not isinstance(entry, Mapping)
+                    or set(entry) != {
+                        "path", "record_id", "record_type", "record_version",
+                        "subject", "sha256",
+                    }
+                    or not isinstance(entry.get("path"), str)
+                ):
+                    raise RegistrationRecordError("manifest file entry is invalid")
+                relative = str(entry["path"])
+                target = f"{root}/{relative}"
+                if target not in operation.files:
+                    raise RegistrationRecordError("manifest record bytes are missing")
+                raw = operation.files[target]
+                record = validate_package_record(json.loads(raw))
+                if canonical_record_bytes(record) != raw:
+                    raise RegistrationRecordError("package record bytes are not canonical")
+                if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
+                    raise RegistrationRecordError("manifest record hash differs")
+                if any(
+                    entry.get(field) != record[field]
+                    for field in (
+                        "record_id", "record_type", "record_version", "subject"
+                    )
+                ):
+                    raise RegistrationRecordError("manifest record identity differs")
+                records[relative] = record
+            if len(records) != len(manifest["files"]):
+                raise RegistrationRecordError("manifest file inventory is not unique")
+            if set(operation.files) != {
+                package.manifest_path, *(f"{root}/{path}" for path in records)
+            }:
+                raise RegistrationRecordError("published package contains untracked files")
+            if package_content_hash(records) != str(row[2]):
+                raise RegistrationRecordError("published package content hash differs")
+        except (
+            KeyError, TypeError, ValueError, UnicodeDecodeError,
+            json.JSONDecodeError, RegistrationRecordError,
+        ) as error:
+            raise RegistrationConfirmationError(
+                "registration detail package inventory is invalid"
+            ) from error
+        return manifest, records
 
     def recover_pending(
         self,

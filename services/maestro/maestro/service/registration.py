@@ -230,6 +230,24 @@ REGISTRATION_COMPOSITION_SOURCE_CHOICE_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_COMPOSITION_CANCELLATION_MIGRATION = DomainMigration(
+    domain="registration_composition",
+    version=6,
+    identity="installed-registration-cancellation-intent-v6",
+    statements=(
+        """
+        CREATE TABLE installed_registration_cancellations(
+            activity_id TEXT PRIMARY KEY,
+            request_id TEXT NOT NULL UNIQUE,
+            project_id TEXT NOT NULL,
+            operation_id TEXT,
+            state TEXT NOT NULL CHECK(state IN ('stopping', 'cancelled')),
+            failure TEXT
+        )
+        """,
+    ),
+)
+
 
 def registration_composition_migrations() -> tuple[DomainMigration, ...]:
     return (
@@ -238,6 +256,7 @@ def registration_composition_migrations() -> tuple[DomainMigration, ...]:
         REGISTRATION_COMPOSITION_AUTOMATIC_RECOVERY_MIGRATION,
         REGISTRATION_COMPOSITION_OWNER_DECISION_MIGRATION,
         REGISTRATION_COMPOSITION_SOURCE_CHOICE_MIGRATION,
+        REGISTRATION_COMPOSITION_CANCELLATION_MIGRATION,
     )
 
 
@@ -252,7 +271,6 @@ class RegistrationRuntimeDependencies:
     preflight: AgentRoutePreflight
     process_snapshot: ProcessSnapshot
     remote_for_repository: Callable[[str], str]
-    overview_path: str = "README.md"
     workspace_root: Path | None = None
     assignment_launcher: Callable[[RegistrationServiceBinding, RegistrationAssessment, str], None] | None = None
 
@@ -277,8 +295,6 @@ class RegistrationRuntimeDependencies:
             raise TypeError("registration runtime requires registration process snapshot")
         if not callable(self.remote_for_repository):
             raise TypeError("registration runtime requires a remote resolver")
-        if not isinstance(self.overview_path, str) or not self.overview_path.strip():
-            raise ValueError("registration overview path must be nonempty text")
         if self.workspace_root is not None and (
             not isinstance(self.workspace_root, Path)
             or not self.workspace_root.is_absolute()
@@ -448,7 +464,7 @@ class RegistrationCoordinator:
         dependencies = self._require_runtime()
         activity_id = _activity_id(request.request_id)
         payload = dict(request.payload)
-        overview_path = payload.get("overview_path", dependencies.overview_path)
+        overview_path = _optional_text(payload.get("overview_path"))
         referenced = payload.get("referenced_paths", [])
         if not isinstance(referenced, list) or any(
             not isinstance(item, str) or not item for item in referenced
@@ -472,7 +488,7 @@ class RegistrationCoordinator:
         intake_request = RegistrationIntakeRequest(
             repository=repository,
             remote=remote,
-            overview_path=_text(overview_path, "overview_path"),
+            overview_path=overview_path,
             referenced_paths=tuple(referenced),
             source_ref=source_ref,
             prior_source_ref=prior_source_ref,
@@ -481,29 +497,12 @@ class RegistrationCoordinator:
             architect_selection=_selection_text(payload.get("architect_selection")),
             reviewer_selection=_selection_text(payload.get("reviewer_selection")),
         )
-        collector = _CollectedQuestions()
-        assert self.intake is not None
-        intake = (
-            RegistrationIntakeResult(
-                None, (), None, intake_request.scope, None, None, None,
-                source_ref=intake_request.source_ref,
-                publication_branch=intake_request.publication_branch,
-                repository=repository,
-            )
-            if active_registration
-            else self.intake.begin(intake_request, questions=collector)
+        intake = RegistrationIntakeResult(
+            None, (), None, intake_request.scope, None, None, None,
+            source_ref=intake_request.source_ref,
+            publication_branch=intake_request.publication_branch,
+            repository=repository,
         )
-        selections = None if intake.inventory is None else _role_selections(payload)
-        assessment = None
-        if selections is not None:
-            assessment = self.binding.plugin.start_assessment(
-                snapshot=dependencies.process_snapshot,
-                activity_id=activity_id,
-                project_id=project_id,
-                intake=intake,
-                selections=selections,
-            )
-            assessment.bind_process_snapshot(dependencies.process_snapshot)
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
             current_active = transaction.execute(
@@ -551,19 +550,9 @@ class RegistrationCoordinator:
                     project_id,
                     "registration",
                     f"Register {repository}",
-                    "running" if assessment is not None else "waiting",
+                    "waiting",
                     next_version,
-                    waiting_reason=(
-                        (
-                            None
-                            if assessment is not None
-                            else (
-                                "Re-registration intake is reserved"
-                                if active_registration
-                                else "Registration intake needs answers"
-                            )
-                        )
-                    ),
+                    waiting_reason="Registration intake is reserved",
                     started_at=_utc_now(),
                     available_actions=(
                         ActivityAction(
@@ -590,27 +579,14 @@ class RegistrationCoordinator:
                     request.request_id,
                     canonical_json(_intake_request_record(intake_request)),
                     intake.to_json(),
-                    "assessment_started" if assessment is not None else "waiting_for_intake",
+                    "waiting_for_intake",
                 ),
             )
-            for question in collector.values:
-                self._publish_intake_question(transaction, project_id, activity_id, question)
-            if assessment is not None and selections is not None:
-                self.binding.save_intake_in(
-                    transaction, activity_id, project_id, intake, selections
-                )
-                self.binding.install_started(transaction, assessment)
             return OperationResult(
                 data={
                     "project_id": project_id,
                     "activity_id": activity_id,
-                    "state": (
-                        "intake_reserved"
-                        if active_registration
-                        else "assessment_started"
-                        if assessment is not None
-                        else "waiting_for_intake"
-                    ),
+                    "state": "intake_reserved",
                 },
                 status="accepted",
                 project_id=project_id,
@@ -622,17 +598,7 @@ class RegistrationCoordinator:
             event_type="registration.started",
             event_data={"project_id": project_id, "activity_id": activity_id},
             apply=apply,
-            after_commit=(
-                (
-                    lambda _result: self._continue_reserved_intake(activity_id)
-                    if active_registration
-                    else None
-                )
-                if assessment is None
-                else lambda _result: self._launch_assignment(
-                    assessment, "project_architect"
-                )
-            ),
+            after_commit=lambda _result: self._continue_reserved_intake(activity_id),
         )
 
     def prepare_confirm(self, request: RequestEnvelope) -> PreparedOperation:
@@ -720,14 +686,13 @@ class RegistrationCoordinator:
         )
 
     def prepare_cancel(self, request: RequestEnvelope) -> PreparedOperation:
-        confirmation = self._require_confirmation()
+        self._require_confirmation()
         if request.project_id is None or request.activity_id is None:
             raise ValueError("registration.cancel requires project and activity context")
         if request.question_id is not None or request.expected_version is None:
             raise ValueError("registration.cancel requires an exact activity version")
         if set(request.payload) - {"operation_id"}:
             raise ValueError("registration.cancel payload fields do not match the contract")
-        confirmation.recover_pending(request.activity_id)
         with self.database.read_connection() as connection:
             confirmed = connection.execute(
                 """SELECT 1 FROM registration_confirmations
@@ -736,23 +701,29 @@ class RegistrationCoordinator:
             ).fetchone()
         if confirmed is not None:
             raise ValueError("a confirmed registration cannot be cancelled")
-        self._stop_active_assignment_before_cancel(request.activity_id)
-        if self.recovery is not None:
-            with self.database.read_connection() as connection:
-                recovery_attempt = connection.execute(
-                    """SELECT 1 FROM registration_recovery_attempts
-                       WHERE activity_id = ?""",
-                    (request.activity_id,),
-                ).fetchone()
-            if recovery_attempt is not None:
-                self.recovery.cancel(
-                    request.activity_id,
-                    request.request_id,
-                    operation_id=_optional_text(request.payload.get("operation_id")),
-                )
+        with self.database.read_connection() as connection:
+            pending_confirmation = connection.execute(
+                """SELECT 1 FROM registration_confirmations
+                   WHERE activity_id = ? AND state = 'pending' LIMIT 1""",
+                (request.activity_id,),
+            ).fetchone()
+        if pending_confirmation is not None:
+            raise ValueError(
+                "a pending confirmation must be reconciled before cancellation"
+            )
+        operation_id = _optional_text(request.payload.get("operation_id"))
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
             row = _activity_row(transaction, request.activity_id)
+            transaction.execute(
+                """INSERT INTO installed_registration_cancellations(
+                       activity_id, request_id, project_id, operation_id, state, failure
+                   ) VALUES (?, ?, ?, ?, 'stopping', NULL)""",
+                (
+                    request.activity_id, request.request_id, request.project_id,
+                    operation_id,
+                ),
+            )
             self.records.update_activity(
                 transaction,
                 ActivityRecord(
@@ -760,71 +731,29 @@ class RegistrationCoordinator:
                     request.project_id,
                     "registration",
                     str(row[1]),
-                    "cancelled",
+                    "stopping",
                     next_version,
                     started_at=None if row[3] is None else str(row[3]),
-                    ended_at=_utc_now(),
+                    waiting_reason="Stopping the active registration work.",
+                    available_actions=(),
                 ),
                 expected_record_version=request.expected_version,
             )
-            transaction.execute(
-                """UPDATE installed_registration_intake SET state = 'cancelled'
-                   WHERE activity_id = ?""",
-                (request.activity_id,),
-            )
-            open_questions = transaction.execute(
-                """SELECT question_id, version FROM service_questions
-                   WHERE activity_id = ?
-                     AND status IN ('awaiting_answer', 'clarification_required')""",
-                (request.activity_id,),
-            ).fetchall()
-            for question_id, version in open_questions:
-                transaction.execute(
-                    """UPDATE service_questions SET status = 'cancelled', version = ?
-                       WHERE question_id = ? AND version = ?""",
-                    (int(version) + 1, str(question_id), int(version)),
-                )
-                transaction.execute(
-                    """UPDATE entity_versions SET version = ? WHERE entity_id = ?""",
-                    (int(version) + 1, str(question_id)),
-                )
-            active = transaction.execute(
-                "SELECT 1 FROM active_registrations WHERE project_id = ?",
-                (request.project_id,),
-            ).fetchone()
-            if active is None:
-                project = transaction.execute(
-                    """SELECT name, version FROM service_projects
-                       WHERE project_id = ?""",
-                    (request.project_id,),
-                ).fetchone()
-                if project is None:
-                    raise ValueError("registration project is unavailable")
-                self.records.update_project(
-                    transaction,
-                    ProjectRecord(
-                        request.project_id,
-                        str(project[0]),
-                        "not_registered",
-                        int(project[1]) + 1,
-                    ),
-                    expected_record_version=int(project[1]),
-                )
-            if self.recovery is not None:
-                self.recovery.release_intake_reservation_in(
-                    transaction, request.activity_id
-                )
             return OperationResult(
-                data={"state": "cancelled"},
+                data={"state": "stopping"},
+                status="accepted",
                 project_id=request.project_id,
                 activity_id=request.activity_id,
             )
 
         return PreparedOperation(
             entity_id=request.activity_id,
-            event_type="registration.cancelled",
+            event_type="registration.cancellation-requested",
             event_data={"activity_id": request.activity_id},
             apply=apply,
+            after_commit=lambda _result: self._continue_registration_cancellation(
+                request.activity_id
+            ),
         )
 
     def prepare_retry(self, request: RequestEnvelope) -> PreparedOperation:
@@ -1411,6 +1340,15 @@ class RegistrationCoordinator:
         provenance: dict[str, object] | None = None
         source_consistency: dict[str, object] | None = None
         live_assessment: RegistrationAssessment | None = None
+        if package is not None:
+            confirmation = self._require_confirmation()
+            package_manifest, records = confirmation.package_detail(
+                RegistrationPackageReference.from_mapping(package)
+            )
+            package_records = [
+                {"path": path, **dict(record)}
+                for path, record in sorted(records.items())
+            ]
         try:
             live_assessment = self.binding.assessment(activity_id)
         except RegistrationAssessmentError:
@@ -1435,21 +1373,7 @@ class RegistrationCoordinator:
                 "review_findings": saved_state["review_findings"],
             }
             candidate_ref = status.candidate
-            if (
-                candidate_ref is not None
-                and self.dependencies is not None
-                and self.dependencies.workspace_root is not None
-            ):
-                package_manifest, records = _load_candidate_workspace(
-                    self.dependencies.workspace_root,
-                    live_assessment,
-                    candidate_ref.path,
-                    candidate_ref.sha256,
-                )
-                package_records = [
-                    {"path": path, **dict(record)}
-                    for path, record in sorted(records.items())
-                ]
+            if candidate_ref is not None:
                 context = live_assessment.context
                 provenance = {
                     "source_repository": context.package_context.source_repository,
@@ -1541,6 +1465,47 @@ class RegistrationCoordinator:
         except RegistrationAssessmentError as error:
             restored = ()
             errors.append({"kind": "assessment", "message": str(error)})
+        with self.database.read_connection() as connection:
+            pending_cancellations = tuple(
+                str(row[0]) for row in connection.execute(
+                    """SELECT activity_id FROM installed_registration_cancellations
+                       WHERE state = 'stopping' ORDER BY activity_id"""
+                ).fetchall()
+            )
+        for activity_id in pending_cancellations:
+            try:
+                self._continue_registration_cancellation(activity_id)
+            except (OSError, RuntimeError, TypeError, ValueError) as error:
+                errors.append(
+                    {
+                        "kind": "registration cancellation",
+                        "activity_id": activity_id,
+                        "message": str(error),
+                    }
+                )
+        with self.database.read_connection() as connection:
+            pending_intakes = tuple(
+                str(row[0]) for row in connection.execute(
+                    """SELECT activity_id FROM installed_registration_intake
+                       WHERE state = 'waiting_for_intake'
+                         AND activity_id NOT IN (
+                             SELECT activity_id FROM installed_registration_cancellations
+                             WHERE state = 'stopping'
+                         )
+                       ORDER BY activity_id"""
+                ).fetchall()
+            )
+        for activity_id in pending_intakes:
+            try:
+                self._continue_reserved_intake(activity_id)
+            except (IntakeError, OSError, RuntimeError, TypeError, ValueError) as error:
+                errors.append(
+                    {
+                        "kind": "registration intake",
+                        "activity_id": activity_id,
+                        "message": str(error),
+                    }
+                )
         recovered: tuple[dict[str, object], ...] = ()
         if self.confirmation is not None:
             recovered_items: list[dict[str, object]] = []
@@ -1949,7 +1914,8 @@ class RegistrationCoordinator:
             raise ValueError("saved registration intake request is invalid")
         field = str(row[1])
         if field not in {
-            "scope", "publication_branch", "architect_selection", "reviewer_selection"
+            "overview_path", "scope", "publication_branch",
+            "architect_selection", "reviewer_selection"
         }:
             raise ValueError("saved registration intake question field is invalid")
         saved_request[field] = answer.text.strip()
@@ -1958,99 +1924,24 @@ class RegistrationCoordinator:
         saved_request["remote"] = (
             "" if branch is None else dependencies.remote_for_repository(repository)
         )
-        intake_request = _intake_request_from_record(saved_request)
-        try:
-            saved_intake = RegistrationIntakeResult.from_json(str(row[5]))
-        except (TypeError, ValueError):
-            saved_intake = None
-        collector = _CollectedQuestions()
-        if saved_intake is not None and saved_intake.inventory is not None:
-            intake = saved_intake
-        else:
-            assert self.intake is not None
-            intake = self.intake.begin(intake_request, questions=collector)
-        if intake.inventory is None:
-            with self.database.transaction() as transaction:
-                transaction.execute(
-                    """UPDATE installed_registration_intake
-                       SET request_json = ?, intake_json = ?
-                       WHERE activity_id = ? AND state = 'waiting_for_intake'""",
-                    (
-                        canonical_json(saved_request),
-                        intake.to_json(),
-                        answer.activity_id,
-                    ),
-                )
-            return
         with self.database.transaction() as transaction:
             transaction.execute(
                 """UPDATE installed_registration_intake
-                   SET request_json = ?, intake_json = ?
+                   SET request_json = ?
                    WHERE activity_id = ? AND state = 'waiting_for_intake'""",
                 (
                     canonical_json(saved_request),
-                    intake.to_json(),
                     answer.activity_id,
                 ),
             )
-        selections = RoleSelections(
-            _tool_selection(intake_request.architect_selection, "architect_selection"),
-            _tool_selection(intake_request.reviewer_selection, "reviewer_selection"),
-        )
-        assessment = self.binding.plugin.start_assessment(
-            snapshot=dependencies.process_snapshot,
-            activity_id=answer.activity_id,
-            project_id=str(row[2]),
-            intake=intake,
-            selections=selections,
-        )
-        assessment.bind_process_snapshot(dependencies.process_snapshot)
-        with self.database.transaction() as transaction:
-            activity = _activity_row(transaction, answer.activity_id)
-            current_version = int(activity[4])
-            self.records.update_activity(
-                transaction,
-                ActivityRecord(
-                    answer.activity_id,
-                    str(row[2]),
-                    "registration",
-                    str(activity[1]),
-                    "running",
-                    current_version + 1,
-                    started_at=None if activity[3] is None else str(activity[3]),
-                    available_actions=(
-                        ActivityAction(
-                            "registration-cancel", "Cancel registration", "decision"
-                        ),
-                    ),
-                ),
-                expected_record_version=current_version,
-            )
-            transaction.execute(
-                "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
-                (current_version + 1, answer.activity_id),
-            )
-            self.binding.save_intake_in(
-                transaction, answer.activity_id, str(row[2]), intake, selections
-            )
-            self.binding.install_started(transaction, assessment)
-            transaction.execute(
-                """UPDATE installed_registration_intake
-                   SET request_json = ?, intake_json = ?, state = 'assessment_started'
-                   WHERE activity_id = ? AND state = 'waiting_for_intake'""",
-                (
-                    canonical_json(saved_request),
-                    intake.to_json(),
-                    answer.activity_id,
-                ),
-            )
-        self._launch_assignment(assessment, "project_architect")
+        self._continue_reserved_intake(answer.activity_id)
 
     def _continue_reserved_intake(self, activity_id: str) -> None:
-        """Run re-registration intake only after its idle reservation commits."""
+        """Persist source identity before reading or launching assessment work."""
         with self.database.read_connection() as connection:
             row = connection.execute(
-                """SELECT project_id, request_json FROM installed_registration_intake
+                """SELECT project_id, request_json, intake_json
+                   FROM installed_registration_intake
                    WHERE activity_id = ? AND state = 'waiting_for_intake'""",
                 (activity_id,),
             ).fetchone()
@@ -2062,29 +1953,68 @@ class RegistrationCoordinator:
             if not isinstance(saved_request, Mapping):
                 raise ValueError("saved registration intake request is invalid")
             intake_request = _intake_request_from_record(saved_request)
-            collector = _CollectedQuestions()
             assert self.intake is not None
-            intake = self.intake.begin(intake_request, questions=collector)
-            assessment = None
-            selections = None
-            if intake.inventory is not None:
-                selections = RoleSelections(
-                    _tool_selection(
-                        intake_request.architect_selection, "architect_selection"
-                    ),
-                    _tool_selection(
-                        intake_request.reviewer_selection, "reviewer_selection"
-                    ),
-                )
-                dependencies = self._require_runtime()
-                assessment = self.binding.plugin.start_assessment(
-                    snapshot=dependencies.process_snapshot,
-                    activity_id=activity_id,
-                    project_id=project_id,
-                    intake=intake,
-                    selections=selections,
-                )
-                assessment.bind_process_snapshot(dependencies.process_snapshot)
+            intake = RegistrationIntakeResult.from_json(str(row[2]))
+            if intake.inventory is None and intake.source_commit is None:
+                collector = _CollectedQuestions()
+                intake = self.intake.reserve(intake_request, questions=collector)
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE installed_registration_intake
+                           SET intake_json = ?
+                           WHERE activity_id = ? AND state = 'waiting_for_intake'""",
+                        (intake.to_json(), activity_id),
+                    )
+                    existing_questions = {
+                        str(item[0]) for item in transaction.execute(
+                            """SELECT field FROM installed_registration_intake_questions
+                               WHERE activity_id = ?""",
+                            (activity_id,),
+                        ).fetchall()
+                    }
+                    for question in collector.values:
+                        if question.field not in existing_questions:
+                            self._publish_intake_question(
+                                transaction, project_id, activity_id, question
+                            )
+                if intake.missing_questions:
+                    self._set_activity_presentation(
+                        activity_id,
+                        "waiting",
+                        "Registration intake needs answers.",
+                        (
+                            ActivityAction(
+                                "registration-cancel", "Cancel registration", "decision"
+                            ),
+                        ),
+                    )
+                    return
+            if intake.inventory is None:
+                intake = self.intake.complete(intake_request, intake)
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE installed_registration_intake
+                           SET intake_json = ?
+                           WHERE activity_id = ? AND state = 'waiting_for_intake'""",
+                        (intake.to_json(), activity_id),
+                    )
+            selections = RoleSelections(
+                _tool_selection(
+                    intake_request.architect_selection, "architect_selection"
+                ),
+                _tool_selection(
+                    intake_request.reviewer_selection, "reviewer_selection"
+                ),
+            )
+            dependencies = self._require_runtime()
+            assessment = self.binding.plugin.start_assessment(
+                snapshot=dependencies.process_snapshot,
+                activity_id=activity_id,
+                project_id=project_id,
+                intake=intake,
+                selections=selections,
+            )
+            assessment.bind_process_snapshot(dependencies.process_snapshot)
         except (IntakeError, OSError, RuntimeError, TypeError, ValueError) as error:
             attempted = error.attempt if isinstance(error, IntakeError) else None
             if attempted is not None:
@@ -2097,7 +2027,7 @@ class RegistrationCoordinator:
             self._set_activity_presentation(
                 activity_id,
                 "paused",
-                f"Re-registration intake needs intervention: {error}",
+                f"Registration intake needs intervention: {error}",
                 (
                     ActivityAction(
                         "registration-cancel", "Cancel registration", "decision"
@@ -2106,11 +2036,10 @@ class RegistrationCoordinator:
             )
             return
         with self.database.transaction() as transaction:
-            if self.recovery is None:
-                raise ValueError("installed re-registration recovery is not configured")
-            self.recovery.require_work_start_allowed(
-                transaction, project_id, activity_id
-            )
+            if self.recovery is not None:
+                self.recovery.require_work_start_allowed(
+                    transaction, project_id, activity_id
+                )
             activity = _activity_row(transaction, activity_id)
             current_version = int(activity[4])
             next_version = current_version + 1
@@ -2121,13 +2050,9 @@ class RegistrationCoordinator:
                     project_id,
                     "registration",
                     str(activity[1]),
-                    "running" if assessment is not None else "waiting",
+                    "running",
                     next_version,
-                    waiting_reason=(
-                        None
-                        if assessment is not None
-                        else "Registration intake needs answers"
-                    ),
+                    waiting_reason=None,
                     started_at=None if activity[3] is None else str(activity[3]),
                     available_actions=(
                         ActivityAction(
@@ -2146,21 +2071,15 @@ class RegistrationCoordinator:
                    SET intake_json = ?, state = ? WHERE activity_id = ?""",
                 (
                     intake.to_json(),
-                    "assessment_started" if assessment is not None else "waiting_for_intake",
+                    "assessment_started",
                     activity_id,
                 ),
             )
-            for question in collector.values:
-                self._publish_intake_question(
-                    transaction, project_id, activity_id, question
-                )
-            if assessment is not None and selections is not None:
-                self.binding.save_intake_in(
-                    transaction, activity_id, project_id, intake, selections
-                )
-                self.binding.install_started(transaction, assessment)
-        if assessment is not None:
-            self._launch_assignment(assessment, "project_architect")
+            self.binding.save_intake_in(
+                transaction, activity_id, project_id, intake, selections
+            )
+            self.binding.install_started(transaction, assessment)
+        self._launch_assignment(assessment, "project_architect")
 
     def _publish_intake_question(
         self,
@@ -2798,6 +2717,129 @@ class RegistrationCoordinator:
             raise ValueError(
                 "registration cancellation is paused until the active agent stop "
                 f"is confirmed ({observed.state})"
+            )
+
+    def _continue_registration_cancellation(self, activity_id: str) -> None:
+        """Finish a durable cancellation only after work and writes are reconciled."""
+        with self.database.read_connection() as connection:
+            intent = connection.execute(
+                """SELECT request_id, project_id, operation_id, state
+                   FROM installed_registration_cancellations
+                   WHERE activity_id = ?""",
+                (activity_id,),
+            ).fetchone()
+        if intent is None or str(intent[3]) == "cancelled":
+            return
+        request_id = str(intent[0])
+        project_id = str(intent[1])
+        operation_id = None if intent[2] is None else str(intent[2])
+        try:
+            self._stop_active_assignment_before_cancel(activity_id)
+            confirmation = self._require_confirmation()
+            confirmation.recover_pending(activity_id)
+            with self.database.read_connection() as connection:
+                confirmed = connection.execute(
+                    """SELECT 1 FROM registration_confirmations
+                       WHERE activity_id = ? AND state = 'confirmed' LIMIT 1""",
+                    (activity_id,),
+                ).fetchone()
+                recovery_attempt = connection.execute(
+                    """SELECT 1 FROM registration_recovery_attempts
+                       WHERE activity_id = ?""",
+                    (activity_id,),
+                ).fetchone()
+            if confirmed is not None:
+                raise ValueError(
+                    "registration became confirmed before cancellation completed"
+                )
+            if self.recovery is not None and recovery_attempt is not None:
+                self.recovery.cancel(
+                    activity_id, request_id, operation_id=operation_id
+                )
+        except (OSError, RuntimeError, ValueError) as error:
+            with self.database.transaction() as transaction:
+                transaction.execute(
+                    """UPDATE installed_registration_cancellations
+                       SET failure = ?
+                       WHERE activity_id = ? AND state = 'stopping'""",
+                    (str(error), activity_id),
+                )
+            self._set_activity_presentation(
+                activity_id,
+                "stopping",
+                f"Stop unconfirmed: {error}",
+                (),
+            )
+            return
+        with self.database.transaction() as transaction:
+            row = _activity_row(transaction, activity_id)
+            current_version = int(row[4])
+            next_version = current_version + 1
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    activity_id,
+                    project_id,
+                    "registration",
+                    str(row[1]),
+                    "cancelled",
+                    next_version,
+                    started_at=None if row[3] is None else str(row[3]),
+                    ended_at=_utc_now(),
+                ),
+                expected_record_version=current_version,
+            )
+            transaction.execute(
+                "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
+                (next_version, activity_id),
+            )
+            transaction.execute(
+                """UPDATE installed_registration_intake SET state = 'cancelled'
+                   WHERE activity_id = ?""",
+                (activity_id,),
+            )
+            open_questions = transaction.execute(
+                """SELECT question_id, version FROM service_questions
+                   WHERE activity_id = ?
+                     AND status IN ('awaiting_answer', 'clarification_required')""",
+                (activity_id,),
+            ).fetchall()
+            for question_id, version in open_questions:
+                transaction.execute(
+                    """UPDATE service_questions SET status = 'cancelled', version = ?
+                       WHERE question_id = ? AND version = ?""",
+                    (int(version) + 1, str(question_id), int(version)),
+                )
+                transaction.execute(
+                    "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
+                    (int(version) + 1, str(question_id)),
+                )
+            active = transaction.execute(
+                "SELECT 1 FROM active_registrations WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+            if active is None:
+                project = transaction.execute(
+                    "SELECT name, version FROM service_projects WHERE project_id = ?",
+                    (project_id,),
+                ).fetchone()
+                if project is None:
+                    raise ValueError("registration project is unavailable")
+                self.records.update_project(
+                    transaction,
+                    ProjectRecord(
+                        project_id, str(project[0]), "not_registered",
+                        int(project[1]) + 1,
+                    ),
+                    expected_record_version=int(project[1]),
+                )
+            if self.recovery is not None:
+                self.recovery.release_intake_reservation_in(transaction, activity_id)
+            transaction.execute(
+                """UPDATE installed_registration_cancellations
+                   SET state = 'cancelled', failure = NULL
+                   WHERE activity_id = ? AND state = 'stopping'""",
+                (activity_id,),
             )
 
     def _reconcile_saved_assignment(
@@ -3487,7 +3529,7 @@ def _intake_request_from_record(value: Mapping[str, object]) -> RegistrationInta
             if isinstance(value["remote"], str)
             else _text(value["remote"], "remote")
         ),
-        overview_path=_text(value["overview_path"], "overview_path"),
+        overview_path=_optional_text(value["overview_path"]),
         referenced_paths=tuple(
             _text(item, "referenced path") for item in value["referenced_paths"]
         ),

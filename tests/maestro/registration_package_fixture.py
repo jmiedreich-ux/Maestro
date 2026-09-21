@@ -151,7 +151,11 @@ def complete_package(
             "schema_version": 1,
             "record_type": "declaration",
             "record_id": designation,
-            "subject": f"{designation} milestone declaration",
+            "subject": next(
+                item.declaration_subject
+                for item in outcomes
+                if item.declaration == designation
+            ),
             "record_version": max(
                 item.declaration_version for item in outcomes if item.declaration == designation
             ),
