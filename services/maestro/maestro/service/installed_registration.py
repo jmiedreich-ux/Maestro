@@ -10,6 +10,7 @@ import stat
 import subprocess
 import uuid
 from collections.abc import Mapping
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -146,7 +147,15 @@ class InstalledToolInspector:
                 ]
                 if len(matches) != 1:
                     continue
-                limit = _reported_context_limit(matches[0])
+                catalog_limit = _reported_context_limit(matches[0])
+                cached_limit = _codex_cached_context_limit(cwd, model_id, version)
+                if (
+                    catalog_limit is not None
+                    and cached_limit is not None
+                    and catalog_limit != cached_limit
+                ):
+                    continue
+                limit = catalog_limit if catalog_limit is not None else cached_limit
                 if limit is None:
                     continue
                 exact_entries[model_id] = matches[0]
@@ -264,7 +273,7 @@ class InstalledToolInspector:
             ):
                 continue
             version = init.get("claude_code_version")
-            limit = _reported_context_limit(init)
+            limit = _claude_context_limit(init, result, model_id)
             if not isinstance(version, str) or not version or limit is None:
                 continue
             if observed_version is not None and observed_version != version:
@@ -379,7 +388,7 @@ def _preflight_schema() -> dict[str, object]:
         "type": "object",
         "additionalProperties": False,
         "required": ["preflight"],
-        "properties": {"preflight": {"const": "ok"}},
+        "properties": {"preflight": {"type": "string", "const": "ok"}},
     }
 
 
@@ -389,6 +398,70 @@ def _reported_context_limit(value: Mapping[str, object]) -> int | None:
         if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
             return limit
     return None
+
+
+def _codex_cached_context_limit(
+    cwd: Path, model_id: str, tool_version: str
+) -> int | None:
+    """Read a fresh, exact-model context limit written by this Codex route."""
+    cache_path = cwd / "home" / ".codex" / "models_cache.json"
+    try:
+        if cache_path.is_symlink() or not cache_path.is_file():
+            return None
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(cache, Mapping):
+        return None
+    client_version = cache.get("client_version")
+    if (
+        not isinstance(client_version, str)
+        or not client_version
+        or client_version not in tool_version
+    ):
+        return None
+    fetched_at = cache.get("fetched_at")
+    if not isinstance(fetched_at, str):
+        return None
+    try:
+        fetched = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if fetched.tzinfo is None:
+        return None
+    age = datetime.now(timezone.utc) - fetched.astimezone(timezone.utc)
+    if age < -timedelta(seconds=30) or age > timedelta(minutes=5):
+        return None
+    models = cache.get("models")
+    if not isinstance(models, list):
+        return None
+    matches = [
+        model
+        for model in models
+        if isinstance(model, Mapping) and model.get("slug") == model_id
+    ]
+    if len(matches) != 1:
+        return None
+    return _reported_context_limit(matches[0])
+
+
+def _claude_context_limit(
+    init: Mapping[str, object], result: Mapping[str, object], model_id: str
+) -> int | None:
+    """Accept one consistent context limit for Claude's exact selected model."""
+    init_limit = _reported_context_limit(init)
+    model_usage = result.get("modelUsage")
+    result_limit: int | None = None
+    if isinstance(model_usage, Mapping):
+        exact_usage = model_usage.get(model_id)
+        if not isinstance(exact_usage, Mapping):
+            return None
+        result_limit = _reported_context_limit(exact_usage)
+        if result_limit is None:
+            return None
+    if init_limit is not None and result_limit is not None and init_limit != result_limit:
+        return None
+    return result_limit if result_limit is not None else init_limit
 
 
 def _terminate_preflight(process: subprocess.Popen[bytes]) -> None:
