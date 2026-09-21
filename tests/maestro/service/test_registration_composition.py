@@ -78,6 +78,7 @@ from maestro.service.registration import (
 from maestro.service.registration_agents import InstalledRegistrationAgentLauncher
 from maestro.service.resources import BundleSnapshot
 from maestro.terminal.main import TerminalApplication
+from tests.maestro.registration_package_fixture import complete_package
 
 
 OWNER_TOKEN = "c" * 64
@@ -615,7 +616,11 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             "registration-cancel", terminal.workspace.extensions.command_names
         )
         self.assertEqual(
-            {"registration-cancel", "registration-confirm", "registration-retry"},
+            {
+                "owner-decision", "registration-cancel", "registration-cancel-back",
+                "registration-cancel-confirm", "registration-confirm",
+                "registration-retry", "registration-source-choice",
+            },
             set(terminal.workspace.extensions.action_names),
         )
 
@@ -1535,48 +1540,17 @@ automatic_recovery_attempts = 2
                 architect_route.configuration_hash,
             ),
         )
-        record = {
-            "schema_version": 1,
-            "record_type": "summary",
-            "record_id": "summary-initial",
-            "subject": "Project summary",
-            "record_version": 1,
-            "data": {},
-        }
-        record_bytes = canonical_json(record).encode()
-        manifest = {
-            "project_id": project_id,
-            "registration_version": 1,
-            "candidate_id": "candidate-initial",
-            "previous_registration_ref": None,
-            "source_repository": "owner/project",
-            "source_commit": resumed.context.source_inventory.source_commit,
-            "overview_path": resumed.context.source_inventory.overview_path,
-            "decision_version": resumed.context.decision_version,
-            "source_ref": resumed.context.source_inventory.source_ref,
-            "publication_branch": "main",
-            "destination_snapshot_reference": (
-                resumed.context.package_context.destination_snapshot_reference
-            ),
-            "selection_decision_ref": (
-                resumed.context.package_context.selection_decision_ref
-            ),
-            "content_hash": hashlib.sha256(
-                (
-                    "summary.json\t"
-                    + hashlib.sha256(record_bytes).hexdigest()
-                    + "\n"
-                ).encode()
-            ).hexdigest(),
-            "files": [{
-                "path": "summary.json",
-                "record_id": "summary-initial",
-                "record_type": "summary",
-                "record_version": 1,
-                "subject": "Project summary",
-                "sha256": hashlib.sha256(record_bytes).hexdigest(),
-            }],
-        }
+        manifest, package_records = complete_package(
+            resumed.context.package_context,
+            registration_version=1,
+            candidate_id="candidate-initial",
+            review_context={
+                **resumed.package_review_context(),
+                "architect_assignment_id": architect_operation.assignment_id,
+                "architect_run_id": architect_operation.run_id,
+            },
+            include_review=False,
+        )
         manifest_bytes = canonical_json(manifest).encode()
         candidate_root = (
             self.settings.workspace_root / project_id / str(assessed_activity)
@@ -1584,7 +1558,10 @@ automatic_recovery_attempts = 2
         )
         candidate_root.mkdir(parents=True)
         (candidate_root / "manifest.json").write_bytes(manifest_bytes)
-        (candidate_root / "summary.json").write_bytes(record_bytes)
+        for path, package_record in package_records.items():
+            target = candidate_root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(canonical_json(package_record).encode())
         candidate_ref = {
             "path": "candidate/manifest.json",
             "sha256": hashlib.sha256(manifest_bytes).hexdigest(),

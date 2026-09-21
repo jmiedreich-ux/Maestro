@@ -273,7 +273,10 @@ class RegistrationConfirmationService:
         ready = assessment.require_ready_candidate()
         try:
             validated = validate_registration_package(
-                manifest, records, assessment.context.package_context
+                manifest,
+                records,
+                assessment.context.package_context,
+                review_context=assessment.package_review_context(),
             )
         except RegistrationRecordError as error:
             raise RegistrationConfirmationError(str(error)) from error

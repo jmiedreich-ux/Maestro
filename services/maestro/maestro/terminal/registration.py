@@ -60,6 +60,7 @@ class RegistrationInteraction:
         self.detail: dict[str, object] | None = None
         self.pending: PendingConfirmation | None = None
         self.status: str | None = None
+        self.cancel_confirmation = False
 
     def open(self, context: ExtensionContext) -> str:
         project_id = _selected_project(context)
@@ -122,6 +123,54 @@ class RegistrationInteraction:
                 f"{agent_retry['automatic_limit']} / manual "
                 f"{agent_retry['manual_consumed']}"
             )
+        assessment = detail.get("assessment")
+        if isinstance(assessment, Mapping):
+            worker = assessment["working_agent"] or "none"
+            lines.append(
+                f"Assessment: {assessment['current_step']} / working agent {worker} / "
+                f"review {assessment['review_round']} of {assessment['effective_review_limit']} "
+                f"(base {assessment['base_review_limit']}, grants {assessment['review_grants']})"
+            )
+            findings = [
+                *assessment["architect_findings"], *assessment["review_findings"]
+            ]
+            for finding in findings:
+                if isinstance(finding, Mapping):
+                    lines.append(
+                        f"- {finding.get('severity', 'finding')}: "
+                        f"{finding.get('subject', 'Untitled finding')}"
+                    )
+        provenance = detail.get("provenance")
+        if isinstance(provenance, Mapping):
+            lines.append(
+                f"Source: {provenance['source_repository']} "
+                f"{provenance['source_ref']} at {provenance['source_commit']}"
+            )
+            lines.append(
+                f"Destination: {provenance['publication_branch']} / "
+                f"{provenance['destination_snapshot_reference']}"
+            )
+        records = detail.get("package_records", [])
+        if isinstance(records, list) and records:
+            lines.append(f"Authoritative package records: {len(records)}")
+            for record in records:
+                if isinstance(record, Mapping):
+                    lines.append(
+                        f"- {record.get('record_type')}: {record.get('subject')} "
+                        f"({record.get('record_id')} v{record.get('record_version')})"
+                    )
+        consistency = detail.get("source_consistency")
+        if isinstance(consistency, Mapping):
+            lines.append(f"Source consistency: {consistency['state']}")
+            for path in consistency.get("changed_paths", []):
+                lines.append(f"- changed planning input: {path}")
+        for decision in detail.get("owner_decisions", []):
+            if isinstance(decision, Mapping) and decision.get("state") == "pending":
+                lines.append(
+                    f"Owner decision: {decision['reason']} "
+                    f"(used {decision['used_attempts']}, base {decision['base_limit']}, "
+                    f"prior grants {decision['prior_grants']})"
+                )
         history = detail["history"]
         assert isinstance(history, list)
         lines.append(f"Confirmed history: {len(history)}")
@@ -134,6 +183,14 @@ class RegistrationInteraction:
                 "Confirm registration action is available for exact candidate "
                 f"{package['candidate_id']}."
             )
+        if self.cancel_confirmation:
+            lines.extend((
+                "Cancel registration?",
+                f"Project: {detail['project_id']} / attempt: {detail['activity_id']}",
+                "Effect: stop the active registration attempt. Confirmed history, "
+                "saved findings, and published evidence remain retained.",
+                "Choose Cancel registration or Go back.",
+            ))
         if self.status:
             lines.append(self.status)
         return "\n".join(lines)
@@ -293,6 +350,103 @@ class RegistrationInteraction:
             }
         )
         self.status = "Registration cancelled; confirmed history is unchanged."
+        self.cancel_confirmation = False
+        return response
+
+    def begin_cancel(self, context: ExtensionContext) -> str:
+        if self.detail is None:
+            raise ValueError("open the registration before cancelling it")
+        self._detail_selection(context)
+        self.cancel_confirmation = True
+        _replace_local_actions(context, [
+            {
+                "action_id": "registration-cancel-confirm",
+                "label": "Cancel registration",
+                "kind": "decision",
+            },
+            {
+                "action_id": "registration-cancel-back",
+                "label": "Go back",
+                "kind": "decision",
+            },
+        ])
+        return self.render()
+
+    def cancel_back(self, context: ExtensionContext) -> str:
+        self.cancel_confirmation = False
+        return self.open(context)
+
+    def source_choice(
+        self, context: ExtensionContext, choice: str
+    ) -> Mapping[str, object]:
+        if self.detail is None:
+            raise ValueError("open the registration before choosing source handling")
+        consistency = self.detail.get("source_consistency")
+        if not isinstance(consistency, Mapping) or consistency.get("state") != "changed":
+            raise ValueError("registration has no displayed source update")
+        if choice not in {"retain_reviewed_source", "include_updated_source"}:
+            raise ValueError("registration source choice is invalid")
+        project_id, activity_id = self._detail_selection(context)
+        response = context.client.submit({
+            "request_id": self._request_id_factory(),
+            "operation": "registration.source-choice",
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "question_id": None,
+            "expected_version": self.detail["activity_version"],
+            "payload": {
+                "choice": choice,
+                "reviewed_commit": consistency["reviewed_commit"],
+                "observed_commit": consistency["observed_commit"],
+            },
+        })
+        self.status = (
+            "The exact reviewed source was retained."
+            if choice == "retain_reviewed_source"
+            else "The updated source is being reassessed."
+        )
+        return response
+
+    def owner_decision(
+        self, context: ExtensionContext, decision_id: str, choice: str
+    ) -> Mapping[str, object]:
+        if self.detail is None:
+            raise ValueError("open the registration before recording an Owner decision")
+        decisions = self.detail.get("owner_decisions")
+        if not isinstance(decisions, list):
+            raise ValueError("registration has no pending Owner decision")
+        decision = next(
+            (
+                item for item in decisions
+                if isinstance(item, Mapping)
+                and item.get("decision_id") == decision_id
+                and item.get("state") == "pending"
+            ),
+            None,
+        )
+        if decision is None or choice not in {"grant_one", "remain_paused"}:
+            raise ValueError("Owner decision does not match the displayed pending decision")
+        project_id, activity_id = self._detail_selection(context)
+        response = context.client.submit({
+            "request_id": self._request_id_factory(),
+            "operation": "owner.decision",
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "question_id": decision["question_id"],
+            "expected_version": self.detail["activity_version"],
+            "payload": {
+                "decision_id": decision_id,
+                "decision_version": decision["decision_version"],
+                "target": decision["target"],
+                "assignment_id": decision["assignment_id"],
+                "choice": choice,
+            },
+        })
+        self.status = (
+            "One additional fidelity review was granted."
+            if choice == "grant_one"
+            else "Registration remains paused at the review limit."
+        )
         return response
 
     def _detail_selection(self, context: ExtensionContext) -> tuple[str, str]:
@@ -344,6 +498,10 @@ class RegistrationExtension:
         registry.register_action("registration-confirm", self._confirm)
         registry.register_action("registration-retry", self._retry)
         registry.register_action("registration-cancel", self._cancel)
+        registry.register_action("registration-cancel-confirm", self._cancel_confirm)
+        registry.register_action("registration-cancel-back", self._cancel_back)
+        registry.register_action("registration-source-choice", self._source_choice)
+        registry.register_action("owner-decision", self._owner_decision)
         registry.register_input(
             "registration-retry", self._open_retry_input, self._submit_retry_input
         )
@@ -368,6 +526,29 @@ class RegistrationExtension:
         candidate_id = arguments.strip() or str(
             detail["package_ref"]["candidate_id"]
         )
+        consistency = detail.get("source_consistency")
+        if (
+            isinstance(consistency, Mapping)
+            and consistency.get("state") == "changed"
+            and not bool(consistency.get("retained"))
+        ):
+            self.interaction.status = (
+                "Planning inputs changed after review. Choose whether to retain the "
+                "reviewed source or include the updated source for reassessment."
+            )
+            _replace_local_actions(context, [
+                {
+                    "action_id": "registration-source-choice.retain_reviewed_source",
+                    "label": "Retain reviewed source",
+                    "kind": "decision",
+                },
+                {
+                    "action_id": "registration-source-choice.include_updated_source",
+                    "label": "Include updated source",
+                    "kind": "decision",
+                },
+            ])
+            return self.interaction.render()
         return self.interaction.confirm(
             context, candidate_id
         )
@@ -410,7 +591,26 @@ class RegistrationExtension:
     def _cancel(self, context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():
             raise ValueError("registration cancel takes no arguments")
+        return self.interaction.begin_cancel(context)
+
+    def _cancel_confirm(self, context: ExtensionContext, arguments: str) -> object:
+        if arguments.strip():
+            raise ValueError("registration cancellation confirmation takes no arguments")
         return self.interaction.cancel(context)
+
+    def _cancel_back(self, context: ExtensionContext, arguments: str) -> object:
+        if arguments.strip():
+            raise ValueError("registration cancellation return takes no arguments")
+        return self.interaction.cancel_back(context)
+
+    def _source_choice(self, context: ExtensionContext, arguments: str) -> object:
+        return self.interaction.source_choice(context, arguments.strip())
+
+    def _owner_decision(self, context: ExtensionContext, arguments: str) -> object:
+        decision_id, separator, choice = arguments.rpartition(".")
+        if not separator:
+            raise ValueError("Owner decision action is invalid")
+        return self.interaction.owner_decision(context, decision_id, choice)
 
 
 def _selected_project(context: ExtensionContext) -> str:
@@ -436,8 +636,18 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
         "project_id", "activity_id", "activity_version", "state",
         "package_ref", "comparison", "agent_retry", "history", "can_confirm",
     }
-    if set(detail) != fields:
+    optional = {
+        "owner_decisions", "assessment", "package_manifest", "package_records",
+        "provenance", "source_consistency",
+    }
+    if not fields.issubset(detail) or set(detail) - fields - optional:
         raise ValueError("registration response fields do not match the contract")
+    detail.setdefault("owner_decisions", [])
+    detail.setdefault("assessment", None)
+    detail.setdefault("package_manifest", None)
+    detail.setdefault("package_records", [])
+    detail.setdefault("provenance", None)
+    detail.setdefault("source_consistency", None)
     for field in ("project_id", "activity_id", "state"):
         _text(detail[field], field)
     if (
@@ -465,7 +675,21 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
         _identifier(item["confirmation_id"], "confirmation_id")
         _text(item["path"], "confirmation path")
         _digest(item["sha256"], "confirmation sha256")
+    if not isinstance(detail["owner_decisions"], list):
+        raise ValueError("registration Owner decisions must be an array")
+    if not isinstance(detail["package_records"], list):
+        raise ValueError("registration package records must be an array")
     return detail
+
+
+def _replace_local_actions(
+    context: ExtensionContext, actions: list[dict[str, str]]
+) -> None:
+    detail = getattr(context.state, "activity_detail", None)
+    if isinstance(detail, Mapping):
+        updated = dict(detail)
+        updated["available_actions"] = actions
+        setattr(context.state, "activity_detail", updated)
 
 
 def _comparison(value: object) -> None:

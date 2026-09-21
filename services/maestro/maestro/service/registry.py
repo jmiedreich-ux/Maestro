@@ -18,6 +18,7 @@ APPROVED_OPERATIONS = frozenset(
         "registration.confirm",
         "registration.cancel",
         "registration.retry",
+        "registration.source-choice",
         "owner.decision",
         "architecture.start",
         "architecture.confirm",

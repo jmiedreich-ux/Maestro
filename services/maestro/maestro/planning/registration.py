@@ -85,6 +85,8 @@ class AssessmentStatus:
     assessment: ArtifactReference | None
     blockers: tuple[str, ...]
     execution_eligible: bool
+    base_review_limit: int
+    review_grants: int
 
 
 class RegistrationAssessment:
@@ -104,6 +106,8 @@ class RegistrationAssessment:
         self._architect_findings: tuple = ()
         self._review_findings: tuple = ()
         self._review_count = 0
+        self._review_grants = 0
+        self._review_limit_resume: str | None = None
         self._state = "awaiting_architect"
         self._reviewed_candidate: ArtifactReference | None = None
         self._reviewed_assessment: ArtifactReference | None = None
@@ -131,7 +135,17 @@ class RegistrationAssessment:
     def status(self) -> AssessmentStatus:
         blockers = tuple(item.subject for item in (*self._architect_findings, *self._review_findings) if item.severity == "blocking")
         ready = self._state == "ready" and not blockers
-        return AssessmentStatus(self._state, self._review_count, self.context.review_limit, self._candidate, self._assessment, blockers, ready)
+        return AssessmentStatus(
+            self._state,
+            self._review_count,
+            self.context.review_limit + self._review_grants,
+            self._candidate,
+            self._assessment,
+            blockers,
+            ready,
+            self.context.review_limit,
+            self._review_grants,
+        )
 
     def set_current_run(self, role: str, run: AssessmentRun) -> None:
         """Accept a service-confirmed recovery/follow-up run without resetting review budget."""
@@ -207,6 +221,8 @@ class RegistrationAssessment:
         return {
             "state": self._state,
             "review_count": self._review_count,
+            "review_grants": self._review_grants,
+            "review_limit_resume": self._review_limit_resume,
             "candidate": _artifact_record(self._candidate),
             "assessment": _artifact_record(self._assessment),
             "architect_findings": [asdict(item) for item in self._architect_findings],
@@ -226,14 +242,26 @@ class RegistrationAssessment:
             "state", "review_count", "candidate", "assessment", "architect_findings",
             "review_findings", "reviewed_candidate", "reviewed_assessment", "current_runs",
         }
-        if not isinstance(value, Mapping) or set(value) != fields:
+        optional_fields = {"review_grants", "review_limit_resume"}
+        if not isinstance(value, Mapping) or not fields.issubset(value) or set(value) - fields - optional_fields:
             raise RegistrationAssessmentError("saved registration assessment state is invalid")
         state, review_count = value["state"], value["review_count"]
+        review_grants = value.get("review_grants", 0)
+        review_limit_resume = value.get("review_limit_resume")
         states = {
             "awaiting_architect", "awaiting_reviewer", "changes_requested", "clarification_required",
             "technical_recovery", "ready", "blocked", "review_limit_owner_decision",
         }
-        if state not in states or isinstance(review_count, bool) or not isinstance(review_count, int) or not 0 <= review_count <= context.review_limit:
+        if (
+            state not in states
+            or isinstance(review_count, bool)
+            or not isinstance(review_count, int)
+            or isinstance(review_grants, bool)
+            or not isinstance(review_grants, int)
+            or review_grants < 0
+            or review_limit_resume not in {None, "changes_requested", "awaiting_reviewer"}
+            or not 0 <= review_count <= context.review_limit + review_grants
+        ):
             raise RegistrationAssessmentError("saved registration assessment state is invalid")
         runs = value["current_runs"]
         if not isinstance(runs, Mapping) or set(runs) != {"project_architect", "fidelity_reviewer"}:
@@ -242,6 +270,8 @@ class RegistrationAssessment:
             restored = cls(context)
             restored._state = state
             restored._review_count = review_count
+            restored._review_grants = review_grants
+            restored._review_limit_resume = review_limit_resume
             restored._candidate = _artifact_from_record(value["candidate"])
             restored._assessment = _artifact_from_record(value["assessment"])
             restored._architect_findings = _findings_from_record(value["architect_findings"])
@@ -298,8 +328,9 @@ class RegistrationAssessment:
         assert response.review_outcome is not None
         if response.review_outcome == "APPROVE":
             self._state = "ready" if not self._blocking() else "blocked"
-        elif self._review_count >= self.context.review_limit:
+        elif self._review_count >= self.context.review_limit + self._review_grants:
             self._state = "review_limit_owner_decision"
+            self._review_limit_resume = "changes_requested"
         else:
             self._state = "changes_requested"
         return self.status
@@ -309,6 +340,65 @@ class RegistrationAssessment:
         if not status.execution_eligible or status.candidate is None:
             raise RegistrationAssessmentError("candidate is not eligible: unresolved blockers, review, or confirmation boundary")
         return status.candidate
+
+    def grant_one_review(self) -> AssessmentStatus:
+        """Apply one explicit single-use Owner grant to this paused review boundary."""
+        if self._state != "review_limit_owner_decision":
+            raise RegistrationAssessmentError("registration is not waiting for a fidelity-review grant")
+        self._review_grants += 1
+        self._state = self._review_limit_resume or "changes_requested"
+        self._review_limit_resume = None
+        return self.status
+
+    def pause_for_review_limit(self) -> AssessmentStatus:
+        """Expose an exhausted review allowance before dispatching another reviewer."""
+        if (
+            self._state != "awaiting_reviewer"
+            or self._review_count < self.context.review_limit + self._review_grants
+        ):
+            raise RegistrationAssessmentError(
+                "registration review allowance is not exhausted"
+            )
+        self._state = "review_limit_owner_decision"
+        self._review_limit_resume = "awaiting_reviewer"
+        return self.status
+
+    def replace_ready_candidate(self, candidate: ArtifactReference) -> None:
+        """Bind the service-built reviewed manifest without changing reviewed content."""
+        if self._state != "ready" or not isinstance(candidate, ArtifactReference):
+            raise RegistrationAssessmentError("reviewed candidate finalization is not eligible")
+        if self._candidate is None or candidate.version != self._candidate.version:
+            raise RegistrationAssessmentError("reviewed candidate finalization changed candidate identity")
+        self._candidate = candidate
+        self._reviewed_candidate = candidate
+
+    def package_review_context(self) -> dict[str, object]:
+        run = self.current_run("fidelity_reviewer")
+        architect = self.current_run("project_architect")
+        return {
+            "architect_assignment_id": architect.assignment_id,
+            "architect_run_id": architect.run_id,
+            "assignment_id": run.assignment_id,
+            "run_id": run.run_id,
+            "reviewer_identity": self.context.reviewer_identity,
+            "review_round": self._review_count,
+            "review_limit": self.context.review_limit + self._review_grants,
+        }
+
+    def carry_review_accounting_from(
+        self, previous: "RegistrationAssessment"
+    ) -> None:
+        """Preserve review use and grants while updated source is reassessed."""
+        if not isinstance(previous, RegistrationAssessment):
+            raise TypeError("source update requires the previous registration assessment")
+        if (
+            self.context.activity_id != previous.context.activity_id
+            or self.context.project_id != previous.context.project_id
+            or self._state != "awaiting_architect"
+        ):
+            raise RegistrationAssessmentError("source update assessment context is invalid")
+        self._review_count = previous._review_count
+        self._review_grants = previous._review_grants
 
     def _blocking(self) -> bool:
         return any(item.severity == "blocking" for item in (*self._architect_findings, *self._review_findings))

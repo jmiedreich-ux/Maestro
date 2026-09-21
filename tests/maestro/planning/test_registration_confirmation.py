@@ -45,6 +45,7 @@ from maestro.planning.registration_records import (
 )
 from maestro.planning.sources import OutcomeReference, SourceBlob, SourceInventory, SourceReference
 from maestro.service.authentication import VerifiedActor
+from tests.maestro.registration_package_fixture import complete_package
 from maestro.terminal.connection import TerminalConnectionError
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.registration import RegistrationExtension, RegistrationInteraction
@@ -130,16 +131,6 @@ class RegistrationConfirmationTest(unittest.TestCase):
         candidate_id: str,
         previous: RegistrationPackageReference | None = None,
     ) -> tuple[RegistrationAssessment, dict[str, object], dict[str, dict[str, object]]]:
-        record = {
-            "schema_version": 1,
-            "record_type": "summary",
-            "record_id": f"summary-{registration_version}",
-            "subject": "Project summary",
-            "record_version": registration_version,
-            "data": {},
-        }
-        record_hash = hashlib.sha256(canonical_record_bytes(record)).hexdigest()
-        records = {"summary.json": record}
         inventory = SourceInventory(
             "refs/heads/main",
             "b" * 40,
@@ -157,31 +148,23 @@ class RegistrationConfirmationTest(unittest.TestCase):
             self.snapshot_reference,
             "decision/source-selection-1",
         )
-        manifest: dict[str, object] = {
-            "project_id": "project-1",
-            "registration_version": registration_version,
-            "candidate_id": candidate_id,
-            "previous_registration_ref": None if previous is None else previous.as_dict(),
-            "source_repository": "owner/project",
-            "source_commit": inventory.source_commit,
-            "overview_path": inventory.overview_path,
-            "decision_version": "decision-1",
-            "source_ref": inventory.source_ref,
-            "publication_branch": "main",
-            "destination_snapshot_reference": self.snapshot_reference,
-            "selection_decision_ref": "decision/source-selection-1",
-            "content_hash": package_content_hash(records),
-            "files": [
-                {
-                    "path": "summary.json",
-                    "record_id": record["record_id"],
-                    "record_type": record["record_type"],
-                    "record_version": record["record_version"],
-                    "subject": record["subject"],
-                    "sha256": record_hash,
-                }
-            ],
-        }
+        manifest, records = complete_package(
+            context,
+            registration_version=registration_version,
+            candidate_id=candidate_id,
+            previous_registration_ref=(
+                None if previous is None else previous.as_dict()
+            ),
+            review_context={
+                "architect_assignment_id": "architect-assignment",
+                "architect_run_id": "architect-run",
+                "assignment_id": "reviewer-assignment",
+                "run_id": "reviewer-run",
+                "reviewer_identity": "reviewer-agent",
+                "review_round": 1,
+                "review_limit": 2,
+            },
+        )
         manifest_hash = hashlib.sha256(canonical_record_bytes(manifest)).hexdigest()
         route = ResolvedAgentRoute(
             "architect", "codex", "openai/model-1", "openai", "1", "/tool",
@@ -473,6 +456,56 @@ class RegistrationConfirmationTest(unittest.TestCase):
         self.assertEqual(package, client.submissions[0]["payload"]["package_ref"])
         self.assertEqual(3, client.submissions[0]["expected_version"])
 
+    def test_terminal_cancel_requires_separate_confirmation_and_supports_go_back(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        client = _TerminalClient(_terminal_detail("project-1", "activity-1", package))
+        state = _TerminalState(
+            "project-1", "activity-1", {"available_actions": []}
+        )
+        context = ExtensionContext(client, state)
+        registry = ExtensionRegistry()
+        RegistrationExtension().install(registry)
+        registry.invoke_command("registration", context)
+
+        view = registry.invoke_action("registration-cancel", context)
+        self.assertIn("Choose Cancel registration or Go back", view)
+        self.assertEqual([], client.submissions)
+        self.assertEqual(
+            ["registration-cancel-confirm", "registration-cancel-back"],
+            [item["action_id"] for item in state.activity_detail["available_actions"]],
+        )
+        registry.invoke_action("registration-cancel-back", context)
+        self.assertEqual([], client.submissions)
+        registry.invoke_action("registration-cancel", context)
+        registry.invoke_action("registration-cancel-confirm", context)
+        self.assertEqual("registration.cancel", client.submissions[0]["operation"])
+
+    def test_terminal_requires_explicit_source_choice_before_confirmation(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        detail = _terminal_detail("project-1", "activity-1", package)
+        detail["data"]["can_confirm"] = False
+        detail["data"]["source_consistency"] = {
+            "state": "changed", "source_ref": "refs/heads/main",
+            "reviewed_commit": "a" * 40, "observed_commit": "c" * 40,
+            "changed_paths": ["docs/architecture.md"], "retained": False,
+        }
+        client = _TerminalClient(detail)
+        state = _TerminalState("project-1", "activity-1")
+        context = ExtensionContext(client, state)
+        registry = ExtensionRegistry()
+        RegistrationExtension().install(registry)
+        registry.invoke_command("registration", context)
+
+        view = registry.invoke_action("registration-confirm", context)
+        self.assertIn("Choose whether to retain", view)
+        self.assertEqual([], client.submissions)
+        registry.invoke_action(
+            "registration-source-choice", context, "include_updated_source"
+        )
+        self.assertEqual("registration.source-choice", client.submissions[0]["operation"])
+        self.assertEqual("a" * 40, client.submissions[0]["payload"]["reviewed_commit"])
+        self.assertEqual("c" * 40, client.submissions[0]["payload"]["observed_commit"])
+
     def test_terminal_preserves_lost_acknowledgment_across_projects(self) -> None:
         package1 = _terminal_package("candidate-1", "a")
         package2 = _terminal_package("candidate-2", "c")
@@ -675,6 +708,7 @@ class _DestinationApi:
 class _TerminalState:
     selected_project_id: str | None
     selected_activity_id: str | None
+    activity_detail: Mapping[str, object] | None = None
 
     def select_activity(self, activity_id: str) -> None:
         self.selected_activity_id = activity_id

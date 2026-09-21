@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import stat
+import sys
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -17,9 +19,9 @@ from maestro.agents.supervisor import ManagedUnit, OperationIdentity, Supervisio
 from maestro.agents.transport import (
     AgentAssignment,
     ArtifactReference as AssignedArtifactReference,
+    DecodedToolResult,
     RegistrationResponseValidator,
     TransportError,
-    decode_json_object,
 )
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspaceManager
 from maestro.foundation.credentials import RepositoryAuthorizer, ServiceGitTransport
@@ -32,6 +34,7 @@ from maestro.foundation.github_destination import (
 from maestro.planning.registration import RegistrationAssessment
 from maestro.planning.registration_plugin import RegistrationServiceBinding
 from maestro.planning.registration_records import ArtifactReference, RegistrationAgentResponse
+from maestro.foundation import canonical_json
 
 
 _RESPONSE_SCHEMA: Mapping[str, object] = {
@@ -80,6 +83,7 @@ class InstalledRegistrationAgentLauncher:
     ) -> None:
         self.workspaces = WorkspaceManager(workspace_root)
         self.source_cache_root = _service_directory(source_cache_root)
+        self.runner_root = _service_directory(source_cache_root.parent / "registration-runs")
         self.service_home = Path(service_home)
         self.authorizer = authorizer
         self.transport = transport
@@ -133,23 +137,195 @@ class InstalledRegistrationAgentLauncher:
         else:  # pragma: no cover - resolved routes already enforce this
             raise ValueError(f"registration tool is unsupported: {route.tool}")
         timeout = _run_timeout(assessment, role)
+        runner_directory = self.runner_root / run.run_id
+        runner_directory.mkdir(mode=0o700)
+        plan_path = runner_directory / "plan.json"
+        event_path = runner_directory / "events.jsonl"
+        result_path = runner_directory / "result.json"
+        plan = {
+            "route": _route_mapping(route),
+            "assignment": assignment.as_dict(),
+            "workspace": _workspace_mapping(workspace),
+            "command": list(launch.isolated_arguments),
+            "cwd": launch.cwd,
+            "initial_stdin": [value.decode("utf-8") for value in launch.initial_stdin],
+            "event_path": str(event_path),
+            "result_path": str(result_path),
+        }
+        _write_service_file(plan_path, canonical_json(plan).encode("utf-8"))
         identity, managed = binding.launch_agent(
             assessment.context.activity_id,
             role,
-            launch.isolated_arguments,
+            (
+                str(Path(sys.executable).resolve()), "-m",
+                "maestro.service.registration_runner", str(plan_path),
+            ),
             launch.cwd,
             timeout,
         )
         worker = threading.Thread(
-            target=self._drive,
+            target=self._drive_runner,
             args=(
                 binding, assessment, role, route, assignment, workspace,
-                identity, managed, adapter, launch.initial_stdin, originals,
+                identity, managed, event_path, result_path, originals,
             ),
             name=f"registration-{run.run_id}",
             daemon=True,
         )
         worker.start()
+
+    def resume(
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        role: str,
+    ) -> None:
+        """Resume a saved runner by replaying only its service-owned files."""
+        run, route = _run_and_route(assessment, role)
+        assignment, _inputs, originals = self._assignment(binding, assessment, role)
+        workspace = self.workspaces.open_existing(
+            project_id=assessment.context.project_id,
+            activity_id=assessment.context.activity_id,
+            run_id=run.run_id,
+            source_commit=assessment.context.source_inventory.source_commit,
+            assignment_bytes=assignment.to_bytes(),
+        )
+        identity = binding.current_operation(assessment, role)
+        runner_directory = self.runner_root / run.run_id
+        worker = threading.Thread(
+            target=self._drive_runner,
+            args=(
+                binding, assessment, role, route, assignment, workspace, identity,
+                None, runner_directory / "events.jsonl",
+                runner_directory / "result.json", originals,
+            ),
+            name=f"registration-resume-{run.run_id}", daemon=True,
+        )
+        worker.start()
+
+    def _drive_runner(
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        role: str,
+        route: ResolvedAgentRoute,
+        assignment: AgentAssignment,
+        workspace: PreparedWorkspace,
+        identity: OperationIdentity,
+        _managed: ManagedUnit | None,
+        event_path: Path,
+        result_path: Path,
+        originals: Mapping[str, ArtifactReference],
+    ) -> None:
+        try:
+            reported = binding.has_saved_agent_identity(assessment, role)
+            recorded_runner_sequences: set[int] = set()
+            while True:
+                if event_path.exists():
+                    for line in event_path.read_text(encoding="utf-8").splitlines():
+                        try:
+                            event = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        sequence = int(event["sequence"])
+                        if sequence in recorded_runner_sequences:
+                            continue
+                        recorded_runner_sequences.add(sequence)
+                        try:
+                            binding.record_agent_protocol_event(
+                                identity, "stdout",
+                                (canonical_json(event) + "\n").encode("utf-8"),
+                            )
+                        except SupervisionError as error:
+                            if error.code != "protocol_event_rejected":
+                                raise
+                        if event["kind"] == "runtime_identity" and not reported:
+                            binding.restore_agent_identity_reservation(identity, route)
+                            tool_identity = RunningToolIdentity(**event["identity"])
+                            try:
+                                binding.report_agent_identity(identity, tool_identity)
+                            except SupervisionError as error:
+                                if error.code != "runtime_identity_unconfirmed":
+                                    raise
+                                reconciled = binding.poll_agent(identity)
+                                if reconciled.state != "completed":
+                                    raise
+                                binding.report_agent_identity(identity, tool_identity)
+                            reported = True
+                terminal = binding.poll_agent(identity)
+                if terminal.state != "running":
+                    break
+                time.sleep(0.05)
+            if terminal.state != "completed" or terminal.terminal_reason != "exit_0":
+                raise RuntimeError("registration runner did not exit successfully")
+            if not result_path.is_file() or result_path.is_symlink():
+                raise RuntimeError("registration runner result is unavailable")
+            value = json.loads(result_path.read_text(encoding="utf-8"))
+            decoded = DecodedToolResult(
+                value["response"], RunningToolIdentity(**value["identity"])
+            )
+            if not reported:
+                binding.restore_agent_identity_reservation(identity, route)
+                try:
+                    binding.report_agent_identity(identity, decoded.identity)
+                except SupervisionError as error:
+                    if error.code != "runtime_identity_unconfirmed":
+                        raise
+                    reconciled = binding.poll_agent(identity)
+                    if reconciled.state != "completed":
+                        raise
+                    binding.report_agent_identity(identity, decoded.identity)
+            self._accept_decoded(
+                binding, assessment, role, route, assignment, workspace,
+                decoded, originals,
+            )
+        except Exception as error:
+            try:
+                binding.stop_agent(identity, "adapter_failure")
+            except Exception:
+                pass
+            if self._failure_listener is not None:
+                self._failure_listener(
+                    assessment.context.activity_id, role, assignment.assignment_id,
+                    assignment.run_id, f"{type(error).__name__}: {error}",
+                    isinstance(error, (OSError, TransportError, RuntimeError)),
+                )
+
+    def _accept_decoded(
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        role: str,
+        route: ResolvedAgentRoute,
+        assignment: AgentAssignment,
+        workspace: PreparedWorkspace,
+        decoded: object,
+        originals: Mapping[str, ArtifactReference],
+    ) -> None:
+        validated = self.validator.validate(
+            decoded, route=route, assignment=assignment, workspace=workspace,
+            current_assignment_id=assignment.assignment_id,
+            current_run_id=assignment.run_id,
+        )
+        response = dict(decoded.response)
+        if role == "fidelity_reviewer":
+            response["candidate"] = originals["candidate"].as_dict()
+            response["reviewed_assessment"] = originals["reviewed_assessment"].as_dict()
+        if validated.result != response["result"]:
+            raise RuntimeError("validated registration result differs")
+        record = RegistrationAgentResponse.from_mapping(response)
+        if role == "project_architect":
+            binding.submit_architect(record)
+        else:
+            binding.submit_reviewer(record)
+        if record.result == "technical_failure" and self._failure_listener is not None:
+            assert record.failure is not None
+            self._failure_listener(
+                assessment.context.activity_id, role, assignment.assignment_id,
+                assignment.run_id,
+                f"{record.failure['code']}: {record.failure['message']}",
+                _retryable_failure_code(str(record.failure["code"])),
+            )
 
     def _source_repository(self, assessment: RegistrationAssessment) -> Path:
         context = assessment.context
@@ -290,121 +466,6 @@ class InstalledRegistrationAgentLauncher:
             raise ValueError("assigned registration artifact hash differs")
         return content
 
-    def _drive(
-        self,
-        binding: RegistrationServiceBinding,
-        assessment: RegistrationAssessment,
-        role: str,
-        route: ResolvedAgentRoute,
-        assignment: AgentAssignment,
-        workspace: PreparedWorkspace,
-        identity: OperationIdentity,
-        managed: ManagedUnit,
-        adapter: object,
-        initial_stdin: tuple[bytes, ...],
-        originals: Mapping[str, ArtifactReference],
-    ) -> None:
-        try:
-            if managed.stdout is None:
-                raise RuntimeError("registration tool stdout is unavailable")
-            _drain_stderr(managed)
-            identity_reported = False
-            if route.tool == "codex":
-                if managed.process is None or managed.process.stdin is None:
-                    raise RuntimeError("Codex protocol input is unavailable")
-                conversation = adapter
-                for outgoing in initial_stdin:
-                    managed.process.stdin.write(outgoing)
-                managed.process.stdin.flush()
-                while conversation.state != "completed":
-                    incoming = managed.stdout.readline()
-                    if not incoming:
-                        raise RuntimeError("Codex closed before returning a complete result")
-                    for outgoing in conversation.receive(incoming):
-                        managed.process.stdin.write(outgoing)
-                    managed.process.stdin.flush()
-                decoded = conversation.result()
-                binding.report_agent_identity(identity, decoded.identity)
-                identity_reported = True
-                managed.process.stdin.close()
-            else:
-                chunks: list[bytes] = []
-                for line in iter(managed.stdout.readline, b""):
-                    chunks.append(line)
-                    if identity_reported:
-                        continue
-                    event = decode_json_object(line)
-                    if event.get("type") == "system" and event.get("subtype") == "init":
-                        model = event.get("model")
-                        version = event.get("claude_code_version")
-                        if not isinstance(model, str) or not isinstance(version, str):
-                            raise RuntimeError("Claude startup identity is invalid")
-                        binding.report_agent_identity(
-                            identity,
-                            RunningToolIdentity(
-                                "tool_metadata", route.provider, model, version,
-                                route.configuration_hash,
-                            ),
-                        )
-                        identity_reported = True
-                raw = b"".join(chunks)
-                decoded = adapter.decode(raw, route)
-            if not identity_reported:
-                raise RuntimeError("registration tool identity was not reported while running")
-            terminal = _wait_for_terminal(binding, identity)
-            if terminal.state != "completed" or terminal.terminal_reason != "exit_0":
-                raise RuntimeError("registration agent did not exit successfully")
-            validated = self.validator.validate(
-                decoded,
-                route=route,
-                assignment=assignment,
-                workspace=workspace,
-                current_assignment_id=assignment.assignment_id,
-                current_run_id=assignment.run_id,
-            )
-            response = dict(decoded.response)
-            if role == "fidelity_reviewer":
-                response["candidate"] = originals["candidate"].as_dict()
-                response["reviewed_assessment"] = originals[
-                    "reviewed_assessment"
-                ].as_dict()
-            if validated.result != response["result"]:  # pragma: no cover - defensive
-                raise RuntimeError("validated registration result differs")
-            record = RegistrationAgentResponse.from_mapping(response)
-            if role == "project_architect":
-                binding.submit_architect(record)
-            else:
-                binding.submit_reviewer(record)
-            if record.result == "technical_failure" and self._failure_listener is not None:
-                assert record.failure is not None
-                self._failure_listener(
-                    assessment.context.activity_id,
-                    role,
-                    assignment.assignment_id,
-                    assignment.run_id,
-                    f"{record.failure['code']}: {record.failure['message']}",
-                    _retryable_failure_code(str(record.failure["code"])),
-                )
-        except Exception as error:
-            # The supervisor journal and preserved workspace retain exact failure
-            # evidence. Recovery remains an explicit service action.
-            try:
-                binding.stop_agent(identity, "adapter_failure")
-            except Exception:
-                pass
-            if self._failure_listener is not None:
-                self._failure_listener(
-                    assessment.context.activity_id,
-                    role,
-                    assignment.assignment_id,
-                    assignment.run_id,
-                    f"{type(error).__name__}: {error}",
-                    isinstance(error, (OSError, TransportError))
-                    or (isinstance(error, RuntimeError) and not isinstance(error, SupervisionError)),
-                )
-            return
-
-
 def _run_and_route(assessment: RegistrationAssessment, role: str):
     if role == "project_architect":
         return assessment.current_run(role), assessment.context.routes.architect
@@ -430,6 +491,33 @@ def _run_timeout(assessment: RegistrationAssessment, role: str) -> int:
     return value
 
 
+def _route_mapping(route: ResolvedAgentRoute) -> dict[str, object]:
+    return {
+        "role": route.role, "tool": route.tool,
+        "requested_model_id": route.requested_model_id, "provider": route.provider,
+        "tool_version": route.tool_version, "executable": route.executable,
+        "credential_profile": route.credential_profile,
+        "settings_profile": route.settings_profile, "location": route.location,
+        "capabilities": list(route.capabilities),
+        "context_limit_tokens": route.context_limit_tokens,
+        "permitted_destinations": [
+            item.as_dict() for item in route.permitted_destinations
+        ],
+        "configuration_hash": route.configuration_hash,
+    }
+
+
+def _workspace_mapping(workspace: PreparedWorkspace) -> dict[str, object]:
+    return {
+        "project_id": workspace.project_id, "activity_id": workspace.activity_id,
+        "run_id": workspace.run_id, "source_commit": workspace.source_commit,
+        "root": str(workspace.paths.root),
+        "assignment_sha256": workspace.assignment_sha256,
+        "isolation_executable": str(workspace.isolation_executable),
+        "workspace_root": str(workspace.workspace_root),
+    }
+
+
 def _answers(
     binding: RegistrationServiceBinding, activity_id: str
 ) -> list[dict[str, object]]:
@@ -452,27 +540,6 @@ def _answers(
     ]
 
 
-def _wait_for_terminal(
-    binding: RegistrationServiceBinding, identity: OperationIdentity
-):
-    while True:
-        record = binding.poll_agent(identity)
-        if record.state != "running":
-            return record
-        time.sleep(0.05)
-
-
-def _drain_stderr(managed: ManagedUnit) -> None:
-    if managed.stderr is None:
-        return
-
-    def drain() -> None:
-        for _line in iter(managed.stderr.readline, b""):
-            pass
-
-    threading.Thread(target=drain, daemon=True).start()
-
-
 def _service_directory(path: Path) -> Path:
     path = Path(path)
     path.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -485,3 +552,14 @@ def _service_directory(path: Path) -> Path:
     ):
         raise ValueError("registration source cache directory is unsafe")
     return path
+
+
+def _write_service_file(path: Path, content: bytes) -> None:
+    descriptor = os.open(
+        path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
+    )
+    try:
+        os.write(descriptor, content)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)

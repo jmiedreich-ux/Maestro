@@ -32,6 +32,7 @@ from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.main import InstalledServiceApplication, ServiceSettings
 from maestro.service.processes import ProcessSnapshot
 from maestro.service.resources import BundleSnapshot
+from tests.maestro.registration_package_fixture import complete_package
 
 
 def _artifact(path: str, version: str) -> dict[str, str]:
@@ -122,6 +123,74 @@ class RegistrationAssessmentTest(unittest.TestCase):
         with self.assertRaisesRegex(RegistrationAssessmentError, "not eligible"):
             assessment.require_ready_candidate()
 
+    def test_one_owner_grant_adds_exactly_one_review_without_resetting_use(self) -> None:
+        assessment = self._assessment(limit=1)
+        assessment.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        first = assessment.submit_reviewer(
+            _response("fidelity_reviewer", outcome="REQUEST_CHANGES", blocker=True),
+            self._identity("fidelity_reviewer"),
+        )
+        self.assertEqual("review_limit_owner_decision", first.state)
+        granted = assessment.grant_one_review()
+        self.assertEqual((1, 1, 2), (
+            granted.review_count, granted.review_grants, granted.review_limit
+        ))
+        with self.assertRaisesRegex(RegistrationAssessmentError, "not waiting"):
+            assessment.grant_one_review()
+        assessment.continue_after_review(
+            AssessmentRun("project_architect-assignment", "project_architect-run-2")
+        )
+        amended = replace(
+            _response("project_architect"),
+            run_id="project_architect-run-2",
+            candidate=type(_response("project_architect").candidate)(
+                "candidate/manifest-2.json", "a" * 64, "candidate-2"
+            ),
+        )
+        assessment.submit_architect(amended, self._identity("project_architect"))
+        assessment.set_current_run(
+            "fidelity_reviewer",
+            AssessmentRun("fidelity_reviewer-assignment", "fidelity_reviewer-run-2"),
+        )
+        second_review = replace(
+            _response(
+                "fidelity_reviewer",
+                outcome="REQUEST_CHANGES",
+                blocker=True,
+                candidate=_artifact("candidate/manifest-2.json", "candidate-2"),
+            ),
+            run_id="fidelity_reviewer-run-2",
+        )
+        exhausted = assessment.submit_reviewer(
+            second_review, self._identity("fidelity_reviewer")
+        )
+        self.assertEqual("review_limit_owner_decision", exhausted.state)
+        self.assertEqual(2, exhausted.review_count)
+
+    def test_exhausted_updated_source_review_resumes_at_reviewer_after_grant(self) -> None:
+        previous = self._assessment(limit=1)
+        previous.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        previous.submit_reviewer(
+            _response("fidelity_reviewer", outcome="APPROVE"),
+            self._identity("fidelity_reviewer"),
+        )
+        replacement = self._assessment(limit=1)
+        replacement.carry_review_accounting_from(previous)
+        replacement.submit_architect(
+            _response("project_architect"), self._identity("project_architect")
+        )
+        paused = replacement.pause_for_review_limit()
+        self.assertEqual("review_limit_owner_decision", paused.state)
+        granted = replacement.grant_one_review()
+        self.assertEqual("awaiting_reviewer", granted.state)
+        self.assertEqual((1, 1, 2), (
+            granted.review_count, granted.review_grants, granted.review_limit
+        ))
+
     def test_reviewer_must_cover_exact_immutable_architect_artifacts(self) -> None:
         assessment = self._assessment()
         assessment.submit_architect(_response("project_architect"), self._identity("project_architect"))
@@ -139,20 +208,12 @@ class RegistrationAssessmentTest(unittest.TestCase):
             assessment.submit_architect(response, unverified)
 
     def test_package_manifest_hashes_exact_record_bytes(self) -> None:
-        record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {"purpose": "Start"}}
-        records = {"summary.json": record}
-        file_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        manifest = {
-            "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-            "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": "decision-1",
-            "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": "c" * 64,
-            "selection_decision_ref": "decision/source-selection-1",
-            "content_hash": package_content_hash(records),
-            "files": [{"path": "summary.json", "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": file_hash}],
-        }
         context = RegistrationPackageContext(
             "project-1", "owner/project", self._assessment().context.source_inventory, "decision-1", "main", "c" * 64,
             "decision/source-selection-1",
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
         )
         self.assertIs(validate_registration_package(manifest, records, context), manifest)
         manifest["content_hash"] = "0" * 64
@@ -160,26 +221,55 @@ class RegistrationAssessmentTest(unittest.TestCase):
             validate_registration_package(manifest, records, context)
 
     def test_package_rejects_context_substitution_and_duplicate_record_id(self) -> None:
-        record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {}}
-        second = dict(record)
-        records = {"summary.json": record, "also-summary.json": second}
-        entry_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        manifest = {
-            "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-            "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": "decision-1",
-            "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": "c" * 64,
-            "selection_decision_ref": "decision/source-selection-1", "content_hash": package_content_hash(records),
-            "files": [
-                {"path": path, "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": entry_hash}
-                for path in records
-            ],
-        }
         context = RegistrationPackageContext("project-1", "owner/project", self._assessment().context.source_inventory, "decision-1", "main", "c" * 64, "decision/source-selection-1")
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        duplicate = dict(records["summary.json"])
+        records["also-summary.json"] = duplicate
+        manifest["files"].append({
+            "path": "also-summary.json",
+            "record_id": duplicate["record_id"],
+            "record_type": duplicate["record_type"],
+            "record_version": duplicate["record_version"],
+            "subject": duplicate["subject"],
+            "sha256": hashlib.sha256(
+                json.dumps(duplicate, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+            ).hexdigest(),
+        })
+        manifest["content_hash"] = package_content_hash(records)
         with self.assertRaisesRegex(RegistrationRecordError, "record_id"):
             validate_registration_package(manifest, records, context)
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
         manifest["source_commit"] = "d" * 40
         with self.assertRaisesRegex(RegistrationRecordError, "source_commit"):
-            validate_registration_package(manifest, {"summary.json": record}, context)
+            validate_registration_package(manifest, records, context)
+
+    def test_package_rejects_missing_typed_topology_and_unknown_manifest_fields(self) -> None:
+        context = self._assessment().context.package_context
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        requirement_path = next(
+            path for path, record in records.items()
+            if record["record_type"] == "requirement"
+        )
+        del records[requirement_path]
+        manifest["files"] = [
+            item for item in manifest["files"]
+            if item["path"] != requirement_path
+        ]
+        manifest["content_hash"] = package_content_hash(records)
+        with self.assertRaisesRegex(RegistrationRecordError, "requirement"):
+            validate_registration_package(manifest, records, context)
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1"
+        )
+        manifest["agent_readiness"] = True
+        with self.assertRaisesRegex(RegistrationRecordError, "manifest fields"):
+            validate_registration_package(manifest, records, context)
 
     def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
         plugin = RegistrationProcessPlugin(self._configured_routes())
@@ -235,19 +325,15 @@ class RegistrationAssessmentTest(unittest.TestCase):
             selections = RoleSelections(ToolModelSelection("codex", "openai/model-1"), ToolModelSelection("claude_code", "anthropic/model-1"))
             binding.save_intake("activity-1", "project-1", intake, selections)
             started = binding.start(snapshot, "activity-1")
-            record = {"schema_version": 1, "record_type": "summary", "record_id": "summary-1", "subject": "Project summary", "record_version": 1, "data": {}}
-            record_hash = hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-            manifest = {
-                "project_id": "project-1", "registration_version": 1, "candidate_id": "candidate-1", "previous_registration_ref": None,
-                "source_repository": "owner/project", "source_commit": "b" * 40, "overview_path": "docs/overview.md", "decision_version": intake.selection_decision_ref,
-                "source_ref": "refs/heads/main", "publication_branch": "main", "destination_snapshot_reference": intake.destination_snapshot_reference,
-                "selection_decision_ref": intake.selection_decision_ref, "content_hash": package_content_hash({"summary.json": record}),
-                "files": [{"path": "summary.json", "record_id": "summary-1", "record_type": "summary", "record_version": 1, "subject": "Project summary", "sha256": record_hash}],
-            }
-            self.assertIs(binding.validate_package("activity-1", manifest, {"summary.json": record}), manifest)
+            manifest, records = complete_package(
+                started.context.package_context,
+                registration_version=1,
+                candidate_id="candidate-1",
+            )
+            self.assertIs(binding.validate_package("activity-1", manifest, records), manifest)
             manifest["publication_branch"] = "wrong-branch"
             with self.assertRaisesRegex(RegistrationRecordError, "publication_branch"):
-                binding.validate_package("activity-1", manifest, {"summary.json": record})
+                binding.validate_package("activity-1", manifest, records)
             architect_operation = OperationIdentity("project-1", "activity-1", started.context.architect_run.assignment_id, started.context.architect_run.run_id)
             self.assertFalse(hasattr(binding, "reserve_runtime_identity_callback"))
             self.assertFalse(hasattr(supervisor, "runtime_identity_callback"))

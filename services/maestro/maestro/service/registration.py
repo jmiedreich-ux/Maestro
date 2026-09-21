@@ -60,6 +60,11 @@ from maestro.planning.registration_recovery import (
     RegistrationRecoveryService,
 )
 from maestro.planning.registration import RegistrationAssessment, RegistrationAssessmentError
+from maestro.planning.registration_records import (
+    ArtifactReference,
+    canonical_record_bytes,
+    validate_registration_package,
+)
 from maestro.planning.sources import ExactSourceReader
 
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ProjectRecord
@@ -167,12 +172,72 @@ REGISTRATION_COMPOSITION_AUTOMATIC_RECOVERY_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_COMPOSITION_OWNER_DECISION_MIGRATION = DomainMigration(
+    domain="registration_composition",
+    version=4,
+    identity="installed-registration-owner-review-decisions-v4",
+    statements=(
+        """
+        CREATE TABLE installed_registration_owner_decisions(
+            decision_id TEXT PRIMARY KEY,
+            request_id TEXT UNIQUE,
+            project_id TEXT NOT NULL,
+            activity_id TEXT NOT NULL,
+            question_id TEXT NOT NULL UNIQUE,
+            decision_version INTEGER NOT NULL CHECK(decision_version >= 1),
+            target TEXT NOT NULL CHECK(target = 'fidelity_review'),
+            assignment_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            base_limit INTEGER NOT NULL CHECK(base_limit >= 1),
+            used_attempts INTEGER NOT NULL CHECK(used_attempts >= 0),
+            prior_grants INTEGER NOT NULL CHECK(prior_grants >= 0),
+            choice TEXT CHECK(choice IN ('grant_one', 'remain_paused')),
+            state TEXT NOT NULL CHECK(state IN ('pending', 'completed'))
+        )
+        """,
+        """
+        CREATE TABLE installed_registration_review_grants(
+            decision_id TEXT PRIMARY KEY
+                REFERENCES installed_registration_owner_decisions(decision_id),
+            activity_id TEXT NOT NULL,
+            assignment_id TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('unconsumed', 'reserved', 'consumed'))
+        )
+        """,
+    ),
+)
+
+REGISTRATION_COMPOSITION_SOURCE_CHOICE_MIGRATION = DomainMigration(
+    domain="registration_composition",
+    version=5,
+    identity="installed-registration-source-consistency-v5",
+    statements=(
+        """
+        CREATE TABLE installed_registration_source_choices(
+            request_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            activity_id TEXT NOT NULL,
+            source_ref TEXT NOT NULL,
+            reviewed_commit TEXT NOT NULL,
+            observed_commit TEXT NOT NULL,
+            changed_paths_json TEXT NOT NULL,
+            choice TEXT NOT NULL CHECK(choice IN (
+                'retain_reviewed_source', 'include_updated_source'
+            )),
+            state TEXT NOT NULL CHECK(state IN ('retained', 'reassessment_started'))
+        )
+        """,
+    ),
+)
+
 
 def registration_composition_migrations() -> tuple[DomainMigration, ...]:
     return (
         REGISTRATION_COMPOSITION_MIGRATION,
         REGISTRATION_COMPOSITION_RECOVERY_MIGRATION,
         REGISTRATION_COMPOSITION_AUTOMATIC_RECOVERY_MIGRATION,
+        REGISTRATION_COMPOSITION_OWNER_DECISION_MIGRATION,
+        REGISTRATION_COMPOSITION_SOURCE_CHOICE_MIGRATION,
     )
 
 
@@ -282,6 +347,8 @@ class RegistrationCoordinator:
             OperationHandler("registration.confirm", self.prepare_confirm),
             OperationHandler("registration.cancel", self.prepare_cancel),
             OperationHandler("registration.retry", self.prepare_retry),
+            OperationHandler("owner.decision", self.prepare_owner_decision),
+            OperationHandler("registration.source-choice", self.prepare_source_choice),
         )
 
     def receive_answer(self, answer: DeliveredAnswer) -> None:
@@ -586,6 +653,16 @@ class RegistrationCoordinator:
             _text(request.payload["confirmed_at"], "confirmed_at"),
         )
         assessment = self.binding.assessment(request.activity_id)
+        consistency, _updated_intake = self._source_consistency(assessment)
+        if consistency["state"] == "changed" and not self._has_retained_source_choice(
+            request.activity_id,
+            str(consistency["reviewed_commit"]),
+            str(consistency["observed_commit"]),
+        ):
+            raise ValueError(
+                "relevant symbolic source changed; explicitly retain the reviewed source "
+                "or include the updated source for reassessment"
+            )
         actor = VerifiedActor(self.owner_id)
         with self.database.read_connection() as connection:
             recovery_attempt = connection.execute(
@@ -1025,6 +1102,251 @@ class RegistrationCoordinator:
             after_commit=after_commit,
         )
 
+    def prepare_owner_decision(self, request: RequestEnvelope) -> PreparedOperation:
+        """Apply the shared Owner-decision contract for registration review grants."""
+        if request.project_id is None or request.activity_id is None:
+            raise ValueError("owner.decision requires project and activity context")
+        if request.question_id is None or request.expected_version is None:
+            raise ValueError("owner.decision requires a linked question and exact activity version")
+        fields = {
+            "decision_id", "decision_version", "target", "assignment_id", "choice",
+        }
+        if set(request.payload) != fields:
+            raise ValueError("owner.decision payload fields do not match the contract")
+        decision_id = _text(request.payload["decision_id"], "decision_id")
+        target = _text(request.payload["target"], "target")
+        assignment_id = _text(request.payload["assignment_id"], "assignment_id")
+        choice = _text(request.payload["choice"], "choice")
+        decision_version = request.payload["decision_version"]
+        if (
+            isinstance(decision_version, bool)
+            or not isinstance(decision_version, int)
+            or decision_version < 1
+        ):
+            raise ValueError("owner.decision decision_version must be positive")
+        if target != "fidelity_review" or choice not in {"grant_one", "remain_paused"}:
+            raise ValueError("owner.decision target or choice is invalid for registration")
+        with self.database.read_connection() as connection:
+            saved = connection.execute(
+                """SELECT project_id, activity_id, question_id, decision_version,
+                          target, assignment_id, state
+                   FROM installed_registration_owner_decisions
+                   WHERE decision_id = ?""",
+                (decision_id,),
+            ).fetchone()
+        if saved is None:
+            raise ValueError("owner.decision is not linked to a pending registration decision")
+        expected = (
+            request.project_id,
+            request.activity_id,
+            request.question_id,
+            decision_version,
+            target,
+            assignment_id,
+            "pending",
+        )
+        if tuple(saved) != expected:
+            raise ValueError("owner.decision context is stale or differs from the pending decision")
+        assessment = self.binding.assessment(request.activity_id)
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            current = transaction.execute(
+                """SELECT state, decision_version, assignment_id
+                   FROM installed_registration_owner_decisions
+                   WHERE decision_id = ? AND activity_id = ?""",
+                (decision_id, request.activity_id),
+            ).fetchone()
+            if current is None or tuple(current) != (
+                "pending", decision_version, assignment_id
+            ):
+                raise ValueError("owner.decision changed before it could be applied")
+            row = _activity_row(transaction, request.activity_id)
+            if int(row[4]) != request.expected_version:
+                raise ValueError("owner.decision activity version changed")
+            if choice == "grant_one":
+                self.binding.grant_one_review_in(transaction, assessment)
+                transaction.execute(
+                    """INSERT INTO installed_registration_review_grants(
+                           decision_id, activity_id, assignment_id, state
+                       ) VALUES (?, ?, ?, 'unconsumed')""",
+                    (decision_id, request.activity_id, assignment_id),
+                )
+                state = "running"
+                reason = "One additional fidelity review was granted for this exact registration."
+                actions = (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                )
+            else:
+                state = "paused"
+                reason = "Registration remains paused at its fidelity-review limit."
+                actions = (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                )
+            transaction.execute(
+                """UPDATE installed_registration_owner_decisions
+                   SET request_id = ?, choice = ?, state = 'completed'
+                   WHERE decision_id = ? AND state = 'pending'""",
+                (request.request_id, choice, decision_id),
+            )
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    request.activity_id,
+                    request.project_id,
+                    "registration",
+                    str(row[1]),
+                    state,
+                    next_version,
+                    waiting_reason=reason,
+                    started_at=None if row[3] is None else str(row[3]),
+                    available_actions=actions,
+                ),
+                expected_record_version=request.expected_version,
+            )
+            return OperationResult(
+                data={
+                    "decision_id": decision_id,
+                    "decision_version": decision_version,
+                    "target": target,
+                    "choice": choice,
+                    "grant_state": "unconsumed" if choice == "grant_one" else None,
+                },
+                project_id=request.project_id,
+                activity_id=request.activity_id,
+            )
+
+        def after_commit(_result: OperationResult) -> None:
+            if choice == "grant_one":
+                self._assessment_changed(assessment)
+
+        return PreparedOperation(
+            entity_id=request.activity_id,
+            event_type="owner.decision-recorded",
+            event_data={"decision_id": decision_id, "target": target, "choice": choice},
+            apply=apply,
+            after_commit=after_commit,
+        )
+
+    def prepare_source_choice(self, request: RequestEnvelope) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None:
+            raise ValueError("registration.source-choice requires project and activity context")
+        if request.question_id is not None or request.expected_version is None:
+            raise ValueError("registration.source-choice requires an exact activity version")
+        if set(request.payload) != {"choice", "reviewed_commit", "observed_commit"}:
+            raise ValueError("registration.source-choice payload fields do not match the contract")
+        choice = _text(request.payload["choice"], "choice")
+        if choice not in {"retain_reviewed_source", "include_updated_source"}:
+            raise ValueError("registration source choice is invalid")
+        assessment = self.binding.assessment(request.activity_id)
+        consistency, updated_intake = self._source_consistency(assessment)
+        if consistency["state"] != "changed":
+            raise ValueError("registration source has no relevant change requiring a choice")
+        reviewed_commit = _text(request.payload["reviewed_commit"], "reviewed_commit")
+        observed_commit = _text(request.payload["observed_commit"], "observed_commit")
+        if (
+            reviewed_commit != consistency["reviewed_commit"]
+            or observed_commit != consistency["observed_commit"]
+        ):
+            raise ValueError("registration source choice is stale")
+        replacement: RegistrationAssessment | None = None
+        selections: RoleSelections | None = None
+        if choice == "include_updated_source":
+            replacement, selections = self.binding.prepare_source_update(
+                assessment, updated_intake
+            )
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            row = _activity_row(transaction, request.activity_id)
+            if int(row[4]) != request.expected_version:
+                raise ValueError("registration source choice activity version changed")
+            transaction.execute(
+                """INSERT INTO installed_registration_source_choices(
+                       request_id, project_id, activity_id, source_ref,
+                       reviewed_commit, observed_commit, changed_paths_json,
+                       choice, state
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    request.request_id,
+                    request.project_id,
+                    request.activity_id,
+                    assessment.context.source_inventory.source_ref,
+                    reviewed_commit,
+                    observed_commit,
+                    canonical_json(consistency["changed_paths"]),
+                    choice,
+                    (
+                        "retained"
+                        if choice == "retain_reviewed_source"
+                        else "reassessment_started"
+                    ),
+                ),
+            )
+            if replacement is not None:
+                assert selections is not None
+                self.binding.replace_source_update_in(
+                    transaction, replacement, updated_intake, selections
+                )
+                state = "running"
+                reason = "Updated source is being reassessed within the saved review budget."
+            else:
+                state = "waiting"
+                reason = "The Owner retained the exact reviewed source after inspecting the update."
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    request.activity_id,
+                    request.project_id,
+                    "registration",
+                    str(row[1]),
+                    state,
+                    next_version,
+                    waiting_reason=reason,
+                    started_at=None if row[3] is None else str(row[3]),
+                    available_actions=(
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    )
+                    if replacement is not None
+                    else (
+                        ActivityAction(
+                            "registration-confirm", "Confirm registration", "decision"
+                        ),
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                ),
+                expected_record_version=request.expected_version,
+            )
+            return OperationResult(
+                data={
+                    "choice": choice,
+                    "reviewed_commit": reviewed_commit,
+                    "observed_commit": observed_commit,
+                    "changed_paths": consistency["changed_paths"],
+                },
+                project_id=request.project_id,
+                activity_id=request.activity_id,
+            )
+
+        def after_commit(_result: OperationResult) -> None:
+            if replacement is not None:
+                self.binding.adopt_source_update(replacement)
+                self._launch_assignment(replacement, "project_architect")
+
+        return PreparedOperation(
+            entity_id=request.activity_id,
+            event_type="registration.source-choice-recorded",
+            event_data={"choice": choice, "observed_commit": observed_commit},
+            apply=apply,
+            after_commit=after_commit,
+        )
+
     def detail(self, activity_id: str) -> dict[str, object]:
         with self.database.read_connection() as connection:
             activity = connection.execute(
@@ -1058,6 +1380,14 @@ class RegistrationCoordinator:
                    WHERE activity_id = ?""",
                 (activity_id,),
             ).fetchone()
+            owner_decisions = connection.execute(
+                """SELECT decision_id, question_id, decision_version, target,
+                          assignment_id, reason, base_limit, used_attempts,
+                          prior_grants, choice, state
+                   FROM installed_registration_owner_decisions
+                   WHERE activity_id = ? ORDER BY rowid""",
+                (activity_id,),
+            ).fetchall()
         package = None if candidate is None else json.loads(str(candidate[0]))
         activity_state = str(activity[1])
         state = activity_state
@@ -1074,6 +1404,76 @@ class RegistrationCoordinator:
             []
             if self.confirmation is None
             else [item.as_dict() for item in self.confirmation.history(str(activity[0]))]
+        )
+        assessment_detail: dict[str, object] | None = None
+        package_manifest: Mapping[str, object] | None = None
+        package_records: list[dict[str, object]] = []
+        provenance: dict[str, object] | None = None
+        source_consistency: dict[str, object] | None = None
+        live_assessment: RegistrationAssessment | None = None
+        try:
+            live_assessment = self.binding.assessment(activity_id)
+        except RegistrationAssessmentError:
+            pass
+        if live_assessment is not None:
+            status = live_assessment.status
+            saved_state = live_assessment.to_record()
+            working_agent = None
+            if status.state == "awaiting_architect":
+                working_agent = "project_architect"
+            elif status.state == "awaiting_reviewer":
+                working_agent = "fidelity_reviewer"
+            assessment_detail = {
+                "current_step": status.state,
+                "working_agent": working_agent,
+                "review_round": status.review_count,
+                "base_review_limit": status.base_review_limit,
+                "review_grants": status.review_grants,
+                "effective_review_limit": status.review_limit,
+                "blockers": list(status.blockers),
+                "architect_findings": saved_state["architect_findings"],
+                "review_findings": saved_state["review_findings"],
+            }
+            candidate_ref = status.candidate
+            if (
+                candidate_ref is not None
+                and self.dependencies is not None
+                and self.dependencies.workspace_root is not None
+            ):
+                package_manifest, records = _load_candidate_workspace(
+                    self.dependencies.workspace_root,
+                    live_assessment,
+                    candidate_ref.path,
+                    candidate_ref.sha256,
+                )
+                package_records = [
+                    {"path": path, **dict(record)}
+                    for path, record in sorted(records.items())
+                ]
+                context = live_assessment.context
+                provenance = {
+                    "source_repository": context.package_context.source_repository,
+                    "source_ref": context.source_inventory.source_ref,
+                    "source_commit": context.source_inventory.source_commit,
+                    "publication_branch": context.package_context.publication_branch,
+                    "destination_snapshot_reference": context.package_context.destination_snapshot_reference,
+                    "selection_decision_ref": context.package_context.selection_decision_ref,
+                    "architect_identity": context.architect_identity,
+                    "reviewer_identity": context.reviewer_identity,
+                }
+            if ready:
+                try:
+                    source_consistency, _updated = self._source_consistency(live_assessment)
+                except (IntakeError, GitHubDestinationError, ValueError) as error:
+                    source_consistency = {
+                        "state": "unavailable",
+                        "reason": str(error),
+                        "retained": False,
+                    }
+        source_allows_confirmation = (
+            source_consistency is None
+            or source_consistency.get("state") in {"exact_commit", "unchanged"}
+            or bool(source_consistency.get("retained"))
         )
         return {
             "project_id": str(activity[0]),
@@ -1101,9 +1501,31 @@ class RegistrationCoordinator:
                 }
             ),
             "history": history,
+            "owner_decisions": [
+                {
+                    "decision_id": str(row[0]),
+                    "question_id": str(row[1]),
+                    "decision_version": int(row[2]),
+                    "target": str(row[3]),
+                    "assignment_id": str(row[4]),
+                    "reason": str(row[5]),
+                    "base_limit": int(row[6]),
+                    "used_attempts": int(row[7]),
+                    "prior_grants": int(row[8]),
+                    "choice": None if row[9] is None else str(row[9]),
+                    "state": str(row[10]),
+                }
+                for row in owner_decisions
+            ],
+            "assessment": assessment_detail,
+            "package_manifest": package_manifest,
+            "package_records": package_records,
+            "provenance": provenance,
+            "source_consistency": source_consistency,
             "can_confirm": bool(
                 ready
                 and package is not None
+                and source_allows_confirmation
                 and activity_state not in {"completed", "cancelled", "failed"}
             ),
         }
@@ -1776,9 +2198,24 @@ class RegistrationCoordinator:
             self._launch_assignment(assessment, "project_architect")
             return
         if assessment.status.state == "awaiting_reviewer":
+            if assessment.status.review_count >= assessment.status.review_limit:
+                self.binding.pause_for_review_limit(assessment)
+                self._ensure_review_limit_decision(assessment)
+                return
             if assessment.status.review_count:
                 assessment = self.binding.prepare_next_review(assessment)
-            self._launch_assignment(assessment, "fidelity_reviewer")
+            grant_id = self._reserve_review_grant(assessment)
+            launched = self._launch_assignment(assessment, "fidelity_reviewer")
+            if grant_id is not None:
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE installed_registration_review_grants SET state = ?
+                           WHERE decision_id = ? AND state = 'reserved'""",
+                        ("consumed" if launched else "unconsumed", grant_id),
+                    )
+            return
+        if assessment.status.state == "review_limit_owner_decision":
+            self._ensure_review_limit_decision(assessment)
             return
         if assessment.status.state != "ready":
             return
@@ -1790,7 +2227,7 @@ class RegistrationCoordinator:
             return
         activity_id = assessment.context.activity_id
         project_id = assessment.context.project_id
-        candidate = assessment.require_ready_candidate()
+        candidate = self._finalize_reviewed_candidate(assessment)
         operation_id = f"registration-candidate-{activity_id}-{candidate.version}"
         request_id = f"registration-publication-{activity_id}-{candidate.version}"
         version = self._advance_for_publication(activity_id, project_id)
@@ -1864,6 +2301,229 @@ class RegistrationCoordinator:
                         ),
                     ),
                 )
+
+    def _finalize_reviewed_candidate(
+        self, assessment: RegistrationAssessment
+    ) -> ArtifactReference:
+        """Add service-owned review evidence without changing reviewed content bytes."""
+        dependencies = self._require_runtime()
+        if dependencies.workspace_root is None:
+            raise ValueError("installed registration workspace is not configured")
+        candidate = assessment.require_ready_candidate()
+        manifest, records = _load_candidate_workspace(
+            dependencies.workspace_root,
+            assessment,
+            candidate.path,
+            candidate.sha256,
+        )
+        if any(record.get("record_type") == "review" for record in records.values()):
+            validate_registration_package(
+                manifest,
+                records,
+                assessment.context.package_context,
+                review_context=assessment.package_review_context(),
+            )
+            return candidate
+        validate_registration_package(
+            manifest,
+            records,
+            assessment.context.package_context,
+            require_review=False,
+        )
+        assessments = [
+            (path, record)
+            for path, record in records.items()
+            if record.get("record_type") == "assessment"
+        ]
+        if len(assessments) != 1:
+            raise ValueError("approved candidate lacks one exact assessment record")
+        assessment_path, assessment_record = assessments[0]
+        review_context = assessment.package_review_context()
+        state = assessment.to_record()
+        review_id = (
+            f"registration-review-{candidate.version}-"
+            f"{review_context['review_round']}"
+        )
+        review_path = f"reviews/{review_id}.json"
+        review_record: dict[str, object] = {
+            "schema_version": 1,
+            "record_type": "review",
+            "record_id": review_id,
+            "subject": "Independent review of the registration candidate",
+            "record_version": int(review_context["review_round"]),
+            "data": {
+                **{
+                    key: value for key, value in review_context.items()
+                    if key not in {
+                        "architect_assignment_id", "architect_run_id"
+                    }
+                },
+                "reviewed_content_hash": manifest["content_hash"],
+                "reviewed_assessment_ref": {
+                    "record_id": assessment_record["record_id"],
+                    "subject": assessment_record["subject"],
+                    "record_version": assessment_record["record_version"],
+                    "path": assessment_path,
+                },
+                "outcome": "APPROVE",
+                "findings": state["review_findings"],
+            },
+        }
+        finalized_records = dict(records)
+        finalized_records[review_path] = review_record
+        review_hash = hashlib.sha256(canonical_record_bytes(review_record)).hexdigest()
+        finalized_manifest = dict(manifest)
+        finalized_manifest["files"] = sorted(
+            [
+                *manifest["files"],
+                {
+                    "path": review_path,
+                    "record_id": review_id,
+                    "record_type": "review",
+                    "record_version": int(review_context["review_round"]),
+                    "subject": review_record["subject"],
+                    "sha256": review_hash,
+                },
+            ],
+            key=lambda item: str(item["path"]),
+        )
+        validate_registration_package(
+            finalized_manifest,
+            finalized_records,
+            assessment.context.package_context,
+            review_context=review_context,
+        )
+        architect = assessment.current_run("project_architect")
+        root = (
+            dependencies.workspace_root
+            / assessment.context.project_id
+            / assessment.context.activity_id
+            / "runs"
+            / architect.run_id
+            / "output"
+            / "reviewed-candidate"
+        )
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if root.is_symlink():
+            raise ValueError("reviewed candidate output directory is unsafe")
+        for path, record in finalized_records.items():
+            target = root.joinpath(*PurePosixPath(path).parts)
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if target.is_symlink():
+                raise ValueError("reviewed candidate output path is unsafe")
+            target.write_bytes(canonical_record_bytes(record))
+        manifest_bytes = canonical_record_bytes(finalized_manifest)
+        (root / "manifest.json").write_bytes(manifest_bytes)
+        finalized = ArtifactReference(
+            "reviewed-candidate/manifest.json",
+            hashlib.sha256(manifest_bytes).hexdigest(),
+            candidate.version,
+        )
+        self.binding.replace_ready_candidate(assessment, finalized)
+        return finalized
+
+    def _ensure_review_limit_decision(
+        self, assessment: RegistrationAssessment
+    ) -> str:
+        """Save and display the exact pending Owner decision once."""
+        status = assessment.status
+        if status.state != "review_limit_owner_decision":
+            raise RegistrationAssessmentError(
+                "registration is not waiting for an Owner review-limit decision"
+            )
+        activity_id = assessment.context.activity_id
+        project_id = assessment.context.project_id
+        assignment = assessment.current_run("fidelity_reviewer")
+        with self.database.transaction() as transaction:
+            existing = transaction.execute(
+                """SELECT decision_id FROM installed_registration_owner_decisions
+                   WHERE activity_id = ? AND target = 'fidelity_review'
+                     AND state = 'pending'""",
+                (activity_id,),
+            ).fetchone()
+            if existing is not None:
+                return str(existing[0])
+            sequence = int(
+                transaction.execute(
+                    """SELECT COUNT(*) FROM installed_registration_owner_decisions
+                       WHERE activity_id = ? AND target = 'fidelity_review'""",
+                    (activity_id,),
+                ).fetchone()[0]
+            ) + 1
+            decision_id = f"registration-review-decision-{activity_id}-{sequence}"
+            question_id = decision_id
+            transaction.execute(
+                """INSERT INTO installed_registration_owner_decisions(
+                       decision_id, request_id, project_id, activity_id,
+                       question_id, decision_version, target, assignment_id,
+                       reason, base_limit, used_attempts, prior_grants, choice, state
+                   ) VALUES (?, NULL, ?, ?, ?, 1, 'fidelity_review', ?, ?, ?, ?, ?,
+                             NULL, 'pending')""",
+                (
+                    decision_id,
+                    project_id,
+                    activity_id,
+                    question_id,
+                    assignment.assignment_id,
+                    "Material review findings remain at the saved fidelity-review limit.",
+                    status.base_review_limit,
+                    status.review_count,
+                    status.review_grants,
+                ),
+            )
+            self._set_activity_presentation_in(
+                transaction,
+                activity_id,
+                "paused",
+                "Owner decision required: grant one additional fidelity review or remain paused.",
+                (
+                    ActivityAction(
+                        f"owner-decision.{decision_id}.grant_one",
+                        "Grant one fidelity review",
+                        "decision",
+                    ),
+                    ActivityAction(
+                        f"owner-decision.{decision_id}.remain_paused",
+                        "Remain paused",
+                        "decision",
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+        return decision_id
+
+    def _reserve_review_grant(
+        self, assessment: RegistrationAssessment
+    ) -> str | None:
+        status = assessment.status
+        if status.review_count < status.base_review_limit:
+            return None
+        run = assessment.current_run("fidelity_reviewer")
+        with self.database.transaction() as transaction:
+            grant = transaction.execute(
+                """SELECT decision_id FROM installed_registration_review_grants
+                   WHERE activity_id = ? AND state = 'unconsumed'
+                   ORDER BY rowid LIMIT 1""",
+                (assessment.context.activity_id,),
+            ).fetchone()
+            if grant is None:
+                raise RegistrationAssessmentError(
+                    "an additional fidelity review requires an unconsumed Owner grant"
+                )
+            decision_id = str(grant[0])
+            updated = transaction.execute(
+                """UPDATE installed_registration_review_grants
+                   SET assignment_id = ?, state = 'reserved'
+                   WHERE decision_id = ? AND state = 'unconsumed'""",
+                (run.assignment_id, decision_id),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "the fidelity-review grant changed before reservation"
+                )
+        return decision_id
 
     def _recover_publication_automatically(
         self,
@@ -2265,20 +2925,61 @@ class RegistrationCoordinator:
             )
             return {"activity_id": activity_id, "state": "stop-unconfirmed"}
         if observed.state == "running":
+            resume = (
+                None
+                if self.dependencies is None
+                else getattr(self.dependencies.assignment_launcher, "resume", None)
+            )
+            if not callable(resume):
+                self._set_activity_presentation(
+                    activity_id,
+                    "paused",
+                    "Saved agent assignment is still running, but this configured "
+                    "assignment launcher has no durable resume capability.",
+                    (
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                )
+                return {"activity_id": activity_id, "state": "running-paused"}
+            resume(self.binding, assessment, role)
             self._set_activity_presentation(
                 activity_id,
-                "paused",
-                "Saved agent assignment is still running; its response stream cannot "
-                "be safely reattached after restart.",
+                "running",
+                "Saved agent assignment remains supervised; durable protocol events "
+                "are being replayed after restart.",
                 (
                     ActivityAction(
                         "registration-cancel", "Cancel registration", "decision"
                     ),
                 ),
             )
-            return {"activity_id": activity_id, "state": "running-paused"}
+            return {"activity_id": activity_id, "state": "running-resumed"}
+        if observed.state == "completed":
+            resume = (
+                None
+                if self.dependencies is None
+                else getattr(self.dependencies.assignment_launcher, "resume", None)
+            )
+            if not callable(resume):
+                raise ValueError(
+                    "installed registration runner cannot replay a completed assignment"
+                )
+            resume(self.binding, assessment, role)
+            self._set_activity_presentation(
+                activity_id,
+                "running",
+                "Completed agent result is being replayed from durable supervisor files.",
+                (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+            return {"activity_id": activity_id, "state": "result-replaying"}
         if observed.state in {
-            "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+            "failed", "cancelled", "timed_out", "stalled", "stopped"
         }:
             self._assignment_failed(
                 activity_id,
@@ -2538,6 +3239,94 @@ class RegistrationCoordinator:
                 for action in actions
             ),
         )
+
+    def _source_consistency(
+        self, assessment: RegistrationAssessment
+    ) -> tuple[dict[str, object], RegistrationIntakeResult]:
+        """Resolve a symbolic selector and compare only authoritative planning inputs."""
+        context = assessment.context
+        reviewed = context.source_inventory
+        if not reviewed.source_ref.startswith(("refs/heads/", "refs/tags/")):
+            return (
+                {
+                    "state": "exact_commit",
+                    "source_ref": reviewed.source_ref,
+                    "reviewed_commit": reviewed.source_commit,
+                    "observed_commit": reviewed.source_commit,
+                    "changed_paths": [],
+                    "retained": False,
+                },
+                self.binding.saved_intake_result(context.activity_id),
+            )
+        dependencies = self._require_runtime()
+        if self.intake is None:
+            raise ValueError("installed registration intake is not configured")
+        request = RegistrationIntakeRequest(
+            repository=context.package_context.source_repository,
+            remote=dependencies.remote_for_repository(
+                context.package_context.source_repository
+            ),
+            overview_path=reviewed.overview_path,
+            referenced_paths=tuple(
+                item.path for item in reviewed.source_references
+            ),
+            source_ref=reviewed.source_ref,
+            prior_source_ref=None,
+            publication_branch=context.package_context.publication_branch,
+            scope=context.selected_scope,
+            architect_selection=(
+                f"{context.routes.architect.tool}:"
+                f"{context.routes.architect.requested_model_id}"
+            ),
+            reviewer_selection=(
+                f"{context.routes.fidelity_reviewer.tool}:"
+                f"{context.routes.fidelity_reviewer.requested_model_id}"
+            ),
+        )
+        updated = self.intake.begin(request, questions=_CollectedQuestions())
+        assert updated.inventory is not None
+        current = updated.inventory
+        before = {item.path: item.sha256 for item in reviewed.blobs}
+        after = {item.path: item.sha256 for item in current.blobs}
+        changed_paths = sorted(
+            path for path in set(before) | set(after) if before.get(path) != after.get(path)
+        )
+        relevant = (
+            bool(changed_paths)
+            or reviewed.source_references != current.source_references
+            or reviewed.outcomes != current.outcomes
+        )
+        state = "changed" if relevant else "unchanged"
+        retained = (
+            relevant
+            and self._has_retained_source_choice(
+                context.activity_id, reviewed.source_commit, current.source_commit
+            )
+        )
+        return (
+            {
+                "state": state,
+                "source_ref": reviewed.source_ref,
+                "reviewed_commit": reviewed.source_commit,
+                "observed_commit": current.source_commit,
+                "changed_paths": changed_paths,
+                "retained": retained,
+            },
+            updated,
+        )
+
+    def _has_retained_source_choice(
+        self, activity_id: str, reviewed_commit: str, observed_commit: str
+    ) -> bool:
+        with self.database.read_connection() as connection:
+            return connection.execute(
+                """SELECT 1 FROM installed_registration_source_choices
+                   WHERE activity_id = ? AND reviewed_commit = ?
+                     AND observed_commit = ?
+                     AND choice = 'retain_reviewed_source' AND state = 'retained'
+                   LIMIT 1""",
+                (activity_id, reviewed_commit, observed_commit),
+            ).fetchone() is not None
 
     def _require_runtime(self) -> RegistrationRuntimeDependencies:
         if self.dependencies is None:

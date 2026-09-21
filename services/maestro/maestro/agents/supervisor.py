@@ -237,6 +237,7 @@ class SystemdUserUnits:
             self.systemd_run, "--user", "--unit", unit, "--quiet", "--pipe",
             "--property=KillMode=control-group", "--property=TimeoutStopSec=30s",
             "--property=SendSIGKILL=yes", "--property=RemainAfterExit=yes",
+            f"--property=RuntimeMaxSec={request.timeout_seconds}s",
             f"--working-directory={request.cwd}", "--", *request.command,
         )
         process = subprocess.Popen(
@@ -404,6 +405,24 @@ class AgentSupervisor:
         self._runtime_identity_routes[key] = route
 
     @_synchronized
+    def restore_runtime_identity_reservation(
+        self, identity: OperationIdentity, route: ResolvedAgentRoute
+    ) -> None:
+        """Restore the exact saved route after service restart without relaunching."""
+        if self.journal.get(identity.key) is None:
+            raise SupervisionError(
+                "runtime_identity_reservation_unavailable",
+                "saved operation is unavailable for identity reservation recovery",
+            )
+        current = self._runtime_identity_routes.get(identity.key)
+        if current is not None and current != route:
+            raise SupervisionError(
+                "runtime_identity_reservation_mismatch",
+                "restored runtime identity route differs from the saved reservation",
+            )
+        self._runtime_identity_routes[identity.key] = route
+
+    @_synchronized
     def report_runtime_identity(
         self, identity: OperationIdentity, tool_identity: RunningToolIdentity,
     ) -> None:
@@ -412,7 +431,7 @@ class AgentSupervisor:
             raise SupervisionError("runtime_identity_reservation_invalid", "operation identity is invalid")
         record = self._required(identity)
         key = identity.key
-        if record.state != "running" or key not in self._runtime_identity_routes:
+        if record.state not in {"running", "completed"} or key not in self._runtime_identity_routes:
             raise SupervisionError(
                 "runtime_identity_reservation_unavailable",
                 "runtime identity reservation is not available for this operation",
@@ -438,7 +457,12 @@ class AgentSupervisor:
                 "adapter runtime identity differs from the reserved route",
             ) from error
         observed = self.units.inspect(record.unit_name)
-        if observed is None or not observed.active or not observed.matches(record):
+        if (
+            observed is None
+            or not observed.matches(record)
+            or (record.state == "running" and not observed.active)
+            or (record.state == "completed" and (observed.active or not observed.cgroup_empty))
+        ):
             raise SupervisionError(
                 "runtime_identity_unconfirmed",
                 "supervisor cannot confirm the operation receiving runtime identity",
@@ -573,6 +597,27 @@ class AgentSupervisor:
                 record,
                 last_activity_monotonic=self.clock(),
                 events=(*record.events, self._event("heartbeat", detail=detail)),
+            )
+        )
+
+    @_synchronized
+    def record_protocol_event(
+        self, identity: OperationIdentity, stream_name: str, raw: bytes
+    ) -> RunRecord:
+        """Durably number protocol output before an in-service adapter consumes it."""
+        if stream_name not in {"stdout", "stderr"} or not isinstance(raw, bytes):
+            raise SupervisionError("invalid_protocol_event", "protocol event is invalid")
+        record = self._required(identity)
+        if record.state != "running":
+            raise SupervisionError(
+                "protocol_event_rejected", "only a running operation can record protocol output"
+            )
+        event = self._event(stream_name, data=raw.decode("utf-8", "replace"))
+        return self._save(
+            replace(
+                record,
+                events=(*record.events, event),
+                last_activity_monotonic=self.clock(),
             )
         )
 

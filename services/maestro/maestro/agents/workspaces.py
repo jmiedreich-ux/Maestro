@@ -410,6 +410,36 @@ class WorkspaceManager:
             # Preserve an interrupted/failed workspace for diagnosis; callers choose cleanup.
             raise
 
+    def open_existing(
+        self,
+        *,
+        project_id: str,
+        activity_id: str,
+        run_id: str,
+        source_commit: str,
+        assignment_bytes: bytes,
+    ) -> PreparedWorkspace:
+        """Verify and reopen one preserved run without changing any workspace bytes."""
+        for value, field in (
+            (project_id, "project_id"), (activity_id, "activity_id"), (run_id, "run_id")
+        ):
+            canonical_identifier(value, field)
+        run = self.root / project_id / activity_id / "runs" / run_id
+        paths = WorkspacePaths(
+            run, run / "source", run / "input", run / "output", run / "scratch",
+            run / "assignment.json",
+        )
+        if run.is_symlink() or not run.is_dir() or not paths.assignment.is_file():
+            raise WorkspaceError("workspace_missing", "preserved run workspace is unavailable")
+        if paths.assignment.read_bytes() != assignment_bytes:
+            raise WorkspaceError("invalid_assignment", "preserved assignment bytes differ")
+        immutable = _hash_tree(run, ("source", "input", "assignment.json"))
+        return PreparedWorkspace(
+            project_id, activity_id, run_id, source_commit, paths,
+            hashlib.sha256(assignment_bytes).hexdigest(),
+            tuple(sorted(immutable.items())), self.isolation_executable, self.root,
+        )
+
     @staticmethod
     def _checkout(repository: Path, commit: str, destination: Path) -> None:
         try:

@@ -67,6 +67,30 @@ class CodexConversation:
             sandbox_arguments,
         )
 
+    @classmethod
+    def replay(
+        cls,
+        route: ResolvedAgentRoute,
+        assignment: AgentAssignment,
+        workspace: PreparedWorkspace,
+    ) -> "CodexConversation":
+        """Rebuild protocol state solely from the durable numbered input stream."""
+        conversation = object.__new__(cls)
+        conversation.route = route
+        conversation.assignment = assignment
+        conversation.workspace = workspace
+        conversation.state = "initialize"
+        conversation.thread_id = None
+        conversation.turn_id = None
+        conversation._server_version = None
+        conversation._response = None
+        conversation._identity = None
+        return conversation
+
+    @property
+    def runtime_identity(self) -> RunningToolIdentity | None:
+        return self._identity
+
     def receive(self, raw: bytes | str) -> tuple[bytes, ...]:
         message = decode_json_object(raw)
         if "method" in message and self.state in {"initialize", "models", "thread", "turn"}:

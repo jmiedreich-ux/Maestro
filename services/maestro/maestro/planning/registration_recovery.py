@@ -1242,7 +1242,19 @@ class RegistrationRecoveryService:
             "architect_findings", "review_findings", "reviewed_candidate",
             "reviewed_assessment", "current_runs",
         }
-        if set(state) != expected_state_fields or state.get("state") != "ready":
+        if (
+            not expected_state_fields.issubset(state)
+            or set(state) - expected_state_fields - {
+                "review_grants", "review_limit_resume"
+            }
+            or state.get("state") != "ready"
+            or isinstance(state.get("review_grants", 0), bool)
+            or not isinstance(state.get("review_grants", 0), int)
+            or int(state.get("review_grants", 0)) < 0
+            or state.get("review_limit_resume") not in {
+                None, "changes_requested", "awaiting_reviewer"
+            }
+        ):
             raise RegistrationRecoveryError(
                 "saved registration assessment and review are not complete"
             )

@@ -71,6 +71,7 @@ from maestro.service.authentication import VerifiedActor
 from maestro.service.processes import PROCESS_POLICY_MIGRATION, ProcessSnapshot
 from maestro.service.questions import QUESTION_MIGRATION
 from maestro.service.resources import BundleSnapshot
+from tests.maestro.registration_package_fixture import complete_package
 
 
 class RegistrationRecoveryTest(unittest.TestCase):
@@ -419,15 +420,13 @@ class RegistrationRecoveryTest(unittest.TestCase):
                     "milestone-2": ("finding-2",),
                 },
             )
-        comparison = service.record_candidate(
-            activity_id,
-            package2,
-            {
-                "summary-project-1": ("decision-1",),
-                "milestone-2": ("finding-2",),
-            },
+        comparison = service.record_candidate_from_saved_reasons(
+            activity_id, package2
         )
-        self.assertEqual(("added", "changed"), tuple(item.kind for item in comparison.differences))
+        self.assertTrue(comparison.differences)
+        self.assertEqual(
+            {"changed"}, {item.kind for item in comparison.differences}
+        )
         self.assertEqual(self.first_package, self.confirmation.active("project-1").package_ref)
         self.assertEqual(
             service.load_continuity("project-1", activity_id),
@@ -439,7 +438,10 @@ class RegistrationRecoveryTest(unittest.TestCase):
         )
         continuity = service.status(activity_id).continuity
         self.assertEqual("decision", continuity.decisions[0]["record_type"])
-        self.assertEqual("decision-2", continuity.decisions[0]["record_id"])
+        self.assertIn(
+            "decision-2",
+            {item["record_id"] for item in continuity.decisions},
+        )
         self.assertEqual(
             ("fidelity_reviewer", "project_architect"),
             tuple(item["role"] for item in continuity.runs),
@@ -549,13 +551,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "activity-2", 2, "candidate-2", self.first.remote_commit,
             self.first_package, "2",
         )
-        service.record_candidate(
-            "activity-2", package2,
-            {
-                "summary-project-1": ("decision-2",),
-                "milestone-2": ("finding-2",),
-            },
-        )
+        service.record_candidate_from_saved_reasons("activity-2", package2)
         action = OwnerConfirmation(
             "confirmation-2", "confirmation-request-2", "project-1", "activity-2",
             1, package2, "2026-09-20T11:00:00Z",
@@ -878,13 +874,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "activity-2", 2, "candidate-2", self.first.remote_commit,
             self.first_package, "2",
         )
-        service.record_candidate(
-            "activity-2", package,
-            {
-                "summary-project-1": ("decision-2",),
-                "milestone-2": ("finding-2",),
-            },
-        )
+        service.record_candidate_from_saved_reasons("activity-2", package)
         action = OwnerConfirmation(
             "confirmation-2", "confirmation-request-2", "project-1", "activity-2",
             1, package, "2026-09-20T11:00:00Z",
@@ -959,54 +949,6 @@ class RegistrationRecoveryTest(unittest.TestCase):
         candidate_id: str,
         previous: RegistrationPackageReference | None,
     ) -> tuple[RegistrationAssessment, dict[str, object], dict[str, dict[str, object]]]:
-        record = {
-            "schema_version": 1,
-            "record_type": "summary",
-            "record_id": "summary-project-1",
-            "subject": "Project summary",
-            "record_version": registration_version,
-            "data": {},
-        }
-        records = {"summary.json": record}
-        records[f"decisions/decision-{registration_version}.json"] = {
-            "schema_version": 1,
-            "record_type": "decision",
-            "record_id": f"decision-{registration_version}",
-            "subject": "Source and scope selection",
-            "record_version": registration_version,
-            "data": {
-                "question": None,
-                "answers": [],
-                "resolution": "Use the saved source and selected scope.",
-                "authority": "owner-local",
-                "affected_refs": ["summary-project-1"],
-                "supersedes_ref": (
-                    None if registration_version == 1 else "decision-1"
-                ),
-            },
-        }
-        records[f"assessments/assessment-{registration_version}.json"] = {
-            "schema_version": 1,
-            "record_type": "assessment",
-            "record_id": f"assessment-{registration_version}",
-            "subject": "Registration assessment",
-            "record_version": registration_version,
-            "data": {
-                "findings": [{
-                    "local_key": f"finding-{registration_version}",
-                    "subject": "Changed registration content",
-                }],
-            },
-        }
-        if registration_version > 1:
-            records["milestone-2.json"] = {
-                "schema_version": 1,
-                "record_type": "milestone",
-                "record_id": "milestone-2",
-                "subject": "Second outcome",
-                "record_version": 1,
-                "data": {},
-            }
         inventory = SourceInventory(
             "refs/heads/main", "b" * 40, "docs/overview.md",
             (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
@@ -1027,32 +969,23 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "project-1", "owner/project", inventory, decision_reference, "main",
             snapshot_reference, decision_reference,
         )
-        manifest: dict[str, object] = {
-            "project_id": "project-1",
-            "registration_version": registration_version,
-            "candidate_id": candidate_id,
-            "previous_registration_ref": None if previous is None else previous.as_dict(),
-            "source_repository": "owner/project",
-            "source_commit": inventory.source_commit,
-            "overview_path": inventory.overview_path,
-            "decision_version": decision_reference,
-            "source_ref": inventory.source_ref,
-            "publication_branch": "main",
-            "destination_snapshot_reference": snapshot_reference,
-            "selection_decision_ref": decision_reference,
-            "content_hash": package_content_hash(records),
-            "files": [
-                {
-                    "path": path,
-                    "record_id": item["record_id"],
-                    "record_type": item["record_type"],
-                    "record_version": item["record_version"],
-                    "subject": item["subject"],
-                    "sha256": hashlib.sha256(canonical_record_bytes(item)).hexdigest(),
-                }
-                for path, item in records.items()
-            ],
-        }
+        manifest, records = complete_package(
+            context,
+            registration_version=registration_version,
+            candidate_id=candidate_id,
+            previous_registration_ref=(
+                None if previous is None else previous.as_dict()
+            ),
+            review_context={
+                "architect_assignment_id": "architect-assignment",
+                "architect_run_id": "architect-run",
+                "assignment_id": "reviewer-assignment",
+                "run_id": "reviewer-run",
+                "reviewer_identity": "reviewer-agent",
+                "review_round": 1,
+                "review_limit": 2,
+            },
+        )
         artifact = {
             "path": "candidate/manifest.json",
             "sha256": hashlib.sha256(canonical_record_bytes(manifest)).hexdigest(),

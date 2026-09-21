@@ -266,6 +266,31 @@ class DurableSupervisionTest(unittest.TestCase):
         with self.assertRaisesRegex(SupervisionError, "already published"):
             self.supervisor.report_runtime_identity(self.identity, tool_identity)
 
+    def test_restart_restores_route_and_accepts_durable_completed_runner_identity(self) -> None:
+        self.supervisor.reserve_runtime_identity(self.identity, self.route())
+        self.supervisor.launch(self.request("exit 0"))
+        for _ in range(30):
+            completed = self.supervisor.poll(self.identity)
+            if completed.state == "completed":
+                break
+            time.sleep(0.02)
+        self.assertEqual("completed", completed.state)
+
+        published = []
+        publisher = type("Publisher", (), {"publish": lambda _self, value: published.append(value)})()
+        restarted = AgentSupervisor(
+            self.journal, self.units, runtime_identity_reporter=publisher
+        )
+        restarted.restore_runtime_identity_reservation(self.identity, self.route())
+        restarted.report_runtime_identity(
+            self.identity,
+            RunningToolIdentity(
+                "tool_metadata", "openai", "openai/gpt-5.6-codex-2026-09-01",
+                "1.2.3", "a" * 64,
+            ),
+        )
+        self.assertEqual(self.identity.key, published[0].operation_key)
+
     def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
         self.supervisor.reserve_runtime_identity(self.identity, self.route())
         self.supervisor.launch(self.request("sleep 5"))
@@ -300,6 +325,7 @@ class SystemdUserUnitsTest(unittest.TestCase):
         environment = popen.call_args.kwargs["env"]
         self.assertNotIn("--collect", arguments)
         self.assertIn("--property=RemainAfterExit=yes", arguments)
+        self.assertIn("--property=RuntimeMaxSec=5s", arguments)
         self.assertEqual(f"/run/user/{os.getuid()}", environment["XDG_RUNTIME_DIR"])
         self.assertEqual(f"unix:path=/run/user/{os.getuid()}/bus", environment["DBUS_SESSION_BUS_ADDRESS"])
 
