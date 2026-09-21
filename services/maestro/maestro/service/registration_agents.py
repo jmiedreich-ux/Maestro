@@ -397,6 +397,7 @@ class InstalledRegistrationAgentLauncher:
         context = assessment.context
         run, _route = _run_and_route(assessment, role)
         status = assessment.status
+        lineage = binding.assignment_lineage(assessment, role)
         inputs: dict[str, bytes] = {}
         assigned: dict[str, AssignedArtifactReference] = {}
         originals: dict[str, ArtifactReference] = {}
@@ -408,7 +409,23 @@ class InstalledRegistrationAgentLauncher:
                 ("reviewed_assessment", status.assessment),
             ):
                 relative = f"{field}/{Path(original.path).name}"
-                content = self._artifact_bytes(assessment, original)
+                content = self._artifact_bytes(binding, assessment, original)
+                inputs[relative] = content
+                assigned[field] = AssignedArtifactReference(
+                    f"input/{relative}", original.sha256, original.version
+                )
+                originals[field] = original
+        elif (
+            lineage["parent_assignment_id"] is not None
+            and status.candidate is not None
+            and status.assessment is not None
+        ):
+            for field, original in (
+                ("prior_candidate", status.candidate),
+                ("prior_assessment", status.assessment),
+            ):
+                relative = f"{field}/{Path(original.path).name}"
+                content = self._artifact_bytes(binding, assessment, original)
                 inputs[relative] = content
                 assigned[field] = AssignedArtifactReference(
                     f"input/{relative}", original.sha256, original.version
@@ -421,7 +438,9 @@ class InstalledRegistrationAgentLauncher:
             "selected_scope": context.selected_scope,
             "recorded_decisions": [item.to_record() for item in context.source_inventory.outcomes],
             "relevant_answers": relevant_answers,
-            "outstanding_questions": [],
+            "outstanding_questions": _outstanding_questions(
+                binding, context.activity_id, role
+            ),
             "prior_findings": [
                 *state.get("architect_findings", []),
                 *state.get("review_findings", []),
@@ -442,7 +461,7 @@ class InstalledRegistrationAgentLauncher:
             activity_id=context.activity_id,
             assignment_id=run.assignment_id,
             run_id=run.run_id,
-            parent_assignment_id=None,
+            parent_assignment_id=lineage["parent_assignment_id"],
             role=role,
             role_responsibilities=(
                 (
@@ -478,20 +497,23 @@ class InstalledRegistrationAgentLauncher:
         return assignment, inputs, originals
 
     def _artifact_bytes(
-        self, assessment: RegistrationAssessment, reference: ArtifactReference
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        reference: ArtifactReference,
     ) -> bytes:
-        architect = assessment.current_run("project_architect")
-        root = (
-            self.workspaces.root / assessment.context.project_id
-            / assessment.context.activity_id / "runs" / architect.run_id
-        )
-        path = root.joinpath(*Path(reference.path).parts)
-        if path.is_symlink() or not path.is_file():
-            raise ValueError("assigned registration artifact is unavailable")
-        content = path.read_bytes()
-        if hashlib.sha256(content).hexdigest() != reference.sha256:
-            raise ValueError("assigned registration artifact hash differs")
-        return content
+        for run_id in binding.assignment_runs(assessment, "project_architect"):
+            root = (
+                self.workspaces.root / assessment.context.project_id
+                / assessment.context.activity_id / "runs" / run_id
+            )
+            path = root.joinpath(*Path(reference.path).parts)
+            if path.is_symlink() or not path.is_file():
+                continue
+            content = path.read_bytes()
+            if hashlib.sha256(content).hexdigest() == reference.sha256:
+                return content
+        raise ValueError("assigned registration artifact is unavailable or differs")
 
 
 def _recorded_runner_sequences(record: object) -> set[int]:
@@ -582,6 +604,32 @@ def _answers(
             "answer_id": str(row[1]),
             "text": str(row[2]),
             "choice_id": None if row[3] is None else str(row[3]),
+        }
+        for row in rows
+    ]
+
+
+def _outstanding_questions(
+    binding: RegistrationServiceBinding, activity_id: str, role: str
+) -> list[dict[str, object]]:
+    with binding.database.read_connection() as connection:
+        rows = connection.execute(
+            """SELECT questions.question_id, questions.subject, questions.prompt,
+                      details.original_question_id, details.previous_answer_id
+               FROM service_questions AS questions
+               JOIN service_question_details AS details USING(question_id)
+               WHERE questions.activity_id = ? AND questions.requester = ?
+                 AND questions.status IN ('awaiting_answer', 'clarification_required')
+               ORDER BY questions.rowid""",
+            (activity_id, role),
+        ).fetchall()
+    return [
+        {
+            "question_id": str(row[0]),
+            "subject": str(row[1]),
+            "prompt": str(row[2]),
+            "original_question_id": None if row[3] is None else str(row[3]),
+            "previous_answer_id": None if row[4] is None else str(row[4]),
         }
         for row in rows
     ]

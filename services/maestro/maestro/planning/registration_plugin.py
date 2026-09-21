@@ -30,6 +30,7 @@ from maestro.service.resources import BundleSnapshot
 from .intake import RegistrationIntakeResult
 from .registration import AssessmentContext, AssessmentRun, RegistrationAssessment, RegistrationAssessmentError
 from .registration_records import (
+    ArtifactReference,
     RegistrationAgentResponse,
     RegistrationPackageContext,
     validate_registration_package,
@@ -73,6 +74,39 @@ REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION = DomainMigration(
             activity_id TEXT PRIMARY KEY,
             state_json TEXT NOT NULL
         )
+        """,
+    ),
+)
+
+REGISTRATION_ASSIGNMENT_LINEAGE_MIGRATION = DomainMigration(
+    domain="registration_assessment",
+    version=2,
+    identity="registration-assignment-lineage-v2",
+    statements=(
+        """
+        CREATE TABLE registration_assignment_lineage(
+            activity_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('project_architect', 'fidelity_reviewer')),
+            assignment_id TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            parent_assignment_id TEXT,
+            continuation_question_id TEXT,
+            previous_answer_id TEXT,
+            PRIMARY KEY(activity_id, role, assignment_id, run_id),
+            CHECK(
+                (continuation_question_id IS NULL AND previous_answer_id IS NULL)
+                OR
+                (continuation_question_id IS NOT NULL AND previous_answer_id IS NOT NULL)
+            )
+        )
+        """,
+        """
+        INSERT INTO registration_assignment_lineage(
+            activity_id, role, assignment_id, run_id, parent_assignment_id,
+            continuation_question_id, previous_answer_id
+        )
+        SELECT activity_id, role, assignment_id, run_id, NULL, NULL, NULL
+          FROM registration_assessment_runs
         """,
     ),
 )
@@ -239,6 +273,7 @@ class RegistrationServiceBinding:
         self.database, self.plugin, self.registry = database, plugin, registry
         self.registry.register(plugin.provider)
         self.database.registry.register(REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION)
+        self.database.registry.register(REGISTRATION_ASSIGNMENT_LINEAGE_MIGRATION)
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
         self._questions: QuestionService | None = None
@@ -344,6 +379,7 @@ class RegistrationServiceBinding:
                     ) VALUES (?, ?, ?, ?, ?, NULL)""",
                     (context.activity_id, role, run.assignment_id, run.run_id, canonical_json(_route_mapping(route))),
                 )
+                self._record_lineage_in(transaction, context.activity_id, role, run)
             transaction.execute(
                 "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
                 (context.activity_id, canonical_json(assessment.to_record())),
@@ -380,6 +416,7 @@ class RegistrationServiceBinding:
                     canonical_json(_route_mapping(route)),
                 ),
             )
+            self._record_lineage_in(transaction, context.activity_id, role, run)
         transaction.execute(
             "INSERT INTO registration_assessment_state(activity_id, state_json) VALUES (?, ?)",
             (context.activity_id, canonical_json(assessment.to_record())),
@@ -389,6 +426,74 @@ class RegistrationServiceBinding:
     def assessment(self, activity_id: str) -> RegistrationAssessment:
         """Return only a safely loaded assessment for an installed operation."""
         return self._assessment(activity_id)
+
+    @staticmethod
+    def _record_lineage_in(
+        transaction: Transaction,
+        activity_id: str,
+        role: str,
+        run: AssessmentRun,
+        *,
+        parent_assignment_id: str | None = None,
+        continuation_question_id: str | None = None,
+        previous_answer_id: str | None = None,
+    ) -> None:
+        transaction.execute(
+            """INSERT INTO registration_assignment_lineage(
+                   activity_id, role, assignment_id, run_id, parent_assignment_id,
+                   continuation_question_id, previous_answer_id
+               ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                activity_id,
+                role,
+                run.assignment_id,
+                run.run_id,
+                parent_assignment_id,
+                continuation_question_id,
+                previous_answer_id,
+            ),
+        )
+
+    def assignment_lineage(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> dict[str, str | None]:
+        """Return the durable predecessor and clarification link for the current run."""
+        run = assessment.current_run(role)
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT parent_assignment_id, continuation_question_id,
+                          previous_answer_id
+                   FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = ?
+                     AND assignment_id = ? AND run_id = ?""",
+                (
+                    assessment.context.activity_id,
+                    role,
+                    run.assignment_id,
+                    run.run_id,
+                ),
+            ).fetchone()
+        if row is None:
+            raise RegistrationAssessmentError(
+                "current registration assignment lineage is unavailable"
+            )
+        return {
+            "parent_assignment_id": None if row[0] is None else str(row[0]),
+            "continuation_question_id": None if row[1] is None else str(row[1]),
+            "previous_answer_id": None if row[2] is None else str(row[2]),
+        }
+
+    def assignment_runs(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> tuple[str, ...]:
+        """Return newest-first durable run history for locating immutable artifacts."""
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT run_id FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = ? ORDER BY rowid DESC""",
+                (assessment.context.activity_id, role),
+            ).fetchall()
+        return tuple(str(row[0]) for row in rows)
 
     def receive_answer(self, answer: DeliveredAnswer) -> None:
         """Accept linked answer delivery without treating it as confirmation."""
@@ -421,6 +526,7 @@ class RegistrationServiceBinding:
             ).fetchone()
         if unanswered is not None:
             return
+        previous = assessment.current_run(role)
         run = _new_run(role)
         assessment.continue_after_clarification(role, run)
         with self.database.transaction() as transaction:
@@ -429,6 +535,17 @@ class RegistrationServiceBinding:
                    SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
                    WHERE activity_id = ? AND role = ?""",
                 (run.assignment_id, run.run_id, answer.activity_id, role),
+            )
+            self._record_lineage_in(
+                transaction,
+                answer.activity_id,
+                role,
+                run,
+                parent_assignment_id=previous.assignment_id,
+                continuation_question_id=(
+                    answer.original_question_id or answer.question_id
+                ),
+                previous_answer_id=answer.answer_id,
             )
             transaction.execute(
                 """UPDATE registration_assessment_state SET state_json = ?
@@ -563,6 +680,23 @@ class RegistrationServiceBinding:
         failed: AssessmentRun,
         replacement_run_id: str,
     ) -> AssessmentRun:
+        lineage = transaction.execute(
+            """SELECT parent_assignment_id, continuation_question_id,
+                      previous_answer_id
+               FROM registration_assignment_lineage
+               WHERE activity_id = ? AND role = ?
+                 AND assignment_id = ? AND run_id = ?""",
+            (
+                assessment.context.activity_id,
+                role,
+                failed.assignment_id,
+                failed.run_id,
+            ),
+        ).fetchone()
+        if lineage is None:
+            raise RegistrationAssessmentError(
+                "registration failed run lineage is unavailable"
+            )
         replacement = assessment.retry_technical_run(
             role, failed, replacement_run_id
         )
@@ -583,6 +717,19 @@ class RegistrationServiceBinding:
             raise RegistrationAssessmentError(
                 "registration failed run is no longer current"
             )
+        self._record_lineage_in(
+            transaction,
+            assessment.context.activity_id,
+            role,
+            replacement,
+            parent_assignment_id=(
+                None if lineage[0] is None else str(lineage[0])
+            ),
+            continuation_question_id=(
+                None if lineage[1] is None else str(lineage[1])
+            ),
+            previous_answer_id=None if lineage[2] is None else str(lineage[2]),
+        )
         transaction.execute(
             """UPDATE registration_assessment_state SET state_json = ?
                WHERE activity_id = ?""",
@@ -615,6 +762,15 @@ class RegistrationServiceBinding:
         self, assessment: RegistrationAssessment, role: str, run: AssessmentRun
     ) -> None:
         with self.database.transaction() as transaction:
+            previous = transaction.execute(
+                """SELECT assignment_id FROM registration_assessment_runs
+                   WHERE activity_id = ? AND role = ?""",
+                (assessment.context.activity_id, role),
+            ).fetchone()
+            if previous is None:
+                raise RegistrationAssessmentError(
+                    "registration assignment run is unavailable"
+                )
             updated = transaction.execute(
                 """UPDATE registration_assessment_runs
                    SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
@@ -625,6 +781,13 @@ class RegistrationServiceBinding:
                 raise RegistrationAssessmentError(
                     "registration assignment run is unavailable"
                 )
+            self._record_lineage_in(
+                transaction,
+                assessment.context.activity_id,
+                role,
+                run,
+                parent_assignment_id=str(previous[0]),
+            )
             transaction.execute(
                 """UPDATE registration_assessment_state SET state_json = ?
                    WHERE activity_id = ?""",
@@ -760,6 +923,15 @@ class RegistrationServiceBinding:
                 replacement.context.routes.fidelity_reviewer,
             ),
         ):
+            previous = transaction.execute(
+                """SELECT assignment_id FROM registration_assessment_runs
+                   WHERE activity_id = ? AND role = ?""",
+                (activity_id, role),
+            ).fetchone()
+            if previous is None:
+                raise RegistrationAssessmentError(
+                    "source update registration assignment is unavailable"
+                )
             changed = transaction.execute(
                 """UPDATE registration_assessment_runs
                    SET assignment_id = ?, run_id = ?, route_json = ?,
@@ -777,6 +949,13 @@ class RegistrationServiceBinding:
                 raise RegistrationAssessmentError(
                     "source update registration assignment is unavailable"
                 )
+            self._record_lineage_in(
+                transaction,
+                activity_id,
+                role,
+                run,
+                parent_assignment_id=str(previous[0]),
+            )
         transaction.execute(
             """UPDATE registration_assessment_state SET state_json = ?
                WHERE activity_id = ?""",
@@ -961,6 +1140,26 @@ class RegistrationServiceBinding:
                     raise RegistrationAssessmentError(
                         "registration question service is unavailable"
                     )
+                lineage = transaction.execute(
+                    """SELECT continuation_question_id, previous_answer_id
+                       FROM registration_assignment_lineage
+                       WHERE activity_id = ? AND role = ?
+                         AND assignment_id = ? AND run_id = ?""",
+                    (
+                        assessment.context.activity_id,
+                        response.role,
+                        response.assignment_id,
+                        response.run_id,
+                    ),
+                ).fetchone()
+                if lineage is None:
+                    raise RegistrationAssessmentError(
+                        "registration clarification assignment lineage is unavailable"
+                    )
+                original_question_id = (
+                    None if lineage[0] is None else str(lineage[0])
+                )
+                previous_answer_id = None if lineage[1] is None else str(lineage[1])
                 for question in response.questions:
                     identity = "registration-question-" + uuid.uuid5(
                         uuid.NAMESPACE_URL,
@@ -994,7 +1193,10 @@ class RegistrationServiceBinding:
                                 )
                                 for option in question.options
                             ),
+                            original_question_id=original_question_id,
+                            previous_answer_id=previous_answer_id,
                         ),
+                        emit_event=True,
                     )
 
 

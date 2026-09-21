@@ -54,7 +54,10 @@ from maestro.planning.registration_confirmation import (
 )
 from maestro.planning.intake import RegistrationIntakeResult
 from maestro.planning.registration_recovery import RegistrationRecoveryService
-from maestro.planning.registration_records import RegistrationAgentResponse
+from maestro.planning.registration_records import (
+    ArtifactReference,
+    RegistrationAgentResponse,
+)
 from maestro.planning.sources import (
     ExactSourceReader,
     OutcomeReference,
@@ -64,6 +67,7 @@ from maestro.planning.sources import (
 )
 from maestro.service.activities import ActivityAction, ActivityRecord, ProjectRecord
 from maestro.service.authentication import OwnerAuthenticationSettings
+from maestro.service.events import EventStreamService
 from maestro.service.installed_registration import InstalledToolInspector
 from maestro.service.main import (
     InstalledServiceApplication,
@@ -158,6 +162,98 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             ),
             workspace_root=self.root / "workspaces",
         )
+
+    def test_architect_amendment_assignment_carries_exact_parent_artifacts(self) -> None:
+        application = InstalledServiceApplication(self.settings)
+        project_id = "project-one"
+        activity_id = "activity-one"
+        prior_run_id = "project-architect-run-one"
+        current_run = SimpleNamespace(
+            assignment_id="project-architect-assignment-two",
+            run_id="project-architect-run-two",
+        )
+        candidate_bytes = b'{"candidate":"one"}\n'
+        assessment_bytes = b'{"assessment":"one"}\n'
+        prior_output = (
+            self.settings.workspace_root / project_id / activity_id
+            / "runs" / prior_run_id / "output"
+        )
+        (prior_output / "candidate").mkdir(parents=True)
+        (prior_output / "candidate" / "manifest.json").write_bytes(candidate_bytes)
+        (prior_output / "assessment.json").write_bytes(assessment_bytes)
+        candidate = ArtifactReference(
+            "output/candidate/manifest.json",
+            hashlib.sha256(candidate_bytes).hexdigest(),
+            "candidate-one",
+        )
+        prior_assessment = ArtifactReference(
+            "output/assessment.json",
+            hashlib.sha256(assessment_bytes).hexdigest(),
+            "assessment-one",
+        )
+        inventory = SourceInventory(
+            "a" * 40,
+            "a" * 40,
+            "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+        )
+        assessment = mock.Mock()
+        assessment.context = SimpleNamespace(
+            project_id=project_id,
+            activity_id=activity_id,
+            source_inventory=inventory,
+            selected_scope="APP-PM1 — Register the project",
+            decision_version="decision-one",
+            routes=SimpleNamespace(architect=object()),
+            package_context=SimpleNamespace(
+                source_repository="owner/project",
+                publication_branch="main",
+            ),
+            review_limit=2,
+        )
+        assessment.current_run.return_value = current_run
+        assessment.status = SimpleNamespace(
+            candidate=candidate,
+            assessment=prior_assessment,
+        )
+        assessment.to_record.return_value = {
+            "architect_findings": [], "review_findings": []
+        }
+        assessment.process_snapshot = SimpleNamespace(
+            definition={
+                "architect": {"run_timeout_seconds": 1800},
+                "saved_outputs": {"root": ".maestro/registrations"},
+            }
+        )
+        binding = SimpleNamespace(
+            database=application.database,
+            assignment_lineage=lambda _assessment, _role: {
+                "parent_assignment_id": "project-architect-assignment-one",
+                "continuation_question_id": None,
+                "previous_answer_id": None,
+            },
+            assignment_runs=lambda _assessment, _role: (
+                current_run.run_id, prior_run_id
+            ),
+        )
+        launcher = object.__new__(InstalledRegistrationAgentLauncher)
+        launcher.workspaces = SimpleNamespace(root=self.settings.workspace_root)
+
+        assignment, inputs, originals = launcher._assignment(
+            binding, assessment, "project_architect"
+        )
+
+        self.assertEqual(
+            "project-architect-assignment-one", assignment.parent_assignment_id
+        )
+        self.assertEqual(
+            {"prior_candidate", "prior_assessment"},
+            set(assignment.assigned_artifacts),
+        )
+        self.assertEqual(candidate_bytes, inputs["prior_candidate/manifest.json"])
+        self.assertEqual(assessment_bytes, inputs["prior_assessment/assessment.json"])
+        self.assertEqual(candidate, originals["prior_candidate"])
+        self.assertEqual(prior_assessment, originals["prior_assessment"])
 
     def test_unknown_supervisor_state_keeps_cancellation_stop_unconfirmed(self) -> None:
         coordinator = object.__new__(RegistrationCoordinator)
@@ -360,7 +456,7 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
                 ).fetchall()
             )
         self.assertEqual(
-            ("waiting", "Exact reviewed candidate is ready for confirmation", 3),
+            ("waiting", "Exact reviewed candidate is ready for confirmation", 4),
             tuple(activity),
         )
         self.assertEqual(
@@ -1448,6 +1544,10 @@ automatic_recovery_attempts = 2
                    WHERE activity_id = ?""",
                 (activity_id,),
             ).fetchone()
+            activity_version = connection.execute(
+                "SELECT version FROM service_activities WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone()
         self.assertEqual(("delivered",), delivery)
         self.assertEqual("Current planning scope", json.loads(str(saved[0]))["scope"])
 
@@ -1490,7 +1590,7 @@ automatic_recovery_attempts = 2
                     "project_id": project_id,
                     "activity_id": activity_id,
                     "question_id": None,
-                    "expected_version": 1,
+                    "expected_version": int(activity_version[0]),
                     "payload": {},
                 }
             ).encode(),
@@ -1711,6 +1811,27 @@ automatic_recovery_attempts = 2
         )
         self.assertEqual("awaiting_architect", resumed.status.state)
         self.assertNotEqual(operation.run_id, resumed.current_run("project_architect").run_id)
+        with application.database.read_connection() as connection:
+            lineage = connection.execute(
+                """SELECT parent_assignment_id, continuation_question_id,
+                          previous_answer_id
+                   FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = 'project_architect'
+                     AND assignment_id = ? AND run_id = ?""",
+                (
+                    str(assessed_activity),
+                    resumed.current_run("project_architect").assignment_id,
+                    resumed.current_run("project_architect").run_id,
+                ),
+            ).fetchone()
+        self.assertEqual(
+            (
+                operation.assignment_id,
+                str(process_question[0]),
+                "registration-process-answer",
+            ),
+            tuple(lineage),
+        )
         self.assertEqual(
             (str(assessed_activity), resumed.current_run("project_architect").run_id,
              "project_architect"),
@@ -1728,6 +1849,129 @@ automatic_recovery_attempts = 2
             )
         )
         architect_route = resumed.context.routes.architect
+        application.agent_supervisor.report_runtime_identity(
+            architect_operation,
+            RunningToolIdentity(
+                "tool_metadata", architect_route.provider,
+                architect_route.requested_model_id, architect_route.tool_version,
+                architect_route.configuration_hash,
+            ),
+        )
+        with application.database.read_connection() as connection:
+            event_cursor = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0) FROM outbox_events"
+                ).fetchone()[0]
+            )
+        connected_events = EventStreamService(
+            application.database, application.authenticator
+        ).subscribe(authorization["Authorization"], str(event_cursor))
+        follow_up = RegistrationAgentResponse.from_mapping(
+            {
+                "contract_version": 1,
+                "assignment_id": architect_operation.assignment_id,
+                "run_id": architect_operation.run_id,
+                "project_id": project_id,
+                "activity_id": str(assessed_activity),
+                "role": "project_architect",
+                "source_commit": resumed.context.source_inventory.source_commit,
+                "decision_version": resumed.context.decision_version,
+                "result": "clarification_required",
+                "summary": "The architect needs a linked follow-up answer.",
+                "findings": [],
+                "questions": [
+                    {
+                        "local_key": "boundary-follow-up",
+                        "subject": "Registration boundary follow-up",
+                        "question": "Does the prior answer also cover the retained history?",
+                        "reason": "The amendment must retain the confirmed boundary.",
+                        "recipient": "owner",
+                        "finding_keys": [],
+                        "options": [],
+                    }
+                ],
+                "candidate": None,
+                "assessment": None,
+                "reviewed_assessment": None,
+                "review_outcome": None,
+                "failure": None,
+            }
+        )
+        application.registration_assessment.submit_architect(follow_up)
+        self.assertIn(
+            "question.published",
+            {event.type for event in connected_events.next_batch()},
+        )
+        with application.database.read_connection() as connection:
+            linked_question = connection.execute(
+                """SELECT questions.question_id, questions.version,
+                          details.original_question_id, details.previous_answer_id
+                   FROM service_questions AS questions
+                   JOIN service_question_details AS details USING(question_id)
+                   WHERE questions.activity_id = ?
+                     AND questions.subject = 'Registration boundary follow-up'""",
+                (str(assessed_activity),),
+            ).fetchone()
+        self.assertEqual(
+            (str(process_question[0]), "registration-process-answer"),
+            (str(linked_question[2]), str(linked_question[3])),
+        )
+        followed_up = application.handle(
+            "POST",
+            "/api/v1/requests",
+            authorization,
+            json.dumps(
+                {
+                    "request_id": "registration-process-follow-up-answer",
+                    "operation": "question.answer",
+                    "project_id": project_id,
+                    "activity_id": str(assessed_activity),
+                    "question_id": str(linked_question[0]),
+                    "expected_version": int(linked_question[1]),
+                    "payload": {
+                        "text": "Yes, retain the confirmed history.",
+                        "choice_id": None,
+                    },
+                }
+            ).encode(),
+        )
+        self.assertEqual(200, followed_up.status_code)
+        application.agent_supervisor.stop(
+            architect_operation, "composition_follow_up_complete"
+        )
+        resumed = application.registration_assessment.assessment(
+            str(assessed_activity)
+        )
+        with application.database.read_connection() as connection:
+            follow_up_lineage = connection.execute(
+                """SELECT parent_assignment_id, continuation_question_id,
+                          previous_answer_id
+                   FROM registration_assignment_lineage
+                   WHERE activity_id = ? AND role = 'project_architect'
+                     AND assignment_id = ? AND run_id = ?""",
+                (
+                    str(assessed_activity),
+                    resumed.current_run("project_architect").assignment_id,
+                    resumed.current_run("project_architect").run_id,
+                ),
+            ).fetchone()
+        self.assertEqual(
+            (
+                architect_operation.assignment_id,
+                str(process_question[0]),
+                "registration-process-follow-up-answer",
+            ),
+            tuple(follow_up_lineage),
+        )
+        architect_operation = application.registration_assessment.reserve_runtime_identity(
+            str(assessed_activity), "project_architect"
+        )
+        application.agent_supervisor.launch(
+            LaunchRequest(
+                architect_operation, ("/bin/sh", "-c", "sleep 5"),
+                str(self.root), 5, 2,
+            )
+        )
         application.agent_supervisor.report_runtime_identity(
             architect_operation,
             RunningToolIdentity(
@@ -1814,10 +2058,24 @@ automatic_recovery_attempts = 2
                 reviewer_route.configuration_hash,
             ),
         )
+        with application.database.read_connection() as connection:
+            ready_cursor = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0) FROM outbox_events"
+                ).fetchone()[0]
+            )
+        ready_events = EventStreamService(
+            application.database, application.authenticator
+        ).subscribe(authorization["Authorization"], str(ready_cursor))
         application.registration_assessment.submit_reviewer(
             completed_response(
                 "fidelity_reviewer", reviewer_operation, reviewed=True
             )
+        )
+        ready_batch = ready_events.next_batch()
+        self.assertIn(
+            "registration.activity-updated",
+            {event.type for event in ready_batch},
         )
         reviewed_root = (
             self.settings.workspace_root / project_id / str(assessed_activity)

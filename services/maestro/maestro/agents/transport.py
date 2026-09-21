@@ -284,18 +284,31 @@ def validate_transport_context(
     except WorkspaceError as error:
         raise TransportError(error.code, str(error), **error.fields) from error
     if assignment.role == "fidelity_reviewer":
-        _verify_reviewer_inputs(assignment, workspace)
+        _verify_assigned_inputs(
+            assignment,
+            workspace,
+            {"candidate", "reviewed_assessment"},
+            "reviewer",
+        )
+    elif assignment.assigned_artifacts:
+        _verify_assigned_inputs(
+            assignment,
+            workspace,
+            {"prior_candidate", "prior_assessment"},
+            "architect amendment",
+        )
 
 
-def _verify_reviewer_inputs(
+def _verify_assigned_inputs(
     assignment: AgentAssignment,
     workspace: PreparedWorkspace,
+    required: set[str],
+    subject: str,
 ) -> None:
-    required = {"candidate", "reviewed_assessment"}
     if set(assignment.assigned_artifacts) != required:
         raise TransportError(
             "invalid_assignment",
-            "reviewer assignment must declare exact candidate and assessment artifacts",
+            f"{subject} assignment must declare exact candidate and assessment artifacts",
         )
     try:
         workspace.verify_restrictions()
@@ -305,13 +318,13 @@ def _verify_reviewer_inputs(
             if not path.parts or path.parts[0] != "input":
                 raise TransportError(
                     "artifact_out_of_scope",
-                    f"reviewer {field} must be under immutable input",
+                    f"{subject} {field} must be under immutable input",
                 )
             artifact = workspace.resolve_artifact(reference.path, allow_input=True)
             if hashlib.sha256(artifact.read_bytes()).hexdigest() != reference.sha256:
                 raise TransportError(
                     "artifact_mismatch",
-                    f"reviewer {field} does not match its declared hash",
+                    f"{subject} {field} does not match its declared hash",
                 )
     except WorkspaceError as error:
         raise TransportError(error.code, str(error), **error.fields) from error

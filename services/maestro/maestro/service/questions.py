@@ -21,6 +21,7 @@ from maestro.foundation import (
     DomainMigration,
     Transaction,
     canonical_identifier,
+    canonical_json,
     positive_version,
 )
 
@@ -406,7 +407,13 @@ class QuestionService:
             apply=apply,
         )
 
-    def publish(self, transaction: Transaction, question: LinkedQuestion) -> None:
+    def publish(
+        self,
+        transaction: Transaction,
+        question: LinkedQuestion,
+        *,
+        emit_event: bool = False,
+    ) -> None:
         """Publish a visible question and its answer contract atomically."""
         self._validate_question(question)
         if question.original_question_id is not None:
@@ -467,6 +474,22 @@ class QuestionService:
             "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
             (question.question_id, question.version),
         )
+        if emit_event:
+            transaction.execute(
+                """INSERT INTO outbox_events(
+                       schema_version, event_id, occurred_at, project_id,
+                       activity_id, type, data_json
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    1,
+                    f"question-published-{question.question_id}",
+                    _utc_now(),
+                    question.project_id,
+                    question.activity_id,
+                    "question.published",
+                    canonical_json({"question_id": question.question_id}),
+                ),
+            )
 
     def prepare_answer(self, request: RequestEnvelope) -> PreparedOperation:
         if (

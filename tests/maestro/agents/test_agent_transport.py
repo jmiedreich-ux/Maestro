@@ -515,6 +515,56 @@ class AgentTransportTests(unittest.TestCase):
         input_bind = launch.sandbox_arguments.index(str(workspace.paths.input))
         self.assertEqual("--ro-bind", launch.sandbox_arguments[input_bind - 1])
 
+    def test_architect_amendment_inputs_are_hash_checked_before_launch(self) -> None:
+        candidate = b'{"candidate":1}\n'
+        assessment = b'{"assessment":1}\n'
+        references = {
+            "prior_candidate": ArtifactReference.from_mapping(
+                self._reference("input/prior-candidate.json", candidate),
+                "prior_candidate",
+            ),
+            "prior_assessment": ArtifactReference.from_mapping(
+                self._reference("input/prior-assessment.json", assessment),
+                "prior_assessment",
+            ),
+        }
+        assignment = self._assignment(
+            "project_architect",
+            "run-architect-amendment",
+            assigned_artifacts=references,
+        )
+        workspace = self._workspace(
+            assignment,
+            {
+                "prior-candidate.json": candidate,
+                "prior-assessment.json": assessment,
+            },
+        )
+
+        conversation = CodexTransport().open(
+            self.codex_route,
+            assignment,
+            workspace,
+            self._profile(self.codex_route),
+        )
+
+        self.assertIn(
+            str(workspace.paths.input), conversation.launch.sandbox_arguments
+        )
+        workspace.paths.input.joinpath("prior-candidate.json").chmod(0o600)
+        workspace.paths.input.joinpath("prior-candidate.json").write_bytes(b"changed\n")
+        with self.assertRaises(TransportError) as caught:
+            CodexTransport().open(
+                self.codex_route,
+                assignment,
+                workspace,
+                self._profile(self.codex_route),
+            )
+        self.assertIn(
+            caught.exception.code,
+            {"immutable_changed", "artifact_mismatch", "forbidden_write"},
+        )
+
     def test_reviewer_artifacts_reject_wrong_bytes_or_non_input_path_before_launch(self) -> None:
         candidate = b'{"candidate":1}\n'
         assessment = b'{"assessment":1}\n'

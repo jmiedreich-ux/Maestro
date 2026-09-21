@@ -2079,6 +2079,17 @@ class RegistrationCoordinator:
                 transaction, activity_id, project_id, intake, selections
             )
             self.binding.install_started(transaction, assessment)
+            _append_registration_event_in(
+                transaction,
+                project_id,
+                activity_id,
+                "registration.assessment-started",
+                {
+                    "activity_id": activity_id,
+                    "state": "running",
+                    "version": next_version,
+                },
+            )
         self._launch_assignment(assessment, "project_architect")
 
     def _publish_intake_question(
@@ -2102,6 +2113,7 @@ class RegistrationCoordinator:
                 choices=(),
                 allow_free_text=True,
             ),
+            emit_event=True,
         )
         transaction.execute(
             """INSERT INTO installed_registration_intake_questions(
@@ -2841,6 +2853,17 @@ class RegistrationCoordinator:
                    WHERE activity_id = ? AND state = 'stopping'""",
                 (activity_id,),
             )
+            _append_registration_event_in(
+                transaction,
+                project_id,
+                activity_id,
+                "registration.cancelled",
+                {
+                    "activity_id": activity_id,
+                    "state": "cancelled",
+                    "version": next_version,
+                },
+            )
 
     def _reconcile_saved_assignment(
         self, activity_id: str
@@ -3267,6 +3290,17 @@ class RegistrationCoordinator:
                 "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
                 (version, activity_id),
             )
+            _append_registration_event_in(
+                transaction,
+                project_id,
+                activity_id,
+                "registration.publication-started",
+                {
+                    "activity_id": activity_id,
+                    "state": "running",
+                    "version": version,
+                },
+            )
         return version
 
     def _set_activity_presentation(
@@ -3289,9 +3323,47 @@ class RegistrationCoordinator:
         reason: str,
         actions: tuple[ActivityAction, ...],
     ) -> None:
+        current = transaction.execute(
+            """SELECT project_id, state, waiting_reason, version
+               FROM service_activities WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        if current is None:
+            raise ValueError("registration activity is unavailable")
+        current_actions = tuple(
+            (str(row[0]), str(row[1]), str(row[2]))
+            for row in transaction.execute(
+                """SELECT action_id, kind, label FROM service_activity_actions
+                   WHERE activity_id = ? ORDER BY sequence""",
+                (activity_id,),
+            ).fetchall()
+        )
+        next_actions = tuple(
+            (action.action_id, action.kind, action.label) for action in actions
+        )
+        if (
+            str(current[1]) == state
+            and (None if current[2] is None else str(current[2])) == reason
+            and current_actions == next_actions
+        ):
+            return
+        next_version = int(current[3]) + 1
         transaction.execute(
-            "UPDATE service_activities SET state = ?, waiting_reason = ? WHERE activity_id = ?",
-            (state, reason, activity_id),
+            """UPDATE service_activities
+               SET state = ?, waiting_reason = ?, version = ?
+               WHERE activity_id = ? AND version = ?""",
+            (state, reason, next_version, activity_id, int(current[3])),
+        )
+        transaction.execute(
+            """INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)
+               ON CONFLICT(entity_id) DO UPDATE SET version = excluded.version""",
+            (activity_id, next_version),
+        )
+        transaction.execute(
+            """UPDATE registration_candidate_publications
+               SET activity_version = ?
+               WHERE activity_id = ? AND state IN ('prepared', 'published')""",
+            (next_version, activity_id),
         )
         transaction.execute(
             "DELETE FROM service_activity_actions WHERE activity_id = ?",
@@ -3306,6 +3378,18 @@ class RegistrationCoordinator:
                 (action.action_id, action.kind, action.label, activity_id)
                 for action in actions
             ),
+        )
+        _append_registration_event_in(
+            transaction,
+            str(current[0]),
+            activity_id,
+            "registration.activity-updated",
+            {
+                "activity_id": activity_id,
+                "state": state,
+                "waiting_reason": reason,
+                "version": next_version,
+            },
         )
 
     def _source_consistency(
@@ -3565,6 +3649,31 @@ def _optional_text(value: object) -> str | None:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _append_registration_event_in(
+    transaction: Transaction,
+    project_id: str,
+    activity_id: str,
+    event_type: str,
+    data: Mapping[str, object],
+) -> None:
+    """Wake connected projections in the same commit as a background transition."""
+    transaction.execute(
+        """INSERT INTO outbox_events(
+               schema_version, event_id, occurred_at, project_id, activity_id,
+               type, data_json
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (
+            1,
+            f"registration-transition-{uuid.uuid4().hex}",
+            _utc_now(),
+            project_id,
+            activity_id,
+            event_type,
+            canonical_json(data),
+        ),
+    )
 
 
 def _load_candidate_workspace(
