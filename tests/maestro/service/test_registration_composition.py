@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -36,6 +37,7 @@ from maestro.foundation.github_destination import (
     BranchPolicyObservation,
     GitHubAppDestinationProfile,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
     GitHubInstallationToken,
     GitHubRestDestinationApi,
 )
@@ -51,7 +53,13 @@ from maestro.planning.sources import (
 )
 from maestro.service.activities import ActivityRecord, ProjectRecord
 from maestro.service.authentication import OwnerAuthenticationSettings
-from maestro.service.main import InstalledServiceApplication, ServiceSettings, load_settings
+from maestro.service.installed_registration import InstalledToolInspector
+from maestro.service.main import (
+    InstalledServiceApplication,
+    ServiceSettings,
+    build_application,
+    load_settings,
+)
 from maestro.service.processes import ProcessSnapshot
 from maestro.service.registration import RegistrationRuntimeDependencies
 from maestro.service.registration_agents import InstalledRegistrationAgentLauncher
@@ -216,10 +224,60 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             set(terminal.workspace.extensions.action_names),
         )
 
+    def test_version_output_cannot_fabricate_live_tool_evidence(self) -> None:
+        executable = self.root / "version-only-codex"
+        executable.write_text("#!/bin/sh\nprintf 'codex-cli 1.2.3\\n'\n", encoding="utf-8")
+        executable.chmod(0o700)
+        route = ToolRoute(
+            "codex",
+            executable,
+            "agent-credential",
+            "agent-settings",
+            ("openai/model-1",),
+            (PermittedDestination("api.openai.com", 443),),
+        )
+
+        observation = InstalledToolInspector(
+            "codex", "openai", self.root
+        ).inspect(route, "1" * 64)
+
+        self.assertFalse(observation.available)
+        self.assertFalse(observation.authenticated)
+        self.assertFalse(observation.structured_output)
+        self.assertFalse(observation.exact_model_enforcement)
+        self.assertFalse(observation.substitution_disabled)
+        self.assertEqual({}, observation.context_limits)
+
     def test_load_settings_composes_configured_registration_runtime(self) -> None:
         executable = self.root / "codex"
         executable.write_text(
-            "#!/bin/sh\nprintf 'codex-cli 1.2.3\\n'\n", encoding="utf-8"
+            """#!/usr/bin/python3
+import json
+import sys
+
+for raw in sys.stdin:
+    request = json.loads(raw)
+    method = request.get("method")
+    request_id = request.get("id")
+    if method == "initialize":
+        result = {"userAgent": "codex-cli 1.2.3"}
+    elif method == "initialized":
+        continue
+    elif method == "model/list":
+        result = {"data": [{"id": "openai/model-1", "model": "openai/model-1", "contextWindow": 65536}]}
+    elif method == "thread/start":
+        model = request["params"]["model"]
+        result = {"thread": {"id": "preflight-thread"}, "model": model, "modelProvider": "openai"}
+    elif method == "turn/start":
+        result = {"turn": {"id": "preflight-turn"}}
+    else:
+        continue
+    print(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True)
+    if method == "turn/start":
+        print(json.dumps({"jsonrpc": "2.0", "method": "item/completed", "params": {"threadId": "preflight-thread", "turnId": "preflight-turn", "item": {"type": "agentMessage", "text": "{\\\"preflight\\\":\\\"ok\\\"}"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "turn/completed", "params": {"threadId": "preflight-thread", "turn": {"id": "preflight-turn", "status": "completed"}}}), flush=True)
+""",
+            encoding="utf-8",
         )
         executable.chmod(0o700)
         (self.root / ".codex").mkdir()
@@ -415,11 +473,162 @@ automatic_recovery_attempts = 2
                     }
                 ).encode(),
             )
-        self.assertEqual(202, response.status_code)
+        self.assertEqual(202, response.status_code, response.body)
         self.assertEqual(
             "assessment_started", response.body["receipt"]["result"]["state"]
         )
         self.assertEqual(1, launched.call_count)
+
+    def test_installed_schema_and_two_repository_production_composition(self) -> None:
+        installed_root = self.root / "installed"
+        installed_schema = installed_root / "schemas/registration-process/1/schema.json"
+        installed_schema.parent.mkdir(parents=True)
+        source_schema = (
+            Path(__file__).resolve().parents[3]
+            / "services/maestro/schemas/registration-process/1/schema.json"
+        )
+        installed_schema.write_bytes(source_schema.read_bytes())
+        configuration = self.root / "two-repositories.toml"
+        configuration.write_text(
+            f'''workspace_root = "{self.root / "workspaces"}"
+
+[service]
+host = "127.0.0.1"
+port = 8787
+agent_user = "maestro-agent"
+
+[storage]
+engine = "sqlite"
+path = "{self.root / "two-repositories.sqlite3"}"
+
+[owner]
+id = "owner-local"
+token_sha256 = "{hashlib.sha256(OWNER_TOKEN.encode("ascii")).hexdigest()}"
+
+[tools.codex]
+executable = "/bin/true"
+credential_profile = "agent-credential"
+settings_profile = "agent-settings"
+allowed_model_ids = ["openai/model-1"]
+permitted_destinations = [{{ hostname = "api.openai.com", port = 443 }}]
+
+[repositories.alpha]
+credential_profile = "alpha-app"
+allowed_repositories = ["owner/alpha"]
+allowed_branch_patterns = ["main"]
+
+[repositories.alpha.github]
+app_id = 11
+installation_id = 21
+app_slug = "maestro-alpha"
+
+[repositories.beta]
+credential_profile = "beta-app"
+allowed_repositories = ["owner/beta"]
+allowed_branch_patterns = ["release"]
+
+[repositories.beta.github]
+app_id = 12
+installation_id = 22
+app_slug = "maestro-beta"
+
+[repository_bindings.alpha]
+repository = "owner/alpha"
+profile = "alpha"
+
+[repository_bindings.beta]
+repository = "owner/beta"
+profile = "beta"
+
+[registration]
+schema_version = 1
+maximum_fidelity_reviews = 2
+
+[registration.architect]
+run_timeout_seconds = 1800
+
+[registration.fidelity_reviewer]
+run_timeout_seconds = 1800
+
+[registration.initiation]
+policy = "registration_intake_or_idle_update"
+start_operation = "registration.start"
+
+[registration.agent_session]
+policy = "fixed_assignment_followups"
+architect_role = "project_architect"
+reviewer_role = "fidelity_reviewer"
+
+[registration.saved_outputs]
+policy = "versioned_registration_package"
+contract = "registration_package_v1"
+root = ".maestro/registrations"
+
+[registration.review]
+policy = "bounded_independent_fidelity"
+
+[registration.confirmation]
+policy = "explicit_exact_candidate_activation"
+on_complete = "stop"
+
+[registration.recovery]
+policy = "reconcile_preserved_registration"
+automatic_recovery_attempts = 2
+''',
+            encoding="utf-8",
+        )
+        configuration.chmod(0o600)
+
+        with mock.patch.object(sys, "prefix", str(installed_root)):
+            settings = load_settings(configuration)
+            self.assertIsNone(settings.registration_error)
+            application = build_application(settings)
+
+        runtime = settings.registration_runtime
+        self.assertIsNotNone(runtime)
+        assert runtime is not None
+        self.assertIsInstance(runtime.destination_provider, GitHubDestinationRouter)
+        alpha = runtime.authorizer.authorize("owner/alpha", "main")
+        beta = runtime.authorizer.authorize("owner/beta", "release")
+        self.assertEqual("alpha", alpha.binding_id)
+        self.assertEqual("beta", beta.binding_id)
+        self.assertEqual(
+            "alpha",
+            runtime.destination_provider.provider_for("owner/alpha").profile.binding_id,
+        )
+        self.assertEqual(
+            "beta",
+            runtime.destination_provider.provider_for("owner/beta").profile.binding_id,
+        )
+        self.assertEqual("https://github.com/owner/alpha.git", runtime.transport.remote_for(alpha))
+        self.assertEqual("https://github.com/owner/beta.git", runtime.transport.remote_for(beta))
+        self.assertIsNotNone(application.registration_recovery)
+
+        authorization = {
+            "Authorization": f"Bearer {OWNER_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        for repository in ("owner/alpha", "owner/beta"):
+            response = application.handle(
+                "POST",
+                "/api/v1/requests",
+                authorization,
+                json.dumps(
+                    {
+                        "request_id": f"start-{repository.replace('/', '-')}",
+                        "operation": "registration.start",
+                        "project_id": None,
+                        "activity_id": None,
+                        "question_id": None,
+                        "expected_version": None,
+                        "payload": {"repository": repository},
+                    }
+                ).encode(),
+            )
+            self.assertEqual(202, response.status_code, response.body)
+            self.assertEqual(
+                "waiting_for_intake", response.body["receipt"]["result"]["state"]
+            )
 
     def test_typed_runtime_constructs_real_publication_confirmation_and_recovery(self) -> None:
         remote = self.root / "remote.git"
@@ -748,6 +957,74 @@ automatic_recovery_attempts = 2
         assessment = application.registration_assessment.assessment(
             str(assessed_activity)
         )
+        failed_run = assessment.current_run("project_architect")
+        failed_operation = application.registration_assessment.reserve_runtime_identity(
+            str(assessed_activity), "project_architect"
+        )
+        application.agent_supervisor.launch(
+            LaunchRequest(
+                failed_operation,
+                ("/bin/sh", "-c", "sleep 5"),
+                str(self.root),
+                5,
+                2,
+            )
+        )
+        application.agent_supervisor.stop(failed_operation, "adapter_failure")
+        application.registration._assignment_failed(
+            str(assessed_activity),
+            "project_architect",
+            failed_run.assignment_id,
+            failed_run.run_id,
+            "fixture tool exit",
+        )
+        failed_detail = application.registration.detail(str(assessed_activity))
+        self.assertEqual(
+            {
+                "assignment_id": failed_run.assignment_id,
+                "failed_run_id": failed_run.run_id,
+                "role": "project_architect",
+                "reason": "fixture tool exit",
+                "automatic_limit": 2,
+                "automatic_consumed": 0,
+                "manual_consumed": 0,
+                "state": "paused",
+            },
+            failed_detail["agent_retry"],
+        )
+        retried = application.handle(
+            "POST",
+            "/api/v1/requests",
+            authorization,
+            json.dumps(
+                {
+                    "request_id": "registration-agent-retry",
+                    "operation": "registration.retry",
+                    "project_id": project_id,
+                    "activity_id": str(assessed_activity),
+                    "question_id": None,
+                    "expected_version": failed_detail["activity_version"],
+                    "payload": {
+                        "assignment_id": failed_run.assignment_id,
+                        "failed_run_id": failed_run.run_id,
+                        "intervention": "Operator verified the tool configuration.",
+                    },
+                }
+            ).encode(),
+        )
+        self.assertEqual(200, retried.status_code, retried.body)
+        assessment = application.registration_assessment.assessment(
+            str(assessed_activity)
+        )
+        self.assertEqual(
+            failed_run.assignment_id,
+            assessment.current_run("project_architect").assignment_id,
+        )
+        self.assertNotEqual(
+            failed_run.run_id,
+            assessment.current_run("project_architect").run_id,
+        )
+        self.assertEqual(1, retried.body["receipt"]["result"]["manual_consumed"])
         operation = application.registration_assessment.reserve_runtime_identity(
             str(assessed_activity), "project_architect"
         )
@@ -1017,6 +1294,90 @@ automatic_recovery_attempts = 2
         application.agent_supervisor.stop(
             reviewer_operation, "composition_test_complete"
         )
+
+        reregistered = application.handle(
+            "POST",
+            "/api/v1/requests",
+            authorization,
+            json.dumps(
+                {
+                    "request_id": "connected-registration-update",
+                    "operation": "registration.start",
+                    "project_id": None,
+                    "activity_id": None,
+                    "question_id": None,
+                    "expected_version": None,
+                    "payload": {
+                        "repository": "owner/project",
+                        "overview_path": "docs/overview.md",
+                        "scope": "APP-PM1",
+                        "architect_selection": "codex:openai/model-1",
+                        "reviewer_selection": "codex:openai/model-1",
+                    },
+                }
+            ).encode(),
+        )
+        self.assertEqual(202, reregistered.status_code, reregistered.body)
+        self.assertEqual(
+            "intake_reserved", reregistered.body["receipt"]["result"]["state"]
+        )
+        update_activity = str(reregistered.body["receipt"]["activity_id"])
+        update_operation = application.registration_assessment.reserve_runtime_identity(
+            update_activity, "project_architect"
+        )
+        application.agent_supervisor.launch(
+            LaunchRequest(
+                update_operation,
+                ("/bin/sh", "-c", "sleep 5"),
+                str(self.root),
+                5,
+                2,
+            )
+        )
+        restarted = application.registration.rehydrate()
+        self.assertIn(
+            {"activity_id": update_activity, "state": "running-paused"},
+            restarted["agent_assignments"],
+        )
+        self.assertEqual("Paused", application.registration.detail(update_activity)["state"])
+        update_detail = application.registration.detail(update_activity)
+        cancelled_update = application.handle(
+            "POST",
+            "/api/v1/requests",
+            authorization,
+            json.dumps(
+                {
+                    "request_id": "connected-registration-update-cancel",
+                    "operation": "registration.cancel",
+                    "project_id": project_id,
+                    "activity_id": update_activity,
+                    "question_id": None,
+                    "expected_version": update_detail["activity_version"],
+                    "payload": {},
+                }
+            ).encode(),
+        )
+        self.assertEqual(200, cancelled_update.status_code, cancelled_update.body)
+        self.assertEqual(
+            "cancelled",
+            application.agent_supervisor.poll(update_operation).state,
+        )
+        self.assertEqual(
+            "cancelled", application.registration.detail(update_activity)["state"]
+        )
+        active_after_cancel = application.registration_confirmation.active(project_id)
+        self.assertIsNotNone(active_after_cancel)
+        self.assertEqual(
+            "connected-confirmation",
+            active_after_cancel.confirmation_ref.confirmation_id,
+        )
+        with application.database.read_connection() as connection:
+            reservation = connection.execute(
+                """SELECT state FROM registration_project_reservations
+                   WHERE activity_id = ?""",
+                (update_activity,),
+            ).fetchone()
+        self.assertEqual(("released",), reservation)
 
         seed = subprocess.run(
             ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/main"],

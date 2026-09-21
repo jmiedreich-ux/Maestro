@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import stat
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -13,14 +14,20 @@ from typing import Callable, Mapping
 
 from maestro.agents.preflight import AgentRoutePreflight
 from maestro.agents.routes import RoleSelections, ToolModelSelection
+from maestro.agents.supervisor import SupervisionError
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_json
 from maestro.foundation.credentials import RepositoryAuthorizer, ServiceGitTransport
 from maestro.foundation.git_publication import PublicationError, PublicationJournal
 from maestro.foundation.github_destination import (
+    GitHubDestination,
     GitHubDestinationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
+    destination_provider_for,
+    destination_providers,
 )
 from maestro.planning.intake import (
+    IntakeError,
     IntakeQuestion,
     RegistrationIntake,
     RegistrationIntakeRequest,
@@ -79,6 +86,46 @@ REGISTRATION_COMPOSITION_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_COMPOSITION_RECOVERY_MIGRATION = DomainMigration(
+    domain="registration_composition",
+    version=2,
+    identity="installed-registration-agent-recovery-v2",
+    statements=(
+        """
+        CREATE TABLE installed_registration_agent_failures(
+            activity_id TEXT PRIMARY KEY,
+            role TEXT NOT NULL CHECK(role IN ('project_architect', 'fidelity_reviewer')),
+            assignment_id TEXT NOT NULL,
+            failed_run_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('paused', 'retrying', 'resolved')),
+            automatic_limit INTEGER NOT NULL CHECK(automatic_limit >= 0),
+            automatic_consumed INTEGER NOT NULL DEFAULT 0 CHECK(automatic_consumed >= 0),
+            manual_consumed INTEGER NOT NULL DEFAULT 0 CHECK(manual_consumed >= 0)
+        )
+        """,
+        """
+        CREATE TABLE installed_registration_agent_retry_requests(
+            request_id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL,
+            assignment_id TEXT NOT NULL,
+            failed_run_id TEXT NOT NULL,
+            replacement_run_id TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('automatic', 'manual')),
+            intervention TEXT,
+            state TEXT NOT NULL CHECK(state IN ('reserved', 'launched', 'failed'))
+        )
+        """,
+    ),
+)
+
+
+def registration_composition_migrations() -> tuple[DomainMigration, ...]:
+    return (
+        REGISTRATION_COMPOSITION_MIGRATION,
+        REGISTRATION_COMPOSITION_RECOVERY_MIGRATION,
+    )
+
 
 @dataclass(frozen=True)
 class RegistrationRuntimeDependencies:
@@ -87,7 +134,7 @@ class RegistrationRuntimeDependencies:
     source_reader: ExactSourceReader
     authorizer: RepositoryAuthorizer
     transport: ServiceGitTransport
-    destination_provider: GitHubDestinationProvider
+    destination_provider: GitHubDestination
     preflight: AgentRoutePreflight
     process_snapshot: ProcessSnapshot
     remote_for_repository: Callable[[str], str]
@@ -102,7 +149,10 @@ class RegistrationRuntimeDependencies:
             raise TypeError("registration runtime requires RepositoryAuthorizer")
         if not isinstance(self.transport, ServiceGitTransport):
             raise TypeError("registration runtime requires ServiceGitTransport")
-        if not isinstance(self.destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            self.destination_provider,
+            (GitHubDestinationProvider, GitHubDestinationRouter),
+        ):
             raise TypeError("registration runtime requires GitHubDestinationProvider")
         if not isinstance(self.preflight, AgentRoutePreflight):
             raise TypeError("registration runtime requires configured route preflight")
@@ -233,6 +283,26 @@ class RegistrationCoordinator:
                     (project_id,),
                 ).fetchone()[0]
             ) + 1
+            active_registration_row = connection.execute(
+                "SELECT confirmation_id FROM active_registrations WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+            active_registration = active_registration_row is not None
+            active_confirmation_id = (
+                None
+                if active_registration_row is None
+                else str(active_registration_row[0])
+            )
+            active_intake_row = connection.execute(
+                """SELECT intake.intake_json
+                   FROM active_registrations AS active
+                   JOIN registration_confirmations AS confirmation
+                     ON confirmation.confirmation_id = active.confirmation_id
+                   JOIN registration_assessment_intake AS intake
+                     ON intake.activity_id = confirmation.activity_id
+                   WHERE active.project_id = ?""",
+                (project_id,),
+            ).fetchone()
         if unfinished is not None:
             existing_activity = str(unfinished[0])
 
@@ -268,14 +338,28 @@ class RegistrationCoordinator:
             not isinstance(item, str) or not item for item in referenced
         ):
             raise ValueError("registration referenced_paths must be an array of paths")
+        active_intake = (
+            None
+            if active_intake_row is None
+            else RegistrationIntakeResult.from_json(str(active_intake_row[0]))
+        )
         branch = _optional_text(payload.get("publication_branch"))
+        if branch is None and active_intake is not None:
+            branch = active_intake.publication_branch
+        source_ref = _optional_text(payload.get("source_ref"))
+        prior_source_ref = (
+            active_intake.source_ref
+            if source_ref is None and active_intake is not None
+            else None
+        )
         remote = "" if branch is None else dependencies.remote_for_repository(repository)
         intake_request = RegistrationIntakeRequest(
             repository=repository,
             remote=remote,
             overview_path=_text(overview_path, "overview_path"),
             referenced_paths=tuple(referenced),
-            source_ref=_optional_text(payload.get("source_ref")),
+            source_ref=source_ref,
+            prior_source_ref=prior_source_ref,
             publication_branch=branch,
             scope=_optional_text(payload.get("scope")),
             architect_selection=_selection_text(payload.get("architect_selection")),
@@ -283,7 +367,16 @@ class RegistrationCoordinator:
         )
         collector = _CollectedQuestions()
         assert self.intake is not None
-        intake = self.intake.begin(intake_request, questions=collector)
+        intake = (
+            RegistrationIntakeResult(
+                None, (), None, intake_request.scope, None, None, None,
+                source_ref=intake_request.source_ref,
+                publication_branch=intake_request.publication_branch,
+                repository=repository,
+            )
+            if active_registration
+            else self.intake.begin(intake_request, questions=collector)
+        )
         selections = None if intake.inventory is None else _role_selections(payload)
         assessment = None
         if selections is not None:
@@ -297,6 +390,21 @@ class RegistrationCoordinator:
             assessment.bind_process_snapshot(dependencies.process_snapshot)
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            current_active = transaction.execute(
+                "SELECT confirmation_id FROM active_registrations WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+            current_confirmation_id = (
+                None if current_active is None else str(current_active[0])
+            )
+            if current_confirmation_id != active_confirmation_id:
+                raise ValueError(
+                    "active registration changed before the registration start was reserved"
+                )
+            if active_registration:
+                if self.recovery is None:
+                    raise ValueError("installed re-registration recovery is not configured")
+                self.recovery.reserve_intake_in(transaction, project_id, activity_id)
             existing = transaction.execute(
                 "SELECT name, version FROM service_projects WHERE project_id = ?",
                 (project_id,),
@@ -330,7 +438,15 @@ class RegistrationCoordinator:
                     "running" if assessment is not None else "waiting",
                     next_version,
                     waiting_reason=(
-                        None if assessment is not None else "Registration intake needs answers"
+                        (
+                            None
+                            if assessment is not None
+                            else (
+                                "Re-registration intake is reserved"
+                                if active_registration
+                                else "Registration intake needs answers"
+                            )
+                        )
                     ),
                     started_at=_utc_now(),
                     available_actions=(
@@ -373,7 +489,9 @@ class RegistrationCoordinator:
                     "project_id": project_id,
                     "activity_id": activity_id,
                     "state": (
-                        "assessment_started"
+                        "intake_reserved"
+                        if active_registration
+                        else "assessment_started"
                         if assessment is not None
                         else "waiting_for_intake"
                     ),
@@ -389,7 +507,11 @@ class RegistrationCoordinator:
             event_data={"project_id": project_id, "activity_id": activity_id},
             apply=apply,
             after_commit=(
-                None
+                (
+                    lambda _result: self._continue_reserved_intake(activity_id)
+                    if active_registration
+                    else None
+                )
                 if assessment is None
                 else lambda _result: self._launch_assignment(
                     assessment, "project_architect"
@@ -459,6 +581,10 @@ class RegistrationCoordinator:
                 ),
                 expected_record_version=int(project[1]),
             )
+            if self.recovery is not None:
+                self.recovery.release_intake_reservation_in(
+                    transaction, request.activity_id
+                )
             return OperationResult(
                 data={
                     "status": result.status,
@@ -494,6 +620,7 @@ class RegistrationCoordinator:
             ).fetchone()
         if confirmed is not None:
             raise ValueError("a confirmed registration cannot be cancelled")
+        self._stop_active_assignment_before_cancel(request.activity_id)
         if self.recovery is not None:
             with self.database.read_connection() as connection:
                 recovery_attempt = connection.execute(
@@ -567,6 +694,10 @@ class RegistrationCoordinator:
                     ),
                     expected_record_version=int(project[1]),
                 )
+            if self.recovery is not None:
+                self.recovery.release_intake_reservation_in(
+                    transaction, request.activity_id
+                )
             return OperationResult(
                 data={"state": "cancelled"},
                 project_id=request.project_id,
@@ -586,9 +717,11 @@ class RegistrationCoordinator:
             raise ValueError("registration.retry requires project and activity context")
         if request.question_id is not None or request.expected_version is None:
             raise ValueError("registration.retry requires an exact activity version")
+        if set(request.payload) == {"assignment_id", "failed_run_id", "intervention"}:
+            return self._prepare_agent_retry(request)
         if set(request.payload) != {"publication_operation_id", "intervention"}:
             raise ValueError(
-                "registration.retry requires publication_operation_id and intervention"
+                "registration.retry requires an exact publication or agent failure identity and intervention"
             )
         operation_id = _text(
             request.payload["publication_operation_id"],
@@ -723,6 +856,133 @@ class RegistrationCoordinator:
             apply=apply,
         )
 
+    def _prepare_agent_retry(self, request: RequestEnvelope) -> PreparedOperation:
+        assert request.project_id is not None and request.activity_id is not None
+        assert request.expected_version is not None
+        assignment_id = _text(request.payload["assignment_id"], "assignment_id")
+        failed_run_id = _text(request.payload["failed_run_id"], "failed_run_id")
+        intervention = _text(request.payload["intervention"], "intervention")
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT role, assignment_id, failed_run_id, state,
+                          automatic_limit, automatic_consumed, manual_consumed
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ?""",
+                (request.activity_id,),
+            ).fetchone()
+        if row is None or str(row[3]) != "paused":
+            raise ValueError("registration has no paused agent failure to retry")
+        if (str(row[1]), str(row[2])) != (assignment_id, failed_run_id):
+            raise ValueError("agent retry does not match the displayed failed assignment")
+        role = str(row[0])
+        assessment = self.binding.assessment(request.activity_id)
+        failed = assessment.current_run(role)
+        if (failed.assignment_id, failed.run_id) != (assignment_id, failed_run_id):
+            raise ValueError("agent retry failure is no longer the current saved run")
+        try:
+            observed = self.binding.poll_current_agent(assessment, role)
+        except SupervisionError as error:
+            raise ValueError(
+                f"agent retry cannot prove the failed run is terminal: {error}"
+            ) from error
+        else:
+            if observed.state not in {
+                "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+            }:
+                raise ValueError(
+                    f"agent retry is blocked until the failed run is terminal ({observed.state})"
+                )
+        replacement_run_id = f"{role}-run-{uuid.uuid4().hex}"
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            current = transaction.execute(
+                """SELECT state, assignment_id, failed_run_id, manual_consumed
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ?""",
+                (request.activity_id,),
+            ).fetchone()
+            if current is None or (
+                str(current[0]), str(current[1]), str(current[2])
+            ) != ("paused", assignment_id, failed_run_id):
+                raise ValueError("agent retry failure changed before reservation")
+            replacement = self.binding.retry_technical_in(
+                transaction, assessment, role, failed, replacement_run_id
+            )
+            transaction.execute(
+                """INSERT INTO installed_registration_agent_retry_requests(
+                       request_id, activity_id, assignment_id, failed_run_id,
+                       replacement_run_id, kind, intervention, state
+                   ) VALUES (?, ?, ?, ?, ?, 'manual', ?, 'reserved')""",
+                (
+                    request.request_id,
+                    request.activity_id,
+                    assignment_id,
+                    failed_run_id,
+                    replacement.run_id,
+                    intervention,
+                ),
+            )
+            transaction.execute(
+                """UPDATE installed_registration_agent_failures
+                   SET state = 'retrying', manual_consumed = manual_consumed + 1
+                   WHERE activity_id = ?""",
+                (request.activity_id,),
+            )
+            activity = _activity_row(transaction, request.activity_id)
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    request.activity_id,
+                    request.project_id,
+                    "registration",
+                    str(activity[1]),
+                    "running",
+                    next_version,
+                    waiting_reason="Retrying the saved agent assignment",
+                    started_at=None if activity[3] is None else str(activity[3]),
+                    available_actions=(
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                ),
+                expected_record_version=request.expected_version,
+            )
+            return OperationResult(
+                data={
+                    "assignment_id": assignment_id,
+                    "failed_run_id": failed_run_id,
+                    "replacement_run_id": replacement.run_id,
+                    "intervention": intervention,
+                    "automatic_limit": int(row[4]),
+                    "automatic_consumed": int(row[5]),
+                    "manual_consumed": int(current[3]) + 1,
+                },
+                project_id=request.project_id,
+                activity_id=request.activity_id,
+            )
+
+        def after_commit(_result: OperationResult) -> None:
+            launched = self._launch_assignment(assessment, role)
+            with self.database.transaction() as transaction:
+                transaction.execute(
+                    """UPDATE installed_registration_agent_retry_requests
+                       SET state = ? WHERE request_id = ?""",
+                    ("launched" if launched else "failed", request.request_id),
+                )
+
+        return PreparedOperation(
+            entity_id=request.activity_id,
+            event_type="registration.agent-retried",
+            event_data={
+                "activity_id": request.activity_id,
+                "assignment_id": assignment_id,
+                "failed_run_id": failed_run_id,
+            },
+            apply=apply,
+            after_commit=after_commit,
+        )
+
     def detail(self, activity_id: str) -> dict[str, object]:
         with self.database.read_connection() as connection:
             activity = connection.execute(
@@ -744,11 +1004,27 @@ class RegistrationCoordinator:
                 "SELECT state_json FROM registration_assessment_state WHERE activity_id = ?",
                 (activity_id,),
             ).fetchone()
+            comparison = connection.execute(
+                """SELECT comparison_json FROM registration_recovery_attempts
+                   WHERE activity_id = ?""",
+                (activity_id,),
+            ).fetchone()
+            agent_failure = connection.execute(
+                """SELECT assignment_id, failed_run_id, role, reason,
+                          automatic_limit, automatic_consumed, manual_consumed, state
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ?""",
+                (activity_id,),
+            ).fetchone()
         package = None if candidate is None else json.loads(str(candidate[0]))
         activity_state = str(activity[1])
         state = activity_state
         ready = False
-        if assessment is not None:
+        if activity_state == "paused":
+            state = "Paused"
+        elif assessment is not None and activity_state not in {
+            "completed", "cancelled", "failed"
+        }:
             saved = json.loads(str(assessment[0]))
             state = str(saved.get("state", state)).replace("_", " ").title()
             ready = saved.get("state") == "ready"
@@ -763,6 +1039,25 @@ class RegistrationCoordinator:
             "activity_version": int(activity[2]),
             "state": state,
             "package_ref": package,
+            "comparison": (
+                None
+                if comparison is None or comparison[0] is None
+                else json.loads(str(comparison[0]))
+            ),
+            "agent_retry": (
+                None
+                if agent_failure is None or str(agent_failure[7]) == "resolved"
+                else {
+                    "assignment_id": str(agent_failure[0]),
+                    "failed_run_id": str(agent_failure[1]),
+                    "role": str(agent_failure[2]),
+                    "reason": str(agent_failure[3]),
+                    "automatic_limit": int(agent_failure[4]),
+                    "automatic_consumed": int(agent_failure[5]),
+                    "manual_consumed": int(agent_failure[6]),
+                    "state": str(agent_failure[7]),
+                }
+            ),
             "history": history,
             "can_confirm": bool(
                 ready
@@ -814,10 +1109,25 @@ class RegistrationCoordinator:
                             "message": str(error),
                         }
                     )
+        assignment_recovery: list[dict[str, str]] = []
+        for activity_id in restored:
+            try:
+                result = self._reconcile_saved_assignment(activity_id)
+                if result is not None:
+                    assignment_recovery.append(result)
+            except (RegistrationAssessmentError, SupervisionError, ValueError) as error:
+                errors.append(
+                    {
+                        "kind": "agent assignment",
+                        "activity_id": activity_id,
+                        "message": str(error),
+                    }
+                )
         return {
             "restored_assessments": restored,
             "recovered_publications": recovered,
             "unfinished_recoveries": tuple(recovery_activities),
+            "agent_assignments": tuple(assignment_recovery),
             "errors": tuple(errors),
         }
 
@@ -940,6 +1250,122 @@ class RegistrationCoordinator:
                 ),
             )
         self._launch_assignment(assessment, "project_architect")
+
+    def _continue_reserved_intake(self, activity_id: str) -> None:
+        """Run re-registration intake only after its idle reservation commits."""
+        with self.database.read_connection() as connection:
+            row = connection.execute(
+                """SELECT project_id, request_json FROM installed_registration_intake
+                   WHERE activity_id = ? AND state = 'waiting_for_intake'""",
+                (activity_id,),
+            ).fetchone()
+        if row is None:
+            return
+        project_id = str(row[0])
+        try:
+            saved_request = json.loads(str(row[1]))
+            if not isinstance(saved_request, Mapping):
+                raise ValueError("saved registration intake request is invalid")
+            intake_request = _intake_request_from_record(saved_request)
+            collector = _CollectedQuestions()
+            assert self.intake is not None
+            intake = self.intake.begin(intake_request, questions=collector)
+            assessment = None
+            selections = None
+            if intake.inventory is not None:
+                selections = RoleSelections(
+                    _tool_selection(
+                        intake_request.architect_selection, "architect_selection"
+                    ),
+                    _tool_selection(
+                        intake_request.reviewer_selection, "reviewer_selection"
+                    ),
+                )
+                dependencies = self._require_runtime()
+                assessment = self.binding.plugin.start_assessment(
+                    snapshot=dependencies.process_snapshot,
+                    activity_id=activity_id,
+                    project_id=project_id,
+                    intake=intake,
+                    selections=selections,
+                )
+                assessment.bind_process_snapshot(dependencies.process_snapshot)
+        except (IntakeError, OSError, RuntimeError, TypeError, ValueError) as error:
+            attempted = error.attempt if isinstance(error, IntakeError) else None
+            if attempted is not None:
+                with self.database.transaction() as transaction:
+                    transaction.execute(
+                        """UPDATE installed_registration_intake SET intake_json = ?
+                           WHERE activity_id = ?""",
+                        (attempted.to_json(), activity_id),
+                    )
+            self._set_activity_presentation(
+                activity_id,
+                "paused",
+                f"Re-registration intake needs intervention: {error}",
+                (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+            return
+        with self.database.transaction() as transaction:
+            if self.recovery is None:
+                raise ValueError("installed re-registration recovery is not configured")
+            self.recovery.require_work_start_allowed(
+                transaction, project_id, activity_id
+            )
+            activity = _activity_row(transaction, activity_id)
+            current_version = int(activity[4])
+            next_version = current_version + 1
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    activity_id,
+                    project_id,
+                    "registration",
+                    str(activity[1]),
+                    "running" if assessment is not None else "waiting",
+                    next_version,
+                    waiting_reason=(
+                        None
+                        if assessment is not None
+                        else "Registration intake needs answers"
+                    ),
+                    started_at=None if activity[3] is None else str(activity[3]),
+                    available_actions=(
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                ),
+                expected_record_version=current_version,
+            )
+            transaction.execute(
+                "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
+                (next_version, activity_id),
+            )
+            transaction.execute(
+                """UPDATE installed_registration_intake
+                   SET intake_json = ?, state = ? WHERE activity_id = ?""",
+                (
+                    intake.to_json(),
+                    "assessment_started" if assessment is not None else "waiting_for_intake",
+                    activity_id,
+                ),
+            )
+            for question in collector.values:
+                self._publish_intake_question(
+                    transaction, project_id, activity_id, question
+                )
+            if assessment is not None and selections is not None:
+                self.binding.save_intake_in(
+                    transaction, activity_id, project_id, intake, selections
+                )
+                self.binding.install_started(transaction, assessment)
+        if assessment is not None:
+            self._launch_assignment(assessment, "project_architect")
 
     def _publish_intake_question(
         self,
@@ -1071,29 +1497,248 @@ class RegistrationCoordinator:
 
     def _launch_assignment(
         self, assessment: RegistrationAssessment, role: str
-    ) -> None:
+    ) -> bool:
         if self.dependencies is None or self.dependencies.assignment_launcher is None:
+            return False
+        try:
+            if self.recovery is not None:
+                with self.database.transaction() as transaction:
+                    self.recovery.require_work_start_allowed(
+                        transaction,
+                        assessment.context.project_id,
+                        assessment.context.activity_id,
+                    )
+            self.dependencies.assignment_launcher(self.binding, assessment, role)
+            return True
+        except (OSError, RuntimeError, ValueError) as error:
+            run = assessment.current_run(role)
+            self._assignment_failed(
+                assessment.context.activity_id,
+                role,
+                run.assignment_id,
+                run.run_id,
+                f"assignment could not start: {error}",
+            )
+            return False
+
+    def _stop_active_assignment_before_cancel(self, activity_id: str) -> None:
+        try:
+            assessment = self.binding.assessment(activity_id)
+        except RegistrationAssessmentError:
+            return
+        state = assessment.status.state
+        if state == "awaiting_architect":
+            role = "project_architect"
+        elif state == "awaiting_reviewer":
+            role = "fidelity_reviewer"
+        else:
             return
         try:
-            self.dependencies.assignment_launcher(self.binding, assessment, role)
-        except (OSError, RuntimeError, ValueError) as error:
+            observed = self.binding.poll_current_agent(assessment, role)
+        except SupervisionError as error:
+            if error.code == "unknown_operation":
+                return
+            raise ValueError(f"active agent cancellation could not be reconciled: {error}") from error
+        if observed.state == "running":
+            observed = self.binding.stop_current_agent(
+                assessment, role, "cancelled"
+            )
+        if observed.state not in {
+            "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+        }:
+            raise ValueError(
+                "registration cancellation is paused until the active agent stop "
+                f"is confirmed ({observed.state})"
+            )
+
+    def _reconcile_saved_assignment(
+        self, activity_id: str
+    ) -> dict[str, str] | None:
+        assessment = self.binding.assessment(activity_id)
+        with self.database.read_connection() as connection:
+            activity = connection.execute(
+                "SELECT state FROM service_activities WHERE activity_id = ?",
+                (activity_id,),
+            ).fetchone()
+            saved_failure = connection.execute(
+                """SELECT role, assignment_id, failed_run_id, reason
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ? AND state = 'paused'""",
+                (activity_id,),
+            ).fetchone()
+        if activity is None or str(activity[0]) in {"completed", "cancelled", "failed"}:
+            return None
+        state = assessment.status.state
+        if state == "technical_recovery":
+            if saved_failure is None:
+                self._set_activity_presentation(
+                    activity_id,
+                    "paused",
+                    "Saved technical recovery lacks its failed assignment identity; "
+                    "cancel or inspect the preserved supervisor record.",
+                    (
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                )
+                return {"activity_id": activity_id, "state": "paused-incomplete"}
             self._set_activity_presentation(
-                assessment.context.activity_id,
+                activity_id,
                 "paused",
-                f"Agent assignment could not start: {error}",
+                f"Saved agent assignment needs intervention: {saved_failure[3]}",
+                (
+                    ActivityAction(
+                        "registration-retry.agent", "Retry activity", "recovery"
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+            return {"activity_id": activity_id, "state": "paused"}
+        if state == "awaiting_architect":
+            role = "project_architect"
+        elif state == "awaiting_reviewer":
+            role = "fidelity_reviewer"
+        else:
+            return None
+        current = assessment.current_run(role)
+        try:
+            observed = self.binding.poll_current_agent(assessment, role)
+        except SupervisionError as error:
+            if error.code != "unknown_operation":
+                raise
+            self._assignment_failed(
+                activity_id,
+                role,
+                current.assignment_id,
+                current.run_id,
+                "startup found no supervisor record for the saved assignment",
+            )
+            self._set_activity_presentation(
+                activity_id,
+                "paused",
+                "Saved agent assignment has no supervisor record; replacement is "
+                "blocked to prevent overlapping work.",
                 (
                     ActivityAction(
                         "registration-cancel", "Cancel registration", "decision"
                     ),
                 ),
             )
+            return {"activity_id": activity_id, "state": "paused"}
+        if observed.state == "running":
+            self._set_activity_presentation(
+                activity_id,
+                "paused",
+                "Saved agent assignment is still running; its response stream cannot "
+                "be safely reattached after restart.",
+                (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+            return {"activity_id": activity_id, "state": "running-paused"}
+        if observed.state in {
+            "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+        }:
+            self._assignment_failed(
+                activity_id,
+                role,
+                current.assignment_id,
+                current.run_id,
+                f"startup reconciled saved supervisor state {observed.state}",
+            )
+            return {"activity_id": activity_id, "state": "paused"}
+        self._set_activity_presentation(
+            activity_id,
+            "paused",
+            f"Saved agent assignment needs stop reconciliation ({observed.state}).",
+            (
+                ActivityAction(
+                    "registration-cancel", "Cancel registration", "decision"
+                ),
+            ),
+        )
+        return {"activity_id": activity_id, "state": "stop-unconfirmed"}
 
-    def _assignment_failed(self, activity_id: str, reason: str) -> None:
+    def _assignment_failed(
+        self,
+        activity_id: str,
+        role: str,
+        assignment_id: str,
+        failed_run_id: str,
+        reason: str,
+    ) -> None:
+        assessment = self.binding.assessment(activity_id)
+        failed = assessment.current_run(role)
+        if (failed.assignment_id, failed.run_id) != (assignment_id, failed_run_id):
+            return
+        recovery = assessment.process_snapshot.definition.get("recovery")
+        automatic_limit = (
+            recovery.get("automatic_recovery_attempts")
+            if isinstance(recovery, Mapping)
+            else None
+        )
+        if (
+            isinstance(automatic_limit, bool)
+            or not isinstance(automatic_limit, int)
+            or automatic_limit < 0
+        ):
+            automatic_limit = 0
+        with self.database.transaction() as transaction:
+            self.binding.pause_technical_in(transaction, assessment, role)
+            saved = transaction.execute(
+                """SELECT assignment_id, automatic_consumed, manual_consumed
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ?""",
+                (activity_id,),
+            ).fetchone()
+            automatic_consumed = (
+                int(saved[1])
+                if saved is not None and str(saved[0]) == assignment_id
+                else 0
+            )
+            manual_consumed = (
+                int(saved[2])
+                if saved is not None and str(saved[0]) == assignment_id
+                else 0
+            )
+            transaction.execute(
+                """INSERT INTO installed_registration_agent_failures(
+                       activity_id, role, assignment_id, failed_run_id, reason,
+                       state, automatic_limit, automatic_consumed, manual_consumed
+                   ) VALUES (?, ?, ?, ?, ?, 'paused', ?, ?, ?)
+                   ON CONFLICT(activity_id) DO UPDATE SET
+                       role = excluded.role,
+                       assignment_id = excluded.assignment_id,
+                       failed_run_id = excluded.failed_run_id,
+                       reason = excluded.reason,
+                       state = 'paused',
+                       automatic_limit = excluded.automatic_limit,
+                       automatic_consumed = excluded.automatic_consumed,
+                       manual_consumed = excluded.manual_consumed""",
+                (
+                    activity_id,
+                    role,
+                    assignment_id,
+                    failed_run_id,
+                    reason,
+                    automatic_limit,
+                    automatic_consumed,
+                    manual_consumed,
+                ),
+            )
         self._set_activity_presentation(
             activity_id,
             "paused",
             f"Agent assignment needs intervention: {reason}",
             (
+                ActivityAction(
+                    "registration-retry.agent", "Retry activity", "recovery"
+                ),
                 ActivityAction(
                     "registration-cancel", "Cancel registration", "decision"
                 ),
@@ -1178,16 +1823,19 @@ def build_registration_publication(
     confirmation = RegistrationConfirmationService(
         database, journal, dependencies.destination_provider
     )
-    profile = dependencies.destination_provider.profile
     routes = {}
-    for repository in profile.allowed_repositories:
-        for branch in profile.allowed_branches:
-            reference = hashlib.sha256(
-                canonical_json(profile.snapshot(repository, branch)).encode("utf-8")
-            ).hexdigest()
-            routes[reference] = HistoricalPublicationRoute(
-                journal, dependencies.destination_provider
-            )
+    for provider in destination_providers(dependencies.destination_provider):
+        profile = provider.profile
+        for repository in profile.allowed_repositories:
+            if destination_provider_for(
+                dependencies.destination_provider, repository
+            ) is not provider:
+                continue
+            for branch in profile.allowed_branches:
+                reference = hashlib.sha256(
+                    canonical_json(profile.snapshot(repository, branch)).encode("utf-8")
+                ).hexdigest()
+                routes[reference] = HistoricalPublicationRoute(journal, provider)
     recovery = RegistrationRecoveryService(
         database, journal, HistoricalDestinationProfiles(routes)
     )

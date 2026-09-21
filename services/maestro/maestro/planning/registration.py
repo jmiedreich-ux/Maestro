@@ -164,6 +164,38 @@ class RegistrationAssessment:
         self._current_runs["project_architect"] = run
         self._state = "awaiting_architect"
 
+    def pause_for_technical_recovery(self, role: str) -> None:
+        """Preserve the current assignment after a confirmed technical failure."""
+        if role not in self._current_runs:
+            raise RegistrationAssessmentError("registration recovery role is invalid")
+        expected = (
+            "awaiting_architect"
+            if role == "project_architect"
+            else "awaiting_reviewer"
+        )
+        if self._state not in {expected, "technical_recovery"}:
+            raise RegistrationAssessmentError(
+                "registration assignment is not eligible for technical recovery"
+            )
+        self._state = "technical_recovery"
+
+    def retry_technical_run(
+        self, role: str, failed: AssessmentRun, replacement_run_id: str
+    ) -> AssessmentRun:
+        """Create one replacement run under the same assignment and budgets."""
+        if self._state != "technical_recovery" or self.current_run(role) != failed:
+            raise RegistrationAssessmentError(
+                "registration technical retry does not match the current failed run"
+            )
+        replacement = AssessmentRun(failed.assignment_id, replacement_run_id)
+        self._current_runs[role] = replacement
+        self._state = (
+            "awaiting_architect"
+            if role == "project_architect"
+            else "awaiting_reviewer"
+        )
+        return replacement
+
     def current_run(self, role: str) -> AssessmentRun:
         try:
             return self._current_runs[role]

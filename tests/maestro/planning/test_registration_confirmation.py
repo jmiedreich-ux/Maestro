@@ -445,10 +445,11 @@ class RegistrationConfirmationTest(unittest.TestCase):
             "data": {
                 "project_id": "project-1", "activity_id": "activity-1",
                 "activity_version": 3, "state": "Ready to confirm",
-                "package_ref": package, "history": [], "can_confirm": True,
+                "package_ref": package, "comparison": None, "agent_retry": None,
+                "history": [], "can_confirm": True,
             }
         })
-        state = _TerminalState("project-1", "activity-1")
+        state = _TerminalState("project-1", "unrelated-activity")
         context = ExtensionContext(client, state)
         registry = ExtensionRegistry()
         interaction = RegistrationInteraction(
@@ -460,6 +461,10 @@ class RegistrationConfirmationTest(unittest.TestCase):
 
         rendered = registry.invoke_command("registration", context)
         self.assertIn("candidate-1", rendered)
+        self.assertEqual("activity-1", state.selected_activity_id)
+        self.assertEqual(
+            "/projects/project-1/registration", client.requested_paths[0]
+        )
         with self.assertRaisesRegex(ValueError, "displayed exact candidate"):
             registry.invoke_action("registration-confirm", context, "candidate-other")
         registry.invoke_action("registration-confirm", context, "candidate-1")
@@ -501,6 +506,56 @@ class RegistrationConfirmationTest(unittest.TestCase):
         }
         registry.invoke_action("registration-retry", context)
         self.assertIsNone(interaction.pending)
+
+    def test_terminal_shows_exact_update_and_retries_displayed_agent_run(self) -> None:
+        active = _terminal_package("candidate-active", "a")
+        candidate = _terminal_package("candidate-update", "c")
+        candidate["registration_version"] = 2
+        detail = _terminal_detail("project-1", "activity-2", candidate)
+        detail["data"]["comparison"] = {
+            "active_package_ref": active,
+            "candidate_package_ref": candidate,
+            "differences": [
+                {
+                    "kind": "changed",
+                    "item_id": "scope-one",
+                    "subject": "Registration scope",
+                    "area": "scope",
+                    "previous_version": 1,
+                    "candidate_version": 2,
+                    "reason_refs": ["decision-one"],
+                }
+            ],
+        }
+        detail["data"]["agent_retry"] = {
+            "assignment_id": "architect-assignment-one",
+            "failed_run_id": "architect-run-one",
+            "role": "project_architect",
+            "reason": "tool exited",
+            "automatic_limit": 2,
+            "automatic_consumed": 1,
+            "manual_consumed": 0,
+            "state": "paused",
+        }
+        client = _TerminalClient(detail)
+        state = _TerminalState("project-1", "unrelated-activity")
+        context = ExtensionContext(client, state)
+        interaction = RegistrationInteraction(request_id_factory=lambda: "retry-one")
+
+        rendered = interaction.open(context)
+        self.assertIn("candidate-active -> candidate candidate-update", rendered)
+        self.assertIn("changed: Registration scope", rendered)
+        self.assertIn("architect-assignment-one / failed run architect-run-one", rendered)
+        interaction.retry(context, "agent", "Operator verified the credential.")
+
+        self.assertEqual(
+            {
+                "assignment_id": "architect-assignment-one",
+                "failed_run_id": "architect-run-one",
+                "intervention": "Operator verified the credential.",
+            },
+            client.submissions[0]["payload"],
+        )
 
     def test_terminal_preserves_lost_acknowledgment_when_candidate_changes(self) -> None:
         package1 = _terminal_package("candidate-1", "a")
@@ -626,10 +681,12 @@ class _TerminalClient:
     def __init__(self, detail):
         self.detail = detail
         self.submissions: list[dict[str, object]] = []
+        self.requested_paths: list[str] = []
         self.connection_failures = 0
         self.request_response = None
 
     def get_json(self, path: str, *, timeout: int = 15):
+        self.requested_paths.append(path)
         if path.startswith("/requests/") and self.request_response is not None:
             return self.request_response
         return self.detail
@@ -665,6 +722,8 @@ def _terminal_detail(
             "activity_version": 3,
             "state": "Ready to confirm",
             "package_ref": package,
+            "comparison": None,
+            "agent_retry": None,
             "history": [],
             "can_confirm": True,
         }

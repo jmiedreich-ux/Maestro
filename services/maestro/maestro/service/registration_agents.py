@@ -23,7 +23,11 @@ from maestro.agents.transport import (
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspaceManager
 from maestro.foundation.credentials import RepositoryAuthorizer, ServiceGitTransport
 from maestro.foundation.git_read import run_git
-from maestro.foundation.github_destination import GitHubDestinationProvider
+from maestro.foundation.github_destination import (
+    GitHubDestination,
+    GitHubDestinationProvider,
+    GitHubDestinationRouter,
+)
 from maestro.planning.registration import RegistrationAssessment
 from maestro.planning.registration_plugin import RegistrationServiceBinding
 from maestro.planning.registration_records import ArtifactReference, RegistrationAgentResponse
@@ -71,19 +75,23 @@ class InstalledRegistrationAgentLauncher:
         service_home: Path,
         authorizer: RepositoryAuthorizer,
         transport: ServiceGitTransport,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         self.workspaces = WorkspaceManager(workspace_root)
         self.source_cache_root = _service_directory(source_cache_root)
         self.service_home = Path(service_home)
         self.authorizer = authorizer
         self.transport = transport
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
+            raise TypeError("registration launcher requires a GitHub destination provider")
         self.destination_provider = destination_provider
         self.validator = RegistrationResponseValidator()
-        self._failure_listener: Callable[[str, str], None] | None = None
+        self._failure_listener: Callable[[str, str, str, str, str], None] | None = None
 
     def connect_failure_listener(
-        self, listener: Callable[[str, str], None]
+        self, listener: Callable[[str, str, str, str, str], None]
     ) -> None:
         if not callable(listener):
             raise TypeError("registration assignment failure listener must be callable")
@@ -364,6 +372,15 @@ class InstalledRegistrationAgentLauncher:
                 binding.submit_architect(record)
             else:
                 binding.submit_reviewer(record)
+            if record.result == "technical_failure" and self._failure_listener is not None:
+                assert record.failure is not None
+                self._failure_listener(
+                    assessment.context.activity_id,
+                    role,
+                    assignment.assignment_id,
+                    assignment.run_id,
+                    f"{record.failure['code']}: {record.failure['message']}",
+                )
         except Exception as error:
             # The supervisor journal and preserved workspace retain exact failure
             # evidence. Recovery remains an explicit service action.
@@ -374,6 +391,9 @@ class InstalledRegistrationAgentLauncher:
             if self._failure_listener is not None:
                 self._failure_listener(
                     assessment.context.activity_id,
+                    role,
+                    assignment.assignment_id,
+                    assignment.run_id,
                     f"{type(error).__name__}: {error}",
                 )
             return

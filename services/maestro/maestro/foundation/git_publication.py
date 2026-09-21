@@ -22,9 +22,11 @@ from .credentials import (
 )
 from .database import Database, Transaction
 from .github_destination import (
+    GitHubDestination,
     GitHubDestinationAuthorization,
     GitHubDestinationAuthorizationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
 )
 from .git_read import GitReadError, RemoteGitReader, RemoteSnapshot, run_git, validate_object_id, validate_repository_path
 
@@ -147,7 +149,7 @@ class PublicationJournal:
         database: Database,
         authorizer: RepositoryAuthorizer,
         transport: ServiceGitTransport,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         if not isinstance(database, Database):
             raise TypeError("PublicationJournal requires the service Database")
@@ -155,7 +157,9 @@ class PublicationJournal:
             raise TypeError("PublicationJournal requires RepositoryAuthorizer")
         if not isinstance(transport, ServiceGitTransport):
             raise TypeError("PublicationJournal requires ServiceGitTransport")
-        if not isinstance(destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
             raise TypeError("PublicationJournal requires GitHubDestinationProvider")
         self._database = database
         self._authorizer = authorizer

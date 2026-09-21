@@ -474,6 +474,89 @@ class RegistrationServiceBinding:
     def stop_agent(self, operation: OperationIdentity, reason: str) -> RunRecord:
         return self.__supervisor_authority.stop(operation, reason)
 
+    def current_operation(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> OperationIdentity:
+        return self._operation_and_route(assessment, role)[0]
+
+    def poll_current_agent(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> RunRecord:
+        return self.__supervisor_authority.poll(
+            self.current_operation(assessment, role)
+        )
+
+    def stop_current_agent(
+        self, assessment: RegistrationAssessment, role: str, reason: str
+    ) -> RunRecord:
+        return self.__supervisor_authority.stop(
+            self.current_operation(assessment, role), reason
+        )
+
+    def pause_technical(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> None:
+        with self.database.transaction() as transaction:
+            self.pause_technical_in(transaction, assessment, role)
+
+    @staticmethod
+    def pause_technical_in(
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+        role: str,
+    ) -> None:
+        assessment.pause_for_technical_recovery(role)
+        updated = transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (
+                canonical_json(assessment.to_record()),
+                assessment.context.activity_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "saved registration assessment state is unavailable"
+            )
+
+    def retry_technical_in(
+        self,
+        transaction: Transaction,
+        assessment: RegistrationAssessment,
+        role: str,
+        failed: AssessmentRun,
+        replacement_run_id: str,
+    ) -> AssessmentRun:
+        replacement = assessment.retry_technical_run(
+            role, failed, replacement_run_id
+        )
+        updated = transaction.execute(
+            """UPDATE registration_assessment_runs
+               SET run_id = ?, runtime_identity_json = NULL
+               WHERE activity_id = ? AND role = ?
+                 AND assignment_id = ? AND run_id = ?""",
+            (
+                replacement.run_id,
+                assessment.context.activity_id,
+                role,
+                failed.assignment_id,
+                failed.run_id,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RegistrationAssessmentError(
+                "registration failed run is no longer current"
+            )
+        transaction.execute(
+            """UPDATE registration_assessment_state SET state_json = ?
+               WHERE activity_id = ?""",
+            (
+                canonical_json(assessment.to_record()),
+                assessment.context.activity_id,
+            ),
+        )
+        return replacement
+
     def continue_after_review(
         self, assessment: RegistrationAssessment
     ) -> RegistrationAssessment:

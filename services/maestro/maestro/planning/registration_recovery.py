@@ -18,6 +18,7 @@ from maestro.foundation.git_publication import (
 from maestro.foundation.github_destination import (
     GitHubDestinationAuthorization,
     GitHubDestinationProvider,
+    destination_provider_for,
 )
 from maestro.service.authentication import VerifiedActor
 from maestro.service.processes import ProcessSnapshot
@@ -112,11 +113,32 @@ REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_RECOVERY_START_RESERVATION_MIGRATION = DomainMigration(
+    domain="registration_recovery",
+    version=3,
+    identity="registration-recovery-start-reservation-v3",
+    statements=(
+        """
+        CREATE TABLE registration_project_reservations(
+            activity_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('reserved', 'bound', 'released'))
+        )
+        """,
+        """
+        CREATE UNIQUE INDEX registration_project_active_reservation
+        ON registration_project_reservations(project_id)
+        WHERE state != 'released'
+        """,
+    ),
+)
+
 
 def registration_recovery_migrations() -> tuple[DomainMigration, ...]:
     return (
         REGISTRATION_RECOVERY_MIGRATION,
         REGISTRATION_RECOVERY_RETRY_DISPATCH_MIGRATION,
+        REGISTRATION_RECOVERY_START_RESERVATION_MIGRATION,
     )
 
 
@@ -361,6 +383,35 @@ class RegistrationRecoveryService:
         with self.database.read_connection() as connection:
             return self._authoritative_continuity_in(connection, project_id, activity_id)
 
+    def reserve_intake_in(
+        self, transaction: Transaction, project_id: str, activity_id: str
+    ) -> None:
+        """Atomically prove idleness and reserve before re-registration intake."""
+        canonical_identifier(project_id, "project_id")
+        canonical_identifier(activity_id, "activity_id")
+        self._require_idle(transaction, project_id, activity_id)
+        try:
+            transaction.execute(
+                """INSERT INTO registration_project_reservations(
+                       activity_id, project_id, state
+                   ) VALUES (?, ?, 'reserved')""",
+                (activity_id, project_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise RegistrationRecoveryError(
+                "another project-work start already holds the project reservation"
+            ) from error
+
+    def release_intake_reservation_in(
+        self, transaction: Transaction, activity_id: str
+    ) -> None:
+        canonical_identifier(activity_id, "activity_id")
+        transaction.execute(
+            """UPDATE registration_project_reservations SET state = 'released'
+               WHERE activity_id = ? AND state != 'released'""",
+            (activity_id,),
+        )
+
     def begin(
         self,
         *,
@@ -465,6 +516,11 @@ class RegistrationRecoveryService:
                         canonical_json(authoritative_process_record),
                     ),
                 )
+                transaction.execute(
+                    """UPDATE registration_project_reservations SET state = 'bound'
+                       WHERE activity_id = ? AND project_id = ? AND state = 'reserved'""",
+                    (activity_id, project_id),
+                )
             except sqlite3.IntegrityError as error:
                 raise RegistrationRecoveryError(
                     "another re-registration start already holds the project reservation"
@@ -485,6 +541,15 @@ class RegistrationRecoveryService:
         if row is not None and str(row[0]) != activity_id:
             raise RegistrationRecoveryError(
                 "project work cannot start while re-registration is reserved"
+            )
+        early = transaction.execute(
+            """SELECT activity_id FROM registration_project_reservations
+               WHERE project_id = ? AND state != 'released'""",
+            (project_id,),
+        ).fetchone()
+        if early is not None and str(early[0]) != activity_id:
+            raise RegistrationRecoveryError(
+                "project work cannot start while re-registration intake is reserved"
             )
 
     def record_candidate(
@@ -682,7 +747,10 @@ class RegistrationRecoveryService:
             route, authorization = self._route_for(row, operation_id)
             if (
                 confirmation_service.journal is not route.journal
-                or confirmation_service.destination_provider is not route.destination_provider
+                or destination_provider_for(
+                    confirmation_service.destination_provider,
+                    str(authorization.snapshot["repository"]),
+                ) is not route.destination_provider
             ):
                 raise RegistrationRecoverySetupError(
                     "candidate service is not bound to the saved destination profile"
@@ -840,7 +908,10 @@ class RegistrationRecoveryService:
             raise
         if (
             confirmation_service.journal is not route.journal
-            or confirmation_service.destination_provider is not route.destination_provider
+            or destination_provider_for(
+                confirmation_service.destination_provider,
+                str(authorization.snapshot["repository"]),
+            ) is not route.destination_provider
         ):
             error = RegistrationRecoverySetupError(
                 "confirmation service is not bound to the saved destination profile"

@@ -22,9 +22,11 @@ from maestro.foundation.git_publication import (
     PublicationStateError,
 )
 from maestro.foundation.github_destination import (
+    GitHubDestination,
     GitHubDestinationAuthorization,
     GitHubDestinationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
 )
 from maestro.foundation.git_read import GitReadError, validate_object_id
 from maestro.service.authentication import OWNER_AUTHORITY, VerifiedActor
@@ -229,13 +231,15 @@ class RegistrationConfirmationService:
         self,
         database: Database,
         journal: PublicationJournal,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         if not isinstance(database, Database):
             raise TypeError("registration confirmation requires the service Database")
         if not isinstance(journal, PublicationJournal):
             raise TypeError("registration confirmation requires PublicationJournal")
-        if not isinstance(destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
             raise TypeError("registration confirmation requires GitHubDestinationProvider")
         self.database = database
         self.journal = journal

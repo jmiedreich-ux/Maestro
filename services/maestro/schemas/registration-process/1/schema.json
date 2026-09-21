@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Registration process configuration",
+  "description": "Validates the effective registration TOML table after documented numeric defaults. Policy behavior and registration output contracts are defined by the Maestro architecture; this schema does not validate output records.",
+  "$ref": "#/$defs/processDefinition",
+  "$defs": {
+    "processDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {"const": 1},
+        "maximum_fidelity_reviews": {"type": "integer", "minimum": 1},
+        "architect": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "run_timeout_seconds": {"type": "integer", "minimum": 1}
+          },
+          "required": ["run_timeout_seconds"]
+        },
+        "fidelity_reviewer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "run_timeout_seconds": {"type": "integer", "minimum": 1}
+          },
+          "required": ["run_timeout_seconds"]
+        },
+        "initiation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "registration_intake_or_idle_update"},
+            "start_operation": {"const": "registration.start"}
+          },
+          "required": ["policy", "start_operation"]
+        },
+        "agent_session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "fixed_assignment_followups"},
+            "architect_role": {"const": "project_architect"},
+            "reviewer_role": {"const": "fidelity_reviewer"}
+          },
+          "required": ["policy", "architect_role", "reviewer_role"]
+        },
+        "saved_outputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "versioned_registration_package"},
+            "contract": {"const": "registration_package_v1"},
+            "root": {"const": ".maestro/registrations"}
+          },
+          "required": ["policy", "contract", "root"]
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "bounded_independent_fidelity"}
+          },
+          "required": ["policy"]
+        },
+        "confirmation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "explicit_exact_candidate_activation"},
+            "on_complete": {"const": "stop"}
+          },
+          "required": ["policy", "on_complete"]
+        },
+        "recovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy": {"const": "reconcile_preserved_registration"},
+            "automatic_recovery_attempts": {"type": "integer", "minimum": 0}
+          },
+          "required": ["policy", "automatic_recovery_attempts"]
+        }
+      },
+      "required": [
+        "schema_version",
+        "maximum_fidelity_reviews",
+        "architect",
+        "fidelity_reviewer",
+        "initiation",
+        "agent_session",
+        "saved_outputs",
+        "review",
+        "confirmation",
+        "recovery"
+      ]
+    }
+  }
+}

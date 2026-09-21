@@ -314,6 +314,91 @@ class GitHubDestinationProvider:
         return GitHubDestinationAuthorization(decision, snapshot, observed_at, hashes, reason)
 
 
+class GitHubDestinationRouter:
+    """Route each exact repository to its one configured destination provider."""
+
+    def __init__(self, providers: Mapping[str, GitHubDestinationProvider]) -> None:
+        checked: dict[str, GitHubDestinationProvider] = {}
+        for repository, provider in providers.items():
+            normalized = normalize_repository(repository)
+            if not isinstance(provider, GitHubDestinationProvider):
+                raise TypeError("GitHub destination routes require configured providers")
+            if normalized in checked or normalized not in provider.profile.allowed_repositories:
+                raise GitHubDestinationConfigurationError(
+                    "each repository requires one matching GitHub destination provider"
+                )
+            checked[normalized] = provider
+        if not checked:
+            raise GitHubDestinationConfigurationError(
+                "at least one GitHub destination route is required"
+            )
+        self._providers = checked
+
+    @property
+    def providers(self) -> tuple[GitHubDestinationProvider, ...]:
+        return tuple(dict.fromkeys(self._providers.values()))
+
+    def provider_for(self, repository: str) -> GitHubDestinationProvider:
+        normalized = normalize_repository(repository)
+        try:
+            return self._providers[normalized]
+        except KeyError as error:
+            raise GitHubDestinationConfigurationError(
+                "repository has no configured GitHub destination route"
+            ) from error
+
+    def authorize(
+        self, repository: str, branch: str, *, now: float | None = None
+    ) -> GitHubDestinationAuthorization:
+        return self.provider_for(repository).authorize(repository, branch, now=now)
+
+    def require_fresh_match(
+        self,
+        result: GitHubDestinationAuthorization,
+        authorization: AuthorizedRepository,
+        *,
+        now: float | None = None,
+    ) -> None:
+        self.provider_for(authorization.repository).require_fresh_match(
+            result, authorization, now=now
+        )
+
+    def bind_transport(
+        self,
+        result: GitHubDestinationAuthorization,
+        transport: ServiceGitTransport,
+        authorization: AuthorizedRepository,
+        *,
+        now: float | None = None,
+    ):
+        return self.provider_for(authorization.repository).bind_transport(
+            result, transport, authorization, now=now
+        )
+
+
+GitHubDestination = GitHubDestinationProvider | GitHubDestinationRouter
+
+
+def destination_provider_for(
+    destination: GitHubDestination, repository: str
+) -> GitHubDestinationProvider:
+    if isinstance(destination, GitHubDestinationRouter):
+        return destination.provider_for(repository)
+    if isinstance(destination, GitHubDestinationProvider):
+        return destination
+    raise TypeError("GitHub destination provider is invalid")
+
+
+def destination_providers(
+    destination: GitHubDestination,
+) -> tuple[GitHubDestinationProvider, ...]:
+    if isinstance(destination, GitHubDestinationRouter):
+        return destination.providers
+    if isinstance(destination, GitHubDestinationProvider):
+        return (destination,)
+    raise TypeError("GitHub destination provider is invalid")
+
+
 class GitHubRestDestinationApi:
     """The actual GitHub REST boundary used by installed service composition."""
 

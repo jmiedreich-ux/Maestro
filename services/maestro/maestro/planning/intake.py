@@ -18,9 +18,11 @@ from maestro.foundation.credentials import (
 )
 from maestro.foundation.git_read import run_git
 from maestro.foundation.github_destination import (
+    GitHubDestination,
     GitHubDestinationAuthorization,
     GitHubDestinationAuthorizationError,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
 )
 
 from .sources import ExactSourceReader, SourceIntakeError, SourceInventory, validate_source_ref
@@ -294,7 +296,7 @@ class RegistrationIntake:
         sources: ExactSourceReader,
         authorizer: RepositoryAuthorizer,
         transport: ServiceGitTransport,
-        destination_provider: GitHubDestinationProvider,
+        destination_provider: GitHubDestination,
     ) -> None:
         if not isinstance(sources, ExactSourceReader):
             raise TypeError("registration intake requires an exact source reader")
@@ -302,7 +304,9 @@ class RegistrationIntake:
             raise TypeError("registration intake requires a repository authorizer")
         if not isinstance(transport, ServiceGitTransport):
             raise TypeError("registration intake requires service Git transport")
-        if not isinstance(destination_provider, GitHubDestinationProvider):
+        if not isinstance(
+            destination_provider, (GitHubDestinationProvider, GitHubDestinationRouter)
+        ):
             raise TypeError("registration intake requires the publication-owned GitHub destination provider")
         self._sources = sources
         self._authorizer = authorizer

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import selectors
 import stat
 import subprocess
 from collections.abc import Mapping
@@ -25,6 +27,7 @@ from maestro.foundation.credentials import (
 from maestro.foundation.github_destination import (
     GitHubAppDestinationProfile,
     GitHubDestinationProvider,
+    GitHubDestinationRouter,
     GitHubRestDestinationApi,
 )
 from maestro.planning.registration_plugin import RegistrationProcessPlugin
@@ -45,44 +48,328 @@ _CAPABILITIES = (
 
 
 class InstalledToolInspector:
-    """Observe an exact configured executable at process-start preflight."""
+    """Obtain live tool-native route evidence without reading project sources."""
 
-    def __init__(self, tool: str, provider: str) -> None:
+    def __init__(self, tool: str, provider: str, service_home: Path) -> None:
         self.tool = tool
         self.provider = provider
+        self.service_home = Path(service_home)
 
     def inspect(self, route: ToolRoute, configuration_hash: str) -> AdapterObservation:
         try:
+            evidence = (
+                self._inspect_codex(route)
+                if self.tool == "codex"
+                else self._inspect_claude(route)
+            )
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            return AdapterObservation(
+                False, None, None, (), (), (), None, {}, False, None, None,
+                False, False, False, None,
+                f"configured {self.tool} route could not produce live evidence: {error}",
+            )
+        models, context_limits, version = evidence
+        return AdapterObservation(
+            True,
+            version,
+            self.provider,
+            models,
+            (),
+            _CAPABILITIES,
+            "cloud",
+            context_limits,
+            True,
+            route.credential_profile,
+            route.settings_profile,
+            True,
+            True,
+            True,
+            configuration_hash,
+            None,
+        )
+
+    def _inspect_codex(
+        self, route: ToolRoute
+    ) -> tuple[tuple[str, ...], dict[str, int], str]:
+        process = subprocess.Popen(
+            (str(route.executable), "app-server"),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0,
+            env=self._environment(),
+        )
+        try:
+            if process.stdin is None or process.stdout is None:
+                raise ValueError("Codex app-server pipes are unavailable")
+            self._write_json(
+                process,
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "clientInfo": {"name": "maestro-preflight", "version": "1"},
+                        "capabilities": {"experimentalApi": False},
+                    },
+                },
+            )
+            initialized = self._codex_response(process, 1)
+            version = initialized.get("userAgent")
+            if not isinstance(version, str) or not version:
+                raise ValueError("Codex app-server version metadata is unavailable")
+            self._write_json(
+                process, {"jsonrpc": "2.0", "method": "initialized", "params": {}}
+            )
+            self._write_json(
+                process,
+                {"jsonrpc": "2.0", "id": 2, "method": "model/list", "params": {}},
+            )
+            catalog = self._codex_response(process, 2).get("data")
+            if not isinstance(catalog, list):
+                raise ValueError("Codex model catalog is unavailable")
+            exact_entries: dict[str, Mapping[str, object]] = {}
+            context_limits: dict[str, int] = {}
+            for model_id in route.allowed_model_ids:
+                matches = [
+                    item for item in catalog
+                    if isinstance(item, Mapping)
+                    and item.get("id") == model_id
+                    and item.get("model") == model_id
+                ]
+                if len(matches) != 1:
+                    continue
+                limit = _reported_context_limit(matches[0])
+                if limit is None:
+                    continue
+                exact_entries[model_id] = matches[0]
+                context_limits[model_id] = limit
+            verified: list[str] = []
+            request_id = 10
+            for model_id in route.allowed_model_ids:
+                if model_id not in exact_entries:
+                    continue
+                self._write_json(
+                    process,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "method": "thread/start",
+                        "params": {
+                            "model": model_id,
+                            "cwd": str(self.service_home),
+                            "approvalPolicy": "never",
+                            "sandbox": "read-only",
+                        },
+                    },
+                )
+                thread_result = self._codex_response(process, request_id)
+                thread = thread_result.get("thread")
+                if (
+                    not isinstance(thread, Mapping)
+                    or not isinstance(thread.get("id"), str)
+                    or thread_result.get("model") != model_id
+                    or thread_result.get("modelProvider") != self.provider
+                ):
+                    continue
+                thread_id = str(thread["id"])
+                request_id += 1
+                schema = _preflight_schema()
+                self._write_json(
+                    process,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "method": "turn/start",
+                        "params": {
+                            "threadId": thread_id,
+                            "input": [{"type": "text", "text": "Return the required preflight object without using tools."}],
+                            "outputSchema": schema,
+                        },
+                    },
+                )
+                turn_result = self._codex_response(process, request_id)
+                turn = turn_result.get("turn")
+                if not isinstance(turn, Mapping) or not isinstance(turn.get("id"), str):
+                    continue
+                if self._codex_turn_completed(process, thread_id, str(turn["id"])):
+                    verified.append(model_id)
+                request_id += 1
+            if not verified:
+                raise ValueError("Codex authentication and structured output were not verified")
+            return tuple(verified), {
+                model_id: context_limits[model_id] for model_id in verified
+            }, version
+        finally:
+            _terminate_preflight(process)
+
+    def _inspect_claude(
+        self, route: ToolRoute
+    ) -> tuple[tuple[str, ...], dict[str, int], str]:
+        verified: list[str] = []
+        limits: dict[str, int] = {}
+        observed_version: str | None = None
+        for model_id in route.allowed_model_ids:
             completed = subprocess.run(
-                (str(route.executable), "--version"),
+                (
+                    str(route.executable),
+                    "--print",
+                    "Return the required preflight object without using tools.",
+                    "--model",
+                    model_id,
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    "--json-schema",
+                    json.dumps(_preflight_schema(), separators=(",", ":")),
+                ),
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=5,
-                env={"PATH": "/usr/bin:/bin"},
+                timeout=30,
+                env=self._environment(),
             )
-            version = (completed.stdout or completed.stderr).strip().splitlines()[0]
-            available = completed.returncode == 0 and bool(version)
-        except (OSError, subprocess.SubprocessError, IndexError):
-            available, version = False, ""
-        return AdapterObservation(
-            available,
-            version or None,
-            self.provider if available else None,
-            tuple(route.allowed_model_ids),
-            (),
-            _CAPABILITIES,
-            "cloud" if available else None,
-            {model: 65536 for model in route.allowed_model_ids},
-            available,
-            route.credential_profile if available else None,
-            route.settings_profile if available else None,
-            available,
-            available,
-            available,
-            configuration_hash if available else None,
-            None if available else f"configured {self.tool} executable is unavailable",
-        )
+            if completed.returncode != 0:
+                continue
+            init: Mapping[str, object] | None = None
+            result: Mapping[str, object] | None = None
+            for raw in completed.stdout.splitlines():
+                if not raw.strip():
+                    continue
+                event = json.loads(raw)
+                if not isinstance(event, Mapping):
+                    raise ValueError("Claude emitted a non-object event")
+                if event.get("type") == "system" and event.get("subtype") == "init":
+                    init = event
+                elif event.get("type") == "result":
+                    result = event
+            if (
+                init is None
+                or result is None
+                or init.get("model") != model_id
+                or result.get("is_error") is not False
+                or result.get("structured_output") != {"preflight": "ok"}
+            ):
+                continue
+            version = init.get("claude_code_version")
+            limit = _reported_context_limit(init)
+            if not isinstance(version, str) or not version or limit is None:
+                continue
+            if observed_version is not None and observed_version != version:
+                raise ValueError("Claude version changed during route preflight")
+            observed_version = version
+            verified.append(model_id)
+            limits[model_id] = limit
+        if not verified or observed_version is None:
+            raise ValueError("Claude authentication and structured output were not verified")
+        return tuple(verified), limits, observed_version
+
+    def _environment(self) -> dict[str, str]:
+        return {"HOME": str(self.service_home), "PATH": "/usr/bin:/bin"}
+
+    @staticmethod
+    def _write_json(process: subprocess.Popen[bytes], value: Mapping[str, object]) -> None:
+        if process.stdin is None:
+            raise ValueError("tool preflight input is unavailable")
+        process.stdin.write((json.dumps(value, separators=(",", ":")) + "\n").encode("utf-8"))
+        process.stdin.flush()
+
+    @staticmethod
+    def _codex_message(process: subprocess.Popen[bytes]) -> Mapping[str, object]:
+        if process.stdout is None:
+            raise ValueError("Codex app-server output is unavailable")
+        selector = selectors.DefaultSelector()
+        try:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            if not selector.select(30):
+                raise ValueError("Codex app-server preflight timed out")
+            raw = process.stdout.readline()
+        finally:
+            selector.close()
+        if not raw:
+            raise ValueError("Codex app-server closed during preflight")
+        value = json.loads(raw)
+        if not isinstance(value, Mapping):
+            raise ValueError("Codex app-server emitted a non-object message")
+        return value
+
+    @classmethod
+    def _codex_response(
+        cls, process: subprocess.Popen[bytes], request_id: int
+    ) -> Mapping[str, object]:
+        while True:
+            value = cls._codex_message(process)
+            if value.get("id") != request_id:
+                if "method" in value:
+                    continue
+                raise ValueError("Codex preflight response identity differs")
+            result = value.get("result")
+            if "error" in value or not isinstance(result, Mapping):
+                raise ValueError("Codex app-server rejected route preflight")
+            return result
+
+    @classmethod
+    def _codex_turn_completed(
+        cls, process: subprocess.Popen[bytes], thread_id: str, turn_id: str
+    ) -> bool:
+        structured = False
+        while True:
+            value = cls._codex_message(process)
+            params = value.get("params")
+            if not isinstance(params, Mapping):
+                continue
+            if params.get("threadId") != thread_id:
+                continue
+            if value.get("method") == "item/completed" and params.get("turnId") == turn_id:
+                item = params.get("item")
+                if isinstance(item, Mapping) and item.get("type") == "agentMessage":
+                    try:
+                        structured = json.loads(str(item.get("text"))) == {"preflight": "ok"}
+                    except json.JSONDecodeError:
+                        structured = False
+            if value.get("method") == "turn/completed":
+                turn = params.get("turn")
+                return bool(
+                    structured
+                    and isinstance(turn, Mapping)
+                    and turn.get("id") == turn_id
+                    and turn.get("status") == "completed"
+                )
+
+
+def _preflight_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["preflight"],
+        "properties": {"preflight": {"const": "ok"}},
+    }
+
+
+def _reported_context_limit(value: Mapping[str, object]) -> int | None:
+    for field in ("contextWindow", "context_window", "context_window_tokens"):
+        limit = value.get(field)
+        if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
+            return limit
+    return None
+
+
+def _terminate_preflight(process: subprocess.Popen[bytes]) -> None:
+    if process.stdin is not None:
+        try:
+            process.stdin.close()
+        except OSError:
+            pass
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+    for stream in (process.stdout, process.stderr):
+        if stream is not None:
+            stream.close()
 
 
 def compose_installed_registration(
@@ -118,7 +405,7 @@ def compose_installed_registration(
             raise ValueError(f"installed registration adapter is unsupported: {tool}")
         adapters[str(tool)] = (
             InstalledAdapter(str(tool), provider, "cloud", _CAPABILITIES),
-            InstalledToolInspector(str(tool), provider),
+            InstalledToolInspector(str(tool), provider, service_home),
         )
         credential_files[credential] = files
         settings_fingerprints[settings] = hashlib.sha256(
@@ -180,39 +467,51 @@ def compose_installed_registration(
     if len(bindings) != len(raw_bindings):
         raise ValueError("repository binding fields do not match the contract")
     authorizer = RepositoryAuthorizer(profiles, bindings)
-    if len(profiles) != 1 or len(bindings) != 1:
-        raise ValueError("registration currently requires one installed GitHub repository binding")
-    binding = bindings[0]
-    profile = profiles[binding.profile_name]
-    github = github_profiles[binding.profile_name]
     required_github = {"app_id", "installation_id", "app_slug"}
-    if (
-        not required_github.issubset(github)
-        or set(github) - required_github - {"api_base_url"}
-    ):
-        raise ValueError("GitHub destination profile fields do not match the contract")
-    api_base_url = github.get("api_base_url", "https://api.github.com")
-    destination_profile = GitHubAppDestinationProfile(
-        profile.name,
-        binding.binding_id,
-        GitHubAppCredential(profile.credential_reference),
-        github["app_id"],  # type: ignore[arg-type]
-        github["installation_id"],  # type: ignore[arg-type]
-        _text(github["app_slug"], "app_slug"),
-        profile.allowed_repositories,
-        profile.allowed_branch_patterns,
-        api_base_url,  # type: ignore[arg-type]
-    )
     secret_root = storage_path.parent / "secrets"
     resolver = lambda reference: _read_service_secret(secret_root, reference)
-    destination = GitHubDestinationProvider(
-        destination_profile,
-        GitHubRestDestinationApi(ServiceGitHubAppCredentials(resolver)),
-    )
-    remote = _github_remote(str(api_base_url), binding.repository)
+    github_credentials = ServiceGitHubAppCredentials(resolver)
+    providers: dict[str, GitHubDestinationProvider] = {}
+    git_routes: list[ServiceGitRoute] = []
+    remotes: dict[str, str] = {}
+    for binding in bindings:
+        try:
+            profile = profiles[binding.profile_name]
+            github = github_profiles[binding.profile_name]
+        except KeyError as error:
+            raise ValueError(
+                f"repository binding references an unknown profile: {binding.binding_id}"
+            ) from error
+        if (
+            not required_github.issubset(github)
+            or set(github) - required_github - {"api_base_url"}
+        ):
+            raise ValueError("GitHub destination profile fields do not match the contract")
+        api_base_url = github.get("api_base_url", "https://api.github.com")
+        destination_profile = GitHubAppDestinationProfile(
+            profile.name,
+            binding.binding_id,
+            GitHubAppCredential(profile.credential_reference),
+            github["app_id"],  # type: ignore[arg-type]
+            github["installation_id"],  # type: ignore[arg-type]
+            _text(github["app_slug"], "app_slug"),
+            profile.allowed_repositories,
+            profile.allowed_branch_patterns,
+            api_base_url,  # type: ignore[arg-type]
+        )
+        providers[binding.repository] = GitHubDestinationProvider(
+            destination_profile, GitHubRestDestinationApi(github_credentials)
+        )
+        remote = _github_remote(str(api_base_url), binding.repository)
+        remotes[binding.repository] = remote
+        git_routes.append(
+            ServiceGitRoute(
+                binding.repository, profile.credential_reference, remote
+            )
+        )
+    destination = GitHubDestinationRouter(providers)
     transport = ServiceGitTransport(
-        (ServiceGitRoute(binding.repository, profile.credential_reference, remote),),
-        resolver,
+        tuple(git_routes), resolver,
     )
     assignment_launcher = InstalledRegistrationAgentLauncher(
         workspace_root=workspace_root,
@@ -229,7 +528,7 @@ def compose_installed_registration(
         destination,
         preflight,
         snapshot,
-        lambda repository: _github_remote(str(api_base_url), repository),
+        lambda repository: remotes[repository],
         workspace_root=workspace_root,
         assignment_launcher=assignment_launcher,
     )

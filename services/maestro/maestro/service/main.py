@@ -50,10 +50,10 @@ from .processes import PROCESS_POLICY_MIGRATION
 from .registry import OperationRegistry
 from .requests import RequestService
 from .registration import (
-    REGISTRATION_COMPOSITION_MIGRATION,
     RegistrationCoordinator,
     RegistrationRuntimeDependencies,
     build_registration_publication,
+    registration_composition_migrations,
 )
 
 
@@ -253,7 +253,7 @@ class InstalledServiceApplication:
             *registration_confirmation_migrations(),
             *registration_recovery_migrations(),
             PROCESS_POLICY_MIGRATION,
-            REGISTRATION_COMPOSITION_MIGRATION,
+            *registration_composition_migrations(),
         ):
             self.database.registry.register(migration)
         self.database.initialize()

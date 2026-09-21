@@ -62,13 +62,15 @@ class RegistrationInteraction:
         self.status: str | None = None
 
     def open(self, context: ExtensionContext) -> str:
-        project_id, activity_id = _selection(context)
+        project_id = _selected_project(context)
         response = context.client.get_json(
-            f"/registrations/{urllib.parse.quote(activity_id, safe='')}"
+            f"/projects/{urllib.parse.quote(project_id, safe='')}/registration"
         )
         detail = _registration_detail(response)
-        if detail["project_id"] != project_id or detail["activity_id"] != activity_id:
-            raise ValueError("registration detail differs from the selected activity")
+        if detail["project_id"] != project_id:
+            raise ValueError("registration detail differs from the selected project")
+        activity_id = str(detail["activity_id"])
+        context.state.selected_activity_id = activity_id
         self.detail = detail
         self.status = None
         if self.pending is not None and not self._pending_matches(
@@ -93,6 +95,33 @@ class RegistrationInteraction:
             )
         else:
             lines.append("Candidate: not yet available")
+        comparison = detail["comparison"]
+        if isinstance(comparison, Mapping):
+            active = comparison["active_package_ref"]
+            candidate = comparison["candidate_package_ref"]
+            assert isinstance(active, Mapping) and isinstance(candidate, Mapping)
+            lines.append(
+                "Update comparison: active "
+                f"{active['candidate_id']} -> candidate {candidate['candidate_id']}"
+            )
+            for difference in comparison["differences"]:
+                assert isinstance(difference, Mapping)
+                reasons = ", ".join(str(item) for item in difference["reason_refs"])
+                lines.append(
+                    f"- {difference['kind']}: {difference['subject']} "
+                    f"({difference['previous_version']} -> "
+                    f"{difference['candidate_version']}); reasons: {reasons}"
+                )
+        agent_retry = detail["agent_retry"]
+        if isinstance(agent_retry, Mapping):
+            lines.append(
+                "Agent retry: assignment "
+                f"{agent_retry['assignment_id']} / failed run "
+                f"{agent_retry['failed_run_id']} / automatic "
+                f"{agent_retry['automatic_consumed']} of "
+                f"{agent_retry['automatic_limit']} / manual "
+                f"{agent_retry['manual_consumed']}"
+            )
         history = detail["history"]
         assert isinstance(history, list)
         lines.append(f"Confirmed history: {len(history)}")
@@ -113,7 +142,7 @@ class RegistrationInteraction:
         if self.detail is None:
             raise ValueError("open the registration before confirming it")
         detail = self.detail
-        project_id, activity_id = _selection(context)
+        project_id, activity_id = self._detail_selection(context)
         if detail["project_id"] != project_id or detail["activity_id"] != activity_id:
             raise ValueError("selected registration changed before confirmation")
         if not bool(detail["can_confirm"]):
@@ -171,7 +200,25 @@ class RegistrationInteraction:
                 publication_operation_id, "publication_operation_id"
             )
             reason = _text(intervention, "intervention")
-            project_id, activity_id = _selection(context)
+            project_id, activity_id = self._detail_selection(context)
+            payload: dict[str, object]
+            if publication_operation_id == "agent":
+                failure = self.detail["agent_retry"]
+                if not isinstance(failure, Mapping):
+                    raise ValueError("registration has no displayed agent failure")
+                payload = {
+                    "assignment_id": failure["assignment_id"],
+                    "failed_run_id": failure["failed_run_id"],
+                    "intervention": reason,
+                }
+            else:
+                operation_id = _identifier(
+                    publication_operation_id, "publication_operation_id"
+                )
+                payload = {
+                    "publication_operation_id": operation_id,
+                    "intervention": reason,
+                }
             response = context.client.submit(
                 {
                     "request_id": self._request_id_factory(),
@@ -180,10 +227,7 @@ class RegistrationInteraction:
                     "activity_id": activity_id,
                     "question_id": None,
                     "expected_version": self.detail["activity_version"],
-                    "payload": {
-                        "publication_operation_id": operation_id,
-                        "intervention": reason,
-                    },
+                    "payload": payload,
                 }
             )
             self.status = "Registration recovery reconciled from saved state."
@@ -236,7 +280,7 @@ class RegistrationInteraction:
     def cancel(self, context: ExtensionContext) -> Mapping[str, object]:
         if self.detail is None:
             raise ValueError("open the registration before cancelling it")
-        project_id, activity_id = _selection(context)
+        project_id, activity_id = self._detail_selection(context)
         response = context.client.submit(
             {
                 "request_id": self._request_id_factory(),
@@ -250,6 +294,14 @@ class RegistrationInteraction:
         )
         self.status = "Registration cancelled; confirmed history is unchanged."
         return response
+
+    def _detail_selection(self, context: ExtensionContext) -> tuple[str, str]:
+        if self.detail is None:
+            raise ValueError("open the registration first")
+        project_id = _selected_project(context)
+        if self.detail["project_id"] != project_id:
+            raise ValueError("selected project changed after opening registration")
+        return project_id, str(self.detail["activity_id"])
 
     def _pending_matches(
         self,
@@ -330,13 +382,23 @@ class RegistrationExtension:
         operation_id = _identifier(arguments.strip(), "publication_operation_id")
         return ActionInput("registration-retry", operation_id)
 
-    @staticmethod
     def _open_retry_input(
-        _context: ExtensionContext, operation_id: str
+        self, _context: ExtensionContext, operation_id: str
     ) -> Mapping[str, object]:
+        if operation_id == "agent":
+            detail = self.interaction.detail
+            failure = None if detail is None else detail.get("agent_retry")
+            if not isinstance(failure, Mapping):
+                raise ValueError("registration has no displayed agent failure")
+            prompt = (
+                "Describe the intervention before retrying assignment "
+                f"{failure['assignment_id']} failed run {failure['failed_run_id']}."
+            )
+        else:
+            prompt = "Describe the intervention before retrying publication."
         return {
             "action_id": f"registration-retry.{operation_id}",
-            "prompt": "Describe the intervention before retrying publication.",
+            "prompt": prompt,
         }
 
     def _submit_retry_input(
@@ -351,14 +413,11 @@ class RegistrationExtension:
         return self.interaction.cancel(context)
 
 
-def _selection(context: ExtensionContext) -> tuple[str, str]:
+def _selected_project(context: ExtensionContext) -> str:
     project_id = context.state.selected_project_id
-    activity_id = context.state.selected_activity_id
     if not isinstance(project_id, str) or not project_id:
         raise ValueError("select a project before opening registration")
-    if not isinstance(activity_id, str) or not activity_id:
-        raise ValueError("select a registration activity first")
-    return project_id, activity_id
+    return project_id
 
 
 def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
@@ -375,7 +434,7 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
     detail = dict(response["data"])
     fields = {
         "project_id", "activity_id", "activity_version", "state",
-        "package_ref", "history", "can_confirm",
+        "package_ref", "comparison", "agent_retry", "history", "can_confirm",
     }
     if set(detail) != fields:
         raise ValueError("registration response fields do not match the contract")
@@ -393,6 +452,8 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
         _package_ref(detail["package_ref"])
     elif detail["can_confirm"]:
         raise ValueError("registration cannot confirm without a package reference")
+    _comparison(detail["comparison"])
+    _agent_retry(detail["agent_retry"])
     history = detail["history"]
     if not isinstance(history, list):
         raise ValueError("registration history must be an array")
@@ -405,6 +466,49 @@ def _registration_detail(response: Mapping[str, object]) -> dict[str, object]:
         _text(item["path"], "confirmation path")
         _digest(item["sha256"], "confirmation sha256")
     return detail
+
+
+def _comparison(value: object) -> None:
+    if value is None:
+        return
+    if not isinstance(value, Mapping) or set(value) != {
+        "active_package_ref", "candidate_package_ref", "differences"
+    }:
+        raise ValueError("registration comparison is invalid")
+    _package_ref(value["active_package_ref"])
+    _package_ref(value["candidate_package_ref"])
+    differences = value["differences"]
+    if not isinstance(differences, list):
+        raise ValueError("registration comparison differences must be an array")
+    fields = {
+        "kind", "item_id", "subject", "area", "previous_version",
+        "candidate_version", "reason_refs",
+    }
+    for difference in differences:
+        if not isinstance(difference, Mapping) or set(difference) != fields:
+            raise ValueError("registration comparison difference is invalid")
+        for field in ("kind", "item_id", "subject", "area"):
+            _text(difference[field], f"comparison {field}")
+        if not isinstance(difference["reason_refs"], list) or any(
+            not isinstance(item, str) or not item for item in difference["reason_refs"]
+        ):
+            raise ValueError("registration comparison reasons are invalid")
+
+
+def _agent_retry(value: object) -> None:
+    if value is None:
+        return
+    fields = {
+        "assignment_id", "failed_run_id", "role", "reason", "automatic_limit",
+        "automatic_consumed", "manual_consumed", "state",
+    }
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise ValueError("registration agent retry is invalid")
+    for field in ("assignment_id", "failed_run_id", "role", "reason", "state"):
+        _text(value[field], f"agent retry {field}")
+    for field in ("automatic_limit", "automatic_consumed", "manual_consumed"):
+        if isinstance(value[field], bool) or not isinstance(value[field], int) or value[field] < 0:
+            raise ValueError(f"agent retry {field} must be nonnegative")
 
 
 def _package_ref(value: object) -> Mapping[str, object]:
