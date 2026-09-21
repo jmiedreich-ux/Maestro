@@ -913,7 +913,8 @@ class RegistrationCoordinator:
         with self.database.read_connection() as connection:
             row = connection.execute(
                 """SELECT role, assignment_id, failed_run_id, state,
-                          automatic_limit, automatic_consumed, manual_consumed
+                          automatic_limit, automatic_consumed, manual_consumed,
+                          reason, failed_launch_evidence
                    FROM installed_registration_agent_failures
                    WHERE activity_id = ?""",
                 (request.activity_id,),
@@ -927,19 +928,20 @@ class RegistrationCoordinator:
         failed = assessment.current_run(role)
         if (failed.assignment_id, failed.run_id) != (assignment_id, failed_run_id):
             raise ValueError("agent retry failure is no longer the current saved run")
-        try:
-            observed = self.binding.poll_current_agent(assessment, role)
-        except SupervisionError as error:
-            raise ValueError(
-                f"agent retry cannot prove the failed run is terminal: {error}"
-            ) from error
-        else:
-            if observed.state not in {
-                "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
-            }:
+        if not _proven_failed_launch(row[8], row[7]):
+            try:
+                observed = self.binding.poll_current_agent(assessment, role)
+            except SupervisionError as error:
                 raise ValueError(
-                    f"agent retry is blocked until the failed run is terminal ({observed.state})"
-                )
+                    f"agent retry cannot prove the failed run is terminal: {error}"
+                ) from error
+            else:
+                if observed.state not in {
+                    "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+                }:
+                    raise ValueError(
+                        f"agent retry is blocked until the failed run is terminal ({observed.state})"
+                    )
         replacement_run_id = f"{role}-run-{uuid.uuid4().hex}"
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
@@ -2671,6 +2673,10 @@ class RegistrationCoordinator:
             return True
         except (OSError, RuntimeError, ValueError) as error:
             run = assessment.current_run(role)
+            failed_launch = (
+                not isinstance(error, SupervisionError)
+                or error.code == "unsafe_journal"
+            )
             self._assignment_failed(
                 assessment.context.activity_id,
                 role,
@@ -2679,7 +2685,7 @@ class RegistrationCoordinator:
                 f"assignment could not start: {error}",
                 isinstance(error, (OSError, RuntimeError))
                 and not isinstance(error, SupervisionError),
-                failed_launch=not isinstance(error, SupervisionError),
+                failed_launch=failed_launch,
             )
             return False
 
@@ -2696,7 +2702,7 @@ class RegistrationCoordinator:
         elif state == "technical_recovery":
             with self.database.read_connection() as connection:
                 failure = connection.execute(
-                    """SELECT role, failed_launch_evidence
+                    """SELECT role, failed_launch_evidence, reason
                        FROM installed_registration_agent_failures
                        WHERE activity_id = ? AND state = 'paused'""",
                     (activity_id,),
@@ -2706,7 +2712,7 @@ class RegistrationCoordinator:
                     "registration cancellation is paused with Stop unconfirmed; "
                     "technical recovery lacks exact failed-run evidence"
                 )
-            if int(failure[1]) == 1:
+            if _proven_failed_launch(failure[1], failure[2]):
                 return
             role = str(failure[0])
         else:
@@ -2903,7 +2909,7 @@ class RegistrationCoordinator:
                     ),
                 )
                 return {"activity_id": activity_id, "state": "paused-incomplete"}
-            if int(saved_failure[5]) == 0:
+            if not _proven_failed_launch(saved_failure[5], saved_failure[3]):
                 role = str(saved_failure[0])
                 try:
                     observed = self.binding.poll_current_agent(assessment, role)
@@ -3634,6 +3640,18 @@ def _activity_row(transaction: Transaction, activity_id: str):
     if row is None:
         raise ValueError("registration activity is unavailable")
     return row
+
+
+_LEGACY_PROVEN_PRELAUNCH_FAILURES = frozenset(
+    {
+        "assignment could not start: journal parent is not service-owned",
+        "assignment could not start: journal is not service-owned",
+    }
+)
+
+
+def _proven_failed_launch(evidence: object, reason: object) -> bool:
+    return evidence == 1 or reason in _LEGACY_PROVEN_PRELAUNCH_FAILURES
 
 
 def _text(value: object, field: str) -> str:

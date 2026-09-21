@@ -87,6 +87,7 @@ from maestro.service.registration import (
     RegistrationRuntimeDependencies,
 )
 from maestro.service.registration_agents import InstalledRegistrationAgentLauncher
+from maestro.service.requests import RequestEnvelope
 from maestro.service.resources import BundleSnapshot
 from maestro.terminal.main import TerminalApplication
 from tests.maestro.registration_package_fixture import complete_package
@@ -435,6 +436,63 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         self.assertFalse(
             coordinator._assignment_failed.call_args.kwargs["failed_launch"]
         )
+
+        launcher.side_effect = SupervisionError(
+            "unsafe_journal", "journal parent is not service-owned"
+        )
+        coordinator._assignment_failed.reset_mock()
+
+        self.assertFalse(coordinator._launch_assignment(assessment, "project_architect"))
+
+        coordinator._assignment_failed.assert_called_once()
+        self.assertTrue(
+            coordinator._assignment_failed.call_args.kwargs["failed_launch"]
+        )
+
+    def test_proven_prelaunch_failure_can_reserve_retry_without_supervisor_record(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        row = (
+            "project_architect",
+            "architect-assignment",
+            "architect-run",
+            "paused",
+            1,
+            0,
+            0,
+            "assignment could not start: journal parent is not service-owned",
+            0,
+        )
+        connection = mock.Mock()
+        connection.execute.return_value.fetchone.return_value = row
+        read_context = mock.MagicMock()
+        read_context.__enter__.return_value = connection
+        coordinator.database = mock.Mock()
+        coordinator.database.read_connection.return_value = read_context
+        failed = SimpleNamespace(
+            assignment_id="architect-assignment", run_id="architect-run"
+        )
+        assessment = mock.Mock()
+        assessment.current_run.return_value = failed
+        coordinator.binding = mock.Mock()
+        coordinator.binding.assessment.return_value = assessment
+        request = RequestEnvelope(
+            "retry-request",
+            "registration.retry",
+            "project-one",
+            "activity-one",
+            None,
+            3,
+            {
+                "assignment_id": "architect-assignment",
+                "failed_run_id": "architect-run",
+                "intervention": "Corrected the service-owned journal directory.",
+            },
+        )
+
+        prepared = coordinator._prepare_agent_retry(request)
+
+        self.assertEqual("activity-one", prepared.entity_id)
+        coordinator.binding.poll_current_agent.assert_not_called()
 
     def test_active_confirmation_commit_is_the_update_publication_parent(self) -> None:
         coordinator = object.__new__(RegistrationCoordinator)
