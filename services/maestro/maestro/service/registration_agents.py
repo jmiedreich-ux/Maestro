@@ -10,7 +10,8 @@ import sys
 import threading
 import time
 from collections.abc import Callable, Mapping
-from pathlib import Path
+from importlib import resources
+from pathlib import Path, PurePosixPath
 
 from maestro.agents.claude_transport import ClaudeTransport
 from maestro.agents.codex_transport import CodexTransport
@@ -399,43 +400,55 @@ class InstalledRegistrationAgentLauncher:
         status = assessment.status
         lineage = binding.assignment_lineage(assessment, role)
         inputs: dict[str, bytes] = {}
+        contract_relative = "contract/registration-package-v1.json"
+        inputs[contract_relative] = _registration_package_contract()
         assigned: dict[str, AssignedArtifactReference] = {}
         originals: dict[str, ArtifactReference] = {}
         if role == "fidelity_reviewer":
             if status.candidate is None or status.assessment is None:
                 raise ValueError("review assignment has no exact architect artifacts")
-            for field, original in (
-                ("candidate", status.candidate),
-                ("reviewed_assessment", status.assessment),
-            ):
-                relative = f"{field}/{Path(original.path).name}"
-                content = self._artifact_bytes(binding, assessment, original)
-                inputs[relative] = content
-                assigned[field] = AssignedArtifactReference(
-                    f"input/{relative}", original.sha256, original.version
-                )
-                originals[field] = original
+            original = status.candidate
+            manifest_relative = self._stage_candidate(
+                binding, assessment, original, "candidate", inputs
+            )
+            assigned["candidate"] = AssignedArtifactReference(
+                f"input/{manifest_relative}", original.sha256, original.version
+            )
+            originals["candidate"] = original
+            original = status.assessment
+            relative = f"reviewed_assessment/{Path(original.path).name}"
+            inputs[relative] = self._artifact_bytes(binding, assessment, original)
+            assigned["reviewed_assessment"] = AssignedArtifactReference(
+                f"input/{relative}", original.sha256, original.version
+            )
+            originals["reviewed_assessment"] = original
         elif (
             lineage["parent_assignment_id"] is not None
             and status.candidate is not None
             and status.assessment is not None
         ):
-            for field, original in (
-                ("prior_candidate", status.candidate),
-                ("prior_assessment", status.assessment),
-            ):
-                relative = f"{field}/{Path(original.path).name}"
-                content = self._artifact_bytes(binding, assessment, original)
-                inputs[relative] = content
-                assigned[field] = AssignedArtifactReference(
-                    f"input/{relative}", original.sha256, original.version
-                )
-                originals[field] = original
+            original = status.candidate
+            manifest_relative = self._stage_candidate(
+                binding, assessment, original, "prior_candidate", inputs
+            )
+            assigned["prior_candidate"] = AssignedArtifactReference(
+                f"input/{manifest_relative}", original.sha256, original.version
+            )
+            originals["prior_candidate"] = original
+            original = status.assessment
+            relative = f"prior_assessment/{Path(original.path).name}"
+            inputs[relative] = self._artifact_bytes(binding, assessment, original)
+            assigned["prior_assessment"] = AssignedArtifactReference(
+                f"input/{relative}", original.sha256, original.version
+            )
+            originals["prior_assessment"] = original
         relevant_answers = _answers(binding, context.activity_id)
         state = assessment.to_record()
         instructions = {
             "document_paths": [blob.path for blob in context.source_inventory.blobs],
             "selected_scope": context.selected_scope,
+            "confirmed_scope_boundary": context.package_context.scope_boundary.as_dict(),
+            "package_contract_path": f"input/{contract_relative}",
             "recorded_decisions": [item.to_record() for item in context.source_inventory.outcomes],
             "relevant_answers": relevant_answers,
             "outstanding_questions": _outstanding_questions(
@@ -496,24 +509,102 @@ class InstalledRegistrationAgentLauncher:
         )
         return assignment, inputs, originals
 
+    def _stage_candidate(
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        reference: ArtifactReference,
+        prefix: str,
+        inputs: dict[str, bytes],
+    ) -> str:
+        manifest_path = self._artifact_path(binding, assessment, reference)
+        manifest_bytes = manifest_path.read_bytes()
+        try:
+            manifest = json.loads(manifest_bytes)
+            files = manifest["files"]
+        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as error:
+            raise ValueError("assigned registration candidate manifest is invalid") from error
+        if not isinstance(files, list):
+            raise ValueError("assigned registration candidate inventory is invalid")
+        manifest_relative = f"{prefix}/manifest.json"
+        inputs[manifest_relative] = manifest_bytes
+        seen: set[str] = set()
+        for entry in files:
+            if not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str):
+                raise ValueError("assigned registration candidate inventory is invalid")
+            relative = entry["path"]
+            parsed = PurePosixPath(relative)
+            if (
+                parsed.is_absolute() or ".." in parsed.parts or relative.startswith("./")
+                or relative in seen or not isinstance(entry.get("sha256"), str)
+            ):
+                raise ValueError("assigned registration candidate inventory path is invalid")
+            seen.add(relative)
+            path = _regular_descendant(
+                manifest_path.parent, parsed.parts,
+                "assigned registration candidate record is unavailable",
+            )
+            content = path.read_bytes()
+            if hashlib.sha256(content).hexdigest() != entry["sha256"]:
+                raise ValueError("assigned registration candidate record differs from its manifest")
+            inputs[f"{prefix}/{relative}"] = content
+        return manifest_relative
+
     def _artifact_bytes(
         self,
         binding: RegistrationServiceBinding,
         assessment: RegistrationAssessment,
         reference: ArtifactReference,
     ) -> bytes:
+        return self._artifact_path(binding, assessment, reference).read_bytes()
+
+    def _artifact_path(
+        self,
+        binding: RegistrationServiceBinding,
+        assessment: RegistrationAssessment,
+        reference: ArtifactReference,
+    ) -> Path:
         for run_id in binding.assignment_runs(assessment, "project_architect"):
             root = (
                 self.workspaces.root / assessment.context.project_id
                 / assessment.context.activity_id / "runs" / run_id
             )
-            path = root.joinpath(*Path(reference.path).parts)
-            if path.is_symlink() or not path.is_file():
+            try:
+                path = _regular_descendant(
+                    root, PurePosixPath(reference.path).parts,
+                    "assigned registration artifact is unavailable or differs",
+                )
+            except ValueError:
                 continue
             content = path.read_bytes()
             if hashlib.sha256(content).hexdigest() == reference.sha256:
-                return content
+                return path
         raise ValueError("assigned registration artifact is unavailable or differs")
+
+
+def _registration_package_contract() -> bytes:
+    return (
+        resources.files("maestro.service")
+        .joinpath("registration_package_contract.json")
+        .read_bytes()
+    )
+
+
+def _regular_descendant(root: Path, parts: tuple[str, ...], message: str) -> Path:
+    path = root
+    try:
+        for index, part in enumerate(parts):
+            path = path / part
+            details = path.lstat()
+            if stat.S_ISLNK(details.st_mode):
+                raise ValueError(message)
+            if index < len(parts) - 1 and not stat.S_ISDIR(details.st_mode):
+                raise ValueError(message)
+        if not parts or not stat.S_ISREG(path.lstat().st_mode):
+            raise ValueError(message)
+    except OSError as error:
+        raise ValueError(message) from error
+    return path
 
 
 def _recorded_runner_sequences(record: object) -> set[int]:

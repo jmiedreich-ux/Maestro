@@ -40,6 +40,129 @@ class RegistrationRecordError(ValueError):
 
 
 @dataclass(frozen=True)
+class RegistrationScopeBoundary:
+    """The Owner-confirmed outcome boundary interpreted against exact intake."""
+
+    confirmation: str
+    included_outcomes: tuple[str, ...]
+    excluded_outcomes: tuple[str, ...]
+    completion_outcomes: tuple[str, ...]
+    outside_dependencies: tuple[tuple[str, tuple[str, ...]], ...]
+
+    @classmethod
+    def from_selection(
+        cls, selection: str, inventory: SourceInventory
+    ) -> "RegistrationScopeBoundary":
+        confirmation = _text(selection, "selected scope")
+        outcome_ids = tuple(item.milestone for item in inventory.outcomes)
+        if not outcome_ids:
+            raise RegistrationRecordError("selected scope needs supplied project outcomes")
+        by_selector: dict[str, str] = {}
+        for item in inventory.outcomes:
+            for selector in (
+                item.milestone, item.subject,
+                f"{item.milestone} — {item.subject}",
+                f"{item.milestone} - {item.subject}",
+            ):
+                normalized = selector.strip().casefold()
+                if normalized in by_selector and by_selector[normalized] != item.milestone:
+                    raise RegistrationRecordError("selected scope outcome labels are ambiguous")
+                by_selector[normalized] = item.milestone
+        dependencies: Mapping[str, object]
+        try:
+            structured = json.loads(confirmation)
+        except json.JSONDecodeError:
+            structured = None
+        if isinstance(structured, Mapping):
+            fields = {
+                "confirmed", "included_outcomes", "excluded_outcomes",
+                "completion_outcomes", "outside_dependencies",
+            }
+            if set(structured) != fields or structured.get("confirmed") is not True:
+                raise RegistrationRecordError("structured scope boundary is not explicitly confirmed")
+            included = tuple(_text_array(structured["included_outcomes"], "included scope outcome"))
+            excluded = tuple(_text_array(structured["excluded_outcomes"], "excluded scope outcome"))
+            completion = tuple(_text_array(structured["completion_outcomes"], "completion scope outcome"))
+            dependencies_value = structured["outside_dependencies"]
+            if not isinstance(dependencies_value, Mapping):
+                raise RegistrationRecordError("outside scope dependencies must be keyed by included outcome")
+            dependencies = dependencies_value
+        else:
+            normalized = confirmation.strip().casefold()
+            if normalized in {
+                "all supplied milestones", "all supplied outcomes", "whole supplied plan",
+            }:
+                included = outcome_ids
+            else:
+                selected: list[str] = []
+                for token in confirmation.split(","):
+                    identity = by_selector.get(token.strip().casefold())
+                    if identity is None:
+                        raise RegistrationRecordError(
+                            "selected scope must name exact supplied outcomes or an explicitly confirmed structured boundary"
+                        )
+                    if identity not in selected:
+                        selected.append(identity)
+                included = tuple(item for item in outcome_ids if item in selected)
+                if set(included) != set(outcome_ids):
+                    raise RegistrationRecordError(
+                        "a partial scope requires an explicitly confirmed structured boundary"
+                    )
+            excluded = tuple(item for item in outcome_ids if item not in included)
+            completion = included
+            dependencies = {item: [] for item in included}
+        if (
+            not included
+            or len(set(included)) != len(included)
+            or len(set(excluded)) != len(excluded)
+            or set(included).intersection(excluded)
+            or set(included).union(excluded) != set(outcome_ids)
+            or tuple(item for item in outcome_ids if item in included) != included
+            or tuple(item for item in outcome_ids if item in excluded) != excluded
+            or completion != included
+            or set(dependencies) != set(included)
+        ):
+            raise RegistrationRecordError(
+                "confirmed scope must partition supplied outcomes and map completion for every included outcome"
+            )
+        frozen_dependencies: list[tuple[str, tuple[str, ...]]] = []
+        for milestone in included:
+            values = dependencies[milestone]
+            if not isinstance(values, list):
+                raise RegistrationRecordError("outside scope dependencies must be arrays")
+            encoded: list[str] = []
+            for value in values:
+                _validate_dependency(value, "scope dependency")
+                encoded.append(canonical_record_bytes(value).decode("utf-8"))
+            frozen_dependencies.append((milestone, tuple(encoded)))
+        return cls(
+            confirmation, included, excluded, completion,
+            tuple(frozen_dependencies),
+        )
+
+    @classmethod
+    def whole(cls, inventory: SourceInventory) -> "RegistrationScopeBoundary":
+        return cls.from_selection("All supplied milestones", inventory)
+
+    def dependencies_for(self, milestone: str) -> list[Mapping[str, object]]:
+        values = dict(self.outside_dependencies).get(milestone, ())
+        return [json.loads(value) for value in values]
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "confirmed": True,
+            "confirmation": self.confirmation,
+            "included_outcomes": list(self.included_outcomes),
+            "excluded_outcomes": list(self.excluded_outcomes),
+            "completion_outcomes": list(self.completion_outcomes),
+            "outside_dependencies": {
+                milestone: self.dependencies_for(milestone)
+                for milestone in self.included_outcomes
+            },
+        }
+
+
+@dataclass(frozen=True)
 class RegistrationPackageContext:
     """Saved intake facts that an agent-written candidate cannot replace."""
 
@@ -50,6 +173,7 @@ class RegistrationPackageContext:
     publication_branch: str
     destination_snapshot_reference: str
     selection_decision_ref: str
+    scope_boundary: RegistrationScopeBoundary | None = None
 
     def __post_init__(self) -> None:
         for field in (
@@ -59,6 +183,10 @@ class RegistrationPackageContext:
             _text(getattr(self, field), field)
         if not isinstance(self.source_inventory, SourceInventory):
             raise RegistrationRecordError("package context requires exact source intake inventory")
+        if self.scope_boundary is None:
+            object.__setattr__(self, "scope_boundary", RegistrationScopeBoundary.whole(self.source_inventory))
+        elif not isinstance(self.scope_boundary, RegistrationScopeBoundary):
+            raise RegistrationRecordError("package context requires a confirmed scope boundary")
 
     @classmethod
     def from_intake(
@@ -90,6 +218,9 @@ class RegistrationPackageContext:
             project_id, source_repository, intake.inventory, decision_version,
             intake.publication_branch, intake.destination_snapshot_reference,
             selection_decision_ref,
+            RegistrationScopeBoundary.from_selection(
+                intake.selected_scope or "", intake.inventory
+            ),
         )
 
 
@@ -375,6 +506,19 @@ def _required_data(data: Mapping[str, object], fields: set[str], record_type: st
         raise RegistrationRecordError(f"{record_type} record data fields are invalid")
 
 
+def _validate_dependency(value: object, field: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "record_id", "subject", "required_outcome", "state", "evidence"
+    }:
+        raise RegistrationRecordError(f"{field} is invalid")
+    for name in ("record_id", "subject", "required_outcome"):
+        _text(value[name], f"{field} {name}")
+    if value["state"] not in {"existing", "included", "missing"}:
+        raise RegistrationRecordError(f"{field} state is invalid")
+    _text_array(value["evidence"], f"{field} evidence")
+    return value
+
+
 def _validate_record_data(record_type: str, data: Mapping[str, object]) -> None:
     if record_type == "summary":
         fields = {"project_id", "purpose", "scope", "priorities", "assessment_outcome", "project_requirement_refs"}
@@ -422,13 +566,7 @@ def _validate_record_data(record_type: str, data: Mapping[str, object]) -> None:
         _text_array(data["included"], "milestone included outcomes")
         _text_array(data["excluded"], "milestone excluded outcomes")
         for dependency in _array(data["dependencies"], "milestone dependencies"):
-            if not isinstance(dependency, Mapping) or set(dependency) != {"record_id", "subject", "required_outcome", "state", "evidence"}:
-                raise RegistrationRecordError("milestone dependency is invalid")
-            for name in ("record_id", "subject", "required_outcome"):
-                _text(dependency[name], f"milestone dependency {name}")
-            if dependency["state"] not in {"existing", "included", "missing"}:
-                raise RegistrationRecordError("milestone dependency state is invalid")
-            _text_array(dependency["evidence"], "milestone dependency evidence")
+            _validate_dependency(dependency, "milestone dependency")
         if not _references(data["requirement_refs"], "milestone requirement reference"):
             raise RegistrationRecordError("milestone needs a completion requirement")
         if not _references(data["source_refs"], "milestone source reference"):
@@ -538,7 +676,7 @@ def validate_registration_package(
         "project_id", "registration_version", "candidate_id", "previous_registration_ref",
         "source_repository", "source_commit", "overview_path", "decision_version",
         "source_ref", "publication_branch", "destination_snapshot_reference", "selection_decision_ref",
-        "content_hash", "files",
+        "scope_boundary", "content_hash", "files",
     }
     if not isinstance(context, RegistrationPackageContext):
         raise TypeError("package validation requires saved registration intake context")
@@ -576,6 +714,7 @@ def validate_registration_package(
         "publication_branch": context.publication_branch,
         "destination_snapshot_reference": context.destination_snapshot_reference,
         "selection_decision_ref": context.selection_decision_ref,
+        "scope_boundary": context.scope_boundary.as_dict(),
     }
     for field, value in expected.items():
         if manifest[field] != value:
@@ -671,7 +810,22 @@ def _validate_package_topology(
 
     declarations = typed.get("declaration", [])
     milestones = typed.get("milestone", [])
-    outcomes = context.source_inventory.outcomes
+    boundary = context.scope_boundary
+    assert boundary is not None
+    all_outcomes = context.source_inventory.outcomes
+    outcomes = tuple(
+        item for item in all_outcomes
+        if item.milestone in boundary.included_outcomes
+    )
+    outcome_by_id = {item.milestone: item for item in all_outcomes}
+    expected_scope = {
+        "included": [outcome_by_id[item].subject for item in boundary.included_outcomes],
+        "excluded": [outcome_by_id[item].subject for item in boundary.excluded_outcomes],
+    }
+    if summary["data"]["scope"] != expected_scope:
+        raise RegistrationRecordError(
+            "candidate summary scope differs from the confirmed intake boundary"
+        )
     declared_designations = {
         str(record["data"]["designation"]) for _, record in declarations
     }
@@ -696,6 +850,10 @@ def _validate_package_topology(
         ):
             raise RegistrationRecordError(
                 "candidate milestone identity, subject, or version differs from the exact source outcome"
+            )
+        if record["data"]["dependencies"] != boundary.dependencies_for(outcome.milestone):
+            raise RegistrationRecordError(
+                "candidate milestone dependencies differ from the confirmed intake boundary"
             )
     declaration_records = {
         str(record["data"]["designation"]): record
@@ -724,6 +882,29 @@ def _validate_package_topology(
             raise RegistrationRecordError(
                 "candidate declaration order differs from the exact source declaration"
             )
+
+    completion_mappings = [
+        str(record["data"]["applies_to"]["record_id"])
+        for _, record in typed.get("requirement", [])
+    ]
+    mapped_outcomes = set(completion_mappings)
+    if (
+        not set(boundary.completion_outcomes).issubset(mapped_outcomes)
+        or set(boundary.excluded_outcomes).intersection(mapped_outcomes)
+    ):
+        raise RegistrationRecordError(
+            "candidate completion mappings differ from the confirmed intake boundary"
+        )
+    requirement_paths = {
+        path for path, _ in typed.get("requirement", [])
+    }
+    if {
+        str(reference["path"])
+        for reference in summary["data"]["project_requirement_refs"]
+    } != requirement_paths:
+        raise RegistrationRecordError(
+            "candidate summary completion references differ from the confirmed intake boundary"
+        )
 
     selection = [
         record for _, record in typed.get("decision", [])

@@ -1,0 +1,156 @@
+{
+  "contract": "maestro-registration-package",
+  "contract_version": 1,
+  "encoding": "UTF-8 JSON",
+  "purpose": "Agent-facing contract for registration candidate packages and architect assessment artifacts.",
+  "output_layout": {
+    "candidate_manifest": "output/candidate/manifest.json",
+    "candidate_records": "output/candidate/<manifest files[].path>",
+    "assessment_artifact": "output/assessment.json",
+    "response": "output/response.json"
+  },
+  "candidate_manifest": {
+    "additional_fields": false,
+    "required_fields": [
+      "project_id",
+      "registration_version",
+      "candidate_id",
+      "previous_registration_ref",
+      "source_repository",
+      "source_commit",
+      "overview_path",
+      "decision_version",
+      "source_ref",
+      "publication_branch",
+      "destination_snapshot_reference",
+      "selection_decision_ref",
+      "scope_boundary",
+      "content_hash",
+      "files"
+    ],
+    "field_rules": {
+      "registration_version": "positive integer",
+      "previous_registration_ref": "null or the exact prior package reference supplied by Maestro",
+      "scope_boundary": "copy instructions.confirmed_scope_boundary exactly",
+      "content_hash": "SHA-256 calculated by the content_hash rule below",
+      "files": "one inventory entry for every candidate record; the manifest does not list itself"
+    },
+    "file_entry_fields": [
+      "path",
+      "record_id",
+      "record_type",
+      "record_version",
+      "subject",
+      "sha256"
+    ]
+  },
+  "scope_boundary": {
+    "fields": [
+      "confirmed",
+      "confirmation",
+      "included_outcomes",
+      "excluded_outcomes",
+      "completion_outcomes",
+      "outside_dependencies"
+    ],
+    "rule": "The summary, milestone set, milestone dependencies, and completion requirements must exactly implement the supplied immutable boundary. Do not reinterpret or expand it."
+  },
+  "record_envelope": {
+    "additional_fields": false,
+    "fields": {
+      "schema_version": "integer constant 1",
+      "record_type": "one supported record type",
+      "record_id": "nonempty text unique across the candidate",
+      "subject": "nonempty plain-language text",
+      "record_version": "positive integer",
+      "data": "the exact object defined for the record type"
+    }
+  },
+  "record_types": {
+    "summary": {
+      "path": "summary.json",
+      "single": true,
+      "data_fields": ["project_id", "purpose", "scope", "priorities", "assessment_outcome", "project_requirement_refs"],
+      "rules": [
+        "scope has exactly included and excluded text arrays matching the confirmed scope boundary",
+        "assessment_outcome is ready, clarification_required, or blocked"
+      ]
+    },
+    "declaration": {
+      "path": "declarations/<safe-key>.json",
+      "data_fields": ["designation", "milestone_refs", "source_refs"],
+      "rules": ["milestone_refs preserve source declaration order"]
+    },
+    "naming_conventions": {
+      "path": "conventions.json",
+      "single": true,
+      "data_fields": ["declaration_designations", "record_types", "prefixes", "decision_refs"],
+      "rules": ["designation, record type, and prefix entries each contain code and subject"]
+    },
+    "milestone": {
+      "path": "milestones/<safe-key>.json",
+      "data_fields": ["declaration_id", "milestone_id", "purpose", "included", "excluded", "dependencies", "requirement_refs", "source_refs"],
+      "dependency_fields": ["record_id", "subject", "required_outcome", "state", "evidence"],
+      "dependency_states": ["existing", "included", "missing"]
+    },
+    "requirement": {
+      "path": "requirements/<safe-key>.json",
+      "data_fields": ["applies_to", "expected_result", "conditions", "pass_boundary", "verification", "accepted_exception", "source_refs", "journey"],
+      "journey_fields": ["interaction", "expected_result", "essential_failure"]
+    },
+    "assessment": {
+      "path": "assessments/<safe-key>.json",
+      "data_fields": ["assignment_id", "run_id", "source_commit", "decision_version", "summary", "findings"],
+      "rules": ["assignment and run identify the current Maestro-created architect run"]
+    },
+    "review": {
+      "path": "reviews/<safe-key>.json",
+      "data_fields": ["assignment_id", "run_id", "reviewer_identity", "review_round", "review_limit", "reviewed_content_hash", "reviewed_assessment_ref", "outcome", "findings"],
+      "outcomes": ["APPROVE", "REQUEST_CHANGES"],
+      "rules": ["review identity and accounting are supplied by Maestro"]
+    },
+    "decision": {
+      "path": "decisions/<safe-key>.json",
+      "data_fields": ["question", "answers", "resolution", "authority", "affected_refs", "supersedes_ref"],
+      "answer_fields": ["answer_id", "author", "text", "answered_at"]
+    }
+  },
+  "references": {
+    "local_fields": ["record_id", "subject", "record_version", "path"],
+    "external_fields": ["record_id", "subject", "record_version", "path", "repository", "commit", "locator"],
+    "rules": [
+      "local references must exactly match an inventoried candidate record",
+      "external references must use the assigned source repository, exact source commit, and inventoried source path"
+    ]
+  },
+  "finding_fields": [
+    "local_key",
+    "subject",
+    "severity",
+    "explanation",
+    "impact",
+    "requested_correction",
+    "source_refs",
+    "affected_items",
+    "missing_information"
+  ],
+  "hashing": {
+    "record_sha256": "SHA-256 of canonical JSON: keys sorted, no insignificant whitespace, UTF-8, and no NaN values",
+    "content_hash": "Sort every non-review record by path. For each, append path, one tab, its record SHA-256, and one newline. SHA-256 the resulting UTF-8 bytes.",
+    "candidate_reference_sha256": "SHA-256 of the exact manifest bytes written to output/candidate/manifest.json"
+  },
+  "assessment_artifact": {
+    "required": true,
+    "format": "UTF-8 JSON object",
+    "required_fields": ["assignment_id", "run_id", "source_commit", "decision_version", "summary", "findings"],
+    "rule": "It must describe the same exact source, decision version, findings, and candidate returned in the response."
+  },
+  "package_rules": [
+    "Use only safe relative paths with no parent traversal.",
+    "Use one summary and one naming-conventions record at their fixed paths.",
+    "Include at least one declaration, milestone, requirement, assessment, and decision; a ready reviewed package also has exactly one current review.",
+    "Preserve exact supplied declaration identity, version, subject, outcome identity, version, subject, and order for the confirmed scope.",
+    "Include the service-owned selection decision identified by instructions and do not change its authority.",
+    "Do not create development milestones, work packets, activation claims, or broader scope."
+  ]
+}

@@ -963,7 +963,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
         decision_reference = _selection_decision_reference(
             "owner/project", "supplied", inventory.source_ref,
             inventory.source_commit, inventory.overview_path, "main",
-            snapshot_reference, "b" * 40,
+            snapshot_reference, "b" * 40, selected_scope="APP-PM1",
         )
         context = RegistrationPackageContext(
             "project-1", "owner/project", inventory, decision_reference, "main",

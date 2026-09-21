@@ -24,6 +24,7 @@ from maestro.planning.registration_records import (
     RegistrationAgentResponse,
     RegistrationRecordError,
     RegistrationPackageContext,
+    RegistrationScopeBoundary,
     package_content_hash,
     validate_registration_package,
 )
@@ -98,6 +99,7 @@ class RegistrationAssessmentTest(unittest.TestCase):
         decision = _selection_decision_reference(
             "owner/project", "supplied", inventory.source_ref, inventory.source_commit,
             inventory.overview_path, "main", snapshot_reference, "b" * 40,
+            selected_scope="APP-PM1",
         )
         return RegistrationIntakeResult(
             inventory, (), "binding-1", "APP-PM1", "supplied", snapshot_reference,
@@ -352,6 +354,55 @@ class RegistrationAssessmentTest(unittest.TestCase):
             validate_registration_package(
                 manifest, records, context, require_review=False
             )
+
+    def test_partial_package_is_bound_to_confirmed_scope_dependencies_and_completion(self) -> None:
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", "Application", 3, "APP-PM1", "Start", 1),
+                OutcomeReference("APP", "Application", 3, "APP-PM2", "Continue", 2),
+            ),
+        )
+        boundary = RegistrationScopeBoundary.from_selection(json.dumps({
+            "confirmed": True,
+            "included_outcomes": ["APP-PM1"],
+            "excluded_outcomes": ["APP-PM2"],
+            "completion_outcomes": ["APP-PM1"],
+            "outside_dependencies": {"APP-PM1": []},
+        }), inventory)
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1", boundary,
+        )
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-partial"
+        )
+        self.assertIs(validate_registration_package(manifest, records, context), manifest)
+        self.assertEqual(
+            {"included": ["Start"], "excluded": ["Continue"]},
+            records["summary.json"]["data"]["scope"],
+        )
+        records["summary.json"]["data"]["scope"] = {
+            "included": ["Continue"], "excluded": ["Start"]
+        }
+        manifest["content_hash"] = package_content_hash(records)
+        manifest["files"] = [
+            {
+                "path": path,
+                "record_id": record["record_id"],
+                "record_type": record["record_type"],
+                "record_version": record["record_version"],
+                "subject": record["subject"],
+                "sha256": hashlib.sha256(canonical_record_bytes(record)).hexdigest(),
+            }
+            for path, record in sorted(records.items())
+        ]
+        with self.assertRaisesRegex(RegistrationRecordError, "confirmed intake boundary"):
+            validate_registration_package(manifest, records, context)
 
     def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
         plugin = RegistrationProcessPlugin(self._configured_routes())

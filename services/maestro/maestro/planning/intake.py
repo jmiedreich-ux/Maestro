@@ -285,7 +285,7 @@ class RegistrationIntakeResult:
                     self.repository, self.source_selection, self.source_ref,
                     self.source_commit, self.overview_path,
                     self.publication_branch, self.destination_snapshot_reference,
-                    self.publication_head,
+                    self.publication_head, selected_scope=self.selected_scope,
                 ) != self.selection_decision_ref:
                     raise IntakeError(
                         "saved intake selection decision reference does not match its reservation"
@@ -380,6 +380,7 @@ class RegistrationIntakeResult:
             self.repository, self.source_selection, self.source_ref, self.inventory.source_commit,
             self.inventory.overview_path, self.publication_branch,
             self.destination_snapshot_reference, self.publication_head,
+            selected_scope=self.selected_scope,
         ) != self.selection_decision_ref:
             raise IntakeError("saved intake selection decision reference does not match its selection")
 
@@ -489,6 +490,7 @@ class RegistrationIntake:
                 authorization.repository, source_selection, selector, source_commit,
                 request.overview_path, authorization.branch,
                 attempt.destination_snapshot_reference, publication_head,
+                selected_scope=request.scope,
             ),
             publication_head=publication_head,
             resolved_source_commit=source_commit,
@@ -546,6 +548,20 @@ class RegistrationIntake:
                     referenced_paths=request.referenced_paths,
                     command=command,
                 )
+            # A partial boundary is accepted only when the Owner supplied the
+            # complete, explicitly confirmed outcome/dependency/completion map.
+            # The same immutable interpretation is later copied into package
+            # context and checked against every candidate.
+            from .registration_records import (
+                RegistrationRecordError,
+                RegistrationScopeBoundary,
+            )
+            try:
+                RegistrationScopeBoundary.from_selection(
+                    reservation.selected_scope or "", inventory
+                )
+            except RegistrationRecordError as error:
+                raise IntakeError(str(error)) from error
         except (
             SourceIntakeError,
             RepositoryCredentialError,
@@ -679,6 +695,7 @@ def _selection_decision_reference(
     repository: str, source_selection: str, source_ref: str, source_commit: str,
     overview_path: str, publication_branch: str,
     destination_snapshot_reference: str | None, publication_head: str | None,
+    *, selected_scope: str | None = None,
 ) -> str:
     if destination_snapshot_reference is None:
         raise IntakeError("saved intake destination snapshot reference is missing")
@@ -687,7 +704,7 @@ def _selection_decision_reference(
     except GitReadError as error:
         raise IntakeError(str(error)) from error
     return hashlib.sha256(_canonical_json({
-        "kind": "registration_source_selection_v2",
+        "kind": "registration_source_and_scope_selection_v3",
         "repository": repository,
         "source_selection": source_selection,
         "source_ref": source_ref,
@@ -696,6 +713,7 @@ def _selection_decision_reference(
         "publication_branch": publication_branch,
         "publication_head": publication_head,
         "destination_snapshot_reference": destination_snapshot_reference,
+        "selected_scope": selected_scope,
     }).encode("utf-8")).hexdigest()
 
 

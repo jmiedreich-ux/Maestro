@@ -172,7 +172,13 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             assignment_id="project-architect-assignment-two",
             run_id="project-architect-run-two",
         )
-        candidate_bytes = b'{"candidate":"one"}\n'
+        candidate_record = b'{"record":"one"}\n'
+        candidate_bytes = canonical_json({
+            "files": [{
+                "path": "summary.json",
+                "sha256": hashlib.sha256(candidate_record).hexdigest(),
+            }]
+        }).encode()
         assessment_bytes = b'{"assessment":"one"}\n'
         prior_output = (
             self.settings.workspace_root / project_id / activity_id
@@ -180,6 +186,7 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         )
         (prior_output / "candidate").mkdir(parents=True)
         (prior_output / "candidate" / "manifest.json").write_bytes(candidate_bytes)
+        (prior_output / "candidate" / "summary.json").write_bytes(candidate_record)
         (prior_output / "assessment.json").write_bytes(assessment_bytes)
         candidate = ArtifactReference(
             "output/candidate/manifest.json",
@@ -204,10 +211,14 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             source_inventory=inventory,
             selected_scope="APP-PM1 — Register the project",
             decision_version="decision-one",
-            routes=SimpleNamespace(architect=object()),
+            routes=SimpleNamespace(architect=object(), fidelity_reviewer=object()),
             package_context=SimpleNamespace(
                 source_repository="owner/project",
                 publication_branch="main",
+                scope_boundary=SimpleNamespace(as_dict=lambda: {
+                    "confirmed": True,
+                    "included_outcomes": ["APP-PM1"],
+                }),
             ),
             review_limit=2,
         )
@@ -222,6 +233,7 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
         assessment.process_snapshot = SimpleNamespace(
             definition={
                 "architect": {"run_timeout_seconds": 1800},
+                "fidelity_reviewer": {"run_timeout_seconds": 1800},
                 "saved_outputs": {"root": ".maestro/registrations"},
             }
         )
@@ -251,9 +263,44 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             set(assignment.assigned_artifacts),
         )
         self.assertEqual(candidate_bytes, inputs["prior_candidate/manifest.json"])
+        self.assertEqual(candidate_record, inputs["prior_candidate/summary.json"])
+        self.assertIn("contract/registration-package-v1.json", inputs)
         self.assertEqual(assessment_bytes, inputs["prior_assessment/assessment.json"])
         self.assertEqual(candidate, originals["prior_candidate"])
         self.assertEqual(prior_assessment, originals["prior_assessment"])
+
+        saved_status = assessment.status
+        saved_lineage = binding.assignment_lineage
+        assessment.status = SimpleNamespace(candidate=None, assessment=None)
+        binding.assignment_lineage = lambda _assessment, _role: {
+            "parent_assignment_id": None,
+            "continuation_question_id": None,
+            "previous_answer_id": None,
+        }
+        initial_assignment, initial_inputs, _initial_originals = launcher._assignment(
+            binding, assessment, "project_architect"
+        )
+        self.assertEqual({}, initial_assignment.assigned_artifacts)
+        self.assertEqual(
+            "input/contract/registration-package-v1.json",
+            initial_assignment.instructions["package_contract_path"],
+        )
+        self.assertIn("contract/registration-package-v1.json", initial_inputs)
+        assessment.status = saved_status
+        binding.assignment_lineage = saved_lineage
+
+        review_assignment, review_inputs, _review_originals = launcher._assignment(
+            binding, assessment, "fidelity_reviewer"
+        )
+        self.assertEqual(
+            {"candidate", "reviewed_assessment"},
+            set(review_assignment.assigned_artifacts),
+        )
+        self.assertEqual(candidate_record, review_inputs["candidate/summary.json"])
+
+        (prior_output / "candidate" / "summary.json").write_bytes(b"changed")
+        with self.assertRaisesRegex(ValueError, "differs from its manifest"):
+            launcher._assignment(binding, assessment, "fidelity_reviewer")
 
     def test_unknown_supervisor_state_keeps_cancellation_stop_unconfirmed(self) -> None:
         coordinator = object.__new__(RegistrationCoordinator)

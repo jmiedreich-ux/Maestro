@@ -20,7 +20,15 @@ def complete_package(
     include_review: bool = True,
 ) -> tuple[dict[str, object], dict[str, dict[str, object]]]:
     """Build a complete contract-valid package for source-level tests."""
-    outcomes = context.source_inventory.outcomes
+    boundary = context.scope_boundary
+    assert boundary is not None
+    outcomes = tuple(
+        item for item in context.source_inventory.outcomes
+        if item.milestone in boundary.included_outcomes
+    )
+    outcome_by_id = {
+        item.milestone: item for item in context.source_inventory.outcomes
+    }
     review_context = dict(review_context or {
         "architect_assignment_id": "project_architect-assignment",
         "architect_run_id": "project_architect-run",
@@ -130,7 +138,7 @@ def complete_package(
                 "purpose": f"Deliver {outcome.subject}.",
                 "included": [outcome.subject],
                 "excluded": [],
-                "dependencies": [],
+                "dependencies": boundary.dependencies_for(outcome.milestone),
                 "requirement_refs": [record_ref(requirement_path, requirement)],
                 "source_refs": [
                     source_ref(
@@ -196,7 +204,10 @@ def complete_package(
             "purpose": "Preserve the supplied project outcomes for registration.",
             "scope": {
                 "included": [item.subject for item in outcomes],
-                "excluded": [],
+                "excluded": [
+                    outcome_by_id[item].subject
+                    for item in boundary.excluded_outcomes
+                ],
             },
             "priorities": ["Preserve the supplied outcomes and completion boundaries."],
             "assessment_outcome": "ready",
@@ -302,6 +313,7 @@ def complete_package(
         "publication_branch": context.publication_branch,
         "destination_snapshot_reference": context.destination_snapshot_reference,
         "selection_decision_ref": context.selection_decision_ref,
+        "scope_boundary": boundary.as_dict(),
         "content_hash": content_hash,
         "files": [
             {
