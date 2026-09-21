@@ -157,6 +157,13 @@ class RegistrationAssessment:
             else "awaiting_reviewer"
         )
 
+    def continue_after_review(self, run: AssessmentRun) -> None:
+        """Start one new architect assignment for an approved correction round."""
+        if self._state != "changes_requested" or not isinstance(run, AssessmentRun):
+            raise RegistrationAssessmentError("registration correction is not eligible")
+        self._current_runs["project_architect"] = run
+        self._state = "awaiting_architect"
+
     def current_run(self, role: str) -> AssessmentRun:
         try:
             return self._current_runs[role]

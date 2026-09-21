@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from .connection import ServiceError, TerminalConnectionError
-from .extensions import ExtensionContext, ExtensionRegistry
+from .extensions import ActionInput, ExtensionContext, ExtensionRegistry, InputSubmission
 
 
 @dataclass(frozen=True)
@@ -292,6 +292,9 @@ class RegistrationExtension:
         registry.register_action("registration-confirm", self._confirm)
         registry.register_action("registration-retry", self._retry)
         registry.register_action("registration-cancel", self._cancel)
+        registry.register_input(
+            "registration-retry", self._open_retry_input, self._submit_retry_input
+        )
 
     def _open(self, context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():
@@ -307,7 +310,15 @@ class RegistrationExtension:
         return self.interaction.render()
 
     def _confirm(self, context: ExtensionContext, arguments: str) -> object:
-        return self.interaction.confirm(context, arguments.strip())
+        detail = self.interaction.detail
+        if detail is None or not isinstance(detail.get("package_ref"), Mapping):
+            raise ValueError("open the registration before confirming it")
+        candidate_id = arguments.strip() or str(
+            detail["package_ref"]["candidate_id"]
+        )
+        return self.interaction.confirm(
+            context, candidate_id
+        )
 
     def _retry(self, context: ExtensionContext, arguments: str) -> object:
         if self.interaction.pending is not None:
@@ -316,14 +327,23 @@ class RegistrationExtension:
                     "confirmation reconciliation retry takes no arguments"
                 )
             return self.interaction.retry(context)
-        operation_id, separator, intervention = arguments.strip().partition(" ")
-        if not separator or not intervention.strip():
-            raise ValueError(
-                "registration retry requires an operation ID and intervention"
-            )
-        return self.interaction.retry(
-            context, operation_id, intervention.strip()
-        )
+        operation_id = _identifier(arguments.strip(), "publication_operation_id")
+        return ActionInput("registration-retry", operation_id)
+
+    @staticmethod
+    def _open_retry_input(
+        _context: ExtensionContext, operation_id: str
+    ) -> Mapping[str, object]:
+        return {
+            "action_id": f"registration-retry.{operation_id}",
+            "prompt": "Describe the intervention before retrying publication.",
+        }
+
+    def _submit_retry_input(
+        self, context: ExtensionContext, submission: InputSubmission
+    ) -> object:
+        operation_id = context.state.input.action_id  # type: ignore[attr-defined]
+        return self.interaction.retry(context, operation_id, submission.text.strip())
 
     def _cancel(self, context: ExtensionContext, arguments: str) -> object:
         if arguments.strip():

@@ -23,7 +23,7 @@ from maestro.service.registry import (
     PreparedOperation,
     RegistryError,
 )
-from maestro.service.requests import RequestService
+from maestro.service.requests import RequestRejection, RequestService
 
 
 OWNER_TOKEN = "a" * 64
@@ -265,6 +265,51 @@ class DurableRequestTest(unittest.TestCase):
         self.assertEqual(
             ("project-created", "registration-created"), event_context
         )
+
+    def test_stale_registration_confirmation_is_rejected_before_preparation(self) -> None:
+        prepared = []
+
+        def external_handler(request) -> PreparedOperation:
+            prepared.append(request.request_id)
+            return PreparedOperation(
+                entity_id=str(request.activity_id),
+                event_type="registration.confirmed",
+                event_data={},
+                apply=lambda _transaction, _version: OperationResult({}),
+            )
+
+        authenticator = OwnerAuthenticator(
+            OwnerAuthenticationSettings(
+                owner_id="owner-local", token_sha256=token_digest(OWNER_TOKEN)
+            )
+        )
+        service = RequestService(
+            self.database,
+            authenticator,
+            OperationRegistry((OperationHandler("registration.confirm", external_handler),)),
+        )
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
+                ("activity-stale", 2),
+            )
+
+        with self.assertRaisesRegex(RequestRejection, "expected version is stale") as raised:
+            service.submit(
+                f"Bearer {OWNER_TOKEN}",
+                {
+                    "request_id": "stale-confirmation",
+                    "operation": "registration.confirm",
+                    "project_id": "project-one",
+                    "activity_id": "activity-stale",
+                    "question_id": None,
+                    "expected_version": 1,
+                    "payload": {},
+                },
+            )
+
+        self.assertEqual(409, raised.exception.status_code)
+        self.assertEqual([], prepared)
 
     def test_storage_unavailability_is_503_but_programming_errors_escape(self) -> None:
         authorization = {"Authorization": f"Bearer {OWNER_TOKEN}"}

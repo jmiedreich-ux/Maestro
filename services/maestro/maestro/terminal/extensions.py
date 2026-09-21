@@ -40,6 +40,14 @@ class InputSubmission:
     selection_id: str | None = None
 
 
+@dataclass(frozen=True)
+class ActionInput:
+    """An activity action that deliberately opens extension-owned text input."""
+
+    extension_name: str
+    identity: str
+
+
 InputOpenCallback = Callable[[ExtensionContext, str], Mapping[str, object]]
 InputSubmitCallback = Callable[[ExtensionContext, InputSubmission], object]
 

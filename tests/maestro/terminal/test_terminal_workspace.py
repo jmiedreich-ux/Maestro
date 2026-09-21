@@ -50,6 +50,7 @@ from maestro.terminal.connection import (
 )
 from maestro.terminal.extensions import ExtensionContext, ExtensionRegistry
 from maestro.terminal.rendering import TerminalRenderer, TerminalSize
+from maestro.terminal.registration import RegistrationExtension
 from maestro.terminal.workspace import View, Workspace, WorkspaceError
 
 
@@ -317,6 +318,64 @@ class TerminalWorkspaceTest(unittest.TestCase):
         self.assertEqual(
             "Enlarge the terminal to continue.",
             TerminalRenderer().render(workspace, TerminalSize(79, 24)),
+        )
+
+    def test_registration_extension_view_exposes_connected_activity_controls(self) -> None:
+        self.create_project("project-controls", "Project Controls")
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                "DELETE FROM service_activity_actions WHERE activity_id = ?",
+                ("activity-project-controls",),
+            )
+            transaction.executemany(
+                """INSERT INTO service_activity_actions(
+                       action_id, activity_id, project_id, kind, label
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (
+                    (
+                        "registration-confirm", "activity-project-controls",
+                        "project-controls", "decision", "Confirm registration",
+                    ),
+                    (
+                        "registration-cancel", "activity-project-controls",
+                        "project-controls", "decision", "Cancel registration",
+                    ),
+                    (
+                        "registration-retry.publication-one", "activity-project-controls",
+                        "project-controls", "recovery", "Retry publication",
+                    ),
+                ),
+            )
+        workspace = Workspace(self.client)
+        RegistrationExtension().install(workspace.extensions)
+        workspace.refresh()
+        workspace.select_project("project-controls")
+        workspace.extension_view_name = "registration"
+        workspace.extension_view_content = "State: Ready"
+        workspace.view = View.EXTENSION
+
+        controls = {
+            target.identity for target in workspace.focus_targets()
+            if target.kind == "action"
+        }
+        rendered = TerminalRenderer().render(workspace, TerminalSize(100, 30))
+        self.assertEqual(
+            {
+                "registration-confirm",
+                "registration-cancel",
+                "registration-retry.publication-one",
+            },
+            controls,
+        )
+        self.assertIn("Confirm registration", rendered)
+        self.assertIn("Cancel registration", rendered)
+        self.assertIn("Retry publication", rendered)
+
+        workspace.invoke_activity_action("registration-retry.publication-one")
+        self.assertEqual("publication-one", workspace.input.action_id)
+        self.assertIn(
+            "Describe the intervention",
+            str(workspace.selected_attention_detail["prompt"]),
         )
 
     def test_workspace_follows_bounded_project_and_attention_pages(self) -> None:

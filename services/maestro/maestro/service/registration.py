@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
 from typing import Callable, Mapping
 
 from maestro.agents.preflight import AgentRoutePreflight
@@ -36,10 +39,10 @@ from maestro.planning.registration_recovery import (
     RegistrationRecoveryError,
     RegistrationRecoveryService,
 )
-from maestro.planning.registration import RegistrationAssessmentError
+from maestro.planning.registration import RegistrationAssessment, RegistrationAssessmentError
 from maestro.planning.sources import ExactSourceReader
 
-from .activities import ActivityRecord, ActivityRepository, ProjectRecord
+from .activities import ActivityAction, ActivityRecord, ActivityRepository, ProjectRecord
 from .authentication import VerifiedActor
 from .processes import ProcessSnapshot
 from .questions import DeliveredAnswer, LinkedQuestion, QuestionService
@@ -89,6 +92,8 @@ class RegistrationRuntimeDependencies:
     process_snapshot: ProcessSnapshot
     remote_for_repository: Callable[[str], str]
     overview_path: str = "README.md"
+    workspace_root: Path | None = None
+    assignment_launcher: Callable[[RegistrationServiceBinding, RegistrationAssessment, str], None] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.source_reader, ExactSourceReader):
@@ -110,6 +115,13 @@ class RegistrationRuntimeDependencies:
             raise TypeError("registration runtime requires a remote resolver")
         if not isinstance(self.overview_path, str) or not self.overview_path.strip():
             raise ValueError("registration overview path must be nonempty text")
+        if self.workspace_root is not None and (
+            not isinstance(self.workspace_root, Path)
+            or not self.workspace_root.is_absolute()
+        ):
+            raise ValueError("registration workspace root must be absolute")
+        if self.assignment_launcher is not None and not callable(self.assignment_launcher):
+            raise TypeError("registration assignment launcher must be callable")
 
 
 class _CollectedQuestions:
@@ -135,6 +147,7 @@ class RegistrationCoordinator:
         dependencies: RegistrationRuntimeDependencies | None,
         confirmation: RegistrationConfirmationService | None,
         recovery: RegistrationRecoveryService | None,
+        configuration_error: str | None = None,
     ) -> None:
         self.database = database
         self.records = records
@@ -144,6 +157,7 @@ class RegistrationCoordinator:
         self.dependencies = dependencies
         self.confirmation = confirmation
         self.recovery = recovery
+        self.configuration_error = configuration_error
         self.intake = (
             None
             if dependencies is None
@@ -154,6 +168,13 @@ class RegistrationCoordinator:
                 dependencies.destination_provider,
             )
         )
+        if dependencies is not None and callable(
+            getattr(dependencies.assignment_launcher, "connect_failure_listener", None)
+        ):
+            dependencies.assignment_launcher.connect_failure_listener(
+                self._assignment_failed
+            )
+        self.binding.connect_assessment_listener(self._assessment_changed)
 
     @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
@@ -312,6 +333,11 @@ class RegistrationCoordinator:
                         None if assessment is not None else "Registration intake needs answers"
                     ),
                     started_at=_utc_now(),
+                    available_actions=(
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
                 ),
             )
             transaction.execute(
@@ -362,6 +388,13 @@ class RegistrationCoordinator:
             event_type="registration.started",
             event_data={"project_id": project_id, "activity_id": activity_id},
             apply=apply,
+            after_commit=(
+                None
+                if assessment is None
+                else lambda _result: self._launch_assignment(
+                    assessment, "project_architect"
+                )
+            ),
         )
 
     def prepare_confirm(self, request: RequestEnvelope) -> PreparedOperation:
@@ -381,11 +414,21 @@ class RegistrationCoordinator:
             RegistrationPackageReference.from_mapping(request.payload["package_ref"]),
             _text(request.payload["confirmed_at"], "confirmed_at"),
         )
-        result = confirmation.confirm(
-            self.binding.assessment(request.activity_id),
-            VerifiedActor(self.owner_id),
-            action,
-        )
+        assessment = self.binding.assessment(request.activity_id)
+        actor = VerifiedActor(self.owner_id)
+        with self.database.read_connection() as connection:
+            recovery_attempt = connection.execute(
+                "SELECT 1 FROM registration_recovery_attempts WHERE activity_id = ?",
+                (request.activity_id,),
+            ).fetchone()
+        if recovery_attempt is not None:
+            if self.recovery is None:
+                raise ValueError("installed registration recovery is not configured")
+            result = self.recovery.confirm_replacement(
+                request.activity_id, confirmation, assessment, actor, action
+            )
+        else:
+            result = confirmation.confirm(assessment, actor, action)
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
             row = _activity_row(transaction, request.activity_id)
@@ -574,7 +617,52 @@ class RegistrationCoordinator:
             and str(pending_confirmation[0]) == "confirmed"
         ):
             raise ValueError("publication retry operation is already complete")
-        recovered = confirmation.recover_pending(request.activity_id)
+        with self.database.read_connection() as connection:
+            recovery_attempt = connection.execute(
+                "SELECT 1 FROM registration_recovery_attempts WHERE activity_id = ?",
+                (request.activity_id,),
+            ).fetchone()
+        recovered_candidate = candidate is not None
+        update_recovery = recovery_attempt is not None and recovered_candidate
+        if update_recovery:
+            if self.recovery is None:
+                raise ValueError("installed registration recovery is not configured")
+            dependencies = self._require_runtime()
+            if dependencies.workspace_root is None:
+                raise ValueError("installed registration workspace is not configured")
+            assessment = self.binding.assessment(request.activity_id)
+            ready = assessment.require_ready_candidate()
+            manifest, records = _load_candidate_workspace(
+                dependencies.workspace_root, assessment, ready.path, ready.sha256
+            )
+            active = confirmation.active(request.project_id)
+            if active is None:
+                raise ValueError("re-registration retry has no active registration")
+            package = self.recovery.recover_candidate_publication(
+                request.activity_id,
+                confirmation,
+                assessment,
+                activity_version=request.expected_version,
+                manifest=manifest,
+                records=records,
+                remote=dependencies.remote_for_repository(
+                    assessment.context.package_context.source_repository
+                ),
+                expected_parent=active.package_ref.commit,
+                operation_id=operation_id,
+                publication_request_id=(
+                    f"registration-publication-{request.activity_id}-{ready.version}"
+                ),
+                retry_request_id=request.request_id,
+                automatic=False,
+                intervention=intervention,
+            )
+            self.recovery.record_candidate_from_saved_reasons(
+                request.activity_id, package
+            )
+            recovered: object = ({"kind": "candidate", "state": "published"},)
+        else:
+            recovered = confirmation.recover_pending(request.activity_id)
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
             row = _activity_row(transaction, request.activity_id)
@@ -585,12 +673,39 @@ class RegistrationCoordinator:
                     request.project_id,
                     "registration",
                     str(row[1]),
-                    str(row[2]),
+                    "waiting" if recovered_candidate else str(row[2]),
                     next_version,
+                    waiting_reason=(
+                        "Exact reviewed candidate is ready for confirmation"
+                        if recovered_candidate
+                        else None
+                    ),
                     started_at=None if row[3] is None else str(row[3]),
+                    available_actions=(
+                        (
+                            ActivityAction(
+                                "registration-confirm",
+                                "Confirm registration",
+                                "decision",
+                            ),
+                            ActivityAction(
+                                "registration-cancel",
+                                "Cancel registration",
+                                "decision",
+                            ),
+                        )
+                        if recovered_candidate
+                        else ()
+                    ),
                 ),
                 expected_record_version=request.expected_version,
             )
+            if recovered_candidate:
+                transaction.execute(
+                    """UPDATE registration_candidate_publications
+                       SET activity_version = ? WHERE operation_id = ?""",
+                    (next_version, operation_id),
+                )
             return OperationResult(
                 data={
                     "publication_operation_id": operation_id,
@@ -630,7 +745,8 @@ class RegistrationCoordinator:
                 (activity_id,),
             ).fetchone()
         package = None if candidate is None else json.loads(str(candidate[0]))
-        state = str(activity[1])
+        activity_state = str(activity[1])
+        state = activity_state
         ready = False
         if assessment is not None:
             saved = json.loads(str(assessment[0]))
@@ -648,7 +764,11 @@ class RegistrationCoordinator:
             "state": state,
             "package_ref": package,
             "history": history,
-            "can_confirm": bool(ready and package is not None),
+            "can_confirm": bool(
+                ready
+                and package is not None
+                and activity_state not in {"completed", "cancelled", "failed"}
+            ),
         }
 
     def rehydrate(self) -> dict[str, object]:
@@ -793,6 +913,11 @@ class RegistrationCoordinator:
                     "running",
                     current_version + 1,
                     started_at=None if activity[3] is None else str(activity[3]),
+                    available_actions=(
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
                 ),
                 expected_record_version=current_version,
             )
@@ -814,6 +939,7 @@ class RegistrationCoordinator:
                     answer.activity_id,
                 ),
             )
+        self._launch_assignment(assessment, "project_architect")
 
     def _publish_intake_question(
         self,
@@ -844,9 +970,193 @@ class RegistrationCoordinator:
             (question_id, activity_id, question.field),
         )
 
+    def _assessment_changed(self, assessment: RegistrationAssessment) -> None:
+        """Publish an independently approved candidate from its saved workspace."""
+        if assessment.status.state == "changes_requested":
+            assessment = self.binding.continue_after_review(assessment)
+            self._launch_assignment(assessment, "project_architect")
+            return
+        if assessment.status.state == "awaiting_architect":
+            self._launch_assignment(assessment, "project_architect")
+            return
+        if assessment.status.state == "awaiting_reviewer":
+            if assessment.status.review_count:
+                assessment = self.binding.prepare_next_review(assessment)
+            self._launch_assignment(assessment, "fidelity_reviewer")
+            return
+        if assessment.status.state != "ready":
+            return
+        if self.dependencies is None or self.confirmation is None:
+            return
+        dependencies = self._require_runtime()
+        confirmation = self._require_confirmation()
+        if dependencies.workspace_root is None:
+            return
+        activity_id = assessment.context.activity_id
+        project_id = assessment.context.project_id
+        candidate = assessment.require_ready_candidate()
+        operation_id = f"registration-candidate-{activity_id}-{candidate.version}"
+        request_id = f"registration-publication-{activity_id}-{candidate.version}"
+        version = self._advance_for_publication(activity_id, project_id)
+        try:
+            manifest, records = _load_candidate_workspace(
+                dependencies.workspace_root, assessment, candidate.path, candidate.sha256
+            )
+            active = confirmation.active(project_id)
+            if active is not None:
+                if self.recovery is None:
+                    raise RegistrationRecoveryError(
+                        "installed registration recovery is not configured"
+                    )
+                authorization = dependencies.destination_provider.authorize(
+                    assessment.context.package_context.source_repository,
+                    assessment.context.package_context.publication_branch,
+                )
+                self.recovery.begin(
+                    request_id=f"registration-recovery-{activity_id}",
+                    project_id=project_id,
+                    activity_id=activity_id,
+                    destination_authorization=authorization,
+                    continuity=self.recovery.load_continuity(project_id, activity_id),
+                    process_snapshot=assessment.process_snapshot,
+                )
+            package = confirmation.publish_candidate(
+                assessment,
+                activity_version=version,
+                manifest=manifest,
+                records=records,
+                remote=dependencies.remote_for_repository(
+                    assessment.context.package_context.source_repository
+                ),
+                expected_parent=(
+                    assessment.context.source_inventory.source_commit
+                    if active is None
+                    else active.package_ref.commit
+                ),
+                operation_id=operation_id,
+                request_id=request_id,
+            )
+            if active is not None:
+                assert self.recovery is not None
+                self.recovery.record_candidate_from_saved_reasons(activity_id, package)
+            self._set_activity_presentation(
+                activity_id,
+                "waiting",
+                "Exact reviewed candidate is ready for confirmation",
+                (
+                    ActivityAction(
+                        "registration-confirm", "Confirm registration", "decision"
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            self._set_activity_presentation(
+                activity_id,
+                "paused",
+                f"Candidate publication needs intervention: {error}",
+                (
+                    ActivityAction(
+                        f"registration-retry.{operation_id}",
+                        "Retry publication",
+                        "recovery",
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+
+    def _launch_assignment(
+        self, assessment: RegistrationAssessment, role: str
+    ) -> None:
+        if self.dependencies is None or self.dependencies.assignment_launcher is None:
+            return
+        try:
+            self.dependencies.assignment_launcher(self.binding, assessment, role)
+        except (OSError, RuntimeError, ValueError) as error:
+            self._set_activity_presentation(
+                assessment.context.activity_id,
+                "paused",
+                f"Agent assignment could not start: {error}",
+                (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                ),
+            )
+
+    def _assignment_failed(self, activity_id: str, reason: str) -> None:
+        self._set_activity_presentation(
+            activity_id,
+            "paused",
+            f"Agent assignment needs intervention: {reason}",
+            (
+                ActivityAction(
+                    "registration-cancel", "Cancel registration", "decision"
+                ),
+            ),
+        )
+
+    def _advance_for_publication(self, activity_id: str, project_id: str) -> int:
+        with self.database.transaction() as transaction:
+            row = _activity_row(transaction, activity_id)
+            version = int(row[4]) + 1
+            self.records.update_activity(
+                transaction,
+                ActivityRecord(
+                    activity_id,
+                    project_id,
+                    "registration",
+                    str(row[1]),
+                    "running",
+                    version,
+                    waiting_reason="Publishing reviewed registration candidate",
+                    started_at=None if row[3] is None else str(row[3]),
+                ),
+                expected_record_version=int(row[4]),
+            )
+            transaction.execute(
+                "UPDATE entity_versions SET version = ? WHERE entity_id = ?",
+                (version, activity_id),
+            )
+        return version
+
+    def _set_activity_presentation(
+        self,
+        activity_id: str,
+        state: str,
+        reason: str,
+        actions: tuple[ActivityAction, ...],
+    ) -> None:
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                "UPDATE service_activities SET state = ?, waiting_reason = ? WHERE activity_id = ?",
+                (state, reason, activity_id),
+            )
+            transaction.execute(
+                "DELETE FROM service_activity_actions WHERE activity_id = ?",
+                (activity_id,),
+            )
+            transaction.executemany(
+                """INSERT INTO service_activity_actions(
+                       action_id, activity_id, project_id, kind, label
+                   ) SELECT ?, activity_id, project_id, ?, ?
+                     FROM service_activities WHERE activity_id = ?""",
+                tuple(
+                    (action.action_id, action.kind, action.label, activity_id)
+                    for action in actions
+                ),
+            )
+
     def _require_runtime(self) -> RegistrationRuntimeDependencies:
         if self.dependencies is None:
-            raise ValueError("installed registration runtime is not configured")
+            raise ValueError(
+                self.configuration_error
+                or "installed registration runtime is not configured"
+            )
         return self.dependencies
 
     def _require_confirmation(self) -> RegistrationConfirmationService:
@@ -1013,3 +1323,50 @@ def _optional_text(value: object) -> str | None:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _load_candidate_workspace(
+    workspace_root: Path,
+    assessment: RegistrationAssessment,
+    manifest_reference: str,
+    manifest_sha256: str,
+) -> tuple[Mapping[str, object], Mapping[str, Mapping[str, object]]]:
+    run_id = assessment.current_run("project_architect").run_id
+    root = workspace_root / assessment.context.project_id / assessment.context.activity_id / "runs" / run_id
+    relative = PurePosixPath(manifest_reference)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("candidate manifest path is outside its assigned workspace")
+    choices = [root.joinpath(*relative.parts)]
+    if not relative.parts or relative.parts[0] not in {"input", "output"}:
+        choices.insert(0, root / "output" / relative)
+    manifest_path = next((path for path in choices if path.is_file() and not path.is_symlink()), None)
+    if manifest_path is None:
+        raise ValueError("reviewed candidate manifest is unavailable")
+    raw = manifest_path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != manifest_sha256:
+        raise ValueError("reviewed candidate manifest hash differs from the saved reference")
+    try:
+        manifest = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("reviewed candidate manifest is invalid JSON") from error
+    if not isinstance(manifest, Mapping) or not isinstance(manifest.get("files"), list):
+        raise ValueError("reviewed candidate manifest has no file inventory")
+    records: dict[str, Mapping[str, object]] = {}
+    for entry in manifest["files"]:
+        if not isinstance(entry, Mapping) or not isinstance(entry.get("path"), str):
+            raise ValueError("reviewed candidate file inventory is invalid")
+        path = PurePosixPath(str(entry["path"]))
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("reviewed candidate record path is unsafe")
+        target = manifest_path.parent.joinpath(*path.parts)
+        details = os.lstat(target)
+        if not stat.S_ISREG(details.st_mode) or target.is_symlink():
+            raise ValueError("reviewed candidate record is not a regular file")
+        try:
+            record = json.loads(target.read_bytes())
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("reviewed candidate record is invalid JSON") from error
+        if not isinstance(record, Mapping):
+            raise ValueError("reviewed candidate record must be an object")
+        records[str(path)] = record
+    return manifest, records

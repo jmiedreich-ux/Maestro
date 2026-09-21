@@ -42,6 +42,7 @@ from .authentication import (
 )
 from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamService
 from .http import MAX_REQUEST_BYTES, HTTPResponse
+from .installed_registration import compose_installed_registration
 from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
 from .processes import ProcessHandlerRegistry
@@ -91,6 +92,7 @@ class ServiceSettings:
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
     agent_route_provider: ConfiguredAgentRouteProvider | None = None
     registration_runtime: RegistrationRuntimeDependencies | None = None
+    registration_error: str | None = None
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -113,6 +115,11 @@ class ServiceSettings:
             and not isinstance(self.registration_runtime, RegistrationRuntimeDependencies)
         ):
             raise ServiceConfigurationError("registration runtime is invalid")
+        if self.registration_error is not None and (
+            not isinstance(self.registration_error, str)
+            or not self.registration_error.strip()
+        ):
+            raise ServiceConfigurationError("registration configuration error is invalid")
 
 
 def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
@@ -194,6 +201,18 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         raise ServiceConfigurationError("service.port must be an integer")
     if not isinstance(agent_user, str):
         raise ServiceConfigurationError("service.agent_user must be text")
+    registration_runtime = None
+    registration_error = None
+    try:
+        registration_runtime = compose_installed_registration(
+            value,
+            route_provider=agent_route_provider,
+            storage_path=storage.path,
+            service_home=storage.path.parent,
+            workspace_root=Path(workspace_root),
+        )
+    except (OSError, RuntimeError, TypeError, ValueError) as error:
+        registration_error = f"installed registration configuration is invalid: {error}"
     return ServiceSettings(
         storage=storage,
         owner=owner,
@@ -202,6 +221,8 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         agent_user=agent_user,
         workspace_root=Path(workspace_root),
         agent_route_provider=agent_route_provider,
+        registration_runtime=registration_runtime,
+        registration_error=registration_error,
     )
 
 
@@ -276,6 +297,7 @@ class InstalledServiceApplication:
             registration_runtime,
             self.registration_confirmation,
             self.registration_recovery,
+            settings.registration_error,
         )
         self.questions.register_recipient(
             "registration-process", self.registration.receive_answer

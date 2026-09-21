@@ -232,6 +232,7 @@ class RequestService:
         existing = self._find_receipt(request.request_id)
         if existing is not None:
             return self._reconcile(existing, digest)
+        self._reject_stale_external_operation(request)
         try:
             prepared = self._registry.prepare(request)
         except RegistryError as error:
@@ -297,6 +298,8 @@ class RequestService:
             raise _unavailable() from error
         except (DatabaseError, StorageConfigurationError) as error:
             raise _unavailable() from error
+        if prepared.after_commit is not None:
+            prepared.after_commit(result)
         return RequestReceipt(
             request_id=committed.request_id,
             status=result.status,
@@ -307,6 +310,45 @@ class RequestService:
             project_id=result.project_id,
             activity_id=result.activity_id,
         )
+
+    def _reject_stale_external_operation(self, request: RequestEnvelope) -> None:
+        """Reject stale registration writes before their external preparation.
+
+        Confirmation and publication recovery prepare against Git and GitHub.
+        Their activity identity is already authoritative in the envelope, so
+        the exact version can and must be checked before invoking the handler.
+        The transactional command check remains the final concurrency guard.
+        """
+        if request.operation not in {
+            "registration.confirm",
+            "registration.cancel",
+            "registration.retry",
+        }:
+            return
+        if request.activity_id is None or request.expected_version is None:
+            return
+        try:
+            with self._database.read_connection() as connection:
+                row = connection.execute(
+                    "SELECT version FROM entity_versions WHERE entity_id = ?",
+                    (request.activity_id,),
+                ).fetchone()
+        except sqlite3.DatabaseError as error:
+            if not _is_storage_unavailable(error):
+                raise
+            raise _unavailable() from error
+        observed = 0 if row is None else int(row[0])
+        if observed != request.expected_version:
+            raise RequestRejection(
+                409,
+                "version_conflict",
+                "the expected version is stale",
+                fields={
+                    "entity_id": request.activity_id,
+                    "expected_version": request.expected_version,
+                    "current_version": observed,
+                },
+            )
 
     def lookup(self, authorization: str | None, request_id: str) -> RequestReceipt:
         self._authenticator.authenticate_read(authorization)

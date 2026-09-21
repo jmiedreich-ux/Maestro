@@ -472,6 +472,17 @@ class AgentSupervisor:
 
     @_synchronized
     def launch(self, request: LaunchRequest) -> RunRecord:
+        running, managed = self._launch(request)
+        self._drain(request.identity.key, managed, "stdout")
+        self._drain(request.identity.key, managed, "stderr")
+        return running
+
+    @_synchronized
+    def launch_protocol(self, request: LaunchRequest) -> tuple[RunRecord, ManagedUnit]:
+        """Launch while leaving the tool pipes with its protocol adapter."""
+        return self._launch(request)
+
+    def _launch(self, request: LaunchRequest) -> tuple[RunRecord, ManagedUnit]:
         key = request.identity.key
         existing = self.journal.get(key)
         if existing is not None:
@@ -512,9 +523,7 @@ class AgentSupervisor:
         )
         running = self._save(running)
         self._managed[key] = managed
-        self._drain(key, managed, "stdout")
-        self._drain(key, managed, "stderr")
-        return running
+        return running, managed
 
     @_synchronized
     def poll(self, identity: OperationIdentity) -> RunRecord:

@@ -73,6 +73,7 @@ class OperationResult:
 
 
 OperationEffect = Callable[[Transaction, int], OperationResult]
+PostCommitEffect = Callable[[OperationResult], None]
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ class PreparedOperation:
     event_type: str
     event_data: Mapping[str, object]
     apply: OperationEffect
+    after_commit: PostCommitEffect | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -94,6 +96,8 @@ class PreparedOperation:
             raise RegistryError("event data must be an object")
         if not callable(self.apply):
             raise RegistryError("operation callback must be callable")
+        if self.after_commit is not None and not callable(self.after_commit):
+            raise RegistryError("operation post-commit callback must be callable")
 
 
 OperationValidator = Callable[[RequestLike], PreparedOperation]

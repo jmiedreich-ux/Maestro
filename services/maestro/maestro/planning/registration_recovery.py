@@ -552,6 +552,64 @@ class RegistrationRecoveryService:
             )
         return comparison
 
+    def record_candidate_from_saved_reasons(
+        self,
+        activity_id: str,
+        candidate_package_ref: RegistrationPackageReference,
+    ) -> RegistrationComparison:
+        """Build comparison reasons only from the published package records."""
+        with self.database.read_connection() as connection:
+            row = self._attempt_in(connection, activity_id)
+            active = RegistrationPackageReference.from_mapping(json.loads(str(row[3])))
+            _active_records, active_items = self._package_records_in(connection, active)
+            candidate_records, candidate_items = self._package_records_in(
+                connection, candidate_package_ref
+            )
+        before = _unique_items(active_items)
+        after = _unique_items(candidate_items)
+        changed = {
+            item_id
+            for item_id in set(before) | set(after)
+            if before.get(item_id) != after.get(item_id)
+        }
+        affected: dict[str, list[str]] = {item_id: [] for item_id in changed}
+        fallback: list[str] = []
+        for record in candidate_records.values():
+            record_type = record.get("record_type")
+            identifier = record.get("record_id")
+            data = record.get("data")
+            if record_type == "decision" and isinstance(identifier, str):
+                fallback.append(identifier)
+                refs = data.get("affected_refs") if isinstance(data, Mapping) else None
+                if isinstance(refs, list):
+                    for item_id in changed & {str(value) for value in refs}:
+                        affected[item_id].append(identifier)
+            elif record_type in {"assessment", "review"} and isinstance(data, Mapping):
+                findings = data.get("findings")
+                if isinstance(findings, list):
+                    for finding in findings:
+                        if not isinstance(finding, Mapping):
+                            continue
+                        identifier = finding.get("finding_id", finding.get("local_key"))
+                        if isinstance(identifier, str) and identifier:
+                            fallback.append(identifier)
+                            items = finding.get("affected_items", [])
+                            if isinstance(items, list):
+                                for item in items:
+                                    if isinstance(item, Mapping):
+                                        item_id = item.get("record_id")
+                                        if item_id in affected:
+                                            affected[str(item_id)].append(identifier)
+        if not fallback and changed:
+            raise RegistrationRecoveryError(
+                "changed registration candidate lacks saved finding or decision reasons"
+            )
+        reasons = {
+            item_id: tuple(dict.fromkeys(values or fallback[:1]))
+            for item_id, values in affected.items()
+        }
+        return self.record_candidate(activity_id, candidate_package_ref, reasons)
+
     def bind_publication(self, activity_id: str, operation_id: str) -> None:
         canonical_identifier(activity_id, "activity_id")
         canonical_identifier(operation_id, "operation_id")
@@ -835,6 +893,57 @@ class RegistrationRecoveryService:
             self._complete_retry(retry_request_id, activity_id, preserve_completed=True)
         else:
             self._finish_retry_request_if_present(retry_request_id)
+        return result
+
+    def confirm_replacement(
+        self,
+        activity_id: str,
+        confirmation_service: RegistrationConfirmationService,
+        assessment: RegistrationAssessment,
+        actor: VerifiedActor,
+        action: OwnerConfirmation,
+    ) -> ConfirmationResult:
+        """Confirm a compared replacement while retaining the old active record."""
+        canonical_identifier(activity_id, "activity_id")
+        if not isinstance(confirmation_service, RegistrationConfirmationService):
+            raise TypeError("replacement confirmation requires RegistrationConfirmationService")
+        row = self._attempt(activity_id)
+        candidate = _optional_package(row[10])
+        if (
+            str(row[9]) != "candidate_ready"
+            or candidate is None
+            or action.activity_id != activity_id
+            or action.project_id != str(row[2])
+            or action.package_ref != candidate
+        ):
+            raise RegistrationRecoveryError(
+                "replacement confirmation differs from the saved compared candidate"
+            )
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET state = 'pending_confirmation', failure = NULL
+                   WHERE activity_id = ? AND state = 'candidate_ready'""",
+                (activity_id,),
+            )
+        try:
+            result = confirmation_service.confirm(assessment, actor, action)
+        except Exception as error:
+            self._pause(activity_id, str(error))
+            raise
+        with self.database.transaction() as transaction:
+            current = self._active_in(transaction, action.project_id)
+            if current is None or RegistrationPackageReference.from_mapping(
+                json.loads(str(current[1]))
+            ) != candidate:
+                raise RegistrationRecoveryError(
+                    "replacement confirmation did not activate the exact candidate"
+                )
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET state = 'completed', failure = NULL WHERE activity_id = ?""",
+                (activity_id,),
+            )
         return result
 
     def status(self, activity_id: str) -> RegistrationRecoveryStatus:

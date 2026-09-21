@@ -213,30 +213,7 @@ class ProcessPolicyService:
 
     def prepare(self, process_name: str, definition: Mapping[str, Any]) -> ProcessSnapshot:
         provider = self.registry.provider(process_name)
-        if not isinstance(definition, Mapping):
-            raise ProcessPolicyError("invalid_definition", "process definition must be a table")
-        effective = _copy_json_object(definition)
-        for dotted, value in _DEFAULTS[process_name].items():
-            _apply_default(effective, dotted.split("."), value)
-        try:
-            bundle = self.resources.resolve(provider.bundle_reference)
-        except ProcessResourceError as error:
-            raise ProcessPolicyError(error.code, str(error), **error.fields) from error
-        schema = bundle.schema["$defs"][bundle.snapshot.definition]
-        try:
-            _validate_schema(effective, schema, process_name)
-            provider.validator(effective)
-        except ProcessPolicyError:
-            raise
-        except (TypeError, ValueError) as error:
-            raise ProcessPolicyError("invalid_definition", str(error)) from error
-        definition_json = canonical_json(effective)
-        return ProcessSnapshot(
-            process_name,
-            definition_json,
-            hashlib.sha256(definition_json.encode("utf-8")).hexdigest(),
-            bundle.snapshot,
-        )
+        return prepare_process_snapshot(self.resources, provider, process_name, definition)
 
     def create_activity(
         self,
@@ -357,6 +334,49 @@ def _snapshot_from_row(row: Sequence[object]) -> ProcessSnapshot:
     except ProcessResourceError as error:
         raise ProcessPolicyError(error.code, str(error)) from error
     return ProcessSnapshot(process_name, definition_json, definition_sha256, bundle)
+
+
+def prepare_process_snapshot(
+    resources: InstalledSchemaResources,
+    provider: ProcessProvider,
+    process_name: str,
+    definition: Mapping[str, Any],
+) -> ProcessSnapshot:
+    """Validate one installed process definition without touching service state."""
+    if not isinstance(resources, InstalledSchemaResources):
+        raise TypeError("process snapshot preparation requires installed resources")
+    if not isinstance(provider, ProcessProvider) or provider.name != process_name:
+        raise ProcessPolicyError(
+            "unsupported_process", "process provider does not match the definition"
+        )
+    if process_name not in _DEFAULTS:
+        raise ProcessPolicyError(
+            "unsupported_process", f"process is not supported: {process_name}"
+        )
+    if not isinstance(definition, Mapping):
+        raise ProcessPolicyError("invalid_definition", "process definition must be a table")
+    effective = _copy_json_object(definition)
+    for dotted, value in _DEFAULTS[process_name].items():
+        _apply_default(effective, dotted.split("."), value)
+    try:
+        bundle = resources.resolve(provider.bundle_reference)
+    except ProcessResourceError as error:
+        raise ProcessPolicyError(error.code, str(error), **error.fields) from error
+    schema = bundle.schema["$defs"][bundle.snapshot.definition]
+    try:
+        _validate_schema(effective, schema, process_name)
+        provider.validator(effective)
+    except ProcessPolicyError:
+        raise
+    except (TypeError, ValueError) as error:
+        raise ProcessPolicyError("invalid_definition", str(error)) from error
+    definition_json = canonical_json(effective)
+    return ProcessSnapshot(
+        process_name,
+        definition_json,
+        hashlib.sha256(definition_json.encode("utf-8")).hexdigest(),
+        bundle.snapshot,
+    )
 
 
 def _copy_json_object(value: Mapping[str, Any]) -> dict[str, Any]:

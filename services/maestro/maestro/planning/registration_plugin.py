@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from maestro.agents.preflight import AgentRoutePreflight, ResolvedAgentRoute, ResolvedRoleRoutes, RunningToolIdentity, verify_running_identity
 from maestro.agents.runtime_identity import ConfirmedRuntimeIdentity, PlanningIdentityConsumer, RuntimeIdentityProtocolError
 from maestro.agents.routes import ConfiguredAgentRouteProvider, PermittedDestination, RoleSelections, RouteRequirements, ToolModelSelection
-from maestro.agents.supervisor import AgentSupervisor, OperationIdentity
+from maestro.agents.supervisor import (
+    AgentSupervisor,
+    LaunchRequest,
+    ManagedUnit,
+    OperationIdentity,
+    RunRecord,
+)
 from maestro.foundation import Database, DomainMigration, canonical_json
 from maestro.foundation import Transaction
 from maestro.service.questions import (
@@ -229,6 +235,19 @@ class RegistrationServiceBinding:
         self.database.initialize()
         self._assessments: dict[str, RegistrationAssessment] = {}
         self._questions: QuestionService | None = None
+        self._assessment_listener: Callable[[RegistrationAssessment], None] | None = None
+
+    def connect_assessment_listener(
+        self, listener: Callable[[RegistrationAssessment], None]
+    ) -> None:
+        """Connect the installed lifecycle boundary exactly once."""
+        if not callable(listener):
+            raise TypeError("registration assessment listener must be callable")
+        if self._assessment_listener is not None and self._assessment_listener is not listener:
+            raise RegistrationAssessmentError(
+                "registration assessment listener is already connected"
+            )
+        self._assessment_listener = listener
 
     def connect_questions(self, questions: QuestionService) -> None:
         """Connect the installed durable question boundary once."""
@@ -409,6 +428,7 @@ class RegistrationServiceBinding:
                    WHERE activity_id = ?""",
                 (canonical_json(assessment.to_record()), answer.activity_id),
             )
+        self._notify_assessment(assessment)
 
     def reserve_runtime_identity(
         self, activity_id: str, role: str,
@@ -422,6 +442,76 @@ class RegistrationServiceBinding:
         self.__supervisor_authority.reserve_runtime_identity(operation, route)
         return operation
 
+    def launch_agent(
+        self,
+        activity_id: str,
+        role: str,
+        command: tuple[str, ...],
+        cwd: str,
+        timeout_seconds: float,
+    ) -> tuple[OperationIdentity, ManagedUnit]:
+        """Reserve and launch the current assignment through service authority."""
+        operation = self.reserve_runtime_identity(activity_id, role)
+        _record, managed = self.__supervisor_authority.launch_protocol(
+            LaunchRequest(
+                operation,
+                command,
+                cwd,
+                timeout_seconds,
+                timeout_seconds,
+            )
+        )
+        return operation, managed
+
+    def report_agent_identity(
+        self, operation: OperationIdentity, identity: RunningToolIdentity
+    ) -> None:
+        self.__supervisor_authority.report_runtime_identity(operation, identity)
+
+    def poll_agent(self, operation: OperationIdentity) -> RunRecord:
+        return self.__supervisor_authority.poll(operation)
+
+    def stop_agent(self, operation: OperationIdentity, reason: str) -> RunRecord:
+        return self.__supervisor_authority.stop(operation, reason)
+
+    def continue_after_review(
+        self, assessment: RegistrationAssessment
+    ) -> RegistrationAssessment:
+        """Persist the service-created architect correction assignment."""
+        run = _new_run("project_architect")
+        assessment.continue_after_review(run)
+        self._replace_run(assessment, "project_architect", run)
+        return assessment
+
+    def prepare_next_review(
+        self, assessment: RegistrationAssessment
+    ) -> RegistrationAssessment:
+        """Persist a fresh independent-review run after an amendment."""
+        run = _new_run("fidelity_reviewer")
+        assessment.set_current_run("fidelity_reviewer", run)
+        self._replace_run(assessment, "fidelity_reviewer", run)
+        return assessment
+
+    def _replace_run(
+        self, assessment: RegistrationAssessment, role: str, run: AssessmentRun
+    ) -> None:
+        with self.database.transaction() as transaction:
+            updated = transaction.execute(
+                """UPDATE registration_assessment_runs
+                   SET assignment_id = ?, run_id = ?, runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                (run.assignment_id, run.run_id, assessment.context.activity_id, role),
+            )
+            if updated.rowcount != 1:
+                raise RegistrationAssessmentError(
+                    "registration assignment run is unavailable"
+                )
+            transaction.execute(
+                """UPDATE registration_assessment_state SET state_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(assessment.to_record()), assessment.context.activity_id),
+            )
+
     def submit_architect(self, response: RegistrationAgentResponse) -> object:
         assessment = self._assessment_for_response(response, "project_architect")
         result = self.registry.dispatch(
@@ -429,6 +519,7 @@ class RegistrationServiceBinding:
             response=response, running_identity=self._saved_identity(assessment, "project_architect"),
         )
         self._save_assessment(assessment, response)
+        self._notify_assessment(assessment)
         return result
 
     def submit_reviewer(self, response: RegistrationAgentResponse) -> object:
@@ -438,7 +529,12 @@ class RegistrationServiceBinding:
             response=response, running_identity=self._saved_identity(assessment, "fidelity_reviewer"),
         )
         self._save_assessment(assessment, response)
+        self._notify_assessment(assessment)
         return result
+
+    def _notify_assessment(self, assessment: RegistrationAssessment) -> None:
+        if self._assessment_listener is not None:
+            self._assessment_listener(assessment)
 
     def validate_package(self, activity_id: str, manifest: object, records: object) -> object:
         assessment = self._assessment(activity_id)
