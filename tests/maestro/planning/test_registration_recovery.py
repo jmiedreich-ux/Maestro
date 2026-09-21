@@ -68,7 +68,7 @@ from maestro.service.activities import (
     QuestionRecord,
 )
 from maestro.service.authentication import VerifiedActor
-from maestro.service.processes import ProcessSnapshot
+from maestro.service.processes import PROCESS_POLICY_MIGRATION, ProcessSnapshot
 from maestro.service.questions import QUESTION_MIGRATION
 from maestro.service.resources import BundleSnapshot
 
@@ -120,6 +120,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
                 *registration_confirmation_migrations(),
                 *registration_recovery_migrations(),
                 REGISTRATION_ASSESSMENT_RUNTIME_MIGRATION,
+                PROCESS_POLICY_MIGRATION,
                 ACTIVITY_RECORDS_MIGRATION,
                 ACTIVITY_ACTIONS_MIGRATION,
                 QUESTION_MIGRATION,
@@ -283,7 +284,7 @@ class RegistrationRecoveryTest(unittest.TestCase):
                     """INSERT INTO registration_assessment_runs(
                            activity_id, role, assignment_id, run_id, route_json,
                            runtime_identity_json
-                       ) VALUES (?, ?, ?, ?, ?, NULL)""",
+                       ) VALUES (?, ?, ?, ?, ?, ?)""",
                     (
                         activity_id, role, run.assignment_id, run.run_id,
                         canonical_json({
@@ -303,12 +304,37 @@ class RegistrationRecoveryTest(unittest.TestCase):
                             ],
                             "configuration_hash": route.configuration_hash,
                         }),
+                        canonical_json({
+                            "source": "tool_metadata",
+                            "provider": route.provider,
+                            "model_id": route.requested_model_id,
+                            "tool_version": route.tool_version,
+                            "configuration_hash": route.configuration_hash,
+                        }),
                     ),
                 )
             transaction.execute(
                 """INSERT INTO registration_assessment_state(activity_id, state_json)
                    VALUES (?, ?)""",
                 (activity_id, canonical_json(state)),
+            )
+            transaction.execute(
+                """INSERT INTO service_process_snapshots(
+                       activity_id, process_name, definition_json,
+                       definition_sha256, bundle_snapshot_json
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (
+                    activity_id, self.process_snapshot.process_name,
+                    self.process_snapshot.definition_json,
+                    self.process_snapshot.definition_sha256,
+                    canonical_json(self.process_snapshot.bundle.as_dict()),
+                ),
+            )
+            transaction.execute(
+                """INSERT INTO service_process_counters(
+                       activity_id, counter_name, scope_id, consumed
+                   ) VALUES (?, ?, ?, ?)""",
+                (activity_id, "automatic_recovery_attempts", "architect-assignment", 1),
             )
 
     def test_atomic_idle_reservation_comparison_and_retained_active_approval(self) -> None:
@@ -366,6 +392,15 @@ class RegistrationRecoveryTest(unittest.TestCase):
             activity_id, 2, "candidate-2", self.first.remote_commit,
             self.first_package, "2",
         )
+        with self.assertRaisesRegex(RegistrationRecoveryError, "unknown finding or decision"):
+            service.record_candidate(
+                activity_id,
+                package2,
+                {
+                    "summary-project-1": ("caller-invented-reason",),
+                    "milestone-2": ("finding-2",),
+                },
+            )
         comparison = service.record_candidate(
             activity_id,
             package2,
@@ -383,6 +418,25 @@ class RegistrationRecoveryTest(unittest.TestCase):
         self.assertEqual(
             f"{activity_id}-question",
             service.status(activity_id).continuity.questions[0]["question_id"],
+        )
+        continuity = service.status(activity_id).continuity
+        self.assertEqual("decision", continuity.decisions[0]["record_type"])
+        self.assertEqual("decision-2", continuity.decisions[0]["record_id"])
+        self.assertEqual(
+            ("fidelity_reviewer", "project_architect"),
+            tuple(item["role"] for item in continuity.runs),
+        )
+        self.assertEqual(
+            ("anthropic/model-1", "openai/model-1"),
+            tuple(item["runtime_identity"]["model_id"] for item in continuity.runs),
+        )
+        self.assertEqual(
+            [{
+                "counter_name": "automatic_recovery_attempts",
+                "scope_id": "architect-assignment",
+                "consumed": 1,
+            }],
+            list(continuity.recovery_counters),
         )
         self.assertEqual(self.process_snapshot, service.status(activity_id).process_snapshot)
         self.assertEqual(comparison, service.comparison(activity_id))
@@ -671,6 +725,14 @@ class RegistrationRecoveryTest(unittest.TestCase):
             status.continuity,
         )
         self.assertEqual(1, status.continuity.retry_counts["automatic_publication"])
+        self.assertIn(
+            {
+                "counter_name": "automatic_recovery_attempts",
+                "scope_id": "candidate-operation-retry",
+                "consumed": 1,
+            },
+            status.continuity.recovery_counters,
+        )
 
         restarted = self.recovery()
         replay = restarted.recover_candidate_publication(
@@ -749,6 +811,40 @@ class RegistrationRecoveryTest(unittest.TestCase):
         service = self.recovery()
         self.save_registration_history("activity-2")
         continuity = service.load_continuity("project-1", "activity-2")
+        reviewer_run = next(
+            item for item in continuity.runs if item["role"] == "fidelity_reviewer"
+        )
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_assessment_runs SET runtime_identity_json = NULL
+                   WHERE activity_id = ? AND role = ?""",
+                ("activity-2", "fidelity_reviewer"),
+            )
+        with self.assertRaisesRegex(RegistrationRecoveryError, "runtime identity"):
+            service.load_continuity("project-1", "activity-2")
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE registration_assessment_runs SET runtime_identity_json = ?
+                   WHERE activity_id = ? AND role = ?""",
+                (
+                    canonical_json(reviewer_run["runtime_identity"]),
+                    "activity-2", "fidelity_reviewer",
+                ),
+            )
+        changed_definition = dict(self.process_snapshot.definition)
+        changed_definition["maximum_fidelity_reviews"] = 3
+        changed_definition_json = canonical_json(changed_definition)
+        forged_process = ProcessSnapshot(
+            "registration", changed_definition_json,
+            hashlib.sha256(changed_definition_json.encode("utf-8")).hexdigest(),
+            self.process_snapshot.bundle,
+        )
+        with self.assertRaisesRegex(RegistrationRecoveryError, "authoritative saved policy"):
+            service.begin(
+                request_id="forged-process", project_id="project-1",
+                activity_id="activity-2", destination_authorization=self.authorization,
+                continuity=continuity, process_snapshot=forged_process,
+            )
         fabricated = replace(
             continuity,
             questions=({"question_id": "invented", "answer": "unsupported"},),
@@ -854,6 +950,36 @@ class RegistrationRecoveryTest(unittest.TestCase):
             "data": {},
         }
         records = {"summary.json": record}
+        records[f"decisions/decision-{registration_version}.json"] = {
+            "schema_version": 1,
+            "record_type": "decision",
+            "record_id": f"decision-{registration_version}",
+            "subject": "Source and scope selection",
+            "record_version": registration_version,
+            "data": {
+                "question": None,
+                "answers": [],
+                "resolution": "Use the saved source and selected scope.",
+                "authority": "owner-local",
+                "affected_refs": ["summary-project-1"],
+                "supersedes_ref": (
+                    None if registration_version == 1 else "decision-1"
+                ),
+            },
+        }
+        records[f"assessments/assessment-{registration_version}.json"] = {
+            "schema_version": 1,
+            "record_type": "assessment",
+            "record_id": f"assessment-{registration_version}",
+            "subject": "Registration assessment",
+            "record_version": registration_version,
+            "data": {
+                "findings": [{
+                    "local_key": f"finding-{registration_version}",
+                    "subject": "Changed registration content",
+                }],
+            },
+        }
         if registration_version > 1:
             records["milestone-2.json"] = {
                 "schema_version": 1,

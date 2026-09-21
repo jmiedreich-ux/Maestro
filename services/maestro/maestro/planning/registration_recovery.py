@@ -127,8 +127,10 @@ class RegistrationContinuity:
     source: Mapping[str, object]
     questions: tuple[Mapping[str, object], ...]
     decisions: tuple[Mapping[str, object], ...]
+    runs: tuple[Mapping[str, object], ...]
     review: Mapping[str, object]
     retry_counts: Mapping[str, int]
+    recovery_counters: tuple[Mapping[str, object], ...]
 
     def __post_init__(self) -> None:
         value = _plain_json(self.as_dict())
@@ -145,22 +147,27 @@ class RegistrationContinuity:
         object.__setattr__(self, "source", value["source"])
         object.__setattr__(self, "questions", tuple(value["questions"]))
         object.__setattr__(self, "decisions", tuple(value["decisions"]))
+        object.__setattr__(self, "runs", tuple(value["runs"]))
         object.__setattr__(self, "review", value["review"])
         object.__setattr__(self, "retry_counts", value["retry_counts"])
+        object.__setattr__(self, "recovery_counters", tuple(value["recovery_counters"]))
 
     def as_dict(self) -> dict[str, object]:
         return {
             "source": dict(self.source),
             "questions": [dict(item) for item in self.questions],
             "decisions": [dict(item) for item in self.decisions],
+            "runs": [dict(item) for item in self.runs],
             "review": dict(self.review),
             "retry_counts": dict(self.retry_counts),
+            "recovery_counters": [dict(item) for item in self.recovery_counters],
         }
 
     @classmethod
     def from_mapping(cls, value: object) -> "RegistrationContinuity":
         if not isinstance(value, Mapping) or set(value) != {
-            "source", "questions", "decisions", "review", "retry_counts"
+            "source", "questions", "decisions", "runs", "review", "retry_counts",
+            "recovery_counters",
         }:
             raise RegistrationRecoveryError("saved registration continuity is invalid")
         if (
@@ -169,13 +176,18 @@ class RegistrationContinuity:
             or any(not isinstance(item, Mapping) for item in value["questions"])
             or not isinstance(value["decisions"], list)
             or any(not isinstance(item, Mapping) for item in value["decisions"])
+            or not isinstance(value["runs"], list)
+            or any(not isinstance(item, Mapping) for item in value["runs"])
             or not isinstance(value["review"], Mapping)
             or not isinstance(value["retry_counts"], Mapping)
+            or not isinstance(value["recovery_counters"], list)
+            or any(not isinstance(item, Mapping) for item in value["recovery_counters"])
         ):
             raise RegistrationRecoveryError("saved registration continuity is invalid")
         return cls(
             value["source"], tuple(value["questions"]), tuple(value["decisions"]),
-            value["review"], value["retry_counts"],  # type: ignore[arg-type]
+            tuple(value["runs"]), value["review"], value["retry_counts"],
+            tuple(value["recovery_counters"]),  # type: ignore[arg-type]
         )
 
 
@@ -373,16 +385,24 @@ class RegistrationRecoveryService:
         if not isinstance(process_snapshot, ProcessSnapshot):
             raise TypeError("re-registration requires its saved process snapshot")
         process_record = _process_snapshot_record(process_snapshot)
-        recovery_definition = process_snapshot.definition.get("recovery")
-        automatic_publication_limit = (
-            recovery_definition.get("automatic_recovery_attempts")
-            if isinstance(recovery_definition, Mapping) else None
-        )
-        _nonnegative(automatic_publication_limit, "automatic publication limit")
         snapshot = dict(destination_authorization.snapshot)
         snapshot_reference = _snapshot_reference(snapshot)
         self.historical_profiles.resolve(snapshot, snapshot_reference)
         with self.database.transaction() as transaction:
+            authoritative_process = self._authoritative_process_snapshot_in(
+                transaction, activity_id
+            )
+            authoritative_process_record = _process_snapshot_record(authoritative_process)
+            if process_record != authoritative_process_record:
+                raise RegistrationRecoveryError(
+                    "registration process snapshot differs from authoritative saved policy"
+                )
+            recovery_definition = authoritative_process.definition.get("recovery")
+            automatic_publication_limit = (
+                recovery_definition.get("automatic_recovery_attempts")
+                if isinstance(recovery_definition, Mapping) else None
+            )
+            _nonnegative(automatic_publication_limit, "automatic publication limit")
             authoritative_continuity = self._authoritative_continuity_in(
                 transaction, project_id, activity_id
             )
@@ -442,7 +462,7 @@ class RegistrationRecoveryService:
                         canonical_json(snapshot), snapshot_reference,
                         canonical_json(authoritative_continuity.as_dict()),
                         automatic_publication_limit,
-                        canonical_json(process_record),
+                        canonical_json(authoritative_process_record),
                     ),
                 )
             except sqlite3.IntegrityError as error:
@@ -493,11 +513,16 @@ class RegistrationRecoveryService:
                 transaction, str(row[2]), activity_id, active_package, candidate_package_ref,
                 int(row[5]),
             )
-            exact_active = self._package_items_in(transaction, active_package)
-            exact_candidate = self._package_items_in(transaction, candidate_package_ref)
+            active_records, exact_active = self._package_records_in(
+                transaction, active_package
+            )
+            candidate_records, exact_candidate = self._package_records_in(
+                transaction, candidate_package_ref
+            )
             comparison = _compare(
                 active_package, candidate_package_ref,
                 exact_active, exact_candidate, reasons,
+                _reason_references((*active_records.values(), *candidate_records.values())),
             )
             saved_candidate = row[10]
             if saved_candidate is not None:
@@ -516,6 +541,14 @@ class RegistrationRecoveryService:
                     canonical_json(candidate_package_ref.as_dict()),
                     canonical_json(comparison.as_dict()), activity_id,
                 ),
+            )
+            continuity = self._authoritative_continuity_in(
+                transaction, str(row[2]), activity_id
+            )
+            transaction.execute(
+                """UPDATE registration_recovery_attempts SET continuity_json = ?
+                   WHERE activity_id = ?""",
+                (canonical_json(continuity.as_dict()), activity_id),
             )
         return comparison
 
@@ -868,9 +901,27 @@ class RegistrationRecoveryService:
                 )
                 return
             row = self._attempt_in(transaction, activity_id)
-            if automatic and int(row[14]) >= int(row[13]):
-                raise RegistrationRecoveryError(
-                    "automatic publication recovery allowance is exhausted"
+            if automatic:
+                shared = transaction.execute(
+                    """SELECT consumed FROM service_process_counters
+                       WHERE activity_id = ? AND counter_name = ? AND scope_id = ?""",
+                    (activity_id, "automatic_recovery_attempts", operation_id),
+                ).fetchone()
+                consumed = 0 if shared is None else int(shared[0])
+                if consumed >= int(row[13]):
+                    raise RegistrationRecoveryError(
+                        "automatic publication recovery allowance is exhausted"
+                    )
+                transaction.execute(
+                    """INSERT INTO service_process_counters(
+                           activity_id, counter_name, scope_id, consumed
+                       ) VALUES (?, ?, ?, ?)
+                       ON CONFLICT(activity_id, counter_name, scope_id)
+                       DO UPDATE SET consumed = excluded.consumed""",
+                    (
+                        activity_id, "automatic_recovery_attempts", operation_id,
+                        consumed + 1,
+                    ),
                 )
             transaction.execute(
                 """INSERT INTO registration_recovery_retry_requests(
@@ -969,7 +1020,8 @@ class RegistrationRecoveryService:
             (activity_id,),
         ).fetchone()
         run_rows = transaction.execute(
-            """SELECT role, assignment_id, run_id FROM registration_assessment_runs
+            """SELECT role, assignment_id, run_id, route_json, runtime_identity_json
+               FROM registration_assessment_runs
                WHERE activity_id = ? ORDER BY role""",
             (activity_id,),
         ).fetchall()
@@ -1015,6 +1067,23 @@ class RegistrationRecoveryService:
             raise RegistrationRecoveryError(
                 "saved registration retry identities differ from assessment history"
             )
+        run_records: list[Mapping[str, object]] = []
+        for row in run_rows:
+            try:
+                route = json.loads(str(row[3]))
+                runtime_identity = json.loads(str(row[4]))
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                raise RegistrationRecoveryError(
+                    "saved registration route or runtime identity is invalid"
+                ) from error
+            _validate_saved_run(str(row[0]), route, runtime_identity)
+            run_records.append({
+                "role": str(row[0]),
+                "assignment_id": str(row[1]),
+                "run_id": str(row[2]),
+                "route": route,
+                "runtime_identity": runtime_identity,
+            })
         has_answer_history = transaction.execute(
             """SELECT 1 FROM sqlite_master
                WHERE type = 'table' AND name = 'service_question_answers'"""
@@ -1067,19 +1136,36 @@ class RegistrationRecoveryService:
                 "answer": answer,
             })
         question_records = tuple(question_records_list)
-        decisions = transaction.execute(
-            """SELECT action_id, label FROM service_activity_actions
-               WHERE project_id = ? AND activity_id = ? AND kind = 'decision'
-               ORDER BY sequence""",
-            (project_id, activity_id),
-        ).fetchall()
-        if not decisions:
+        previous = transaction.execute(
+            """SELECT previous_package_ref_json, candidate_package_ref_json
+               FROM registration_recovery_attempts
+               WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        if previous is None:
+            active = self._active_in(transaction, project_id)
+            previous_package = None if active is None else RegistrationPackageReference.from_mapping(
+                json.loads(str(active[1]))
+            )
+        else:
+            previous_package = RegistrationPackageReference.from_mapping(
+                json.loads(str(previous[1] if previous[1] is not None else previous[0]))
+            )
+        if previous_package is None:
             raise RegistrationRecoveryError(
                 "saved registration decision history is incomplete"
             )
-        decision_records = tuple({
-            "decision_id": str(row[0]), "label": str(row[1])
-        } for row in decisions)
+        previous_records, _items = self._package_records_in(
+            transaction, previous_package
+        )
+        decision_records = tuple(
+            dict(record) for _path, record in sorted(previous_records.items())
+            if record.get("record_type") == "decision"
+        )
+        if not decision_records:
+            raise RegistrationRecoveryError(
+                "saved registration decision history is incomplete"
+            )
         retry_rows = transaction.execute(
             """SELECT kind, COUNT(*) FROM registration_recovery_retry_requests
                WHERE activity_id = ? GROUP BY kind""",
@@ -1090,17 +1176,31 @@ class RegistrationRecoveryService:
             "automatic_publication": observed_retry_counts.get("automatic", 0),
             "manual_publication": observed_retry_counts.get("manual", 0),
         }
+        counter_rows = transaction.execute(
+            """SELECT counter_name, scope_id, consumed
+               FROM service_process_counters
+               WHERE activity_id = ? AND counter_name = 'automatic_recovery_attempts'
+               ORDER BY counter_name, scope_id""",
+            (activity_id,),
+        ).fetchall()
+        recovery_counters = tuple({
+            "counter_name": str(row[0]),
+            "scope_id": str(row[1]),
+            "consumed": int(row[2]),
+        } for row in counter_rows)
         return RegistrationContinuity(
             source={"intake": intake.to_record()},
             questions=question_records,
             decisions=decision_records,
+            runs=tuple(run_records),
             review=state,
             retry_counts=retry_counts,
+            recovery_counters=recovery_counters,
         )
 
-    def _package_items_in(
+    def _package_records_in(
         self, transaction: Transaction, package: RegistrationPackageReference
-    ) -> tuple[ComparisonItem, ...]:
+    ) -> tuple[dict[str, Mapping[str, Any]], tuple[ComparisonItem, ...]]:
         row = transaction.execute(
             """SELECT operation_id, manifest_sha256, content_hash, remote_commit,
                       package_ref_json, state, project_id
@@ -1217,7 +1317,7 @@ class RegistrationRecoveryService:
             raise RegistrationRecoveryError(
                 "registration comparison package inventory is invalid"
             ) from error
-        return tuple(sorted(items, key=lambda item: item.item_id))
+        return records, tuple(sorted(items, key=lambda item: item.item_id))
 
     def _require_idle(
         self, transaction: Transaction, project_id: str, activity_id: str
@@ -1332,6 +1432,13 @@ class RegistrationRecoveryService:
     def _require_continuity_in(
         self, transaction: Any, row: tuple[object, ...]
     ) -> None:
+        authoritative_process = self._authoritative_process_snapshot_in(
+            transaction, str(row[0])
+        )
+        if canonical_json(_process_snapshot_record(authoritative_process)) != str(row[17]):
+            raise RegistrationRecoveryError(
+                "saved registration process snapshot no longer matches authoritative policy"
+            )
         authoritative = self._authoritative_continuity_in(
             transaction, str(row[2]), str(row[0])
         )
@@ -1339,6 +1446,32 @@ class RegistrationRecoveryService:
             raise RegistrationRecoveryError(
                 "saved registration continuity no longer matches authoritative history"
             )
+
+    @staticmethod
+    def _authoritative_process_snapshot_in(
+        transaction: Any, activity_id: str
+    ) -> ProcessSnapshot:
+        row = transaction.execute(
+            """SELECT process_name, definition_json, definition_sha256,
+                      bundle_snapshot_json
+               FROM service_process_snapshots WHERE activity_id = ?""",
+            (activity_id,),
+        ).fetchone()
+        if row is None:
+            raise RegistrationRecoveryError(
+                "saved registration process snapshot is unavailable"
+            )
+        try:
+            snapshot = ProcessSnapshot(
+                str(row[0]), str(row[1]), str(row[2]),
+                BundleSnapshot.from_dict(json.loads(str(row[3]))),
+            )
+        except (TypeError, ValueError, json.JSONDecodeError, ProcessResourceError) as error:
+            raise RegistrationRecoveryError(
+                "saved registration process snapshot is invalid"
+            ) from error
+        _process_snapshot_record(snapshot)
+        return snapshot
 
     def _status_in(
         self, transaction: Transaction, activity_id: str
@@ -1357,12 +1490,77 @@ class RegistrationRecoveryService:
         )
 
 
+def _reason_references(
+    records: tuple[Mapping[str, Any], ...]
+) -> set[str]:
+    references: set[str] = set()
+    for record in records:
+        record_type = record.get("record_type")
+        if record_type == "decision":
+            references.add(str(record["record_id"]))
+        if record_type not in {"assessment", "review"}:
+            continue
+        data = record.get("data")
+        findings = data.get("findings") if isinstance(data, Mapping) else None
+        if not isinstance(findings, list):
+            continue
+        for finding in findings:
+            if not isinstance(finding, Mapping):
+                continue
+            identifier = finding.get("finding_id", finding.get("local_key"))
+            if isinstance(identifier, str) and identifier:
+                references.add(identifier)
+    return references
+
+
+def _validate_saved_run(
+    role: str, route: object, runtime_identity: object
+) -> None:
+    route_fields = {
+        "role", "tool", "requested_model_id", "provider", "tool_version",
+        "executable", "credential_profile", "settings_profile", "location",
+        "capabilities", "context_limit_tokens", "permitted_destinations",
+        "configuration_hash",
+    }
+    identity_fields = {
+        "source", "provider", "model_id", "tool_version", "configuration_hash",
+    }
+    if (
+        not isinstance(route, Mapping)
+        or set(route) != route_fields
+        or not isinstance(runtime_identity, Mapping)
+        or set(runtime_identity) != identity_fields
+    ):
+        raise RegistrationRecoveryError(
+            "saved registration route or runtime identity is invalid"
+        )
+    expected_route_role = {
+        "project_architect": "architect",
+        "fidelity_reviewer": "fidelity_reviewer",
+    }.get(role)
+    if (
+        expected_route_role is None
+        or route["role"] != expected_route_role
+        or runtime_identity["source"] != "tool_metadata"
+        or runtime_identity["provider"] != route["provider"]
+        or runtime_identity["model_id"] != route["requested_model_id"]
+        or runtime_identity["tool_version"] != route["tool_version"]
+        or runtime_identity["configuration_hash"] != route["configuration_hash"]
+    ):
+        raise RegistrationRecoveryError(
+            "saved registration runtime identity differs from its route"
+        )
+    _plain_json(route)
+    _plain_json(runtime_identity)
+
+
 def _compare(
     active_ref: RegistrationPackageReference,
     candidate_ref: RegistrationPackageReference,
     active_items: tuple[ComparisonItem, ...],
     candidate_items: tuple[ComparisonItem, ...],
     reasons: Mapping[str, tuple[str, ...]],
+    authoritative_reason_refs: set[str],
 ) -> RegistrationComparison:
     if any(not isinstance(item, ComparisonItem) for item in (*active_items, *candidate_items)):
         raise TypeError("registration comparison requires typed items")
@@ -1381,6 +1579,11 @@ def _compare(
         ):
             raise RegistrationRecoveryError(
                 f"comparison difference {item_id} lacks finding or decision reasons"
+            )
+        unknown_reasons = set(reason_refs) - authoritative_reason_refs
+        if unknown_reasons:
+            raise RegistrationRecoveryError(
+                f"comparison difference {item_id} cites an unknown finding or decision"
             )
         if before is None:
             assert after is not None
