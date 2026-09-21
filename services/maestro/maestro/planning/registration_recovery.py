@@ -777,6 +777,7 @@ class RegistrationRecoveryService:
                 expected_parent=expected_parent,
                 operation_id=operation_id,
                 request_id=publication_request_id,
+                recovery_write_reserved=reserved,
             )
             if reserved:
                 self._complete_retry(retry_request_id, activity_id)
@@ -947,7 +948,12 @@ class RegistrationRecoveryService:
                 (activity_id,),
             )
         try:
-            result = confirmation_service.confirm(assessment, actor, action)
+            result = confirmation_service.confirm(
+                assessment,
+                actor,
+                action,
+                recovery_write_reserved=reserved,
+            )
         except Exception as error:
             self._pause(activity_id, str(error))
             raise

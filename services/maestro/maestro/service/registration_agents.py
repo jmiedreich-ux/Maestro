@@ -13,11 +13,12 @@ from pathlib import Path
 from maestro.agents.claude_transport import ClaudeTransport
 from maestro.agents.codex_transport import CodexTransport
 from maestro.agents.preflight import ResolvedAgentRoute, RunningToolIdentity
-from maestro.agents.supervisor import ManagedUnit, OperationIdentity
+from maestro.agents.supervisor import ManagedUnit, OperationIdentity, SupervisionError
 from maestro.agents.transport import (
     AgentAssignment,
     ArtifactReference as AssignedArtifactReference,
     RegistrationResponseValidator,
+    TransportError,
     decode_json_object,
 )
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspaceManager
@@ -88,10 +89,12 @@ class InstalledRegistrationAgentLauncher:
             raise TypeError("registration launcher requires a GitHub destination provider")
         self.destination_provider = destination_provider
         self.validator = RegistrationResponseValidator()
-        self._failure_listener: Callable[[str, str, str, str, str], None] | None = None
+        self._failure_listener: (
+            Callable[[str, str, str, str, str, bool], None] | None
+        ) = None
 
     def connect_failure_listener(
-        self, listener: Callable[[str, str, str, str, str], None]
+        self, listener: Callable[[str, str, str, str, str, bool], None]
     ) -> None:
         if not callable(listener):
             raise TypeError("registration assignment failure listener must be callable")
@@ -380,6 +383,7 @@ class InstalledRegistrationAgentLauncher:
                     assignment.assignment_id,
                     assignment.run_id,
                     f"{record.failure['code']}: {record.failure['message']}",
+                    _retryable_failure_code(str(record.failure["code"])),
                 )
         except Exception as error:
             # The supervisor journal and preserved workspace retain exact failure
@@ -395,6 +399,8 @@ class InstalledRegistrationAgentLauncher:
                     assignment.assignment_id,
                     assignment.run_id,
                     f"{type(error).__name__}: {error}",
+                    isinstance(error, (OSError, TransportError))
+                    or (isinstance(error, RuntimeError) and not isinstance(error, SupervisionError)),
                 )
             return
 
@@ -405,6 +411,15 @@ def _run_and_route(assessment: RegistrationAssessment, role: str):
     if role == "fidelity_reviewer":
         return assessment.current_run(role), assessment.context.routes.fidelity_reviewer
     raise ValueError("registration role is invalid")
+
+
+def _retryable_failure_code(code: str) -> bool:
+    normalized = code.strip().lower().replace("-", "_")
+    return normalized.startswith(("temporary_", "transient_", "response_")) or normalized in {
+        "invalid_output",
+        "malformed_response",
+        "output_validation",
+    }
 
 
 def _run_timeout(assessment: RegistrationAssessment, role: str) -> int:

@@ -177,6 +177,149 @@ class LinuxInstallationTest(unittest.TestCase):
         build_application(settings)
         self.assertTrue(settings.storage.path.is_file())
 
+    def test_wheel_record_staged_install_builds_two_repository_registration(self) -> None:
+        wheel_prefix = self.root / "wheel-prefix"
+        distribution_root = wheel_prefix / "lib" / "python3.12" / "site-packages"
+        distribution_root.mkdir(parents=True)
+        schema = wheel_prefix / "schemas" / "registration-process" / "1" / "schema.json"
+        schema.parent.mkdir(parents=True)
+        schema.write_bytes(
+            (ROOT / "services/maestro/schemas/registration-process/1/schema.json").read_bytes()
+        )
+
+        class WheelDistribution:
+            files = ()
+
+            @staticmethod
+            def read_text(name: str) -> str | None:
+                if name == "RECORD":
+                    return "../../../schemas/registration-process/1/schema.json,,\n"
+                return None
+
+            @staticmethod
+            def locate_file(entry: object) -> Path:
+                return distribution_root / str(entry)
+
+        fragment = self.root / "registration.toml"
+        fragment.write_text(
+            '''[tools.codex]
+executable = "/bin/true"
+credential_profile = "agent-credential"
+settings_profile = "agent-settings"
+allowed_model_ids = ["openai/model-1"]
+permitted_destinations = [{ hostname = "api.openai.com", port = 443 }]
+
+[repositories.alpha]
+credential_profile = "alpha-app"
+allowed_repositories = ["owner/alpha"]
+allowed_branch_patterns = ["main"]
+
+[repositories.alpha.github]
+app_id = 11
+installation_id = 21
+app_slug = "maestro-alpha"
+
+[repositories.beta]
+credential_profile = "beta-app"
+allowed_repositories = ["owner/beta"]
+allowed_branch_patterns = ["release/*"]
+
+[repositories.beta.github]
+app_id = 12
+installation_id = 22
+app_slug = "maestro-beta"
+
+[repository_bindings.alpha]
+repository = "owner/alpha"
+profile = "alpha"
+
+[repository_bindings.beta]
+repository = "owner/beta"
+profile = "beta"
+
+[registration]
+schema_version = 1
+maximum_fidelity_reviews = 2
+
+[registration.architect]
+run_timeout_seconds = 1800
+
+[registration.fidelity_reviewer]
+run_timeout_seconds = 1800
+
+[registration.initiation]
+policy = "registration_intake_or_idle_update"
+start_operation = "registration.start"
+
+[registration.agent_session]
+policy = "fixed_assignment_followups"
+architect_role = "project_architect"
+reviewer_role = "fidelity_reviewer"
+
+[registration.saved_outputs]
+policy = "versioned_registration_package"
+contract = "registration_package_v1"
+root = ".maestro/registrations"
+
+[registration.review]
+policy = "bounded_independent_fidelity"
+
+[registration.confirmation]
+policy = "explicit_exact_candidate_activation"
+on_complete = "stop"
+
+[registration.recovery]
+policy = "reconcile_preserved_registration"
+automatic_recovery_attempts = 2
+''',
+            encoding="utf-8",
+        )
+        fragment.chmod(0o600)
+
+        with (
+            mock.patch.object(
+                installer.importlib.metadata,
+                "distribution",
+                return_value=WheelDistribution(),
+            ),
+            mock.patch.object(installer.secrets, "token_hex", return_value=OWNER_TOKEN),
+        ):
+            result = installer.main(
+                [
+                    "--root", str(self.root),
+                    "--operator-home", str(self.operator_home),
+                    "--operator-user", "operator",
+                    "--service-executable", "/opt/maestro/bin/maestro-service",
+                    "--staged-test",
+                    "--operator-uid", "1100",
+                    "--operator-gid", "1100",
+                    "--service-uid", "1101",
+                    "--service-gid", "1101",
+                    "--agent-uid", "1102",
+                    "--agent-gid", "1102",
+                    "--registration-config", str(fragment),
+                ]
+            )
+        self.assertEqual(0, result)
+        self.assertTrue(
+            (self.paths.schema_dir / "registration-process/1/schema.json").is_file()
+        )
+        with mock.patch.object(sys, "prefix", str(self.paths.schema_dir.parent)):
+            settings = load_settings(self.paths.config_file)
+            application = build_application(settings)
+        self.assertIsNone(settings.registration_error)
+        runtime = settings.registration_runtime
+        self.assertIsNotNone(runtime)
+        assert runtime is not None
+        self.assertEqual(
+            "alpha", runtime.authorizer.authorize("owner/alpha", "main").binding_id
+        )
+        self.assertEqual(
+            "beta",
+            runtime.authorizer.authorize("owner/beta", "release/2026-09").binding_id,
+        )
+        self.assertIsNotNone(application.registration_confirmation)
+
     def test_real_loopback_read_survives_client_exit_and_service_restart(self) -> None:
         self.install()
         settings = load_settings(self.paths.config_file)

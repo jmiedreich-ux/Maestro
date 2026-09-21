@@ -9,6 +9,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from maestro.agents.preflight import (
@@ -23,7 +24,11 @@ from maestro.agents.routes import (
     PermittedDestination,
     ToolRoute,
 )
-from maestro.agents.supervisor import LaunchRequest, LocalProcessUnits
+from maestro.agents.supervisor import (
+    LaunchRequest,
+    LocalProcessUnits,
+    SupervisionError,
+)
 from maestro.foundation import StorageSettings, canonical_json
 from maestro.foundation.credentials import (
     GitHubAppCredential,
@@ -41,7 +46,12 @@ from maestro.foundation.github_destination import (
     GitHubInstallationToken,
     GitHubRestDestinationApi,
 )
-from maestro.planning.registration_confirmation import RegistrationConfirmationService
+from maestro.planning.registration_confirmation import (
+    ConfirmationReference,
+    ConfirmationResult,
+    RegistrationConfirmationService,
+    RegistrationPackageReference,
+)
 from maestro.planning.registration_recovery import RegistrationRecoveryService
 from maestro.planning.registration_records import RegistrationAgentResponse
 from maestro.planning.sources import (
@@ -51,7 +61,7 @@ from maestro.planning.sources import (
     SourceInventory,
     SourceReference,
 )
-from maestro.service.activities import ActivityRecord, ProjectRecord
+from maestro.service.activities import ActivityAction, ActivityRecord, ProjectRecord
 from maestro.service.authentication import OwnerAuthenticationSettings
 from maestro.service.installed_registration import InstalledToolInspector
 from maestro.service.main import (
@@ -61,7 +71,10 @@ from maestro.service.main import (
     load_settings,
 )
 from maestro.service.processes import ProcessSnapshot
-from maestro.service.registration import RegistrationRuntimeDependencies
+from maestro.service.registration import (
+    RegistrationCoordinator,
+    RegistrationRuntimeDependencies,
+)
 from maestro.service.registration_agents import InstalledRegistrationAgentLauncher
 from maestro.service.resources import BundleSnapshot
 from maestro.terminal.main import TerminalApplication
@@ -140,6 +153,257 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             ),
             workspace_root=self.root / "workspaces",
         )
+
+    def test_unknown_supervisor_state_keeps_cancellation_stop_unconfirmed(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        assessment = mock.Mock()
+        assessment.status.state = "awaiting_architect"
+        coordinator.binding = mock.Mock()
+        coordinator.binding.assessment.return_value = assessment
+        coordinator.binding.poll_current_agent.side_effect = SupervisionError(
+            "unknown_operation", "the saved supervisor operation is missing"
+        )
+
+        with self.assertRaisesRegex(ValueError, "Stop unconfirmed"):
+            coordinator._stop_active_assignment_before_cancel("activity-one")
+        coordinator.binding.stop_current_agent.assert_not_called()
+
+    def test_confirmed_pointer_startup_atomically_finalizes_request_and_actions(self) -> None:
+        application = InstalledServiceApplication(self.settings)
+        package = RegistrationPackageReference(
+            "owner/project",
+            "1" * 40,
+            1,
+            "candidate-one",
+            ".maestro/registrations/versions/1/candidates/candidate-one/manifest.json",
+            "2" * 64,
+        )
+        confirmation_ref = ConfirmationReference(
+            "confirmation-one",
+            ".maestro/registrations/confirmations/confirmation-one.json",
+            "3" * 64,
+        )
+        active = ConfirmationResult(
+            "Registered", package, confirmation_ref, "4" * 40, 2
+        )
+        with application.database.transaction() as transaction:
+            application.activities.create_project(
+                transaction,
+                ProjectRecord("project-one", "Project one", "registering", 1),
+            )
+            application.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one",
+                    "project-one",
+                    "registration",
+                    "Register Project one",
+                    "waiting",
+                    1,
+                    available_actions=(
+                        ActivityAction(
+                            "registration-confirm", "Confirm registration", "decision"
+                        ),
+                    ),
+                ),
+            )
+            transaction.execute(
+                "INSERT INTO entity_versions(entity_id, version) VALUES (?, ?)",
+                ("activity-one", 1),
+            )
+            transaction.execute(
+                """INSERT INTO registration_confirmations(
+                       confirmation_id, request_id, operation_id, project_id,
+                       activity_id, expected_activity_version, owner_id, confirmed_at,
+                       package_ref_json, previous_confirmation_ref_json,
+                       receipt_path, receipt_sha256, receipt_bytes, index_bytes,
+                       expected_index_bytes, state, remote_commit, confirmation_ref_json
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL,
+                             'confirmed', ?, ?)""",
+                (
+                    "confirmation-one",
+                    "confirmation-request-one",
+                    "confirmation-operation-one",
+                    "project-one",
+                    "activity-one",
+                    1,
+                    "owner-local",
+                    "2026-09-21T12:00:00Z",
+                    canonical_json(package.as_dict()),
+                    confirmation_ref.path,
+                    confirmation_ref.sha256,
+                    b"{}\n",
+                    b"{}\n",
+                    active.remote_commit,
+                    canonical_json(confirmation_ref.as_dict()),
+                ),
+            )
+            transaction.execute(
+                """INSERT INTO active_registrations(
+                       project_id, confirmation_id, package_ref_json,
+                       confirmation_ref_json, index_bytes, remote_commit, activity_version
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "project-one",
+                    "confirmation-one",
+                    canonical_json(package.as_dict()),
+                    canonical_json(confirmation_ref.as_dict()),
+                    b"{}\n",
+                    active.remote_commit,
+                    2,
+                ),
+            )
+        confirmation = mock.Mock()
+        confirmation.active.return_value = active
+        application.registration.confirmation = confirmation
+
+        self.assertEqual(
+            ("confirmation-one",),
+            application.registration._recover_confirmation_finalizations(),
+        )
+        self.assertEqual(
+            (), application.registration._recover_confirmation_finalizations()
+        )
+        with application.database.read_connection() as connection:
+            activity = connection.execute(
+                "SELECT state, version FROM service_activities WHERE activity_id = ?",
+                ("activity-one",),
+            ).fetchone()
+            project = connection.execute(
+                "SELECT registration_status FROM service_projects WHERE project_id = ?",
+                ("project-one",),
+            ).fetchone()
+            receipt = connection.execute(
+                "SELECT resulting_version FROM request_receipts WHERE request_id = ?",
+                ("confirmation-request-one",),
+            ).fetchone()
+            event = connection.execute(
+                "SELECT type FROM outbox_events WHERE activity_id = ?",
+                ("activity-one",),
+            ).fetchone()
+            actions = connection.execute(
+                "SELECT action_id FROM service_activity_actions WHERE activity_id = ?",
+                ("activity-one",),
+            ).fetchall()
+        self.assertEqual(("completed", 2), activity)
+        self.assertEqual(("registered",), project)
+        self.assertEqual((2,), receipt)
+        self.assertEqual(("registration.confirmed",), event)
+        self.assertEqual([], actions)
+
+    def test_eligible_agent_failure_atomically_reserves_counted_automatic_retry(self) -> None:
+        application = InstalledServiceApplication(self.settings)
+        with application.database.transaction() as transaction:
+            application.activities.create_project(
+                transaction,
+                ProjectRecord("project-one", "Project one", "registering", 1),
+            )
+            application.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one", "project-one", "registration",
+                    "Register Project one", "running", 1,
+                ),
+            )
+        failed = SimpleNamespace(
+            assignment_id="assignment-one", run_id="run-one"
+        )
+        replacement = SimpleNamespace(
+            assignment_id="assignment-one", run_id="run-two"
+        )
+        assessment = mock.Mock()
+        assessment.process_snapshot.definition = {
+            "recovery": {"automatic_recovery_attempts": 2}
+        }
+        assessment.current_run.return_value = failed
+        binding = mock.Mock()
+        binding.assessment.return_value = assessment
+        binding.poll_current_agent.return_value = SimpleNamespace(state="failed")
+        binding.retry_technical_in.return_value = replacement
+        application.registration.binding = binding
+
+        with mock.patch.object(
+            application.registration, "_dispatch_reserved_agent_retry"
+        ) as dispatch:
+            application.registration._assignment_failed(
+                "activity-one",
+                "project_architect",
+                "assignment-one",
+                "run-one",
+                "temporary tool interruption",
+                True,
+            )
+
+        dispatch.assert_called_once()
+        with application.database.read_connection() as connection:
+            failure = connection.execute(
+                """SELECT state, automatic_limit, automatic_consumed
+                   FROM installed_registration_agent_failures
+                   WHERE activity_id = ?""",
+                ("activity-one",),
+            ).fetchone()
+            retry = connection.execute(
+                """SELECT assignment_id, failed_run_id, replacement_run_id,
+                          kind, state
+                   FROM installed_registration_agent_retry_requests
+                   WHERE activity_id = ?""",
+                ("activity-one",),
+            ).fetchone()
+            activity = connection.execute(
+                "SELECT state FROM service_activities WHERE activity_id = ?",
+                ("activity-one",),
+            ).fetchone()
+        self.assertEqual(("retrying", 2, 1), failure)
+        self.assertEqual(
+            ("assignment-one", "run-one", "run-two", "automatic", "reserved"),
+            retry,
+        )
+        self.assertEqual(("running",), activity)
+
+    def test_publication_retry_reservation_is_persisted_once_across_restart(self) -> None:
+        application = InstalledServiceApplication(self.settings)
+        with application.database.transaction() as transaction:
+            application.activities.create_project(
+                transaction,
+                ProjectRecord("project-one", "Project one", "registering", 1),
+            )
+            application.activities.create_activity(
+                transaction,
+                ActivityRecord(
+                    "activity-one", "project-one", "registration",
+                    "Register Project one", "paused", 1,
+                ),
+            )
+        assessment = SimpleNamespace(
+            process_snapshot=SimpleNamespace(
+                definition={"recovery": {"automatic_recovery_attempts": 2}}
+            ),
+            context=SimpleNamespace(activity_id="activity-one"),
+        )
+
+        first = application.registration._reserve_automatic_publication_retry(
+            assessment, "publication-one", "temporary publication failure"
+        )
+        second = application.registration._reserve_automatic_publication_retry(
+            assessment, "publication-one", "startup replay"
+        )
+
+        self.assertEqual(first, second)
+        with application.database.read_connection() as connection:
+            failure = connection.execute(
+                """SELECT state, automatic_limit, automatic_consumed
+                   FROM installed_registration_publication_failures
+                   WHERE operation_id = ?""",
+                ("publication-one",),
+            ).fetchone()
+            retries = connection.execute(
+                """SELECT request_id, state
+                   FROM installed_registration_publication_retry_requests
+                   WHERE operation_id = ?""",
+                ("publication-one",),
+            ).fetchall()
+        self.assertEqual(("retrying", 2, 1), failure)
+        self.assertEqual([(first, "reserved")], retries)
 
     def test_installed_boundary_exposes_routes_controls_and_all_migrations(self) -> None:
         application = InstalledServiceApplication(self.settings)

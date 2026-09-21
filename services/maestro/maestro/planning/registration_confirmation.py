@@ -259,6 +259,7 @@ class RegistrationConfirmationService:
         expected_parent: str,
         operation_id: str,
         request_id: str,
+        recovery_write_reserved: bool = False,
     ) -> RegistrationPackageReference:
         """Publish and record one complete immutable eligible candidate."""
         assessment = _assessment(assessment)
@@ -346,6 +347,7 @@ class RegistrationConfirmationService:
             context.source_repository,
             context.publication_branch,
             context.destination_snapshot_reference,
+            recovery_write_reserved=recovery_write_reserved,
         )
         package_ref = RegistrationPackageReference(
             context.source_repository,
@@ -384,6 +386,8 @@ class RegistrationConfirmationService:
         assessment: RegistrationAssessment,
         actor: VerifiedActor,
         action: OwnerConfirmation,
+        *,
+        recovery_write_reserved: bool = False,
     ) -> ConfirmationResult:
         """Publish the explicit Owner receipt/index and atomically activate it."""
         assessment = _assessment(assessment)
@@ -399,7 +403,9 @@ class RegistrationConfirmationService:
         existing = self._confirmation_by_request(action.request_id)
         if existing is not None:
             self._require_same_confirmation(existing, action, actor)
-            return self._complete_confirmation(existing)
+            return self._complete_confirmation(
+                existing, recovery_write_reserved=recovery_write_reserved
+            )
         self._eligible_candidate(assessment, action)
         pending = self._pending_confirmation(action.project_id)
         if pending is not None:
@@ -472,7 +478,9 @@ class RegistrationConfirmationService:
             ) from error
         row = self._confirmation_by_request(action.request_id)
         assert row is not None
-        return self._complete_confirmation(row)
+        return self._complete_confirmation(
+            row, recovery_write_reserved=recovery_write_reserved
+        )
 
     def active(self, project_id: str) -> ConfirmationResult | None:
         canonical_identifier(project_id, "project_id")
@@ -494,6 +502,7 @@ class RegistrationConfirmationService:
         activity_id: str | None = None,
         *,
         continue_on_error: bool = False,
+        reserved_operation_ids: frozenset[str] = frozenset(),
     ) -> tuple[dict[str, object], ...]:
         """Reconcile saved unfinished publications without reconstructing inputs.
 
@@ -520,7 +529,8 @@ class RegistrationConfirmationService:
         for row in candidates:
             try:
                 result = self._write_or_recover(
-                    str(row[0]), str(row[2]), str(row[3]), str(row[4])
+                    str(row[0]), str(row[2]), str(row[3]), str(row[4]),
+                    recovery_write_reserved=str(row[0]) in reserved_operation_ids,
                 )
                 package = RegistrationPackageReference(
                     str(row[2]), result.remote_commit, int(row[5]), str(row[6]),
@@ -581,7 +591,10 @@ class RegistrationConfirmationService:
             ).fetchall()
         for row in confirmations:
             try:
-                result = self._complete_confirmation(tuple(row))
+                result = self._complete_confirmation(
+                    tuple(row),
+                    recovery_write_reserved=str(row[2]) in reserved_operation_ids,
+                )
                 recovered.append(
                     {
                         "kind": "confirmation",
@@ -606,7 +619,12 @@ class RegistrationConfirmationService:
                 )
         return tuple(recovered)
 
-    def _complete_confirmation(self, row: sqlite3.Row | tuple[object, ...]) -> ConfirmationResult:
+    def _complete_confirmation(
+        self,
+        row: sqlite3.Row | tuple[object, ...],
+        *,
+        recovery_write_reserved: bool = False,
+    ) -> ConfirmationResult:
         state = str(row[15])
         package_ref = RegistrationPackageReference.from_mapping(json.loads(str(row[8])))
         if state == "confirmed":
@@ -643,7 +661,8 @@ class RegistrationConfirmationService:
             authorization=authorization,
         )
         result = self._write_or_recover(
-            str(row[2]), repository, branch, snapshot_reference
+            str(row[2]), repository, branch, snapshot_reference,
+            recovery_write_reserved=recovery_write_reserved,
         )
         confirmation_ref = ConfirmationReference(
             str(row[0]), str(row[10]), str(row[11])
@@ -720,31 +739,23 @@ class RegistrationConfirmationService:
     def _write_or_recover(
         self, operation_id: str, repository: str, branch: str,
         snapshot_reference: str,
+        *,
+        recovery_write_reserved: bool = False,
     ) -> PublicationResult:
         operation = self.journal.operation(operation_id)
         authorization = self._fresh_authorization(repository, branch, snapshot_reference)
         if operation.state in {"verified", "applied"}:
             return self.journal.attempt(operation_id, authorization)
-        if operation.state in {"prepared", "reconciled"}:
-            try:
-                return self.journal.attempt(operation_id, authorization)
-            except PublicationStateError:
-                if self.journal.operation(operation_id).state != "reconciled":
-                    raise
-                authorization = self._fresh_authorization(
-                    repository, branch, snapshot_reference
+        if operation.state == "prepared":
+            return self.journal.attempt(operation_id, authorization)
+        if operation.state == "reconciled":
+            if not recovery_write_reserved:
+                raise PublicationStateError(
+                    "publication retry requires a saved retry reservation"
                 )
-                return self.journal.attempt(operation_id, authorization)
+            return self.journal.attempt(operation_id, authorization)
         if operation.state in {"writing", "paused"}:
-            try:
-                return self.journal.reconcile(operation_id, authorization)
-            except PublicationStateError:
-                if self.journal.operation(operation_id).state != "reconciled":
-                    raise
-                authorization = self._fresh_authorization(
-                    repository, branch, snapshot_reference
-                )
-                return self.journal.attempt(operation_id, authorization)
+            return self.journal.reconcile(operation_id, authorization)
         raise RegistrationConfirmationError("publication operation has an invalid state")
 
     def _fresh_authorization(

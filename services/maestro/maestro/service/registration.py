@@ -15,9 +15,22 @@ from typing import Callable, Mapping
 from maestro.agents.preflight import AgentRoutePreflight
 from maestro.agents.routes import RoleSelections, ToolModelSelection
 from maestro.agents.supervisor import SupervisionError
-from maestro.foundation import Database, DomainMigration, Transaction, canonical_json
+from maestro.foundation import (
+    Command,
+    Database,
+    DomainMigration,
+    Event,
+    Transaction,
+    canonical_json,
+)
 from maestro.foundation.credentials import RepositoryAuthorizer, ServiceGitTransport
-from maestro.foundation.git_publication import PublicationError, PublicationJournal
+from maestro.foundation.git_publication import (
+    PublicationAccessError,
+    PublicationConflictError,
+    PublicationError,
+    PublicationJournal,
+    PublicationStateError,
+)
 from maestro.foundation.github_destination import (
     GitHubDestination,
     GitHubDestinationError,
@@ -33,6 +46,7 @@ from maestro.planning.intake import (
     RegistrationIntakeResult,
 )
 from maestro.planning.registration_confirmation import (
+    ConfirmationResult,
     OwnerConfirmation,
     RegistrationConfirmationError,
     RegistrationConfirmationService,
@@ -52,6 +66,7 @@ from .activities import ActivityAction, ActivityRecord, ActivityRepository, Proj
 from .authentication import VerifiedActor
 from .processes import ProcessSnapshot
 from .questions import DeliveredAnswer, LinkedQuestion, QuestionService
+from .receipts import ReceiptRepository
 from .registry import OperationHandler, OperationResult, PreparedOperation
 from .requests import RequestEnvelope, RequestRejection
 
@@ -118,11 +133,46 @@ REGISTRATION_COMPOSITION_RECOVERY_MIGRATION = DomainMigration(
     ),
 )
 
+REGISTRATION_COMPOSITION_AUTOMATIC_RECOVERY_MIGRATION = DomainMigration(
+    domain="registration_composition",
+    version=3,
+    identity="installed-registration-automatic-recovery-v3",
+    statements=(
+        """ALTER TABLE installed_registration_agent_failures
+           ADD COLUMN failed_launch_evidence INTEGER NOT NULL DEFAULT 0
+               CHECK(failed_launch_evidence IN (0, 1))""",
+        """
+        CREATE TABLE installed_registration_publication_failures(
+            operation_id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('paused', 'retrying', 'resolved')),
+            automatic_limit INTEGER NOT NULL CHECK(automatic_limit >= 0),
+            automatic_consumed INTEGER NOT NULL DEFAULT 0
+                CHECK(automatic_consumed >= 0)
+        )
+        """,
+        """
+        CREATE TABLE installed_registration_publication_retry_requests(
+            request_id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL,
+            operation_id TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('automatic', 'manual')),
+            state TEXT NOT NULL CHECK(state IN (
+                'reserved', 'dispatched', 'completed', 'failed'
+            )),
+            failure TEXT
+        )
+        """,
+    ),
+)
+
 
 def registration_composition_migrations() -> tuple[DomainMigration, ...]:
     return (
         REGISTRATION_COMPOSITION_MIGRATION,
         REGISTRATION_COMPOSITION_RECOVERY_MIGRATION,
+        REGISTRATION_COMPOSITION_AUTOMATIC_RECOVERY_MIGRATION,
     )
 
 
@@ -542,57 +592,47 @@ class RegistrationCoordinator:
                 "SELECT 1 FROM registration_recovery_attempts WHERE activity_id = ?",
                 (request.activity_id,),
             ).fetchone()
-        if recovery_attempt is not None:
-            if self.recovery is None:
-                raise ValueError("installed registration recovery is not configured")
-            result = self.recovery.confirm_replacement(
-                request.activity_id, confirmation, assessment, actor, action
+        try:
+            if recovery_attempt is not None:
+                if self.recovery is None:
+                    raise ValueError("installed registration recovery is not configured")
+                result = self.recovery.confirm_replacement(
+                    request.activity_id, confirmation, assessment, actor, action
+                )
+            else:
+                result = confirmation.confirm(assessment, actor, action)
+        except (
+            GitHubDestinationError,
+            PublicationError,
+            RegistrationConfirmationError,
+            RegistrationRecoveryError,
+        ) as error:
+            with self.database.read_connection() as connection:
+                pending = connection.execute(
+                    """SELECT operation_id FROM registration_confirmations
+                       WHERE request_id = ? AND activity_id = ? AND state = 'pending'""",
+                    (request.request_id, request.activity_id),
+                ).fetchone()
+            if pending is None:
+                raise
+            self._recover_publication_automatically(
+                assessment, str(pending[0]), str(error)
             )
-        else:
-            result = confirmation.confirm(assessment, actor, action)
+            active = confirmation.active(request.project_id)
+            if active is None or active.package_ref != action.package_ref:
+                raise RegistrationConfirmationError(
+                    "automatic confirmation recovery did not activate the exact candidate"
+                ) from error
+            result = active
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
-            row = _activity_row(transaction, request.activity_id)
-            self.records.update_activity(
+            return self._finalize_confirmation_in(
                 transaction,
-                ActivityRecord(
-                    request.activity_id,
-                    request.project_id,
-                    "registration",
-                    str(row[1]),
-                    "completed",
-                    next_version,
-                    started_at=None if row[3] is None else str(row[3]),
-                    ended_at=_utc_now(),
-                ),
-                expected_record_version=request.expected_version,
-            )
-            project = transaction.execute(
-                "SELECT name, version FROM service_projects WHERE project_id = ?",
-                (request.project_id,),
-            ).fetchone()
-            if project is None:
-                raise ValueError("registration project is unavailable")
-            self.records.update_project(
-                transaction,
-                ProjectRecord(
-                    request.project_id, str(project[0]), "registered", int(project[1]) + 1
-                ),
-                expected_record_version=int(project[1]),
-            )
-            if self.recovery is not None:
-                self.recovery.release_intake_reservation_in(
-                    transaction, request.activity_id
-                )
-            return OperationResult(
-                data={
-                    "status": result.status,
-                    "package_ref": result.package_ref.as_dict(),
-                    "confirmation_ref": result.confirmation_ref.as_dict(),
-                    "remote_commit": result.remote_commit,
-                },
-                project_id=request.project_id,
-                activity_id=request.activity_id,
+                request.activity_id,
+                request.project_id,
+                request.expected_version,
+                next_version,
+                result,
             )
 
         return PreparedOperation(
@@ -794,7 +834,10 @@ class RegistrationCoordinator:
             )
             recovered: object = ({"kind": "candidate", "state": "published"},)
         else:
-            recovered = confirmation.recover_pending(request.activity_id)
+            recovered = confirmation.recover_pending(
+                request.activity_id,
+                reserved_operation_ids=frozenset((operation_id,)),
+            )
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
             row = _activity_row(transaction, request.activity_id)
@@ -1075,16 +1118,46 @@ class RegistrationCoordinator:
             errors.append({"kind": "assessment", "message": str(error)})
         recovered: tuple[dict[str, object], ...] = ()
         if self.confirmation is not None:
-            try:
-                recovered = self.confirmation.recover_pending(
-                    continue_on_error=True
+            recovered_items: list[dict[str, object]] = []
+            with self.database.read_connection() as connection:
+                pending_publications = tuple(
+                    (str(row[0]), str(row[1]))
+                    for row in connection.execute(
+                        """SELECT operation_id, activity_id
+                           FROM registration_candidate_publications
+                           WHERE state = 'prepared'
+                           UNION
+                           SELECT operation_id, activity_id
+                           FROM registration_confirmations
+                           WHERE state = 'pending'
+                           ORDER BY operation_id"""
+                    ).fetchall()
                 )
-            except (
-                GitHubDestinationError,
-                PublicationError,
-                RegistrationConfirmationError,
-            ) as error:
-                errors.append({"kind": "publication", "message": str(error)})
+            for operation_id, activity_id in pending_publications:
+                try:
+                    assessment = self.binding.assessment(activity_id)
+                    recovered_items.extend(
+                        self._recover_publication_automatically(
+                            assessment, operation_id,
+                            "startup recovered an unfinished publication",
+                        )
+                    )
+                except (
+                    GitHubDestinationError,
+                    PublicationError,
+                    RegistrationConfirmationError,
+                    RegistrationAssessmentError,
+                    ValueError,
+                ) as error:
+                    recovered_items.append(
+                        {
+                            "kind": "publication",
+                            "operation_id": operation_id,
+                            "state": "paused",
+                            "error": str(error),
+                        }
+                    )
+            recovered = tuple(recovered_items)
         recovery_activities: list[str] = []
         if self.recovery is not None:
             with self.database.read_connection() as connection:
@@ -1109,6 +1182,13 @@ class RegistrationCoordinator:
                         }
                     )
         assignment_recovery: list[dict[str, str]] = []
+        try:
+            finalized_confirmations = self._recover_confirmation_finalizations()
+        except (RegistrationConfirmationError, ValueError) as error:
+            finalized_confirmations = ()
+            errors.append(
+                {"kind": "confirmation finalization", "message": str(error)}
+            )
         for activity_id in restored:
             try:
                 result = self._reconcile_saved_assignment(activity_id)
@@ -1126,9 +1206,168 @@ class RegistrationCoordinator:
             "restored_assessments": restored,
             "recovered_publications": recovered,
             "unfinished_recoveries": tuple(recovery_activities),
+            "finalized_confirmations": finalized_confirmations,
             "agent_assignments": tuple(assignment_recovery),
             "errors": tuple(errors),
         }
+
+    def _recover_confirmation_finalizations(self) -> tuple[str, ...]:
+        if self.confirmation is None:
+            return ()
+        with self.database.read_connection() as connection:
+            rows = connection.execute(
+                """SELECT confirmation.confirmation_id, confirmation.request_id,
+                          confirmation.project_id, confirmation.activity_id,
+                          confirmation.expected_activity_version,
+                          confirmation.confirmed_at, confirmation.package_ref_json,
+                          confirmation.remote_commit,
+                          confirmation.confirmation_ref_json,
+                          confirmation.owner_id
+                   FROM registration_confirmations AS confirmation
+                   LEFT JOIN request_receipts AS receipt
+                     ON receipt.request_id = confirmation.request_id
+                   WHERE confirmation.state = 'confirmed'
+                     AND receipt.request_id IS NULL
+                   ORDER BY confirmation.sequence"""
+            ).fetchall()
+        finalized: list[str] = []
+        for row in rows:
+            package_ref = RegistrationPackageReference.from_mapping(
+                json.loads(str(row[6]))
+            )
+            confirmation_ref_value = json.loads(str(row[8]))
+            active = self.confirmation.active(str(row[2]))
+            if (
+                active is None
+                or active.package_ref != package_ref
+                or active.confirmation_ref.as_dict() != confirmation_ref_value
+                or active.remote_commit != str(row[7])
+            ):
+                raise RegistrationConfirmationError(
+                    "confirmed registration finalization differs from the active pointer"
+                )
+            request = RequestEnvelope(
+                str(row[1]),
+                "registration.confirm",
+                str(row[2]),
+                str(row[3]),
+                None,
+                int(row[4]),
+                {
+                    "confirmation_id": str(row[0]),
+                    "package_ref": package_ref.as_dict(),
+                    "confirmed_at": str(row[5]),
+                },
+            )
+            event_key = hashlib.sha256(
+                f"{request.request_id}\0{request.content_digest}".encode("utf-8")
+            ).hexdigest()
+            event_id = f"request-{event_key}"
+            result = active
+            command = Command(
+                request_id=request.request_id,
+                operation=request.operation,
+                actor_id=str(row[9]),
+                entity_id=str(row[3]),
+                expected_version=int(row[4]),
+                content_digest=request.content_digest,
+            )
+            event = Event(
+                schema_version=1,
+                event_id=event_id,
+                occurred_at=_utc_now(),
+                project_id=str(row[2]),
+                activity_id=str(row[3]),
+                type="registration.confirmed",
+                data={"confirmation_id": str(row[0])},
+            )
+
+            def apply(
+                transaction: Transaction,
+                next_version: int,
+                *,
+                activity_id: str = str(row[3]),
+                project_id: str = str(row[2]),
+                expected_version: int = int(row[4]),
+                confirmation_result: ConfirmationResult = result,
+                saved_request_id: str = request.request_id,
+                saved_event_id: str = event_id,
+            ) -> OperationResult:
+                operation_result = self._finalize_confirmation_in(
+                    transaction,
+                    activity_id,
+                    project_id,
+                    expected_version,
+                    next_version,
+                    confirmation_result,
+                )
+                ReceiptRepository.save_result(
+                    transaction,
+                    saved_request_id,
+                    saved_event_id,
+                    operation_result,
+                )
+                return operation_result
+
+            self.database.commit_command(command, event, apply)
+            finalized.append(str(row[0]))
+        return tuple(finalized)
+
+    def _finalize_confirmation_in(
+        self,
+        transaction: Transaction,
+        activity_id: str,
+        project_id: str,
+        expected_version: int,
+        next_version: int,
+        result: ConfirmationResult,
+    ) -> OperationResult:
+        row = _activity_row(transaction, activity_id)
+        self.records.update_activity(
+            transaction,
+            ActivityRecord(
+                activity_id,
+                project_id,
+                "registration",
+                str(row[1]),
+                "completed",
+                next_version,
+                started_at=None if row[3] is None else str(row[3]),
+                ended_at=_utc_now(),
+            ),
+            expected_record_version=expected_version,
+        )
+        project = transaction.execute(
+            "SELECT name, version FROM service_projects WHERE project_id = ?",
+            (project_id,),
+        ).fetchone()
+        if project is None:
+            raise ValueError("registration project is unavailable")
+        self.records.update_project(
+            transaction,
+            ProjectRecord(
+                project_id, str(project[0]), "registered", int(project[1]) + 1
+            ),
+            expected_record_version=int(project[1]),
+        )
+        if self.recovery is not None:
+            transaction.execute(
+                """UPDATE registration_recovery_attempts
+                   SET state = 'completed', failure = NULL
+                   WHERE activity_id = ? AND state NOT IN ('cancelled', 'completed')""",
+                (activity_id,),
+            )
+            self.recovery.release_intake_reservation_in(transaction, activity_id)
+        return OperationResult(
+            data={
+                "status": result.status,
+                "package_ref": result.package_ref.as_dict(),
+                "confirmation_ref": result.confirmation_ref.as_dict(),
+                "remote_commit": result.remote_commit,
+            },
+            project_id=project_id,
+            activity_id=activity_id,
+        )
 
     def _receive_intake_answer(self, answer: DeliveredAnswer) -> None:
         with self.database.read_connection() as connection:
@@ -1423,6 +1662,7 @@ class RegistrationCoordinator:
         operation_id = f"registration-candidate-{activity_id}-{candidate.version}"
         request_id = f"registration-publication-{activity_id}-{candidate.version}"
         version = self._advance_for_publication(activity_id, project_id)
+        active: ConfirmationResult | None = None
         try:
             manifest, records = _load_candidate_workspace(
                 dependencies.workspace_root, assessment, candidate.path, candidate.sha256
@@ -1478,19 +1718,248 @@ class RegistrationCoordinator:
                 ),
             )
         except (OSError, RuntimeError, ValueError) as error:
-            self._set_activity_presentation(
-                activity_id,
-                "paused",
-                f"Candidate publication needs intervention: {error}",
+            try:
+                self._recover_publication_automatically(
+                    assessment, operation_id, str(error)
+                )
+                with self.database.read_connection() as connection:
+                    published = connection.execute(
+                        """SELECT package_ref_json
+                           FROM registration_candidate_publications
+                           WHERE operation_id = ? AND state = 'published'""",
+                        (operation_id,),
+                    ).fetchone()
+                if published is None:
+                    raise ValueError("automatic publication recovery did not publish the candidate")
+                package = RegistrationPackageReference.from_mapping(
+                    json.loads(str(published[0]))
+                )
+                if active is not None:
+                    assert self.recovery is not None
+                    self.recovery.record_candidate_from_saved_reasons(activity_id, package)
+                self._set_activity_presentation(
+                    activity_id,
+                    "waiting",
+                    "Exact reviewed candidate is ready for confirmation",
+                    (
+                        ActivityAction(
+                            "registration-confirm", "Confirm registration", "decision"
+                        ),
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                )
+            except (OSError, RuntimeError, ValueError) as recovery_error:
+                self._set_activity_presentation(
+                    activity_id,
+                    "paused",
+                    f"Candidate publication needs intervention: {recovery_error}",
+                    (
+                        ActivityAction(
+                            f"registration-retry.{operation_id}",
+                            "Retry publication",
+                            "recovery",
+                        ),
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                )
+
+    def _recover_publication_automatically(
+        self,
+        assessment: RegistrationAssessment,
+        operation_id: str,
+        reason: str,
+    ) -> tuple[dict[str, object], ...]:
+        confirmation = self._require_confirmation()
+        operation = confirmation.journal.operation(operation_id)
+        authorization = confirmation.destination_provider.authorize(
+            operation.authorization.repository,
+            operation.authorization.branch,
+        )
+        try:
+            confirmation.journal.reconcile(operation_id, authorization)
+        except PublicationStateError:
+            if confirmation.journal.operation(operation_id).state != "reconciled":
+                self._pause_publication_failure(
+                    assessment, operation_id, reason
+                )
+                raise
+        except (PublicationAccessError, PublicationConflictError) as error:
+            self._pause_publication_failure(assessment, operation_id, str(error))
+            raise
+
+        reserved: frozenset[str] = frozenset()
+        if confirmation.journal.operation(operation_id).state == "reconciled":
+            request_id = self._reserve_automatic_publication_retry(
+                assessment, operation_id, reason
+            )
+            with self.database.transaction() as transaction:
+                transaction.execute(
+                    """UPDATE installed_registration_publication_retry_requests
+                       SET state = 'dispatched'
+                       WHERE request_id = ? AND state = 'reserved'""",
+                    (request_id,),
+                )
+            reserved = frozenset((operation_id,))
+        try:
+            recovered = confirmation.recover_pending(
+                assessment.context.activity_id,
+                reserved_operation_ids=reserved,
+            )
+        except Exception as error:
+            with self.database.transaction() as transaction:
+                transaction.execute(
+                    """UPDATE installed_registration_publication_retry_requests
+                       SET state = 'failed', failure = ?
+                       WHERE operation_id = ? AND state IN ('reserved', 'dispatched')""",
+                    (str(error), operation_id),
+                )
+                transaction.execute(
+                    """UPDATE installed_registration_publication_failures
+                       SET state = 'paused', reason = ? WHERE operation_id = ?""",
+                    (str(error), operation_id),
+                )
+            raise
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE installed_registration_publication_retry_requests
+                   SET state = 'completed', failure = NULL
+                   WHERE operation_id = ? AND state IN ('reserved', 'dispatched')""",
+                (operation_id,),
+            )
+            transaction.execute(
+                """UPDATE installed_registration_publication_failures
+                   SET state = 'resolved' WHERE operation_id = ?""",
+                (operation_id,),
+            )
+        return recovered
+
+    def _reserve_automatic_publication_retry(
+        self,
+        assessment: RegistrationAssessment,
+        operation_id: str,
+        reason: str,
+    ) -> str:
+        recovery = assessment.process_snapshot.definition.get("recovery")
+        automatic_limit = (
+            recovery.get("automatic_recovery_attempts")
+            if isinstance(recovery, Mapping)
+            else None
+        )
+        if (
+            isinstance(automatic_limit, bool)
+            or not isinstance(automatic_limit, int)
+            or automatic_limit < 0
+        ):
+            automatic_limit = 0
+        activity_id = assessment.context.activity_id
+        exhausted = False
+        request_id = ""
+        with self.database.transaction() as transaction:
+            pending = transaction.execute(
+                """SELECT request_id
+                   FROM installed_registration_publication_retry_requests
+                   WHERE operation_id = ? AND state IN ('reserved', 'dispatched')
+                   ORDER BY rowid DESC LIMIT 1""",
+                (operation_id,),
+            ).fetchone()
+            if pending is not None:
+                return str(pending[0])
+            saved = transaction.execute(
+                """SELECT automatic_consumed
+                   FROM installed_registration_publication_failures
+                   WHERE operation_id = ?""",
+                (operation_id,),
+            ).fetchone()
+            consumed = 0 if saved is None else int(saved[0])
+            if consumed >= automatic_limit:
+                transaction.execute(
+                    """INSERT INTO installed_registration_publication_failures(
+                           operation_id, activity_id, reason, state,
+                           automatic_limit, automatic_consumed
+                       ) VALUES (?, ?, ?, 'paused', ?, ?)
+                       ON CONFLICT(operation_id) DO UPDATE SET
+                           reason = excluded.reason,
+                           state = 'paused',
+                           automatic_limit = excluded.automatic_limit""",
+                    (operation_id, activity_id, reason, automatic_limit, consumed),
+                )
+                exhausted = True
+            else:
+                request_id = (
+                    f"registration-publication-automatic-{activity_id}-{consumed + 1}"
+                )
+                transaction.execute(
+                    """INSERT INTO installed_registration_publication_retry_requests(
+                           request_id, activity_id, operation_id, kind, state, failure
+                       ) VALUES (?, ?, ?, 'automatic', 'reserved', NULL)""",
+                    (request_id, activity_id, operation_id),
+                )
+                transaction.execute(
+                    """INSERT INTO installed_registration_publication_failures(
+                           operation_id, activity_id, reason, state,
+                           automatic_limit, automatic_consumed
+                       ) VALUES (?, ?, ?, 'retrying', ?, ?)
+                       ON CONFLICT(operation_id) DO UPDATE SET
+                           reason = excluded.reason,
+                           state = 'retrying',
+                           automatic_limit = excluded.automatic_limit,
+                           automatic_consumed = excluded.automatic_consumed""",
+                    (
+                        operation_id,
+                        activity_id,
+                        reason,
+                        automatic_limit,
+                        consumed + 1,
+                    ),
+                )
+                self._set_activity_presentation_in(
+                    transaction,
+                    activity_id,
+                    "running",
+                    f"Automatically retrying publication: {reason}",
+                    (
+                        ActivityAction(
+                            "registration-cancel", "Cancel registration", "decision"
+                        ),
+                    ),
+                )
+        if exhausted:
+            raise ValueError("automatic publication recovery allowance is exhausted")
+        return request_id
+
+    def _pause_publication_failure(
+        self,
+        assessment: RegistrationAssessment,
+        operation_id: str,
+        reason: str,
+    ) -> None:
+        recovery = assessment.process_snapshot.definition.get("recovery")
+        limit = (
+            recovery.get("automatic_recovery_attempts")
+            if isinstance(recovery, Mapping)
+            else 0
+        )
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+            limit = 0
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """INSERT INTO installed_registration_publication_failures(
+                       operation_id, activity_id, reason, state,
+                       automatic_limit, automatic_consumed
+                   ) VALUES (?, ?, ?, 'paused', ?, 0)
+                   ON CONFLICT(operation_id) DO UPDATE SET
+                       reason = excluded.reason,
+                       state = 'paused',
+                       automatic_limit = excluded.automatic_limit""",
                 (
-                    ActivityAction(
-                        f"registration-retry.{operation_id}",
-                        "Retry publication",
-                        "recovery",
-                    ),
-                    ActivityAction(
-                        "registration-cancel", "Cancel registration", "decision"
-                    ),
+                    operation_id,
+                    assessment.context.activity_id,
+                    reason,
+                    limit,
                 ),
             )
 
@@ -1517,6 +1986,9 @@ class RegistrationCoordinator:
                 run.assignment_id,
                 run.run_id,
                 f"assignment could not start: {error}",
+                isinstance(error, (OSError, RuntimeError))
+                and not isinstance(error, SupervisionError),
+                failed_launch=True,
             )
             return False
 
@@ -1530,14 +2002,31 @@ class RegistrationCoordinator:
             role = "project_architect"
         elif state == "awaiting_reviewer":
             role = "fidelity_reviewer"
+        elif state == "technical_recovery":
+            with self.database.read_connection() as connection:
+                failure = connection.execute(
+                    """SELECT role, failed_launch_evidence
+                       FROM installed_registration_agent_failures
+                       WHERE activity_id = ? AND state = 'paused'""",
+                    (activity_id,),
+                ).fetchone()
+            if failure is None:
+                raise ValueError(
+                    "registration cancellation is paused with Stop unconfirmed; "
+                    "technical recovery lacks exact failed-run evidence"
+                )
+            if int(failure[1]) == 1:
+                return
+            role = str(failure[0])
         else:
             return
         try:
             observed = self.binding.poll_current_agent(assessment, role)
         except SupervisionError as error:
-            if error.code == "unknown_operation":
-                return
-            raise ValueError(f"active agent cancellation could not be reconciled: {error}") from error
+            raise ValueError(
+                "registration cancellation is paused with Stop unconfirmed; "
+                f"active agent state could not be reconciled: {error}"
+            ) from error
         if observed.state == "running":
             observed = self.binding.stop_current_agent(
                 assessment, role, "cancelled"
@@ -1560,16 +2049,16 @@ class RegistrationCoordinator:
                 (activity_id,),
             ).fetchone()
             saved_failure = connection.execute(
-                """SELECT role, assignment_id, failed_run_id, reason
+                """SELECT role, assignment_id, failed_run_id, reason, state
                    FROM installed_registration_agent_failures
-                   WHERE activity_id = ? AND state = 'paused'""",
+                   WHERE activity_id = ?""",
                 (activity_id,),
             ).fetchone()
         if activity is None or str(activity[0]) in {"completed", "cancelled", "failed"}:
             return None
         state = assessment.status.state
         if state == "technical_recovery":
-            if saved_failure is None:
+            if saved_failure is None or str(saved_failure[4]) != "paused":
                 self._set_activity_presentation(
                     activity_id,
                     "paused",
@@ -1603,30 +2092,47 @@ class RegistrationCoordinator:
         else:
             return None
         current = assessment.current_run(role)
+        with self.database.read_connection() as connection:
+            reserved_retry = connection.execute(
+                """SELECT request_id FROM installed_registration_agent_retry_requests
+                   WHERE activity_id = ? AND replacement_run_id = ?
+                     AND state = 'reserved'""",
+                (activity_id, current.run_id),
+            ).fetchone()
+        if reserved_retry is not None:
+            request_id = str(reserved_retry[0])
+            try:
+                observed = self.binding.poll_current_agent(assessment, role)
+            except SupervisionError as error:
+                if error.code != "unknown_operation":
+                    raise
+                self._dispatch_reserved_agent_retry(
+                    activity_id, role, request_id
+                )
+                return {"activity_id": activity_id, "state": "retry-dispatched"}
+            with self.database.transaction() as transaction:
+                transaction.execute(
+                    """UPDATE installed_registration_agent_retry_requests
+                       SET state = 'launched' WHERE request_id = ? AND state = 'reserved'""",
+                    (request_id,),
+                )
         try:
             observed = self.binding.poll_current_agent(assessment, role)
         except SupervisionError as error:
             if error.code != "unknown_operation":
                 raise
-            self._assignment_failed(
-                activity_id,
-                role,
-                current.assignment_id,
-                current.run_id,
-                "startup found no supervisor record for the saved assignment",
-            )
             self._set_activity_presentation(
                 activity_id,
                 "paused",
-                "Saved agent assignment has no supervisor record; replacement is "
-                "blocked to prevent overlapping work.",
+                "Stop unconfirmed: the saved agent assignment has no supervisor "
+                "record, so replacement and cancellation remain blocked.",
                 (
                     ActivityAction(
                         "registration-cancel", "Cancel registration", "decision"
                     ),
                 ),
             )
-            return {"activity_id": activity_id, "state": "paused"}
+            return {"activity_id": activity_id, "state": "stop-unconfirmed"}
         if observed.state == "running":
             self._set_activity_presentation(
                 activity_id,
@@ -1649,8 +2155,22 @@ class RegistrationCoordinator:
                 current.assignment_id,
                 current.run_id,
                 f"startup reconciled saved supervisor state {observed.state}",
+                observed.state in {"completed", "failed", "stalled", "stopped"},
             )
-            return {"activity_id": activity_id, "state": "paused"}
+            with self.database.read_connection() as connection:
+                failure_state = connection.execute(
+                    """SELECT state FROM installed_registration_agent_failures
+                       WHERE activity_id = ?""",
+                    (activity_id,),
+                ).fetchone()
+            return {
+                "activity_id": activity_id,
+                "state": (
+                    "retrying"
+                    if failure_state is not None and str(failure_state[0]) == "retrying"
+                    else "paused"
+                ),
+            }
         self._set_activity_presentation(
             activity_id,
             "paused",
@@ -1670,6 +2190,9 @@ class RegistrationCoordinator:
         assignment_id: str,
         failed_run_id: str,
         reason: str,
+        automatic_eligible: bool = False,
+        *,
+        failed_launch: bool = False,
     ) -> None:
         assessment = self.binding.assessment(activity_id)
         failed = assessment.current_run(role)
@@ -1687,6 +2210,21 @@ class RegistrationCoordinator:
             or automatic_limit < 0
         ):
             automatic_limit = 0
+        terminal_confirmed = failed_launch
+        stop_unconfirmed = False
+        if not failed_launch:
+            try:
+                observed = self.binding.poll_current_agent(assessment, role)
+            except SupervisionError:
+                automatic_eligible = False
+                stop_unconfirmed = True
+            else:
+                terminal_confirmed = observed.state in {
+                    "completed", "failed", "cancelled", "timed_out", "stalled", "stopped"
+                }
+                if observed.state in {"cancelled", "timed_out"}:
+                    automatic_eligible = False
+        retry_request_id: str | None = None
         with self.database.transaction() as transaction:
             self.binding.pause_technical_in(transaction, assessment, role)
             saved = transaction.execute(
@@ -1705,44 +2243,106 @@ class RegistrationCoordinator:
                 if saved is not None and str(saved[0]) == assignment_id
                 else 0
             )
+            retry_automatically = (
+                automatic_eligible
+                and terminal_confirmed
+                and automatic_consumed < automatic_limit
+            )
+            if retry_automatically:
+                replacement_run_id = f"{role}-run-{uuid.uuid4().hex}"
+                replacement = self.binding.retry_technical_in(
+                    transaction, assessment, role, failed, replacement_run_id
+                )
+                retry_request_id = (
+                    f"registration-agent-automatic-{activity_id}-{automatic_consumed + 1}"
+                )
+                transaction.execute(
+                    """INSERT INTO installed_registration_agent_retry_requests(
+                           request_id, activity_id, assignment_id, failed_run_id,
+                           replacement_run_id, kind, intervention, state
+                       ) VALUES (?, ?, ?, ?, ?, 'automatic', NULL, 'reserved')""",
+                    (
+                        retry_request_id,
+                        activity_id,
+                        assignment_id,
+                        failed_run_id,
+                        replacement.run_id,
+                    ),
+                )
             transaction.execute(
                 """INSERT INTO installed_registration_agent_failures(
                        activity_id, role, assignment_id, failed_run_id, reason,
-                       state, automatic_limit, automatic_consumed, manual_consumed
-                   ) VALUES (?, ?, ?, ?, ?, 'paused', ?, ?, ?)
+                       state, automatic_limit, automatic_consumed, manual_consumed,
+                       failed_launch_evidence
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(activity_id) DO UPDATE SET
                        role = excluded.role,
                        assignment_id = excluded.assignment_id,
                        failed_run_id = excluded.failed_run_id,
                        reason = excluded.reason,
-                       state = 'paused',
+                       state = excluded.state,
                        automatic_limit = excluded.automatic_limit,
                        automatic_consumed = excluded.automatic_consumed,
-                       manual_consumed = excluded.manual_consumed""",
+                       manual_consumed = excluded.manual_consumed,
+                       failed_launch_evidence = excluded.failed_launch_evidence""",
                 (
                     activity_id,
                     role,
                     assignment_id,
                     failed_run_id,
                     reason,
+                    "retrying" if retry_automatically else "paused",
                     automatic_limit,
-                    automatic_consumed,
+                    automatic_consumed + (1 if retry_automatically else 0),
                     manual_consumed,
+                    1 if failed_launch else 0,
                 ),
             )
-        self._set_activity_presentation(
-            activity_id,
-            "paused",
-            f"Agent assignment needs intervention: {reason}",
-            (
-                ActivityAction(
-                    "registration-retry.agent", "Retry activity", "recovery"
+            actions = (
+                (
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                )
+                if retry_automatically or stop_unconfirmed
+                else (
+                    ActivityAction(
+                        "registration-retry.agent", "Retry activity", "recovery"
+                    ),
+                    ActivityAction(
+                        "registration-cancel", "Cancel registration", "decision"
+                    ),
+                )
+            )
+            self._set_activity_presentation_in(
+                transaction,
+                activity_id,
+                "running" if retry_automatically else "paused",
+                (
+                    f"Automatically retrying the saved agent assignment: {reason}"
+                    if retry_automatically
+                    else (
+                        f"Stop unconfirmed: {reason}"
+                        if stop_unconfirmed
+                        else f"Agent assignment needs intervention: {reason}"
+                    )
                 ),
-                ActivityAction(
-                    "registration-cancel", "Cancel registration", "decision"
-                ),
-            ),
-        )
+                actions,
+            )
+        if retry_request_id is not None:
+            self._dispatch_reserved_agent_retry(activity_id, role, retry_request_id)
+
+    def _dispatch_reserved_agent_retry(
+        self, activity_id: str, role: str, request_id: str
+    ) -> None:
+        assessment = self.binding.assessment(activity_id)
+        launched = self._launch_assignment(assessment, role)
+        with self.database.transaction() as transaction:
+            transaction.execute(
+                """UPDATE installed_registration_agent_retry_requests
+                   SET state = ? WHERE request_id = ? AND state = 'reserved'""",
+                ("launched" if launched else "failed", request_id),
+            )
 
     def _advance_for_publication(self, activity_id: str, project_id: str) -> int:
         with self.database.transaction() as transaction:
@@ -1776,24 +2376,36 @@ class RegistrationCoordinator:
         actions: tuple[ActivityAction, ...],
     ) -> None:
         with self.database.transaction() as transaction:
-            transaction.execute(
-                "UPDATE service_activities SET state = ?, waiting_reason = ? WHERE activity_id = ?",
-                (state, reason, activity_id),
+            self._set_activity_presentation_in(
+                transaction, activity_id, state, reason, actions
             )
-            transaction.execute(
-                "DELETE FROM service_activity_actions WHERE activity_id = ?",
-                (activity_id,),
-            )
-            transaction.executemany(
-                """INSERT INTO service_activity_actions(
-                       action_id, activity_id, project_id, kind, label
-                   ) SELECT ?, activity_id, project_id, ?, ?
-                     FROM service_activities WHERE activity_id = ?""",
-                tuple(
-                    (action.action_id, action.kind, action.label, activity_id)
-                    for action in actions
-                ),
-            )
+
+    @staticmethod
+    def _set_activity_presentation_in(
+        transaction: Transaction,
+        activity_id: str,
+        state: str,
+        reason: str,
+        actions: tuple[ActivityAction, ...],
+    ) -> None:
+        transaction.execute(
+            "UPDATE service_activities SET state = ?, waiting_reason = ? WHERE activity_id = ?",
+            (state, reason, activity_id),
+        )
+        transaction.execute(
+            "DELETE FROM service_activity_actions WHERE activity_id = ?",
+            (activity_id,),
+        )
+        transaction.executemany(
+            """INSERT INTO service_activity_actions(
+                   action_id, activity_id, project_id, kind, label
+               ) SELECT ?, activity_id, project_id, ?, ?
+                 FROM service_activities WHERE activity_id = ?""",
+            tuple(
+                (action.action_id, action.kind, action.label, activity_id)
+                for action in actions
+            ),
+        )
 
     def _require_runtime(self) -> RegistrationRuntimeDependencies:
         if self.dependencies is None:
