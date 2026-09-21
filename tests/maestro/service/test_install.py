@@ -165,9 +165,11 @@ class LinuxInstallationTest(unittest.TestCase):
         self.assertIn(hashlib.sha256(OWNER_TOKEN.encode("ascii")).hexdigest(), service_config)
         self.assertIn(str(self.paths.owner_token), cli_config)
         self.assertIn("User=maestro", unit)
+        self.assertIn("Requires=user@1101.service", unit)
+        self.assertIn("After=user@1101.service", unit)
         self.assertIn("Restart=on-failure", unit)
         self.assertIn("ProtectHome=true", unit)
-        self.assertNotIn("@", unit)
+        self.assertNotIn("@SERVICE_", unit)
         self.assertTrue((self.paths.schema_dir / "sample" / "1" / "schema.json").is_file())
         self.assertTrue((self.paths.schema_dir / installer.SCHEMA_MANIFEST_NAME).is_file())
 
@@ -561,6 +563,7 @@ automatic_recovery_attempts = 2
         self.assertIn("**/*.json", package_data["maestro"])
         unit = UNIT_PATH.read_text(encoding="utf-8")
         self.assertNotIn("maestro.cli", unit)
+        self.assertIn("Requires=user@@SERVICE_UID@.service", unit)
         self.assertIn("WantedBy=multi-user.target", unit)
 
     def test_egress_runner_rejects_unapproved_caller_mounts(self) -> None:

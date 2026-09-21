@@ -3,6 +3,8 @@ Description=Maestro persistent coordination service
 After=local-fs.target
 Wants=network-online.target
 After=network-online.target
+Requires=user@@SERVICE_UID@.service
+After=user@@SERVICE_UID@.service
 
 [Service]
 Type=simple

@@ -99,6 +99,7 @@ class UnitIdentity:
     invocation_id: str
     active: bool
     cgroup_empty: bool
+    exit_status: int | None = None
 
     def matches(self, saved: "RunRecord") -> bool:
         invocation_matches = bool(self.invocation_id) and self.invocation_id == saved.invocation_id
@@ -263,7 +264,10 @@ class SystemdUserUnits:
         completed = subprocess.run(
             (
                 self.systemctl, "--user", "show", unit_name,
-                "--property=MainPID", "--property=ActiveState", "--property=ControlGroup", "--property=InvocationID",
+                "--property=MainPID", "--property=ActiveState",
+                "--property=ControlGroup", "--property=InvocationID",
+                "--property=Result", "--property=ExecMainCode",
+                "--property=ExecMainStatus",
             ),
             capture_output=True, text=True, check=False, env=self._user_bus_environment(),
         )
@@ -276,9 +280,21 @@ class SystemdUserUnits:
             return None
         active = pid > 0 and fields.get("ActiveState") in {"active", "activating", "deactivating"}
         invocation_id = fields.get("InvocationID", "")
+        exit_status: int | None = None
+        if not active and fields.get("Result") == "success" and fields.get("ExecMainCode") == "1":
+            try:
+                exit_status = int(fields.get("ExecMainStatus", ""))
+            except ValueError:
+                exit_status = None
         if pid <= 0:
-            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
-        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
+            return UnitIdentity(
+                unit_name, 0, _boot_id(), "", invocation_id, active,
+                self._cgroup_empty(fields.get("ControlGroup", "")), exit_status,
+            )
+        return UnitIdentity(
+            unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id,
+            active, self._cgroup_empty(fields.get("ControlGroup", "")), exit_status,
+        )
 
     def stop(self, unit_name: str) -> None:
         completed = subprocess.run(
@@ -337,6 +353,7 @@ class LocalProcessUnits:
             invocation_id,
             active,
             _process_group_empty(process.pid),
+            None if active else process.returncode,
         )
 
     def stop(self, unit_name: str) -> None:
@@ -579,7 +596,7 @@ class AgentSupervisor:
             self._join_readers(identity.key)
             record = self._required(identity)
             managed = self._managed.get(identity.key)
-            completed = self._terminal(record, "completed", _exit_reason(managed))
+            completed = self._terminal(record, "completed", _exit_reason(managed, unit))
             self._close_managed(identity.key)
             return completed
         if now - (record.last_activity_monotonic or record.launched_monotonic) >= record.stall_seconds:
@@ -766,10 +783,17 @@ def _process_group_empty(process_group: int) -> bool:
     return False
 
 
-def _exit_reason(managed: ManagedUnit | None) -> str:
-    if managed is None or managed.process is None or managed.process.returncode is None:
+def _exit_reason(managed: ManagedUnit | None, unit: UnitIdentity) -> str:
+    status = unit.exit_status
+    if (
+        managed is not None
+        and managed.process is not None
+        and managed.process.returncode is not None
+    ):
+        status = managed.process.returncode
+    if status is None:
         return "unit_ended"
-    return "exit_0" if managed.process.returncode == 0 else f"exit_{managed.process.returncode}"
+    return "exit_0" if status == 0 else f"exit_{status}"
 
 
 def _record_mapping(record: RunRecord) -> dict[str, object]:

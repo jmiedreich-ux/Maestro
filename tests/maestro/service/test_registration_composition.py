@@ -172,6 +172,72 @@ class InstalledRegistrationCompositionTest(unittest.TestCase):
             coordinator._stop_active_assignment_before_cancel("activity-one")
         coordinator.binding.stop_current_agent.assert_not_called()
 
+    def test_restart_dispatches_committed_owner_grant_correction(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        assessment = mock.Mock()
+        assessment.status.state = "changes_requested"
+        coordinator.binding = mock.Mock()
+        coordinator.binding.assessment.return_value = assessment
+        connection = mock.Mock()
+        connection.execute.side_effect = (
+            SimpleNamespace(fetchone=lambda: ("running",)),
+            SimpleNamespace(fetchone=lambda: None),
+        )
+        coordinator.database = mock.MagicMock()
+        coordinator.database.read_connection.return_value.__enter__.return_value = connection
+        coordinator._assessment_changed = mock.Mock()
+
+        recovered = coordinator._reconcile_saved_assignment("activity-one")
+
+        self.assertEqual(
+            {"activity_id": "activity-one", "state": "architect-correction-dispatched"},
+            recovered,
+        )
+        coordinator._assessment_changed.assert_called_once_with(assessment)
+
+    def test_restart_dispatches_reserved_grant_architect_run_before_launch(self) -> None:
+        coordinator = object.__new__(RegistrationCoordinator)
+        assessment = mock.Mock()
+        assessment.status.state = "awaiting_architect"
+        assessment.current_run.return_value = SimpleNamespace(
+            assignment_id="architect-assignment", run_id="architect-run"
+        )
+        coordinator.binding = mock.Mock()
+        coordinator.binding.assessment.return_value = assessment
+        coordinator.binding.poll_current_agent.side_effect = SupervisionError(
+            "unknown_operation", "the launch has not been journaled"
+        )
+        first_connection = mock.Mock()
+        first_connection.execute.side_effect = (
+            SimpleNamespace(fetchone=lambda: ("running",)),
+            SimpleNamespace(fetchone=lambda: None),
+        )
+        retry_connection = mock.Mock()
+        retry_connection.execute.return_value.fetchone.return_value = None
+        grant_connection = mock.Mock()
+        grant_connection.execute.return_value.fetchone.return_value = (1,)
+        first_context = mock.MagicMock()
+        first_context.__enter__.return_value = first_connection
+        retry_context = mock.MagicMock()
+        retry_context.__enter__.return_value = retry_connection
+        grant_context = mock.MagicMock()
+        grant_context.__enter__.return_value = grant_connection
+        coordinator.database = mock.MagicMock()
+        coordinator.database.read_connection.side_effect = (
+            first_context, retry_context, grant_context,
+        )
+        coordinator._launch_assignment = mock.Mock(return_value=True)
+
+        recovered = coordinator._reconcile_saved_assignment("activity-one")
+
+        self.assertEqual(
+            {"activity_id": "activity-one", "state": "architect-correction-dispatched"},
+            recovered,
+        )
+        coordinator._launch_assignment.assert_called_once_with(
+            assessment, "project_architect"
+        )
+
     def test_unconfirmed_launch_is_not_saved_as_proven_prelaunch_failure(self) -> None:
         coordinator = object.__new__(RegistrationCoordinator)
         launcher = mock.Mock(

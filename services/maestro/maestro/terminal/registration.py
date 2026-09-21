@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping
@@ -140,16 +141,30 @@ class RegistrationInteraction:
                         f"- {finding.get('severity', 'finding')}: "
                         f"{finding.get('subject', 'Untitled finding')}"
                     )
+                    for field in (
+                        "local_key", "explanation", "impact",
+                        "requested_correction", "missing_information",
+                        "source_refs", "affected_items",
+                    ):
+                        if finding.get(field) not in (None, [], ""):
+                            lines.append(
+                                f"  {field.replace('_', ' ').title()}: "
+                                f"{_display_value(finding[field])}"
+                            )
         provenance = detail.get("provenance")
         if isinstance(provenance, Mapping):
             lines.append(
                 f"Source: {provenance['source_repository']} "
-                f"{provenance['source_ref']} at {provenance['source_commit']}"
+                f"{provenance['source_ref']} at {provenance['source_commit']} "
+                f"({provenance['source_selection']})"
             )
             lines.append(
                 f"Destination: {provenance['publication_branch']} / "
                 f"{provenance['destination_snapshot_reference']}"
             )
+        manifest = detail.get("package_manifest")
+        if isinstance(manifest, Mapping):
+            lines.append(f"Package manifest: {_display_value(manifest)}")
         records = detail.get("package_records", [])
         if isinstance(records, list) and records:
             lines.append(f"Authoritative package records: {len(records)}")
@@ -158,6 +173,10 @@ class RegistrationInteraction:
                     lines.append(
                         f"- {record.get('record_type')}: {record.get('subject')} "
                         f"({record.get('record_id')} v{record.get('record_version')})"
+                    )
+                    lines.append(f"  Path: {record.get('path')}")
+                    lines.append(
+                        f"  Data: {_display_value(record.get('data'))}"
                     )
         consistency = detail.get("source_consistency")
         if isinstance(consistency, Mapping):
@@ -690,6 +709,12 @@ def _replace_local_actions(
         updated = dict(detail)
         updated["available_actions"] = actions
         setattr(context.state, "activity_detail", updated)
+
+
+def _display_value(value: object) -> str:
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return str(value)
 
 
 def _comparison(value: object) -> None:

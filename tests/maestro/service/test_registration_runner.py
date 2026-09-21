@@ -4,13 +4,31 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from maestro.agents.transport import AgentAssignment
 from maestro.foundation import canonical_json
 from maestro.service.registration_runner import run
+from maestro.service.registration_agents import _recorded_runner_sequences
 
 
 class DurableRegistrationRunnerTest(unittest.TestCase):
+    def test_restart_recovers_already_recorded_runner_event_numbers(self) -> None:
+        record = SimpleNamespace(events=(
+            {"sequence": 1, "kind": "intent"},
+            {
+                "sequence": 2,
+                "kind": "stdout",
+                "data": canonical_json({"sequence": 1, "kind": "stdout"}) + "\n",
+            },
+            {
+                "sequence": 3,
+                "kind": "stdout",
+                "data": canonical_json({"sequence": 2, "kind": "result_saved"}) + "\n",
+            },
+        ))
+        self.assertEqual({1, 2}, _recorded_runner_sequences(record))
+
     def test_runner_persists_numbered_protocol_events_identity_and_result(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

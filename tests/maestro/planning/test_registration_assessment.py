@@ -20,6 +20,7 @@ from maestro.planning.registration import (
     validate_completion_mapping,
 )
 from maestro.planning.registration_records import (
+    canonical_record_bytes,
     RegistrationAgentResponse,
     RegistrationRecordError,
     RegistrationPackageContext,
@@ -270,6 +271,76 @@ class RegistrationAssessmentTest(unittest.TestCase):
         manifest["agent_readiness"] = True
         with self.assertRaisesRegex(RegistrationRecordError, "manifest fields"):
             validate_registration_package(manifest, records, context)
+
+    def test_package_rejects_source_subject_declaration_version_and_order_changes(self) -> None:
+        inventory = SourceInventory(
+            "refs/heads/main", "b" * 40, "docs/overview.md",
+            (SourceBlob.from_bytes("docs/overview.md", b"# Overview\n"),),
+            source_references=(
+                SourceReference("Architecture", "Overview", "docs/overview.md"),
+            ),
+            outcomes=(
+                OutcomeReference("APP", 3, "APP-PM1", "Start", 1),
+                OutcomeReference("APP", 3, "APP-PM2", "Continue", 2),
+            ),
+        )
+        context = RegistrationPackageContext(
+            "project-1", "owner/project", inventory, "decision-1", "main",
+            "c" * 64, "decision/source-selection-1",
+        )
+
+        def rehash(
+            manifest: dict[str, object], records: dict[str, dict[str, object]]
+        ) -> None:
+            manifest["content_hash"] = package_content_hash(records)
+            manifest["files"] = [
+                {
+                    "path": path,
+                    "record_id": record["record_id"],
+                    "record_type": record["record_type"],
+                    "record_version": record["record_version"],
+                    "subject": record["subject"],
+                    "sha256": hashlib.sha256(
+                        canonical_record_bytes(record)
+                    ).hexdigest(),
+                }
+                for path, record in sorted(records.items())
+            ]
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["milestones/APP-PM1.json"]["subject"] = "Different outcome"
+        records["requirements/APP-PM1-completion.json"]["data"]["applies_to"]["subject"] = "Different outcome"
+        records["declarations/APP.json"]["data"]["milestone_refs"][0]["subject"] = "Different outcome"
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "subject"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["record_version"] = 4
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration version"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
+
+        manifest, records = complete_package(
+            context, registration_version=1, candidate_id="candidate-1",
+            include_review=False,
+        )
+        records["declarations/APP.json"]["data"]["milestone_refs"].reverse()
+        rehash(manifest, records)
+        with self.assertRaisesRegex(RegistrationRecordError, "declaration order"):
+            validate_registration_package(
+                manifest, records, context, require_review=False
+            )
 
     def test_process_provider_rejects_caller_supplied_assessment_facts(self) -> None:
         plugin = RegistrationProcessPlugin(self._configured_routes())

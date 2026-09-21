@@ -678,15 +678,46 @@ def _validate_package_topology(
     expected_designations = {item.declaration for item in outcomes}
     if declared_designations != expected_designations:
         raise RegistrationRecordError("candidate declarations do not cover the exact source outcomes")
-    actual_milestones = {
-        (str(record["data"]["declaration_id"]), str(record["data"]["milestone_id"]), int(record["record_version"]))
-        for _, record in milestones
+    milestone_records = {
+        (str(record["data"]["declaration_id"]), str(record["data"]["milestone_id"])):
+        (path, record)
+        for path, record in milestones
     }
     expected_milestones = {
-        (item.declaration, item.milestone, item.version) for item in outcomes
+        (item.declaration, item.milestone): item for item in outcomes
     }
-    if actual_milestones != expected_milestones:
+    if set(milestone_records) != set(expected_milestones):
         raise RegistrationRecordError("candidate milestones do not cover the exact source outcomes")
+    for identity, outcome in expected_milestones.items():
+        _path, record = milestone_records[identity]
+        if (
+            record["subject"] != outcome.subject
+            or record["record_version"] != outcome.version
+        ):
+            raise RegistrationRecordError(
+                "candidate milestone identity, subject, or version differs from the exact source outcome"
+            )
+    declaration_records = {
+        str(record["data"]["designation"]): record
+        for _, record in declarations
+    }
+    for designation, declaration in declaration_records.items():
+        expected_order = [
+            item for item in outcomes if item.declaration == designation
+        ]
+        expected_versions = {item.declaration_version for item in expected_order}
+        if len(expected_versions) != 1 or declaration["record_version"] not in expected_versions:
+            raise RegistrationRecordError(
+                "candidate declaration version differs from the exact source declaration"
+            )
+        actual_order = [
+            str(reference["record_id"])
+            for reference in declaration["data"]["milestone_refs"]
+        ]
+        if actual_order != [item.milestone for item in expected_order]:
+            raise RegistrationRecordError(
+                "candidate declaration order differs from the exact source declaration"
+            )
 
     selection = [
         record for _, record in typed.get("decision", [])

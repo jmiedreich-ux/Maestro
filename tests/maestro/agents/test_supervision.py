@@ -291,6 +291,14 @@ class DurableSupervisionTest(unittest.TestCase):
         )
         self.assertEqual(self.identity.key, published[0].operation_key)
 
+    def test_restart_preserves_success_status_when_runner_exits_after_service(self) -> None:
+        self.supervisor.launch(self.request("sleep 0.05; exit 0"))
+        restarted = AgentSupervisor(self.journal, self.units)
+        time.sleep(0.1)
+        completed = restarted.poll(self.identity)
+        self.assertEqual("completed", completed.state)
+        self.assertEqual("exit_0", completed.terminal_reason)
+
     def test_runtime_identity_rejects_agent_text_and_unconfirmed_unit(self) -> None:
         self.supervisor.reserve_runtime_identity(self.identity, self.route())
         self.supervisor.launch(self.request("sleep 5"))
@@ -339,6 +347,24 @@ class SystemdUserUnitsTest(unittest.TestCase):
         assert observed is not None
         self.assertEqual("invocation", observed.invocation_id)
         self.assertEqual(f"/run/user/{os.getuid()}", run.call_args.kwargs["env"]["XDG_RUNTIME_DIR"])
+
+    def test_inspection_retains_successful_exit_status_after_restart(self) -> None:
+        controller = SystemdUserUnits(systemctl="systemctl-test")
+        output = (
+            "MainPID=0\nActiveState=inactive\nControlGroup=/user.slice/test\n"
+            "InvocationID=invocation\nResult=success\nExecMainCode=1\n"
+            "ExecMainStatus=0\n"
+        )
+        with (
+            patch("maestro.agents.supervisor.subprocess.run") as run,
+            patch("maestro.agents.supervisor._boot_id", return_value="boot"),
+            patch.object(controller, "_cgroup_empty", return_value=True),
+        ):
+            run.return_value.returncode = 0
+            run.return_value.stdout = output
+            observed = controller.inspect("maestro-agent-run-one.service")
+        assert observed is not None
+        self.assertEqual(0, observed.exit_status)
 
 
 if __name__ == "__main__":

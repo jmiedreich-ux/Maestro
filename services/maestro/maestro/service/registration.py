@@ -1453,6 +1453,9 @@ class RegistrationCoordinator:
                 context = live_assessment.context
                 provenance = {
                     "source_repository": context.package_context.source_repository,
+                    "source_selection": self.binding.saved_intake_result(
+                        activity_id
+                    ).source_selection,
                     "source_ref": context.source_inventory.source_ref,
                     "source_commit": context.source_inventory.source_commit,
                     "publication_branch": context.package_context.publication_branch,
@@ -2816,6 +2819,12 @@ class RegistrationCoordinator:
         if activity is None or str(activity[0]) in {"completed", "cancelled", "failed"}:
             return None
         state = assessment.status.state
+        if state == "changes_requested":
+            self._assessment_changed(assessment)
+            return {
+                "activity_id": activity_id,
+                "state": "architect-correction-dispatched",
+            }
         if state == "technical_recovery":
             if saved_failure is None or str(saved_failure[4]) != "paused":
                 self._set_activity_presentation(
@@ -2912,6 +2921,23 @@ class RegistrationCoordinator:
         except SupervisionError as error:
             if error.code != "unknown_operation":
                 raise
+            if role == "project_architect":
+                with self.database.read_connection() as connection:
+                    granted_correction = connection.execute(
+                        """SELECT 1 FROM installed_registration_review_grants
+                           WHERE activity_id = ? AND state = 'unconsumed'
+                           LIMIT 1""",
+                        (activity_id,),
+                    ).fetchone()
+                if granted_correction is not None:
+                    launched = self._launch_assignment(assessment, role)
+                    return {
+                        "activity_id": activity_id,
+                        "state": (
+                            "architect-correction-dispatched"
+                            if launched else "paused"
+                        ),
+                    }
             self._set_activity_presentation(
                 activity_id,
                 "paused",

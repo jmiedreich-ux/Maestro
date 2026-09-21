@@ -456,6 +456,58 @@ class RegistrationConfirmationTest(unittest.TestCase):
         self.assertEqual(package, client.submissions[0]["payload"]["package_ref"])
         self.assertEqual(3, client.submissions[0]["expected_version"])
 
+    def test_terminal_renders_authoritative_review_package_and_source_details(self) -> None:
+        package = _terminal_package("candidate-1", "a")
+        detail = _terminal_detail("project-1", "activity-1", package)
+        detail["data"].update({
+            "assessment": {
+                "current_step": "ready", "working_agent": None,
+                "review_round": 2, "base_review_limit": 2,
+                "review_grants": 1, "effective_review_limit": 3,
+                "blockers": [],
+                "architect_findings": [{
+                    "local_key": "finding-one", "severity": "non_blocking",
+                    "subject": "Preserved dependency", "explanation": "Exact evidence.",
+                    "impact": "No blocker.", "requested_correction": "None.",
+                    "missing_information": None, "source_refs": [{"path": "docs/overview.md"}],
+                    "affected_items": [{"record_id": "APP-PM1"}],
+                }],
+                "review_findings": [],
+            },
+            "package_manifest": {
+                "candidate_id": "candidate-1", "content_hash": "c" * 64,
+            },
+            "package_records": [{
+                "path": "reviews/review-one.json", "record_type": "review",
+                "record_id": "review-one", "record_version": 2,
+                "subject": "Independent review",
+                "data": {
+                    "assignment_id": "reviewer-assignment", "run_id": "reviewer-run",
+                    "reviewer_identity": "reviewer-agent", "review_round": 2,
+                    "review_limit": 3, "reviewed_content_hash": "c" * 64,
+                    "outcome": "APPROVE", "findings": [],
+                },
+            }],
+            "provenance": {
+                "source_repository": "owner/project", "source_selection": "supplied",
+                "source_ref": "refs/heads/main", "source_commit": "a" * 40,
+                "publication_branch": "main",
+                "destination_snapshot_reference": "d" * 64,
+                "selection_decision_ref": "decision-one",
+                "architect_identity": "architect-agent",
+                "reviewer_identity": "reviewer-agent",
+            },
+        })
+        interaction = RegistrationInteraction()
+        rendered = interaction.open(
+            ExtensionContext(_TerminalClient(detail), _TerminalState("project-1", "activity-1"))
+        )
+        self.assertIn("Exact evidence.", rendered)
+        self.assertIn("Package manifest:", rendered)
+        self.assertIn("reviewer-assignment", rendered)
+        self.assertIn("reviewed_content_hash", rendered)
+        self.assertIn("(supplied)", rendered)
+
     def test_terminal_cancel_requires_separate_confirmation_and_supports_go_back(self) -> None:
         package = _terminal_package("candidate-1", "a")
         client = _TerminalClient(_terminal_detail("project-1", "activity-1", package))

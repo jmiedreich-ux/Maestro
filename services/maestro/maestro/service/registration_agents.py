@@ -219,7 +219,9 @@ class InstalledRegistrationAgentLauncher:
     ) -> None:
         try:
             reported = binding.has_saved_agent_identity(assessment, role)
-            recorded_runner_sequences: set[int] = set()
+            recorded_runner_sequences = _recorded_runner_sequences(
+                binding.poll_agent(identity)
+            )
             while True:
                 if event_path.exists():
                     for line in event_path.read_text(encoding="utf-8").splitlines():
@@ -465,6 +467,26 @@ class InstalledRegistrationAgentLauncher:
         if hashlib.sha256(content).hexdigest() != reference.sha256:
             raise ValueError("assigned registration artifact hash differs")
         return content
+
+
+def _recorded_runner_sequences(record: object) -> set[int]:
+    """Recover runner event numbers already copied into the durable supervisor."""
+    sequences: set[int] = set()
+    for saved in getattr(record, "events", ()):
+        if not isinstance(saved, Mapping) or saved.get("kind") != "stdout":
+            continue
+        data = saved.get("data")
+        if not isinstance(data, str):
+            continue
+        try:
+            event = json.loads(data)
+            sequence = event["sequence"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            continue
+        if isinstance(sequence, int) and not isinstance(sequence, bool) and sequence > 0:
+            sequences.add(sequence)
+    return sequences
+
 
 def _run_and_route(assessment: RegistrationAssessment, role: str):
     if role == "project_architect":

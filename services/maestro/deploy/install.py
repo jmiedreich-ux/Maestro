@@ -170,6 +170,10 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
             raise InstallationError(f"refusing linked installation target: {path}")
         _reject_linked_components(path, paths.root)
     _preflight_schema_bundles(configuration.schema_sources, paths.schema_dir, replace)
+    if configuration.production:
+        subprocess.run(
+            ["loginctl", "enable-linger", configuration.service.name], check=True
+        )
 
     token = secrets.token_hex(32)
     digest = hashlib.sha256(token.encode("ascii")).hexdigest()
@@ -186,11 +190,18 @@ def install(configuration: Installation, *, replace: bool = False) -> str:
     unit = (
         unit_template.replace("@SERVICE_USER@", configuration.service.name)
         .replace("@SERVICE_GROUP@", configuration.service.name)
+        .replace("@SERVICE_UID@", str(configuration.service.uid))
         .replace("@SERVICE_EXECUTABLE@", str(configuration.service_executable))
         .replace("@CONFIG_FILE@", str(paths.config_file))
         .replace("@DATA_DIR@", str(paths.data_dir))
     )
-    if "@" in unit:
+    if any(
+        marker in unit
+        for marker in (
+            "@SERVICE_USER@", "@SERVICE_GROUP@", "@SERVICE_UID@",
+            "@SERVICE_EXECUTABLE@", "@CONFIG_FILE@", "@DATA_DIR@",
+        )
+    ):
         raise InstallationError("systemd unit contains an unresolved installation value")
 
     _secure_directory(paths.config_dir, 0o750, 0, configuration.service.gid)
@@ -440,6 +451,7 @@ def verify_installed_host(operator_name: str | None) -> int:
     reasons: list[str] = []
     operator: Account | None = None
     operator_home: Path | None = None
+    service: Account | None = None
     if not operator_name:
         reasons.append("--operator-user is required for Owner credential checks")
     else:
@@ -490,6 +502,23 @@ def verify_installed_host(operator_name: str | None) -> int:
         else:
             if result.returncode != 0:
                 reasons.append(f"systemd unit is not {check.removeprefix('is-')}")
+
+    if service is not None:
+        user_unit = f"user@{service.uid}.service"
+        try:
+            user_manager = subprocess.run(
+                ["systemctl", "is-active", "--quiet", user_unit],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            reasons.append(f"persistent service user manager check unavailable: {error}")
+        else:
+            if user_manager.returncode != 0:
+                reasons.append("persistent service user manager is not active")
+        if not Path(f"/run/user/{service.uid}/bus").exists():
+            reasons.append("persistent service user manager bus is unavailable")
 
     if os.geteuid() != 0:
         reasons.append(
