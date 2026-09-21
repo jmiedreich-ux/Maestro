@@ -676,6 +676,9 @@ class _TerminalState:
     selected_project_id: str | None
     selected_activity_id: str | None
 
+    def select_activity(self, activity_id: str) -> None:
+        self.selected_activity_id = activity_id
+
 
 class _TerminalClient:
     def __init__(self, detail):

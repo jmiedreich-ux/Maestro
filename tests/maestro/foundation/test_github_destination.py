@@ -65,6 +65,28 @@ class GitHubDestinationProviderTest(unittest.TestCase):
         self.api.permissions = {"contents": "write", "administration": "none"}
         self.assertEqual("blocked", self.provider.authorize("owner/project", "maestro-m3-authorized", now=1000).decision)
 
+    def test_configured_branch_pattern_authorizes_only_matching_exact_branches(self) -> None:
+        profile = GitHubAppDestinationProfile(
+            profile_name="maestro-coordinator",
+            binding_id="maestro-project",
+            credential=GitHubAppCredential("github-app-maestro-coordinator"),
+            app_id=101,
+            installation_id=202,
+            app_slug="maestro-coordinator",
+            allowed_repositories=("owner/project",),
+            allowed_branches=("release/*",),
+        )
+        provider = GitHubDestinationProvider(profile, _FixtureGitHubApi(profile))
+
+        self.assertEqual(
+            "allowed",
+            provider.authorize("owner/project", "release/2026-09", now=1000).decision,
+        )
+        self.assertEqual(
+            "blocked",
+            provider.authorize("owner/project", "main", now=1000).decision,
+        )
+
     def test_protected_or_ruleset_branch_and_unavailable_provider_fail_closed(self) -> None:
         self.api.policy = BranchPolicyObservation(True, ())
         self.assertEqual("blocked", self.provider.authorize("owner/project", "maestro-m3-protected", now=1000).decision)

@@ -8,6 +8,7 @@ provider instance and is consumed by the bound Git transport immediately.
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import time
@@ -103,7 +104,11 @@ class GitHubAppDestinationProfile:
         _positive(self.installation_id, "installation_id")
         slug = _identifier(self.app_slug, "app_slug").lower()
         repositories = tuple(normalize_repository(item) for item in self.allowed_repositories)
-        branches = tuple(validate_branch(item) for item in self.allowed_branches)
+        branches = tuple(self.allowed_branches)
+        if any(not isinstance(item, str) or not item for item in branches):
+            raise GitHubDestinationConfigurationError(
+                "allowed_branches must be branch-name patterns"
+            )
         if not repositories or len(set(repositories)) != len(repositories):
             raise GitHubDestinationConfigurationError("allowed_repositories must be unique and nonempty")
         if not branches or len(set(branches)) != len(branches):
@@ -114,7 +119,9 @@ class GitHubAppDestinationProfile:
         object.__setattr__(self, "api_base_url", _api_base_url(self.api_base_url))
 
     def allows(self, repository: str, branch: str) -> bool:
-        return repository in self.allowed_repositories and branch in self.allowed_branches
+        return repository in self.allowed_repositories and any(
+            fnmatch.fnmatchcase(branch, pattern) for pattern in self.allowed_branches
+        )
 
     @property
     def configuration_hash(self) -> str:

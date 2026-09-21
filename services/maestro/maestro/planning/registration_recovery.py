@@ -335,6 +335,10 @@ class HistoricalDestinationProfiles:
             )
         route = self._routes.get(snapshot_reference)
         if route is None:
+            configuration_hash = snapshot.get("configuration_hash")
+            if isinstance(configuration_hash, str):
+                route = self._routes.get(configuration_hash)
+        if route is None:
             raise RegistrationRecoverySetupError(
                 "saved destination-profile identity is unavailable"
             )

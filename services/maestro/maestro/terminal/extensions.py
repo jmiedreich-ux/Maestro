@@ -19,6 +19,8 @@ class ProjectedState(Protocol):
     selected_project_id: str | None
     selected_activity_id: str | None
 
+    def select_activity(self, activity_id: str) -> None: ...
+
 
 @dataclass(frozen=True)
 class ExtensionContext:

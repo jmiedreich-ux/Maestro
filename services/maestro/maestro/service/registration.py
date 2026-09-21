@@ -23,7 +23,6 @@ from maestro.foundation.github_destination import (
     GitHubDestinationError,
     GitHubDestinationProvider,
     GitHubDestinationRouter,
-    destination_provider_for,
     destination_providers,
 )
 from maestro.planning.intake import (
@@ -1826,16 +1825,10 @@ def build_registration_publication(
     routes = {}
     for provider in destination_providers(dependencies.destination_provider):
         profile = provider.profile
-        for repository in profile.allowed_repositories:
-            if destination_provider_for(
-                dependencies.destination_provider, repository
-            ) is not provider:
-                continue
-            for branch in profile.allowed_branches:
-                reference = hashlib.sha256(
-                    canonical_json(profile.snapshot(repository, branch)).encode("utf-8")
-                ).hexdigest()
-                routes[reference] = HistoricalPublicationRoute(journal, provider)
+        reference = profile.configuration_hash
+        if reference in routes:
+            raise ValueError("destination profiles require unique configuration hashes")
+        routes[reference] = HistoricalPublicationRoute(journal, provider)
     recovery = RegistrationRecoveryService(
         database, journal, HistoricalDestinationProfiles(routes)
     )

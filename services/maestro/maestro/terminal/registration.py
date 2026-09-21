@@ -70,7 +70,7 @@ class RegistrationInteraction:
         if detail["project_id"] != project_id:
             raise ValueError("registration detail differs from the selected project")
         activity_id = str(detail["activity_id"])
-        context.state.selected_activity_id = activity_id
+        context.state.select_activity(activity_id)
         self.detail = detail
         self.status = None
         if self.pending is not None and not self._pending_matches(

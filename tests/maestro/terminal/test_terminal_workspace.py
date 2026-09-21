@@ -378,6 +378,85 @@ class TerminalWorkspaceTest(unittest.TestCase):
             str(workspace.selected_attention_detail["prompt"]),
         )
 
+    def test_registration_command_reloads_controls_for_its_exact_activity(self) -> None:
+        self.create_project("project-registration", "Project Registration")
+        with self.database.transaction() as transaction:
+            self.records.create_activity(
+                transaction,
+                ActivityRecord(
+                    "registration-project-registration",
+                    "project-registration",
+                    "registration",
+                    "Confirm registration",
+                    "ready_to_confirm",
+                    1,
+                    available_actions=(
+                        ActivityAction(
+                            "registration-confirm", "Confirm registration", "decision"
+                        ),
+                    ),
+                ),
+            )
+
+        underlying = self.client
+
+        class RegistrationClient:
+            def workspace(self, *, connect_timeout: bool = False):
+                return underlying.workspace(connect_timeout=connect_timeout)
+
+            def get_json(self, path: str, *, timeout: int = 15):
+                if path == "/projects/project-registration/registration":
+                    return {
+                        "data": {
+                            "project_id": "project-registration",
+                            "activity_id": "registration-project-registration",
+                            "activity_version": 1,
+                            "state": "Ready to confirm",
+                            "package_ref": {
+                                "repository": "owner/project",
+                                "commit": "a" * 40,
+                                "registration_version": 1,
+                                "candidate_id": "candidate-one",
+                                "manifest_path": "manifest.json",
+                                "manifest_sha256": "b" * 64,
+                            },
+                            "comparison": None,
+                            "agent_retry": None,
+                            "history": [],
+                            "can_confirm": True,
+                        }
+                    }
+                return underlying.get_json(path, timeout=timeout)
+
+            def submit(self, envelope):
+                return underlying.submit(envelope)
+
+        workspace = Workspace(RegistrationClient())
+        RegistrationExtension().install(workspace.extensions)
+        workspace.refresh()
+        workspace.select_project("project-registration")
+        workspace.select_activity("activity-project-registration")
+        self.assertEqual(
+            "activity-project-registration", workspace.selected_activity_id
+        )
+
+        workspace.run_command("registration")
+
+        self.assertEqual(
+            "registration-project-registration", workspace.selected_activity_id
+        )
+        self.assertEqual(
+            "registration-project-registration", workspace.activity_detail["activity_id"]
+        )
+        self.assertEqual(
+            {"registration-confirm"},
+            {
+                target.identity
+                for target in workspace.focus_targets()
+                if target.kind == "action"
+            },
+        )
+
     def test_workspace_follows_bounded_project_and_attention_pages(self) -> None:
         self.create_project("project-one", "Project One")
         with self.database.transaction() as transaction:

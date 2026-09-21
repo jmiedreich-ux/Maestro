@@ -525,7 +525,7 @@ app_slug = "maestro-alpha"
 [repositories.beta]
 credential_profile = "beta-app"
 allowed_repositories = ["owner/beta"]
-allowed_branch_patterns = ["release"]
+allowed_branch_patterns = ["release/*"]
 
 [repositories.beta.github]
 app_id = 12
@@ -589,7 +589,7 @@ automatic_recovery_attempts = 2
         assert runtime is not None
         self.assertIsInstance(runtime.destination_provider, GitHubDestinationRouter)
         alpha = runtime.authorizer.authorize("owner/alpha", "main")
-        beta = runtime.authorizer.authorize("owner/beta", "release")
+        beta = runtime.authorizer.authorize("owner/beta", "release/2026-09")
         self.assertEqual("alpha", alpha.binding_id)
         self.assertEqual("beta", beta.binding_id)
         self.assertEqual(

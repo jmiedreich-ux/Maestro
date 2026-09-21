@@ -201,6 +201,23 @@ class RegistrationRecoveryTest(unittest.TestCase):
             ),
         )
 
+    def test_historical_route_uses_profile_identity_for_matching_branch_pattern(self) -> None:
+        profile = replace(self.profile, allowed_branches=("release/*",))
+        provider = GitHubDestinationProvider(profile, self.api)
+        authorization = provider.authorize("owner/project", "release/2026-09")
+        snapshot_reference = _snapshot_reference(authorization.snapshot)
+        historical_route = HistoricalPublicationRoute(self.journal, provider)
+        profiles = HistoricalDestinationProfiles(
+            {profile.configuration_hash: historical_route}
+        )
+
+        route, authorization = profiles.resolve(
+            authorization.snapshot, snapshot_reference
+        )
+
+        self.assertIs(historical_route, route)
+        self.assertEqual("allowed", authorization.decision)
+
     def begin(self, service: RegistrationRecoveryService, activity_id: str, request_id: str):
         self.save_registration_history(activity_id)
         continuity = service.load_continuity("project-1", activity_id)
