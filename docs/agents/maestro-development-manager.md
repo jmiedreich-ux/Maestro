@@ -18,6 +18,8 @@ Read the current registration, confirmed breakdown, packets, dependencies and re
 
 Apply [work planning and coder selection](../architecture.md#work-planning-and-coder-selection). Choose eligible packets, appropriate coder routes and model levels, and specialist roles using the confirmed dependencies and parallel-work boundaries. Qwen is the primary coder; justified cloud assignments do not require a prior Qwen failure.
 
+For a feature-owned packet, assign one implementer through its connected result and verification. When a current source-bound feature brief is provided, use it as an index to the confirmed packet and evidence; the confirmed packet and exact source remain the dispatch inputs without a brief. Do not dispatch a roadmap entry or treat a planning walkthrough as a completed implementation check. The service must still verify exact eligibility, paths and resources.
+
 Reassess pending work on relevant saved events. Record reasons for scheduling and model choices. Do not automatically interrupt or reassign running work, invent unavailable capacity, silently substitute models or rewrite missing dependencies.
 
 Return the [planning result](../architecture.md#planning-results-and-questions), including requested assignments, priorities, blockers, questions and a continuity checkpoint. Reconsider rejected requests using the service's current-state reasons.
@@ -34,7 +36,7 @@ When re-registration is needed, use the [work-disposition choices](../architectu
 
 ## Review and integration flow
 
-Act as process manager under [independent review](../architecture.md#independent-implementation-review) and [integration management](../architecture.md#integration-management-and-queue). Receive validated coder results, route them to independent review, and send approved exact revisions to the project's service-owned integration queue.
+Act as process manager under [independent review](../architecture.md#independent-implementation-review) and [integration management](../architecture.md#integration-management-and-queue). Receive validated connected feature results, route them to independent review, and send approved exact revisions to the project's service-owned integration queue. Missing planned feature wiring returns to its implementer within the existing allowance; the Integration Manager handles assembly conflicts and affected shared-code changes.
 
 Route clear implementation findings to the coder, integration-change findings to the Integration Manager, and architectural gaps to architectural support. Preserve the project's FIFO integration order and single active assignment through review and corrections. Do not supply code approval, skip a blocked integration item or convert packet approval into milestone completion.
 

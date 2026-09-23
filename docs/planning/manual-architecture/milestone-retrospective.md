@@ -28,6 +28,8 @@ Compare the delivered milestone with its pinned architecture, milestone requirem
 
 Before the next development milestone starts, the Coordinator reads applicable earlier retrospectives and saves a safeguard checklist for that milestone. Each checklist entry names the lesson, the concrete prevention action, the delivery stage, the evidence required and its owner. A later milestone does not start until this checklist exists; the listed actions run at their named stage and their results are retained with the milestone evidence.
 
+When a repeatable defect exposed an unverified prerequisite or missing connection, name one focused check at the stage where the same failure could first be observed. Reuse its recorded observation for later affected work when the environment and source still match; do not expand every packet into a general regression suite. Feed the actual correction cause and measured delay, or `unknown`, into the next feature's current-code investigation and walkthrough. This records whether the changed delivery method reduces late integration and correction work without changing a completed milestone's evidence.
+
 For example, a measurement lesson starts a manual lifecycle log at dispatch; a real-host validation lesson schedules a protected smoke check at the first integrated candidate; a receipt lesson validates candidate, run and source identities before accepting QA evidence; and a scope lesson attaches the stated inclusion and exclusion boundary to the outcome-review input. The checklist applies lessons without silently expanding a milestone's confirmed scope. A needed scope change follows the existing architecture and Owner authority.
 
 ## Boundaries

@@ -1175,13 +1175,27 @@ This follows registration's linked clarification pattern. Answers remain associa
 
 ### Work-packet-first breakdown
 
-The architect designs the smallest bounded work packets first, then organizes them into development milestones. Each packet has a clear scope, expected result, and completion criteria. Smallest bounded means a meaningful contribution that can be implemented and assessed sensibly; arbitrary fragmentation does not improve the breakdown.
+The architect maps the confirmed outcomes to development milestones and identifies the next bounded feature contributions. A feature packet has one responsible implementer, a usable result, the connections needed to produce it, and observable completion criteria. The implementer may divide the code into small internal steps without creating separate delivery and review cycles for disconnected parts. An enabling provider packet is valid when it names its consumer, demonstrates its actual boundary with a minimal caller, and does not claim the future consumer works.
 
 Development milestones may differ from project milestones. Their relationships must still show how all confirmed project outcomes will be delivered. Grouping work differently does not change the approved scope.
 
 Parallel work is a first-class design concern. The architect identifies independent contributions, shared-code boundaries, integration points, and explicit dependencies so execution can use parallelism effectively. The breakdown describes what may run independently and what must precede other work; it does not assign start times, reserve execution slots, or schedule workers.
 
-Packet requirements include necessary setup, access, integration, and basic verification. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](planning-guide/README.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
+Packet requirements include necessary setup, access, integration, and basic verification. The packet owns the code connections needed for its stated result within its approved paths and shared-code boundaries; routine wiring is not left for the Integration Manager after packet review. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](planning-guide/README.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
+
+### Staged planning and implementation walkthrough
+
+Planning retains a roadmap of all confirmed outcomes, milestone dependencies, and likely feature contributions. Detailed assignments are prepared for the next feature or small batch against the latest integrated source. Later work is refined and versioned after its providing code is integrated; an approved but unintegrated provider does not make a dependent feature ready. A roadmap entry is not an execution-ready packet and cannot be dispatched as one. Existing confirmed breakdowns and work already in progress retain their exact versions; a change affecting them follows the established amendment, confirmation, and work-disposition authority.
+
+For each near-term feature, the architect checks the actual source and names the existing entry point, interfaces, data, configuration, required permissions, owner of each connection, and missing prerequisite. The planner records which claims are supported by source inspection, observed in operation, or still unverified. A missing contract or path is allocated to an eligible owner before dependent coding; an additional permitted path or shared-code change requires the existing explicit amendment. Routine implementation choices within the confirmed boundary remain with the coder.
+
+Before the existing breakdown review, a separate coding-capable agent receives the draft feature assignment and exact source revision. In a read-only walkthrough it writes concise pseudocode from the real entry point to the saved and visible result, including essential failure and recovery paths. Each step names the code or interface it would use and classifies missing scope, dependency, setup, permission, or behavior separately from routine coding choices. The architect resolves material gaps in the authoritative records. This walkthrough is input to the existing review, not an additional approval or review round; targeted correction checks retain the applicable budget and valid earlier coverage. Manual preparation can use the walkthrough now; automated dispatch and persistence require an explicit role, assignment, result, and eligibility contract before the service claims to perform it.
+
+Where source inspection and the walkthrough cannot settle an important tool, installation, or external-provider assumption, the architect records the unresolved assumption in the affected breakdown input, obtains the existing authority for a small isolated check by its responsible owner, and attaches the observed result and source/environment identity to that input. If that check cannot run, the affected readiness remains unverified. It is not proof of the completed feature and does not expand the milestone's test suite.
+
+The coder receives a short, current assignment brief assembled from the confirmed packet, relevant code and specialist references, dependency evidence, permitted scope, and observable success check. The brief links to authoritative sources and has no separate requirement authority. A stale brief is regenerated from current verified references; a change to the underlying packet uses the existing versioning and review rules. Recurring defects feed a focused reusable check at the stage where they could have been detected, with the applicable scope and result retained for later planning.
+
+The current architecture-loop record and schema contracts require full packet coverage and at least one packet reference for each development milestone. Staged confirmation of a roadmap with later detailed packets therefore needs versioned schema, publication, eligibility, and review-coverage implementation before the service can use it. Until that support exists, the service follows its current complete-breakdown contract; manual preparation may be staged, but it cannot label a partial roadmap an executable confirmed breakdown.
 
 ### Architecture output locations and records
 
@@ -1516,7 +1530,7 @@ Each coder follows the [common coding instructions](agents/coding-agent-sop.md),
 
 Before implementation, the coder returns the [implementation plan](#returned-implementation-plan) through the service. It identifies intended changes, relevant existing code, necessary connections, basic verification and blockers. The service saves it and exposes it to the CLI and Development Manager. There is no separate plan-approval gate; material conflicts or missing prerequisites block affected work.
 
-The final structured result explains changes against the expected outcome, exact source/result revisions, changed files, checks and results, evidence, limitations, blockers and unfinished work. The service validates the response and referenced artifacts, records it and notifies the Development Manager. A coder's completion claim means ready for independent review, not packet acceptance or merge permission.
+The coder completes the feature's required connections in its approved scope before submitting it for independent review. It runs focused checks against actual provider and consumer code, including the agreed installed-path check when its prerequisites are available. An unavailable required check is reported as untested and cannot establish completion. The final structured result explains changes against the expected outcome, exact source/result revisions, changed files, checks and results, evidence, limitations, blockers and unfinished work. The service validates the response and referenced artifacts, records it and notifies the Development Manager. A coder's completion claim means ready for independent review, not packet acceptance or merge permission.
 
 ### Execution workspaces and repository writes
 
@@ -1530,7 +1544,7 @@ A worktree remains until its local and remote outcomes are reconciled and no rev
 
 ### Independent implementation review
 
-The [Independent Implementation Reviewer](agents/independent-review-agent.md) examines the exact submitted changes against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
+The [Independent Implementation Reviewer](agents/independent-review-agent.md) examines the exact submitted connected feature against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
 
 Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the Development Manager. Clear implementation defects return to the coder; missing or contradictory architectural decisions use [Execution architectural determinations](#execution-architectural-determinations). Reviewers do not edit code, dispatch corrections or authorize merges.
 
@@ -1562,7 +1576,7 @@ The [Integration Manager](agents/integration-agent.md) is the project's code man
 
 Each project has a persistent Integration Manager session and a first-in, first-out queue of independently approved packets. Only one integration assignment is active for the project at a time, across all its development milestones. Queue order is the service's durable enqueue order. The active assignment retains its position through integration review and necessary corrections; the next starts only after it is resolved. A blocked assignment is not silently skipped. Other projects integrate independently, and coding and packet review may continue where dependencies and shared-code boundaries permit.
 
-Each assignment uses the latest accepted target state and the exact approved packet revisions. The Integration Manager checks compatibility, shared interfaces, dependencies, necessary connections and the assembled outcome. It may make code changes needed to achieve the packet or larger confirmed outcome, including code-level integration fixes. It cannot change confirmed scope or established architectural direction; those issues go to architectural attention.
+Each assignment uses the latest accepted target state and the exact approved packet revisions. The Integration Manager checks compatibility, shared interfaces, dependencies, necessary connections and the assembled outcome. The packet implementer is responsible for its planned feature wiring before initial review. The Integration Manager handles target conflicts and cross-packet incompatibilities discovered when approved code is assembled; it may make necessary in-scope integration fixes, but it is not the planned implementer of a packet's omitted connections. It cannot change confirmed scope or established architectural direction; those issues go to architectural attention.
 
 Its own integration changes require independent review of the new changes and affected product behavior. Valid coverage of unchanged packet code is retained. Findings return through the service and Development Manager to the Integration Manager for correction. It cannot approve its own changes. When no code changes are made, record the integration evidence without automatically repeating packet review.
 
@@ -1587,8 +1601,8 @@ Milestone promotion uses a non-fast-forward merge into product `master` after th
 
 The delivery sequence is:
 
-1. The coder submits a completed implementation from the packet branch.
-2. Independent review approves its exact revision.
+1. The coder submits the connected, checked feature from the packet branch.
+2. Independent review assesses and approves that exact connected result.
 3. The packet enters the project's FIFO integration queue.
 4. The Integration Manager integrates it into the milestone branch, with independent review of any integration code changes.
 5. Once the milestone's work is complete, its assembled branch receives milestone Quality Assurance and an independent outcome review and gap analysis against the milestone's completion criteria, confirmed project outcomes, dependencies and required connections.

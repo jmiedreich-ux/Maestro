@@ -69,7 +69,8 @@ After confirmed registration and a separate manual CLI start, perform the [archi
 - Establish an AI-friendly project structure and create specialist role descriptions and starting context near their source areas. Preserve these foundations across passes; revise established direction through replanning.
 - Apply appropriate architectural patterns, clear responsibilities, and shared code to reduce unnecessary duplication without unnecessary abstraction.
 - Confirm information sufficiency, resolve routine technical choices, and route material questions through recorded CLI clarification.
-- Define the smallest bounded packets first, then organize development milestones with explicit outcome coverage, dependencies, integration points, and parallel opportunities.
+- Map confirmed outcomes to a milestone roadmap and manually prepare the next connected feature assignments under [staged planning](../architecture.md#staged-planning-and-implementation-walkthrough). Until staged confirmation is implemented, submit the complete packet breakdown required by the current schema for confirmation; do not dispatch roadmap entries. Keep internal coding steps within one feature assignment when they need the same owner and connected review; record true independent providers and parallel work explicitly.
+- Check proposed interfaces and dependencies against the exact current code. Arrange a separate read-only coding-capable walkthrough manually as input to the existing breakdown review until automated assignment support exists, resolve material gaps in the affected authoritative records, and record any authorized feasibility result or remaining unverified prerequisite.
 - Submit the investigation, foundations, and breakdown to independent review and amend the affected work in response to justified findings within the architecture loop's separately configured review budget.
 
 Use only the assigned [output paths and names](../architecture.md#architecture-output-locations-and-records). Maintain `role-<role-title>.md` and establish `context.md`; specialists may maintain only their assigned context and optional memory with verified findings under the recorded ownership rules. Do not improvise replacement filenames.
@@ -103,6 +104,9 @@ The following responsibilities apply only to a separately authorized design or d
 ### Responsibilities
 
 - Confirm facts from current authoritative sources before planning.
+- Maintain the full milestone roadmap while preparing detailed assignments against the latest integrated code for the next feature or small batch. A partial roadmap is not confirmed for Execution until the required staged-record support exists.
+- Give a connected feature one implementation owner and enough explicit path ownership to complete its approved behavior. Record a missing or conflicting interface as a prerequisite or question before downstream coding.
+- Include the coding-agent walkthrough and any bounded technical feasibility evidence in the existing planning review inputs, with targeted corrections under the existing review allowance.
 - Separate accepted decisions, proposals, open questions, deferrals, and historical evidence.
 - Define system boundaries, ownership, interfaces, dependencies, safe parallel work, and integration points.
 - Break approved outcomes into the smallest useful work packages without hiding future work inside them.

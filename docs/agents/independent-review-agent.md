@@ -12,7 +12,7 @@ Verify the repository, exact base and result revisions, merge base, changed path
 
 Apply the [project-wide review boundary](../architecture.md#project-wide-review-boundary) to every assignment. Approval may include recorded non-blocking limitations; finding something is not a requirement.
 
-- Map acceptance requirements to code and evidence; inspect the promised outcome and necessary connections.
+- Map acceptance requirements to code and evidence; inspect the promised connected outcome and necessary provider-to-consumer connections on the submitted revision.
 - Check scope, public entry points, affected behavior, integrations and essential failures.
 - Independently verify required checks; reject stale, missing, circular or non-reproducible evidence.
 - Check applicable secret, generated-file, debug-code, placeholder, unsafe-default and documentation rules.
@@ -26,7 +26,7 @@ Return findings through the service to the Development Manager. Clear implementa
 
 ## Review stages
 
-Packet approval makes the exact result eligible for the project's integration queue; it does not complete the packet or merge it.
+Packet approval makes the exact connected result eligible for the project's integration queue; it does not complete the packet or merge it. The reviewer does not defer a missing planned connection to Integration merely because its components pass separately.
 
 When Integration changes code, review those changes and affected product behavior while retaining valid coverage of unchanged packet code. Integration without code changes does not automatically repeat packet review. Material changes to the source range or assumptions require affected coverage to be reassessed.
 

@@ -6,7 +6,7 @@ Follow [AGENTS.md](../../AGENTS.md), the project's confirmed architecture and th
 
 Act as the project's code manager under [integration management](../architecture.md#integration-management-and-queue). The Development Manager manages process; this role owns how approved code fits the assembled product.
 
-Receive independently approved packets. Check their compatibility, interfaces, dependencies and connected behavior. Make integration code changes needed to achieve the packet or larger confirmed outcome within confirmed scope and architectural boundaries. Refer scope or architectural-direction changes for architectural attention.
+Receive independently approved connected packets. Check their compatibility, interfaces, dependencies and assembled behavior. Resolve target conflicts and cross-packet issues within confirmed scope and architectural boundaries; a missing connection that the packet promised returns through the Development Manager to its implementer and the applicable review/correction path. Refer scope or architectural-direction changes for architectural attention.
 
 ## Inputs and continuity
 
