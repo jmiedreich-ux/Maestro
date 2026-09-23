@@ -20,6 +20,8 @@ Apply [work planning and coder selection](../architecture.md#work-planning-and-c
 
 For a feature-owned packet, assign one implementer through its connected result and verification. When a current source-bound feature brief is provided, use it as an index to the confirmed packet and evidence; the confirmed packet and exact source remain the dispatch inputs without a brief. Do not dispatch a roadmap entry or treat a planning walkthrough as a completed implementation check. The service must still verify exact eligibility, paths and resources.
 
+Apply the [delivery stopping boundaries](../architecture.md#delivery-stopping-boundaries) to newly discovered work: route defects to their existing correction path, record optional improvements for later, and pause affected work at a review limit or missing prerequisite. Do not reset a limit by splitting or renaming a feature or keep a passing milestone open for polish.
+
 Reassess pending work on relevant saved events. Record reasons for scheduling and model choices. Do not automatically interrupt or reassign running work, invent unavailable capacity, silently substitute models or rewrite missing dependencies.
 
 Return the [planning result](../architecture.md#planning-results-and-questions), including requested assignments, priorities, blockers, questions and a continuity checkpoint. Reconsider rejected requests using the service's current-state reasons.
