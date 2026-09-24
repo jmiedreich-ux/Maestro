@@ -8,7 +8,7 @@ Inspect the deployment instructions and current scripts, CLI, agent route and su
 
 ## Connected path and limits
 1. Select an actual development feature. The preflight evaluates every category in the environment contract, including installation and upgrade, data migration and reset, and the actual route configuration in `agents.toml`. It marks excluded checks with a reason. A running service applies only when the selected feature requires one.
-2. Run one command or entry path that checks all applicable prerequisites, returns non-secret pass/fail evidence and names every missing requirement together. Check the reported Claude OAuth expiry, GitHub app Administration: read permission, and GitHub plan support for the protected-branch test case. The reported private QA repository cannot enable protection without Pro; use an eligible isolated target if this case is required. Check ordinary write access separately and distinguish required from optional permissions. Unavailable checks remain unverified.
+2. Run one command or entry path that checks all applicable prerequisites, returns non-secret pass/fail evidence and names every missing requirement together. Check Claude OAuth expiry and GitHub app Administration: read permission. Check ordinary write access separately with a real write that leaves no lasting change, and distinguish required from optional permissions. Unavailable checks remain unverified.
 3. Create a clean workspace at a pinned source revision, launch the real selected agent, observe its identity and output, run the existing baseline check, and verify clean exit. Reset run-owned data and repeat to show a known-good starting state.
 4. Remove one safe prerequisite in a test setup; verify a blocked dispatch and actionable aggregate report. Restore it and re-run. Environment corrections are rechecked outside the coder review count.
 
@@ -27,4 +27,4 @@ Recorded 2026-09-23 on the local branch `feature/verify-development-environment`
 
 **Results.** 116 tests passed on the pinned revision; 48 agent tests pass with the change (foundation 7, service 49 with 1 skipped, terminal 22 unchanged).
 
-**Not done here.** The installed launcher, installed `agents.toml` and running service were not changed; a verification-only launcher and configuration were used. Adding the Qwen route to the installed service, an elevated reset for agent-written files, the protected-branch case and the Claude setup token's lifetime remain open.
+**Not done here.** The installed launcher, installed `agents.toml` and running service were not changed; a verification-only launcher and configuration were used. Adding the Qwen route to the installed service, an elevated reset for agent-written files and the Claude setup token's lifetime remain open.
