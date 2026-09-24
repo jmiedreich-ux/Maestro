@@ -71,6 +71,10 @@ class ArtifactReference:
         return {"path": self.path, "sha256": self.sha256, "version": self.version}
 
 
+# Execution roles run on the same run service; the run service's own role class (architect or fidelity_reviewer) selects the route requirements.
+ASSIGNMENT_ROLES = frozenset({"project_architect", "fidelity_reviewer", "development_manager", "packet_coder", "packet_reviewer"})
+
+
 @dataclass(frozen=True)
 class AgentAssignment:
     project_id: str
@@ -103,7 +107,7 @@ class AgentAssignment:
             _canonical(value, field, "invalid_assignment")
         if self.parent_assignment_id is not None:
             _canonical(self.parent_assignment_id, "parent_assignment_id", "invalid_assignment")
-        if self.role not in {"project_architect", "fidelity_reviewer"}:
+        if self.role not in ASSIGNMENT_ROLES:
             raise TransportError("invalid_assignment", "assigned role is unsupported")
         if not isinstance(self.source_commit, str) or _COMMIT.fullmatch(self.source_commit) is None:
             raise TransportError("invalid_assignment", "source_commit must be a lowercase full commit")
@@ -263,11 +267,11 @@ def validate_transport_context(
     workspace: PreparedWorkspace,
     profile: ServiceProfileBinding,
 ) -> None:
-    expected_role = {
-        "architect": "project_architect",
-        "fidelity_reviewer": "fidelity_reviewer",
-    }.get(route.role)
-    if route.tool != tool or expected_role != assignment.role:
+    expected_roles = {
+        "architect": {"project_architect", "development_manager", "packet_coder"},
+        "fidelity_reviewer": {"fidelity_reviewer", "packet_reviewer"},
+    }.get(route.role, set())
+    if route.tool != tool or assignment.role not in expected_roles:
         raise TransportError("route_mismatch", "route does not match the assignment")
     if (
         workspace.project_id != assignment.project_id
@@ -291,7 +295,7 @@ def validate_transport_context(
         profile.mounts()
     except WorkspaceError as error:
         raise TransportError(error.code, str(error), **error.fields) from error
-    if assignment.role == "fidelity_reviewer" and assignment.contract != "architecture":
+    if assignment.role == "fidelity_reviewer" and assignment.contract == "registration":
         _verify_reviewer_inputs(assignment, workspace)
 
 

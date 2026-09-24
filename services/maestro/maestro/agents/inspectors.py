@@ -27,18 +27,25 @@ from .workspaces import ServiceProfileBinding
 
 CAPABILITIES = ("approved_network", "code_edit", "local_command", "repository_search")
 # Declared context windows; a run's own readings replace these when a tool reports them.
-CONTEXT_LIMITS = {"codex": 272000, "claude_code": 200000}
+CONTEXT_LIMITS = {"codex": 272000, "claude_code": 200000, "qwen": 65536}
 REQUIREMENTS = RouteRequirements(CAPABILITIES, ("cloud",), 100000)
+# The local coder route runs on the AI box with the same edit and command capabilities but no cloud network access.
+QWEN_CAPABILITIES = ("code_edit", "local_command", "repository_search")
+LOCAL_REQUIREMENTS = RouteRequirements(QWEN_CAPABILITIES, ("local_ai_box",), 8000)
 _PROFILE_FILES = {
     "codex": (".codex/auth.json",),
     "claude_code": (".claude.json", ".claude/.credentials.json"),
+    "qwen": (".qwen/settings.json",),
 }
 
 
-def _version(executable: Path, home: Path) -> str | None:
+def _version(executable: Path, home: Path, tool: str = "") -> str | None:
+    command = [str(executable), "--version"]
+    if tool == "qwen":
+        command = [str(executable), str(executable.with_name("qwen-code") / "cli-entry.js"), "--version"]
     try:
         done = subprocess.run(
-            [str(executable), "--version"], capture_output=True, text=True, timeout=20, check=False,
+            command, capture_output=True, text=True, timeout=20, check=False,
             env={"PATH": "/usr/bin:/bin", "HOME": str(home)},
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -95,9 +102,11 @@ class InstalledInspector:
         self.tool, self.provider, self.home = tool, provider, home
 
     def inspect(self, route: ToolRoute, configuration_hash: str) -> AdapterObservation:
-        version = _version(route.executable, self.home)
+        version = _version(route.executable, self.home, self.tool)
         if version is None:
             return _unavailable("the tool did not report a version")
+        if self.tool == "qwen":
+            return self._qwen(route, version, configuration_hash)
         if self.tool == "codex":
             models = _codex_models(route.executable, self.home)
             if models is None:
@@ -109,6 +118,32 @@ class InstalledInspector:
             {model: CONTEXT_LIMITS[self.tool] for model in models}, True,
             route.credential_profile, route.settings_profile, True, True, True, configuration_hash,
         )
+
+    def _qwen(self, route: ToolRoute, version: str, configuration_hash: str) -> AdapterObservation:
+        served = _served_models(route)
+        if served is None:
+            return _unavailable("the local model server is not reachable")
+        models = tuple(model for model in route.allowed_model_ids if model in served)
+        if not models:
+            return _unavailable("the configured local model is not installed on the local server")
+        return AdapterObservation(
+            True, version, self.provider, models, (), QWEN_CAPABILITIES, "local_ai_box",
+            {model: CONTEXT_LIMITS["qwen"] for model in models}, True,
+            route.credential_profile, route.settings_profile, True, True, True, configuration_hash,
+        )
+
+
+def _served_models(route: ToolRoute) -> set[str] | None:
+    """Model names the configured local server reports, or None when it cannot be reached."""
+    import urllib.request
+
+    for destination in route.permitted_destinations:
+        try:
+            with urllib.request.urlopen(f"http://{destination.hostname}:{destination.port}/api/tags", timeout=10) as reply:
+                return {str(m.get("name")) for m in json.loads(reply.read()).get("models", []) if isinstance(m, dict)}
+        except (OSError, ValueError):
+            continue
+    return None
 
 
 def _unavailable(reason: str) -> AdapterObservation:
@@ -134,16 +169,21 @@ def installed_resolvers(tools: Mapping[str, object], service_home: Path):
         return hashlib.sha256(profile.encode()).hexdigest()
 
     preflights: dict[str, AgentRoutePreflight] = {}
-    for tool, provider in (("codex", "openai"), ("claude_code", "anthropic")):
+    for tool, provider in (("codex", "openai"), ("claude_code", "anthropic"), ("qwen", "ollama")):
+        if tool not in registry._routes:
+            continue
+        local = tool == "qwen"
         preflights[tool] = AgentRoutePreflight(
             registry,
-            {tool: (InstalledAdapter(tool, provider, "cloud", CAPABILITIES), InstalledInspector(tool, provider, service_home))},
+            {tool: (InstalledAdapter(tool, provider, "local_ai_box" if local else "cloud", QWEN_CAPABILITIES if local else CAPABILITIES), InstalledInspector(tool, provider, service_home))},
             credential_fingerprint=fingerprint(tool),
             settings_fingerprint=settings,
         )
 
     def route_resolver(role: str, tool: str, model_id: str) -> ResolvedAgentRoute:
-        return preflights[tool].resolve(role, ToolModelSelection(tool, model_id), REQUIREMENTS)
+        if tool not in preflights:
+            raise AgentRouteError("adapter_not_installed", f"adapter is not installed: {tool}")
+        return preflights[tool].resolve(role, ToolModelSelection(tool, model_id), LOCAL_REQUIREMENTS if tool == "qwen" else REQUIREMENTS)
 
     def profile_resolver(route: ResolvedAgentRoute) -> ServiceProfileBinding:
         return ServiceProfileBinding(route.tool, route.credential_profile, route.settings_profile, service_home)

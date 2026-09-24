@@ -5,19 +5,33 @@
       "path": "schemas/architecture-loop/1",
       "schema": "schema.json",
       "definition": "processDefinition",
-      "files": ["schema.json"]
+      "files": [
+        "schema.json"
+      ]
     },
     "architecture-breakdown@1": {
       "path": "schemas/architecture-breakdown/1",
       "schema": "schema.json",
       "definition": "workPacket",
-      "files": ["schema.json"]
+      "files": [
+        "schema.json"
+      ]
     },
     "registration-process@1": {
       "path": "schemas/registration-process/1",
       "schema": "schema.json",
       "definition": "processDefinition",
-      "files": ["schema.json"]
+      "files": [
+        "schema.json"
+      ]
+    },
+    "execution@1": {
+      "path": "schemas/execution/1",
+      "schema": "schema.json",
+      "definition": "executionConfiguration",
+      "files": [
+        "schema.json"
+      ]
     }
   }
 }

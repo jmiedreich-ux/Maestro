@@ -286,9 +286,11 @@ _REVIEW_LATER = " This is a follow-up review: input/prior-findings.json holds th
 _BREAKDOWN_CONTINUATION = "This session continues your earlier investigation: your conversation history is restored. Use it; do not repeat the investigation. input/foundations/ holds what you published."
 
 
-def shared_owner_decision(registration: Any, architecture: "ArchitectureService") -> OperationHandler:
-    """One ``owner.decision`` operation serves registration and the architecture loop; the activity says which one owns it."""
+def shared_owner_decision(registration: Any, architecture: "ArchitectureService", execution: Any = None) -> OperationHandler:
+    """One ``owner.decision`` operation serves registration, the architecture loop and Execution; the activity says which one owns it."""
     def prepare(request: RequestLike) -> PreparedOperation:
+        if execution is not None and execution.owns(str(request.activity_id)):
+            return execution.prepare_owner_decision(request)
         owner = architecture if architecture.owns(str(request.activity_id)) else registration
         return owner.prepare_owner_decision(request)
     return OperationHandler("owner.decision", prepare)
