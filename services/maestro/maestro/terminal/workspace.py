@@ -523,12 +523,15 @@ class Workspace:
                 )
             raise WorkspaceError("answer submission is not installed in this workspace")
         command, _, arguments = text[1:].partition(" ")
-        result = self.run_command(command, arguments)
-        self.input.clear()
-        return result
+        try:
+            return self.run_command(command, arguments)
+        finally:
+            self.input.clear()
 
     def run_command(self, command: str, arguments: str = "") -> object | None:
         name = command.casefold()
+        if self.connection_state == ConnectionState.CONNECTED and not self.stale:
+            self.error = None
         if name == "projects":
             self.view = View.PROJECTS
             self.focus = 0

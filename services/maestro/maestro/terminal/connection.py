@@ -484,7 +484,11 @@ class TerminalConnection:
             self._cancel_scheduled_locked()
             close_events = getattr(self.client, "close_event_stream", None)
             if close_events is not None:
-                close_events()
+                # Closing a stream another thread is blocked reading can wait for
+                # the next heartbeat; do not hold up exit for it.
+                closer = threading.Thread(target=close_events, daemon=True)
+                closer.start()
+                closer.join(0.5)
 
     def _schedule_retry_locked(self, message: str) -> None:
         if self._retry_index is None:
