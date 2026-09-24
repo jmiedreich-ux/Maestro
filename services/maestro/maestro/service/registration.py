@@ -1372,6 +1372,19 @@ class RegistrationService:
         def body(base: str, entry: Mapping[str, Any], reader) -> Any:
             return json.loads(reader(f"{base}/{entry['path']}"))["data"]
 
+        def content(base: str, entry: Mapping[str, Any], reader) -> Any:
+            """The record's data without source locations, which move with every source commit."""
+            stripped = json.loads(json.dumps(body(base, entry, reader)))
+
+            def drop(value: Any) -> Any:
+                if isinstance(value, dict):
+                    return {k: drop(v) for k, v in value.items() if k != "source_refs"}
+                if isinstance(value, list):
+                    return [drop(v) for v in value]
+                return value
+
+            return drop(stripped)
+
         old_reader = lambda path: destination.read_file(row["repository"], previous["commit"], path)
         new_reader = lambda path: files[path]
         added, removed, changed = [], [], []
@@ -1380,7 +1393,7 @@ class RegistrationService:
         for key in sorted(before.keys() - after.keys()):
             removed.append({"record": key, "subject": before[key]["subject"], "version": before[key]["record_version"]})
         for key in sorted(before.keys() & after.keys()):
-            if before[key]["sha256"] != after[key]["sha256"]:
+            if before[key]["record_version"] != after[key]["record_version"] or content(base_old, before[key], old_reader) != content(base_new, after[key], new_reader):
                 changed.append({"record": key, "subject": after[key]["subject"], "version_before": before[key]["record_version"], "version_after": after[key]["record_version"]})
         old_scope = body(base_old, before["summary:summary"], old_reader)["scope"] if "summary:summary" in before else None
         new_scope = body(base_new, after["summary:summary"], new_reader)["scope"] if "summary:summary" in after else None

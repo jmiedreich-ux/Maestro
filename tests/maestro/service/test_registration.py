@@ -564,6 +564,8 @@ class RegistrationTests(unittest.TestCase):
         comparison = view["comparison"]
         self.assertEqual(["NOTES-PM1 \u2014 Capture a note"], [c["subject"] for c in comparison["changed"] if c["record"].startswith("milestone:")])
         self.assertEqual(2, comparison["candidate_version"])
+        self.assertNotIn("requirement:project-completion", [c["record"] for c in comparison["changed"]])
+        self.assertFalse(comparison["completion_requirement_changed"])
         package = json.loads(row_package := self.row(second.activity_id)["package_json"])
         self.assertEqual(2, package["registration_version"])
         # the prior version is untouched until the exact candidate is confirmed
