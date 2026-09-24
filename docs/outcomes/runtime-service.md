@@ -1,20 +1,10 @@
-# SVC — Runtime Service Milestone Declaration
-
-## Declaration identity
-
-| Field | Value |
-|---|---|
-| Project | Maestro |
-| Declaration | SVC — Runtime service |
-| Declaration version | 10 |
-| Status | Proposed outcomes; no recorded implementation completion |
-| Architecture source | `docs/architecture.md` |
+# Runtime Service outcomes
 
 ## Capability and scope
 
-This declaration delivers the continuously running Python service on the Linux AI box. It owns installation and service configuration, durable project/activity/request records, the local API and event delivery, and the mechanics of supervising assigned agents.
+This outcome area delivers the continuously running Python service on the Linux AI box. It owns installation and service configuration, durable project/activity/request records, the local API and event delivery, and the mechanics of supervising assigned agents.
 
-The [CLI declaration](cli-milestones.md) owns terminal installation, presentation, navigation, input, and connection behavior. The [registration declaration](registration-milestones.md) owns registration intake, architectural assessment and fidelity decisions, package records and publication, confirmation, and re-registration. The [architecture-loop declaration](architecture-loop-milestones.md) owns its persistent-session integration, investigation, structure, breakdown, and confirmation. These processes use the shared runtime mechanisms; they do not deliver duplicate service implementations.
+The [CLI outcomes](cli.md) owns terminal installation, presentation, navigation, input, and connection behavior. The [registration outcomes](registration.md) owns registration intake, architectural assessment and fidelity decisions, package records and publication, confirmation, and re-registration. The [architecture-loop outcomes](architecture-loop.md) owns its persistent-session integration, investigation, structure, breakdown, and confirmation. These processes use the shared runtime mechanisms; they do not deliver duplicate service implementations.
 
 | Delivery owner | Included responsibility |
 |---|---|
@@ -22,31 +12,23 @@ The [CLI declaration](cli-milestones.md) owns terminal installation, presentatio
 | CLI | Terminal controls, displayed states, commands, question forms, attention navigation, and sending requests to the service. |
 | Registration | Source and scope interpretation, required assessment/review content, registration eligibility and review budget, package schemas and GitHub publication, activation, registration-specific action validation, and use of runtime reservations/recovery. |
 
-Generic service storage persists process-defined records; each process owns their meaning and required fields. SVC-PM5 — Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. Execution implementation, a full development scheduler, command center, mobile UI, and development breakdown are excluded from this declaration.
+Generic service storage persists process-defined records; each process owns their meaning and required fields. Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. Execution implementation, a full development scheduler, command center, mobile UI, and development breakdown are excluded from this outcome area.
 
 ### Development order and connected acceptance
 
 The ordered service outcomes below describe implementation dependencies. Service foundation and API implementation support CLI development. CLI implementation remains before registration development. The agent-running capability must be implemented before registration can use real architect and reviewer runs.
 
-Final connected acceptance of SVC-PM2 — Preserve project activity and requests, SVC-PM3 — Connect the CLI to recorded service activity, and SVC-PM4 — Run and recover assigned agents is shared with the relevant registration journeys. Their interfaces can be implemented and checked before final acceptance. Registration does not depend on its own completed acceptance evidence as a prerequisite to development.
+Final connected acceptance of Preserve project activity and requests, Connect the CLI to recorded service activity, and Run and recover assigned agents is shared with the relevant registration journeys. Their interfaces can be implemented and checked before final acceptance. Registration does not depend on its own completed acceptance evidence as a prerequisite to development.
 
-Initial registration supplies real projects, questions, and agent work. REG-PM1 — Register and confirm a project through the CLI supplies the successful initial journey; REG-PM2 — Update a registration without losing approved history supplies idle-reservation evidence; REG-PM3 — Recover registration without losing decisions or exceeding limits supplies connected interruption and retry evidence. No temporary project generator, fake review, or manual database edit completes those outcomes.
+Initial registration supplies real projects, questions, and agent work. Register and confirm a project through the CLI supplies the successful initial journey; Update a registration without losing approved history supplies idle-reservation evidence; Recover registration without losing decisions or exceeding limits supplies connected interruption and retry evidence. No temporary project generator, fake review, or manual database edit completes those outcomes.
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: basic real journeys and essential failures, with necessary simulated conditions identified. Multiple criteria may share evidence. Live verification is deferred to development.
 
 Existing-code condition remains as recorded in the [project overview](../project-overview.md). Relevant source is assessed during development preparation for reuse or amendment; no existing component is assumed ready. Each completion record identifies the implementation revision, reproducible setup, observations, and required reviews. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed; they are not additional runtime-service milestone scope. Unresolved behavior or authority must be settled before affected breakdown; implementation and operational checks are not prerequisites to this documentation.
 
-## Milestones and order
+## Outcomes
 
-| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
-|---|---|---|---|
-| 1 | SVC-PM1 — Operate the persistent Maestro service | 3 | `docs/milestones/runtime-service-milestones.md#svc-pm1--operate-the-persistent-maestro-service` |
-| 2 | SVC-PM2 — Preserve project activity and requests | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm2--preserve-project-activity-and-requests` |
-| 3 | SVC-PM3 — Connect the CLI to recorded service activity | 2 | `docs/milestones/runtime-service-milestones.md#svc-pm3--connect-the-cli-to-recorded-service-activity` |
-| 4 | SVC-PM4 — Run and recover assigned agents | 4 | `docs/milestones/runtime-service-milestones.md#svc-pm4--run-and-recover-assigned-agents` |
-| 5 | SVC-PM5 — Apply shared process definitions | 7 | `docs/milestones/runtime-service-milestones.md#svc-pm5--apply-shared-process-definitions` |
-
-## SVC-PM1 — Operate the persistent Maestro service
+## Operate the persistent Maestro service
 
 **Outcome:** The service can be installed, started, inspected, and restarted on the Linux AI box without relying on an open CLI session.
 
@@ -76,7 +58,7 @@ Existing-code condition remains as recorded in the [project overview](../project
 | Installation instructions are followed | Service software, account, configuration locations, required filesystem permissions, and the schema bundles specified by [installed validation schemas](../architecture.md#installed-validation-schemas) are installed without hidden setup steps. | Installed revision, documented steps, actual account and access checks without secret values. | None |
 | The machine boots or the service crashes | systemd starts or restarts the service as specified. Service operation does not depend on a terminal session. | Basic boot and controlled crash/restart observations with systemd status and startup logs. | None |
 | Startup or configuration fails | The failure is visible and identifies the missing prerequisite. Agent configuration errors disable launch as specified, not silently select other settings. | A necessary configuration/access failure with its actual error and recovery after correction. | None |
-| The operator inspects service health | systemd status and service logs distinguish running, failed, and restarting behavior; a running process is not reported as proof of registration readiness. | Actual service status and startup diagnostics. Connected API readiness is accepted under SVC-PM3 — Connect the CLI to recorded service activity. | None |
+| The operator inspects service health | systemd status and service logs distinguish running, failed, and restarting behavior; a running process is not reported as proof of registration readiness. | Actual service status and startup diagnostics. Connected API readiness is accepted under Connect the CLI to recorded service activity. | None |
 | Owner access is installed | Provision the protected local CLI credential and service digest; agent identities cannot read or use the Owner credential. Follow `docs/architecture.md#local-owner-identity-and-credentials`. | Actual installation and essential access-denial evidence without exposing secrets. | None |
 
 ### Definition of done
@@ -87,7 +69,7 @@ Installation and systemd operation work on the AI box with reproducible setup an
 
 No additional service-lifecycle behavior is proposed. Exact installation packaging, unit settings, and permission setup are implementation work against the architecture. Delivery review and acceptance follow the defined Execution architecture when this outcome is implemented.
 
-## SVC-PM2 — Preserve project activity and requests
+## Preserve project activity and requests
 
 **Outcome:** Project records and accepted requests survive service restarts, retain their identities, and cannot be applied twice or to the wrong project.
 
@@ -107,9 +89,9 @@ No additional service-lifecycle behavior is proposed. Exact installation packagi
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Persistent service | SVC-PM1 — Operate the persistent Maestro service | Required implementation predecessor. |
-| Connected read/write access | SVC-PM3 — Connect the CLI to recorded service activity | Downstream interface for final acceptance, not an implementation prerequisite for storage. |
-| Real registration records and idle checks | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Registration defines and produces process records and applies idle-only rules; connected evidence is shared. |
+| Persistent service | Operate the persistent Maestro service | Required implementation predecessor. |
+| Connected read/write access | Connect the CLI to recorded service activity | Downstream interface for final acceptance, not an implementation prerequisite for storage. |
+| Real registration records and idle checks | Register and confirm a project through the CLI; Update a registration without losing approved history | Registration defines and produces process records and applies idle-only rules; connected evidence is shared. |
 
 ### Acceptance criteria
 
@@ -118,7 +100,7 @@ No additional service-lifecycle behavior is proposed. Exact installation packagi
 | Two projects exchange questions and answers | SQL saves project/activity/question/request identities and content before acknowledgment. No answer or result crosses project boundaries. | Real initial-registration records correlated with API requests and CLI output for both projects. | None |
 | A receipt is lost or a request is repeated | Same request/content returns its saved result; conflicting content is rejected. An answer is accepted once and pending delivery survives restart. | Necessary lost-acknowledgment and restart observations using real service records. | None |
 | The service restarts after saving | Accepted conversations, decisions, request results, and pending delivery remain retrievable. Read-only retrieval does not create duplicate records. | Before/after SQL and service responses connected to the CLI. | None |
-| Re-registration competes with a project start | One transaction checks/reserves the project; simultaneous starts cannot slip through. Unknown run state is not idle. Other projects remain available. | Actual service-boundary contention and the REG-PM2 — Update a registration without losing approved history journey; no extra execution command is assumed. | None |
+| Re-registration competes with a project start | One transaction checks/reserves the project; simultaneous starts cannot slip through. Unknown run state is not idle. Other projects remain available. | Actual service-boundary contention and the Update a registration without losing approved history journey; no extra execution command is assumed. | None |
 | Findings and Owner decisions are saved | Preserve stable finding mappings, exact versions, action receipts and allowance consumption through replay and restart. | Shared registration and architecture-loop records show unchanged identities and no duplicate grants. | None |
 | Runtime performance observations arrive or replay | SQL records exact role/tool/model and work identities, time, input/output usage, context readings and measurement quality. Normalize counter scopes without double-counting; incomplete totals stay partial. | Main real run plus replay/restart evidence under `docs/architecture.md#agent-performance-and-context-management`; unknown readings are not zero. | None |
 
@@ -130,7 +112,7 @@ Connected CLI and registration evidence demonstrates durable records, isolated p
 
 SQLite tables and storage implementation remain development work. Delivery evidence must show the configured local database, service-owned writes, committed records surviving service restart, and competing project-start requests producing only one reservation under [SQLite storage](../architecture.md#sqlite-storage). SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. Delivery review and acceptance follow the defined Execution architecture.
 
-## SVC-PM3 — Connect the CLI to recorded service activity
+## Connect the CLI to recorded service activity
 
 **Outcome:** The CLI can retrieve real project activity, send supported requests, and receive saved updates through the local service API.
 
@@ -150,9 +132,9 @@ SQLite tables and storage implementation remain development work. Delivery evide
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Saved records and request acceptance | SVC-PM2 — Preserve project activity and requests | Required implementation predecessor. |
-| CLI workspace and answers | CLI-PM1 — Connected multi-project CLI workspace; CLI-PM2 — Reliable project questions and answers | CLI owns the client; interfaces are developed before shared final integration. |
-| Real registration operations | REG-PM1 — Register and confirm a project through the CLI | Registration supplies operation handlers and records for final connected acceptance. |
+| Saved records and request acceptance | Preserve project activity and requests | Required implementation predecessor. |
+| CLI workspace and answers | Connected multi-project CLI workspace; Reliable project questions and answers | CLI owns the client; interfaces are developed before shared final integration. |
+| Real registration operations | Register and confirm a project through the CLI | Registration supplies operation handlers and records for final connected acceptance. |
 
 ### Acceptance criteria
 
@@ -172,7 +154,7 @@ The actual CLI uses the implemented service API and saved events for the main in
 
 No new API behavior is introduced. Executable API validation and transport handling are implementation work; registration handlers remain an explicit dependency. Delivery review and acceptance follow the defined Execution architecture.
 
-## SVC-PM4 — Run and recover assigned agents
+## Run and recover assigned agents
 
 **Outcome:** The service runs the selected registration architect or reviewer in the correct workspace, returns validated outputs, and stops or recovers work without losing records or launching duplicates.
 
@@ -193,9 +175,9 @@ No new API behavior is introduced. Executable API validation and transport handl
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Storage and connected interface | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity | Required implementation foundation and interface for recorded progress/results. |
+| Storage and connected interface | Preserve project activity and requests; Connect the CLI to recorded service activity | Required implementation foundation and interface for recorded progress/results. |
 | Installed tools and credentials | `docs/architecture.md#tool-and-model-selection`; `docs/architecture.md#adapter-configuration` | Current readiness unknown; installing and configuring both selected tool routes is included here. |
-| Real role assignments and recovery actions | REG-PM1 — Register and confirm a project through the CLI; REG-PM3 — Recover registration without losing decisions or exceeding limits | Registration supplies role contracts, process decisions, and connected journey evidence; adapter implementation precedes its use. |
+| Real role assignments and recovery actions | Register and confirm a project through the CLI; Recover registration without losing decisions or exceeding limits | Registration supplies role contracts, process decisions, and connected journey evidence; adapter implementation precedes its use. |
 
 ### Acceptance criteria
 
@@ -205,9 +187,9 @@ No new API behavior is introduced. Executable API validation and transport handl
 | An agent reads inputs and returns work | Inputs remain read-only, permitted output is writable, and another run's workspace is inaccessible. The exact assessment/candidate and structured response reach registration validation. | Actual file access results and verified artifact identities/hashes; agent prose alone is insufficient. | None |
 | Agent progress or completion arrives | Progress is recorded before CLI display. A successful tool exit or progress message cannot substitute for validated completion; stale run output cannot update current work. | Correlated supervisor, SQL, and CLI records, including one necessary invalid or late-result case. | None |
 | Stopping or a deadline occurs | Apply the registration-only 30-minute defaults and specified stopping behavior; child termination is confirmed before replacement. Unknown state blocks replacement. | Basic real stop and controlled timeout evidence; a shorter configured duration may exercise timeout behavior. | None |
-| A run or the main service is interrupted | Reconcile the original supervisor/run, preserve the deadline and retry count, and replay saved events once. Recovery follows cause-based limits; manual retry does not reset them. | Connected REG-PM3 — Recover registration without losing decisions or exceeding limits evidence for crash, restart, recovery attention/action, and no duplicate run. | None |
+| A run or the main service is interrupted | Reconcile the original supervisor/run, preserve the deadline and retry count, and replay saved events once. Recovery follows cause-based limits; manual retry does not reset them. | Connected Recover registration without losing decisions or exceeding limits evidence for crash, restart, recovery attention/action, and no duplicate run. | None |
 | A permitted new run follows recovery | Same-run recovery keeps its deadline; a new eligible run receives its own saved duration. A recorded next-run exception is consumed once without resetting attempts. | Correlated run identities, deadlines, exception and counter records under `docs/architecture.md#run-deadlines-and-duration-exceptions`. | None |
-| Context fills during an agent assignment | Apply configured thresholds, save a verified checkpoint, compact or safely replace context, and continue the same work without charging failure/correction/review allowances. Preserve remaining active-time budget, totals and source bindings. Unsafe or ineffective continuation pauses visibly. | One supported real capacity-continuation journey and essential inability-to-resume evidence; share persistent-session evidence with ARC-PM1 — Establish the project's architectural foundations. Record the adapter's actual observation and control boundaries under [context readings and thresholds](../architecture.md#context-readings-and-thresholds), including stale readings during a long turn. Threshold enforcement does not promise mid-turn visibility or prevention of every capacity error. Provider-specific support is verified during implementation, not assumed. | None |
+| Context fills during an agent assignment | Apply configured thresholds, save a verified checkpoint, compact or safely replace context, and continue the same work without charging failure/correction/review allowances. Preserve remaining active-time budget, totals and source bindings. Unsafe or ineffective continuation pauses visibly. | One supported real capacity-continuation journey and essential inability-to-resume evidence; share persistent-session evidence with Establish the project's architectural foundations. Record the adapter's actual observation and control boundaries under [context readings and thresholds](../architecture.md#context-readings-and-thresholds), including stale readings during a long turn. Threshold enforcement does not promise mid-turn visibility or prevention of every capacity error. Provider-specific support is verified during implementation, not assumed. | None |
 
 ### Definition of done
 
@@ -217,7 +199,7 @@ Real registration agent assignments use the service adapters and return usable v
 
 Installed capability and isolation checks are development verification. If a tool cannot meet the specified exact-model or stopping contract, report the concrete limitation rather than silently weaken it. Execution implementation and policy changes remain outside this outcome.
 
-## SVC-PM5 — Apply shared process definitions
+## Apply shared process definitions
 
 **Outcome:** Registration and the architecture loop use one validated TOML file to direct common runtime behavior while preserving their different process rules.
 
@@ -239,9 +221,9 @@ Installed capability and isolation checks are development verification. If a too
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Records, transport, and supervised agents | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Shared implementation foundation; new process dispatch is delivered here. |
-| Registration policies and package meaning | REG-PM1 — Register and confirm a project through the CLI; REG-PM3 — Recover registration without losing decisions or exceeding limits | Registration supplies its handlers, schemas, and connected evidence. |
-| Persistent-session and breakdown use | ARC-PM1 — Establish the project's architectural foundations; ARC-PM3 — Review and confirm the development breakdown | Architecture loop owns its session continuation and process-specific outputs; shared handlers are delivered here. |
+| Records, transport, and supervised agents | Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents | Shared implementation foundation; new process dispatch is delivered here. |
+| Registration policies and package meaning | Register and confirm a project through the CLI; Recover registration without losing decisions or exceeding limits | Registration supplies its handlers, schemas, and connected evidence. |
+| Persistent-session and breakdown use | Establish the project's architectural foundations; Review and confirm the development breakdown | Architecture loop owns its session continuation and process-specific outputs; shared handlers are delivered here. |
 
 Implement the common interfaces before their process integrations. Final acceptance uses those integrations together; prior final acceptance of a dependent process is not an implementation prerequisite.
 
@@ -254,12 +236,12 @@ Implement the common interfaces before their process integrations. Final accepta
 | An activity starts or resumes after installation changes | Resolve the exact installed schema bundle under `docs/architecture.md#installed-validation-schemas`; preserve the saved version and hashes during recovery. | Installed bundle location, activity snapshot, and one missing or changed bundle rejection without substitution or lost work. | None |
 | A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None |
 | Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None |
-| Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from ARC-PM1 — Establish the project's architectural foundations, ARC-PM2 — Produce a bounded and parallel-ready work breakdown, and ARC-PM3 — Review and confirm the development breakdown. | None |
+| Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from Establish the project's architectural foundations, Produce a bounded and parallel-ready work breakdown, and Review and confirm the development breakdown. | None |
 | An Owner responds at a process limit | Apply the shared typed decision once to the exact assignment, retain base limits and counts, and expose the saved disposition. A duration exception does not grant an attempt. | Connected registration and architecture actions, including replay, follow `docs/architecture.md#owner-decisions-at-a-process-limit`. | None |
 
 ### Definition of done
 
-Both real processes use the common runtime handling and their own recorded definitions. Evidence checks the matching process-relative settings layout under [shared process definitions](../architecture.md#shared-process-definitions), rejection of legacy registration keys, and separate process budgets without reset. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the declaration's common requirements; live verification belongs to development.
+Both real processes use the common runtime handling and their own recorded definitions. Evidence checks the matching process-relative settings layout under [shared process definitions](../architecture.md#shared-process-definitions), rejection of legacy registration keys, and separate process budgets without reset. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the outcome area's common requirements; live verification belongs to development.
 
 ### Unresolved details
 

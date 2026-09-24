@@ -1,35 +1,20 @@
-# CLI — Command-line Interface Milestone Declaration
-
-## Declaration identity
-
-| Field | Value |
-|---|---|
-| Project | Maestro |
-| Declaration | CLI — Command-line interface |
-| Declaration version | 13 |
-| Status | Proposed outcomes; no recorded implementation completion |
-| Architecture source | `docs/architecture.md` |
+# CLI outcomes
 
 ## Capability and scope
 
-The declaration delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [Runtime Service declaration](runtime-service-milestones.md) owns service installation, API implementation, server-side storage and request handling, and agent supervision. This declaration owns the terminal client and its interaction with those capabilities. The [project overview](../project-overview.md) identifies current-state evidence.
+The outcome area delivers a usable local terminal workspace and reliable question-linked responses through the actual Python service and SQL records. The [Runtime Service outcomes](runtime-service.md) owns service installation, API implementation, server-side storage and request handling, and agent supervision. This outcome area owns the terminal client and its interaction with those capabilities. The [project overview](../project-overview.md) identifies current-state evidence.
 
-Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this declaration. Registration-specific intake and package actions are delivered through the [registration declaration](registration-milestones.md). Architecture-loop entry, progress, review, and confirmation actions are delivered through the [architecture-loop declaration](architecture-loop-milestones.md), using this terminal foundation. Its `/architecture start` and `/architecture` commands use selected-project context; detailed architecture actions and connected acceptance remain owned by that declaration. Registration command behavior is preserved.
+Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this outcome area. Registration-specific intake and package actions are delivered through the [registration outcomes](registration.md). Architecture-loop entry, progress, review, and confirmation actions are delivered through the [architecture-loop outcomes](architecture-loop.md), using this terminal foundation. Its `/architecture start` and `/architecture` commands use selected-project context; detailed architecture actions and connected acceptance remain owned by that declaration. Registration command behavior is preserved.
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
 ### Development order and connected acceptance
 
-Runtime foundation, storage, and API implementation support CLI development; CLI implementation precedes registration development. An installed CLI and empty service are usable for foundation checks. Full connected acceptance of CLI-PM1 — Connected multi-project CLI workspace and CLI-PM2 — Reliable project questions and answers is completed alongside REG-PM1 — Register and confirm a project through the CLI, using real registration-created projects and questions. Registration development depends on the implemented CLI interfaces, not prior final acceptance of the integrated CLI journeys. A temporary generator is not a delivery prerequisite.
+Runtime foundation, storage, and API implementation support CLI development; CLI implementation precedes registration development. An installed CLI and empty service are usable for foundation checks. Full connected acceptance of Connected multi-project CLI workspace and Reliable project questions and answers is completed alongside Register and confirm a project through the CLI, using real registration-created projects and questions. Registration development depends on the implemented CLI interfaces, not prior final acceptance of the integrated CLI journeys. A temporary generator is not a delivery prerequisite.
 
-## Milestones and order
+## Outcomes
 
-| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
-|---|---|---|---|
-| 1 | CLI-PM1 — Connected multi-project CLI workspace | 8 | `docs/milestones/cli-milestones.md#cli-pm1--connected-multi-project-cli-workspace` |
-| 2 | CLI-PM2 — Reliable project questions and answers | 5 | `docs/milestones/cli-milestones.md#cli-pm2--reliable-project-questions-and-answers` |
-
-## CLI-PM1 — Connected multi-project CLI workspace
+## Connected multi-project CLI workspace
 
 **Outcome:** A usable read-only terminal view of real service-held project activity, conversations, findings, and attention.
 
@@ -53,25 +38,25 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Running service and readable project/event records | SVC-PM1 — Operate the persistent Maestro service; SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity | Runtime Service owns server installation, API, SQL, and event delivery. Implemented interfaces support CLI development; final connected evidence is shared, not a prerequisite loop. |
-| Real project and question records | REG-PM1 — Register and confirm a project through the CLI | Registration supplies records for final connected acceptance; foundation development supports an empty service. |
+| Running service and readable project/event records | Operate the persistent Maestro service; Preserve project activity and requests; Connect the CLI to recorded service activity | Runtime Service owns server installation, API, SQL, and event delivery. Implemented interfaces support CLI development; final connected evidence is shared, not a prerequisite loop. |
+| Real project and question records | Register and confirm a project through the CLI | Registration supplies records for final connected acceptance; foundation development supports an empty service. |
 | Existing component evidence | `docs/project-overview.md#current-state` | Earlier source observations are not proof of current integrated operation. |
 
 ### Acceptance criteria
 
 | Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception |
 |---|---|---|---|
-| The CLI is installed and the runtime service is available | CLI instructions install the terminal client and its connection configuration. `maestro` connects to the existing service without starting it. Service account, systemd startup, and crash-restart delivery belong to SVC-PM1 — Operate the persistent Maestro service. | CLI installation and connection results, installed revision, and runtime prerequisite evidence without secret values. | None |
+| The CLI is installed and the runtime service is available | CLI instructions install the terminal client and its connection configuration. `maestro` connects to the existing service without starting it. Service account, systemd startup, and crash-restart delivery belong to Operate the persistent Maestro service. | CLI installation and connection results, installed revision, and runtime prerequisite evidence without secret values. | None |
 | Startup succeeds or connection fails | The overview starts with visible “No project selected,” even with one project. Connecting, connected, unavailable, and retry behavior are distinguishable. A failed lookup is not an empty list. | Connected and unavailable journeys, including configuration fallback, unreachable valid address, and successful retry after rereading configuration without reopening the CLI. | None |
 | Multiple projects are present | The overview orders attention-needed, working, then idle projects. Selection opens the correct conversation without changing work. Project names and record associations remain distinct. | At least two separately identified service-held projects, their before/after state, and selection captures. | None |
 | Messages and state change | Actual service/SQL records feed HTTP reads and streamed updates. Messages identify their source; read-only requests create no duplicate status or conversation records. | Correlated API, SQL, and displayed records; service-generated updates for both projects. Hardcoded terminal sample data is insufficient. | None |
 | Earlier content or findings are opened | Recent history and Load earlier messages work while current activity or waiting state and pending questions remain accessible. Details within the same activity expand inline, preserve the selected project and question linked to input, and restore reading position when closed. Viewing does not acknowledge or resolve a finding. At the bottom, messages follow; above it, New messages appears without pulling the reading position. | Captures of each state and unchanged finding/process state after viewing. | None |
-| Another project needs attention | The notice names the project and required response or action without switching focus. The attention list covers all projects. A question entry opens its exact project/activity/question with answer-linked input; a recovery entry opens its project/activity, failure explanation, and available action with commands-only conversation input. Viewing never performs the action. | Notice while another project is selected, followed by explicit navigation to the correct record. Recovery-action routing uses REG-PM3 — Recover registration without losing decisions or exceeding limits for connected evidence and is outside this milestone's initial-registration acceptance. | None |
+| Another project needs attention | The notice names the project and required response or action without switching focus. The attention list covers all projects. A question entry opens its exact project/activity/question with answer-linked input; a recovery entry opens its project/activity, failure explanation, and available action with commands-only conversation input. Viewing never performs the action. | Notice while another project is selected, followed by explicit navigation to the correct record. Recovery-action routing uses Recover registration without losing decisions or exceeding limits for connected evidence and is outside this milestone's initial-registration acceptance. | None |
 | A successful lookup contains no results | Correct empty messages appear for projects, attention, and findings. Retrieval failure and missing context remain distinct. Registration-specific empty actions are completed with registration integration. | Actual empty-query and failed-query observations, with current context identified. | None |
 | The connection drops during use | Visible content remains marked disconnected and potentially stale. Service actions are unavailable; local help, retry, and exit remain. Automatic reconnect follows the documented delay schedule; explicit retry attempts immediately. Reconnect retrieves recorded changes without replaying earlier submissions. | Disconnect/reconnect record and uninterrupted independent service activity. | None |
 | Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. | None |
 | Commands are invoked | Help, projects, attention, findings, retry, and exit work within this milestone's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. | None |
-| Project activities and registration states are displayed | Opening a project selects its single current activity, offers selection when several are underway, or shows the latest ended activity with Idle. Waiting remains current. Registration labels and attention targeting follow the architecture; unapproved attempts remain accessible. | Real initial registration attempts demonstrate current, waiting, ended, and historical views, with correct input context. The Updating registration label is verified with REG-PM2 — Update a registration without losing approved history and is outside this milestone's initial-registration acceptance. Multiple concurrent activity selection may use a necessary isolated check until another activity type exists; it does not prove execution. | None |
+| Project activities and registration states are displayed | Opening a project selects its single current activity, offers selection when several are underway, or shows the latest ended activity with Idle. Waiting remains current. Registration labels and attention targeting follow the architecture; unapproved attempts remain accessible. | Real initial registration attempts demonstrate current, waiting, ended, and historical views, with correct input context. The Updating registration label is verified with Update a registration without losing approved history and is outside this milestone's initial-registration acceptance. Multiple concurrent activity selection may use a necessary isolated check until another activity type exists; it does not prove execution. | None |
 | The CLI accesses the local service | Read the protected configured Owner credential and send it only to the validated loopback address, without credential redirects. Show setup or authorization failures clearly; offline help and exit remain available. | Connected access and essential credential failure evidence against `docs/architecture.md#local-owner-identity-and-credentials`, without recording the secret. | None |
 | Runtime performance or context state changes | Existing activity details display active/waiting time, input/output tokens, context used/limit/percentage and capacity status from SQL-backed service data. Show unknown, estimated and stale readings plainly. | Real service observations and one unavailable-reading case follow `docs/architecture.md#visibility-and-delivery-boundary`; no new dashboard or completion percentage. | None |
 
@@ -85,7 +70,7 @@ Final evidence uses actual registration activity. Basic isolated checks can prec
 
 No additional CLI behavior decision is required for these criteria. Registration role and package contracts remain dependencies of connected acceptance.
 
-## CLI-PM2 — Reliable project questions and answers
+## Reliable project questions and answers
 
 **Outcome:** An explicit answer reaches the correct question and process, is saved before acknowledgment, and cannot silently become approval or a duplicate effect.
 
@@ -108,9 +93,9 @@ No additional CLI behavior decision is required for these criteria. Registration
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Connected workspace | CLI-PM1 — Connected multi-project CLI workspace | Workspace implementation precedes answer handling; their final connected acceptance is shared with initial registration integration. |
-| Real question producer and consuming activity | REG-PM1 — Register and confirm a project through the CLI | Registration supplies actual questions and consumes answers for shared connected acceptance. |
-| Question identity, request identity, and durable delivery | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity | Runtime Service implements the server contracts; the CLI implements their client interaction. Registration provides process-specific eligibility. Shared evidence verifies the connection. |
+| Connected workspace | Connected multi-project CLI workspace | Workspace implementation precedes answer handling; their final connected acceptance is shared with initial registration integration. |
+| Real question producer and consuming activity | Register and confirm a project through the CLI | Registration supplies actual questions and consumes answers for shared connected acceptance. |
+| Question identity, request identity, and durable delivery | Preserve project activity and requests; Connect the CLI to recorded service activity | Runtime Service implements the server contracts; the CLI implements their client interaction. Registration provides process-specific eligibility. Shared evidence verifies the connection. |
 
 ### Acceptance criteria
 

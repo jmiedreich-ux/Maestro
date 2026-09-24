@@ -1,22 +1,12 @@
-# REG — Project Registration Milestone Declaration
-
-## Declaration identity
-
-| Field | Value |
-|---|---|
-| Project | Maestro |
-| Declaration | REG — Project registration |
-| Declaration version | 22 |
-| Status | Proposed outcomes; no recorded implementation completion |
-| Architecture source | `docs/architecture.md` |
+# Registration outcomes
 
 ## Capability and scope
 
-The declaration delivers project registration through the CLI: source intake, bounded assessment and independent review, recorded decisions, versioned GitHub packages, explicit activation, re-registration, and technical recovery. Current-state evidence belongs in the [project overview](../project-overview.md).
+The outcome area delivers project registration through the CLI: source intake, bounded assessment and independent review, recorded decisions, versioned GitHub packages, explicit activation, re-registration, and technical recovery. Current-state evidence belongs in the [project overview](../project-overview.md).
 
-Registration uses SVC-PM5 — Apply shared process definitions for common initiation, output handling, review accounting, confirmation, and recovery dispatch. Registration owns its package schema, eligibility, publication/activation policies, and process-specific handlers; shared mechanics are not reimplemented here.
+Registration uses Apply shared process definitions for common initiation, output handling, review accounting, confirmation, and recovery dispatch. Registration owns its package schema, eligibility, publication/activation policies, and process-specific handlers; shared mechanics are not reimplemented here.
 
-Implemented runtime interfaces and CLI foundation precede registration integration. Final connected CLI acceptance is completed with initial registration, using its real projects and questions; final runtime recovery evidence is shared with registration recovery. The [Runtime Service declaration](runtime-service-milestones.md) owns service installation, storage/request mechanisms, API transport, start reservations, adapters, and agent supervision. Registration owns process-specific eligibility, role assignments and response semantics, review policy, package schema/publication/activation, and their actual use of those runtime capabilities. Implemented dependencies are required; their final shared acceptance is not a prerequisite to starting registration development. Command center, project implementation, automatic development start, development breakdown, full code audits, and execution-rule overrides are excluded.
+Implemented runtime interfaces and CLI foundation precede registration integration. Final connected CLI acceptance is completed with initial registration, using its real projects and questions; final runtime recovery evidence is shared with registration recovery. The [Runtime Service outcomes](runtime-service.md) owns service installation, storage/request mechanisms, API transport, start reservations, adapters, and agent supervision. Registration owns process-specific eligibility, role assignments and response semantics, review policy, package schema/publication/activation, and their actual use of those runtime capabilities. Implemented dependencies are required; their final shared acceptance is not a prerequisite to starting registration development. Command center, project implementation, automatic development start, development breakdown, full code audits, and execution-rule overrides are excluded.
 
 Verification follows `docs/planning-guide/README.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
@@ -26,15 +16,9 @@ Only unresolved design decisions require clarification in their authoritative so
 
 Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles, acceptance authority, isolated Quality Assurance, promotion and completion follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed. Registration's agent controls and fidelity reviews do not approve or replace those broader software Execution contracts.
 
-## Milestones and order
+## Outcomes
 
-| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
-|---|---|---|---|
-| 1 | REG-PM1 — Register and confirm a project through the CLI | 17 | `docs/milestones/registration-milestones.md#reg-pm1--register-and-confirm-a-project-through-the-cli` |
-| 2 | REG-PM2 — Update a registration without losing approved history | 11 | `docs/milestones/registration-milestones.md#reg-pm2--update-a-registration-without-losing-approved-history` |
-| 3 | REG-PM3 — Recover registration without losing decisions or exceeding limits | 16 | `docs/milestones/registration-milestones.md#reg-pm3--recover-registration-without-losing-decisions-or-exceeding-limits` |
-
-## REG-PM1 — Register and confirm a project through the CLI
+## Register and confirm a project through the CLI
 
 **Outcome:** A whole project or defined portion reaches explicit confirmation and a retrievable registration package through the real CLI and service.
 
@@ -64,10 +48,10 @@ Completion evidence for each milestone identifies the implementation revision, r
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Shared process handling | SVC-PM5 — Apply shared process definitions | Implemented common handlers support registration; registration supplies its exact schemas and policies. Final runtime acceptance shares the connected process evidence. |
-| CLI foundation | CLI-PM2 — Reliable project questions and answers, following CLI-PM1 — Connected multi-project CLI workspace | Implemented workspace and answer interfaces precede development; final connected acceptance is shared here. Prior final acceptance of those integrated CLI journeys is not a prerequisite. |
+| Shared process handling | Apply shared process definitions | Implemented common handlers support registration; registration supplies its exact schemas and policies. Final runtime acceptance shares the connected process evidence. |
+| CLI foundation | Reliable project questions and answers, following Connected multi-project CLI workspace | Implemented workspace and answer interfaces precede development; final connected acceptance is shared here. Prior final acceptance of those integrated CLI journeys is not a prerequisite. |
 | Project sources | `docs/planning-guide/README.md` | Markdown source structure and package record contracts are specified. Executable validators are included implementation work. |
-| Runtime records, API, and agents | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Runtime Service implements shared storage, request delivery, tool setup, routing mechanics, and supervision. Registration supplies real architect/reviewer assignments and verifies their use. Final shared acceptance follows integration. |
+| Runtime records, API, and agents | Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents | Runtime Service implements shared storage, request delivery, tool setup, routing mechanics, and supervision. Registration supplies real architect/reviewer assignments and verifies their use. Final shared acceptance follows integration. |
 | Registration repository access and publication | `docs/architecture.md#agent-delegation`; `docs/architecture.md#publication-and-sql-consistency` | Current operation unverified. Registration owns source access, package publication credentials and journal, wrapper publication checks, and SQL/GitHub activation consistency; generic SQL persistence is supplied by Runtime Service. |
 | Package storage and activation | `docs/architecture.md#package-structure` | Package records, locations, publication, and activation are specified in the architecture. Executable schemas and connected persistence are included implementation work. |
 
@@ -100,12 +84,12 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Connected adapter use | Runtime Service owns adapter implementation and installed capability verification. | Use SVC-PM4 — Run and recover assigned agents for actual registration role assignments, validate assessment/candidate response meaning, and demonstrate distinct reviewer use. Shared evidence must include actual model identity, permissions, source isolation, and failure reporting before assessment. |
+| Connected adapter use | Runtime Service owns adapter implementation and installed capability verification. | Use Run and recover assigned agents for actual registration role assignments, validate assessment/candidate response meaning, and demonstrate distinct reviewer use. Shared evidence must include actual model identity, permissions, source isolation, and failure reporting before assessment. |
 | Delivery-review implementation | The defined Execution review and acceptance contracts still need executable handlers and operational evidence. | Implement and verify the configured reviewer routes, evidence records, isolated Quality Assurance, promotion and completion handlers under [Execution](../architecture.md#execution) without reopening their authority or adding gates. |
 | Planning-review configuration implementation | The configured limit must survive changes and recovery. | Implement [registration process-definition binding](../architecture.md#registration-process-definition-binding), including effective defaults, installed configuration validation, saved activity snapshots and the existing review accounting. Verify missing required sections and unsupported policies prevent initiation without changing active work. |
 | Output and persistence implementation | Defined package contracts need executable validation and durable publication. | Implement `docs/architecture.md#package-record-contract` and `docs/architecture.md#publication-and-sql-consistency`; validate the actual connected journey before completion. |
 
-## REG-PM2 — Update a registration without losing approved history
+## Update a registration without losing approved history
 
 **Outcome:** An idle project can revise registration coverage or project milestones while preserving prior approval and controlling exactly what becomes active.
 
@@ -126,8 +110,8 @@ The confirmed JSON package is retrievable in GitHub and usable by the next proce
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Initial registration | REG-PM1 — Register and confirm a project through the CLI | Required preceding outcome. |
-| Real project-work state and new-start prevention | SVC-PM2 — Preserve project activity and requests | Runtime Service supplies atomic state/reservation mechanisms. Registration owns idle eligibility and reservation lifetime and verifies the connected boundary. No full execution engine is assumed. |
+| Initial registration | Register and confirm a project through the CLI | Required preceding outcome. |
+| Real project-work state and new-start prevention | Preserve project activity and requests | Runtime Service supplies atomic state/reservation mechanisms. Registration owns idle eligibility and reservation lifetime and verifies the connected boundary. No full execution engine is assumed. |
 
 ### Acceptance criteria
 
@@ -148,10 +132,10 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
-| Work-state enforcement implementation | The defined idle check requires actual activity and run state. | Use the atomic project start lock supplied by SVC-PM2 — Preserve project activity and requests. Implement registration eligibility and reservation lifetime under `docs/architecture.md#re-registration`, including pending, waiting, and uncertain work. |
+| Work-state enforcement implementation | The defined idle check requires actual activity and run state. | Use the atomic project start lock supplied by Preserve project activity and requests. Implement registration eligibility and reservation lifetime under `docs/architecture.md#re-registration`, including pending, waiting, and uncertain work. |
 | Candidate and active-version implementation | Published receipts and SQL activation must reconcile without replacing prior approval early. | Implement `docs/architecture.md#confirmation-and-activation`, including pending confirmation and conflicts. |
 
-## REG-PM3 — Recover registration without losing decisions or exceeding limits
+## Recover registration without losing decisions or exceeding limits
 
 **Outcome:** Interrupted registration resumes from verified work or pauses visibly without losing decisions, duplicating effects, or exceeding its budgets.
 
@@ -172,9 +156,9 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Registration journeys | REG-PM1 — Register and confirm a project through the CLI; REG-PM2 — Update a registration without losing approved history | Required connected predecessors. |
-| Shared configured recovery | SVC-PM5 — Apply shared process definitions | Registration retains the publication journal and activation semantics; shared handlers apply its policy and recorded definition without resetting budgets. |
-| Durable checkpoints and remote evidence | SVC-PM4 — Run and recover assigned agents; `docs/architecture.md#technical-recovery` | CLI request identity is defined in `docs/architecture.md#answer-identity-and-uncertain-delivery`. Run identity, supervision, and event replay are defined in `docs/architecture.md#process-supervision-and-interruption-recovery`; publication reconciliation is defined in `docs/architecture.md#publication-recovery`. The automatic agent recovery default is two attempts per assignment. |
+| Registration journeys | Register and confirm a project through the CLI; Update a registration without losing approved history | Required connected predecessors. |
+| Shared configured recovery | Apply shared process definitions | Registration retains the publication journal and activation semantics; shared handlers apply its policy and recorded definition without resetting budgets. |
+| Durable checkpoints and remote evidence | Run and recover assigned agents; `docs/architecture.md#technical-recovery` | CLI request identity is defined in `docs/architecture.md#answer-identity-and-uncertain-delivery`. Run identity, supervision, and event replay are defined in `docs/architecture.md#process-supervision-and-interruption-recovery`; publication reconciliation is defined in `docs/architecture.md#publication-recovery`. The automatic agent recovery default is two attempts per assignment. |
 
 ### Acceptance criteria
 
@@ -193,14 +177,14 @@ The connected re-registration journey and essential rejection/cancellation paths
 
 Basic controlled interruptions of actual agent, publication, and service operations establish recovery from the last verified step and preserved review budgets. Evidence under [registration process-definition binding](../architecture.md#registration-process-definition-binding) shows separate agent and publication counters, no allowance reset on configuration edits, and reconciliation without a duplicate write. Retained reports, decisions, versions, and remote commits are checked directly. Necessary simulated conditions identify their reason and limitation; no exhaustive failure-combination suite is required.
 
-Both registration journeys remain valid after recovery. Completion evidence and delivery reviews meet the common completion requirements above. Successful publication checks are already required by REG-PM1 — Register and confirm a project through the CLI; this outcome adds interruption and recovery evidence. Retry functions alone do not establish completion.
+Both registration journeys remain valid after recovery. Completion evidence and delivery reviews meet the common completion requirements above. Successful publication checks are already required by Register and confirm a project through the CLI; this outcome adds interruption and recovery evidence. Retry functions alone do not establish completion.
 
 ### Unresolved details
 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Publication recovery implementation | External writes must be reconciled independently from agent execution. | Implement the publication operation journal, exact-byte reconciliation, idempotent activation, and targeted Retry publication action under `docs/architecture.md#publication-recovery`. |
-| Connected recovery verification | Runtime recovery is supplied by SVC-PM4 — Run and recover assigned agents; registration must preserve its own process state. | Verify registration decisions, review budgets, candidates, active versions, and explicit retry actions across runtime recovery. Registration owns publication reconciliation and activation; runtime owns generic launch limits and supervisor recovery. |
+| Connected recovery verification | Runtime recovery is supplied by Run and recover assigned agents; registration must preserve its own process state. | Verify registration decisions, review budgets, candidates, active versions, and explicit retry actions across runtime recovery. Registration owns publication reconciliation and activation; runtime owns generic launch limits and supervisor recovery. |
 
 ## Partial-registration boundary
 

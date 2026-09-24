@@ -1,22 +1,12 @@
-# ARC — Architecture Loop Milestone Declaration
-
-## Declaration identity
-
-| Field | Value |
-|---|---|
-| Project | Maestro |
-| Declaration | ARC — Architecture loop |
-| Declaration version | 7 |
-| Status | Proposed outcomes with defined technical contracts; no implementation completion or confirmed registration claimed |
-| Architecture source | `docs/architecture.md` |
+# Architecture Loop outcomes
 
 ## Capability and scope
 
-This declaration delivers the manually started architecture loop after confirmed registration: initial code investigation, lasting project structure and specialist guidance, a work-packet-first breakdown, independent review, and exact-version Owner confirmation.
+This outcome area delivers the manually started architecture loop after confirmed registration: initial code investigation, lasting project structure and specialist guidance, a work-packet-first breakdown, independent review, and exact-version Owner confirmation.
 
-The [Runtime Service declaration](runtime-service-milestones.md) owns shared storage, APIs, supervised agents, and process-definition handling. The [CLI declaration](cli-milestones.md) owns the terminal workspace and question controls. This declaration owns architecture-specific commands/actions and their service handlers, persistent architect-session continuation using the adapters, output schemas and publication rules, and connected loop behavior. The [registration declaration](registration-milestones.md) supplies confirmed registration.
+The [Runtime Service outcomes](runtime-service.md) owns shared storage, APIs, supervised agents, and process-definition handling. The [CLI outcomes](cli.md) owns the terminal workspace and question controls. This outcome area owns architecture-specific commands/actions and their service handlers, persistent architect-session continuation using the adapters, output schemas and publication rules, and connected loop behavior. The [registration outcomes](registration.md) supplies confirmed registration.
 
-Scheduling, source implementation, worker dispatch, automatic execution start, command center, and mobile UI are excluded. Replanning is included only as reconciliation after confirmed re-registration and a manual architecture-loop start. Execution implementation and policy changes are excluded. An architecture-loop milestone declaration describes Maestro delivery; the development milestones produced by the loop are project data.
+Scheduling, source implementation, worker dispatch, automatic execution start, command center, and mobile UI are excluded. Replanning is included only as reconciliation after confirmed re-registration and a manual architecture-loop start. Execution implementation and policy changes are excluded. An architecture-loop outcome specification describes Maestro delivery; the development milestones produced by the loop are project data.
 
 ### Dependencies and evidence
 
@@ -26,15 +16,9 @@ The [project overview](../project-overview.md) records existing-code evidence an
 
 The ordered outcomes build the loop progressively. Foundation or breakdown completion alone does not mean the loop can be confirmed. Unresolved behavioral contracts must be resolved before affected development breakdown; writing executable validators and performing installed checks are implementation work. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when generated work is later executed; they are not part of this architecture-loop implementation declaration.
 
-## Milestones and order
+## Outcomes
 
-| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
-|---|---|---|---|
-| 1 | ARC-PM1 — Establish the project's architectural foundations | 7 | `docs/milestones/architecture-loop-milestones.md#arc-pm1--establish-the-projects-architectural-foundations` |
-| 2 | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm2--produce-a-bounded-and-parallel-ready-work-breakdown` |
-| 3 | ARC-PM3 — Review and confirm the development breakdown | 6 | `docs/milestones/architecture-loop-milestones.md#arc-pm3--review-and-confirm-the-development-breakdown` |
-
-## ARC-PM1 — Establish the project's architectural foundations
+## Establish the project's architectural foundations
 
 **Outcome:** A manual CLI request starts a persistent architect session from a confirmed registration and produces a saved code investigation, project structure, and specialist guidance.
 
@@ -57,9 +41,9 @@ The ordered outcomes build the loop progressively. Foundation or breakdown compl
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Confirmed registration | REG-PM1 — Register and confirm a project through the CLI | Required real input; this outcome delivers the verified package-record to architecture outcome-reference mapping under `docs/architecture.md#architecture-record-contract`. Registration confirmation does not start this loop. |
-| Runtime and process definitions | SVC-PM4 — Run and recover assigned agents; SVC-PM5 — Apply shared process definitions | Runtime supplies launch/supervision and common handling. This outcome owns persistent architecture-session integration, which fresh registration runs do not establish. |
-| Terminal workspace | CLI-PM1 — Connected multi-project CLI workspace | Supplies the implemented client foundation; architecture-specific entry and status are delivered here. |
+| Confirmed registration | Register and confirm a project through the CLI | Required real input; this outcome delivers the verified package-record to architecture outcome-reference mapping under `docs/architecture.md#architecture-record-contract`. Registration confirmation does not start this loop. |
+| Runtime and process definitions | Run and recover assigned agents; Apply shared process definitions | Runtime supplies launch/supervision and common handling. This outcome owns persistent architecture-session integration, which fresh registration runs do not establish. |
+| Terminal workspace | Connected multi-project CLI workspace | Supplies the implemented client foundation; architecture-specific entry and status are delivered here. |
 
 ### Acceptance criteria
 
@@ -82,9 +66,9 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 | Missing detail | Effect on the outcome | Clarification needed |
 |---|---|---|
 | Installed adapter verification | Continuation operations and event mapping are specified. | Implement and verify the selected protocols against the installed tool releases during development. |
-| Validator integration | The supplied `docs/schemas/architecture-loop.schema.json` supports existing shapes; the Execution-facing additions are identified under `docs/architecture.md#architecture-loop-implementation-boundary`. | Integrate foundation checks here; ARC-PM2 — Produce a bounded and parallel-ready work breakdown owns the additional packet and QA-plan schema delivery. No new Owner behavior decision is identified. |
+| Validator integration | The supplied `docs/schemas/architecture-loop.schema.json` supports existing shapes; the Execution-facing additions are identified under `docs/architecture.md#architecture-loop-implementation-boundary`. | Integrate foundation checks here; Produce a bounded and parallel-ready work breakdown owns the additional packet and QA-plan schema delivery. No new Owner behavior decision is identified. |
 
-## ARC-PM2 — Produce a bounded and parallel-ready work breakdown
+## Produce a bounded and parallel-ready work breakdown
 
 **Outcome:** The architect turns confirmed outcomes and investigated foundations into the smallest bounded work packets, organized into development milestones with explicit dependencies and parallel opportunities.
 
@@ -108,10 +92,10 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Persistent session and foundations | ARC-PM1 — Establish the project's architectural foundations | Required preceding capability; use its saved findings and structure. |
-| Linked question controls | CLI-PM2 — Reliable project questions and answers | Supplies client interaction; architecture-specific routing into the persistent session is delivered here. |
-| Shared persistence and definition handling | SVC-PM5 — Apply shared process definitions | Shared validation/saving mechanics; architecture owns record meaning and schema. |
-| Operator-provisioned QA binding catalog | EXE-PM4 — Verify milestones and publish completed Execution | Execution owns test-resource setup and service resolution; this outcome owns architect collection/selection, snapshot provenance and QA-plan validation. Shared evidence must exercise the real producer and consumer. |
+| Persistent session and foundations | Establish the project's architectural foundations | Required preceding capability; use its saved findings and structure. |
+| Linked question controls | Reliable project questions and answers | Supplies client interaction; architecture-specific routing into the persistent session is delivered here. |
+| Shared persistence and definition handling | Apply shared process definitions | Shared validation/saving mechanics; architecture owns record meaning and schema. |
+| Operator-provisioned QA binding catalog | Verify milestones and publish completed Execution | Execution owns test-resource setup and service resolution; this outcome owns architect collection/selection, snapshot provenance and QA-plan validation. Shared evidence must exercise the real producer and consumer. |
 
 ### Acceptance criteria
 
@@ -137,7 +121,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Record validation implementation | Packet execution requirements, milestone QA-plan references, QA-plan records and inventory support are defined in prose but missing from the supplied executable schema. | Extend `docs/schemas/architecture-loop.schema.json`, allocation and response/output inventories, semantic validation and publication under `docs/architecture.md#architecture-loop-implementation-boundary`; verify real output sets during development. |
 | Replanning implementation | Reconciliation is permitted only after confirmed re-registration. | Implement the existing manual architecture entry and affected-record preservation rules; no separate trigger or design prerequisite. |
 
-## ARC-PM3 — Review and confirm the development breakdown
+## Review and confirm the development breakdown
 
 **Outcome:** Independent review and bounded amendments lead to exact-version Owner confirmation, with the completed loop saved and execution left unstarted.
 
@@ -160,9 +144,9 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Later registration update | REG-PM2 — Update a registration without losing approved history | Supplies the real update for shared changed-registration/invalidation evidence. Implemented interfaces support integration; prior final acceptance of that shared evidence is not a prerequisite to development. |
-| Saved breakdown | ARC-PM2 — Produce a bounded and parallel-ready work breakdown | Required preceding output. |
-| Common review/output/confirmation handling | SVC-PM5 — Apply shared process definitions | Runtime mechanics; architecture-specific eligibility and confirmation records are delivered here. |
+| Later registration update | Update a registration without losing approved history | Supplies the real update for shared changed-registration/invalidation evidence. Implemented interfaces support integration; prior final acceptance of that shared evidence is not a prerequisite to development. |
+| Saved breakdown | Produce a bounded and parallel-ready work breakdown | Required preceding output. |
+| Common review/output/confirmation handling | Apply shared process definitions | Runtime mechanics; architecture-specific eligibility and confirmation records are delivered here. |
 | Independent reviewer | `docs/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
 
 ### Acceptance criteria
@@ -171,7 +155,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 |---|---|---|---|
 | Review begins | A separate reviewer receives the exact confirmed sources, findings, foundations, and breakdown; checks outcome coverage, bounds, dependencies, parallelism, setup, and usable integration. | Real independent assignment, input references, review output, and justified architect amendments. | None |
 | Findings or clarification arrive | Apply the separate review budget; one passing review is sufficient. Only outcome-blocking omissions, contradictions, or requirement violations justify rework. Check necessary corrections and affected dependencies without reopening unchanged reviewed work. Route material disagreement at the limit to the Owner. | Main passing journey and a necessary controlled review-limit/duplicate-delivery case; do not demand every failure combination. | None |
-| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Required Execution input fields and QA-plan references must have passed the producer validation owned by ARC-PM2 — Produce a bounded and parallel-ready work breakdown. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
+| Confirmation is requested | CLI summary and full outputs identify the exact version, outcome coverage, dependencies, parallel opportunities, and limitations requiring acceptance. Required Execution input fields and QA-plan references must have passed the producer validation owned by Produce a bounded and parallel-ready work breakdown. Show review validity and compare the expected version/hash on submission. A changed version is rejected and redisplayed; only explicit eligible Owner confirmation completes that exact version. | Actual CLI interaction and saved confirmation referencing the reviewed outputs. | None |
 | The loop completes or is interrupted | Completion does not schedule or start execution. Interruption reconciles the same publication/confirmation operation without a new version, repeated completed agent work, or another Owner confirmation already recorded. Advance SQL references only after verified publication; unknown outcomes pause. | Saved before/after records and observed service state, including one necessary confirmation/recovery case. | None |
 | The loop is cancelled or later restarted | Preserve saved work and prior confirmation; retain the project reservation until agents and pending operations resolve. A new activity reuses valid work and carries the same unresolved-work budgets rather than resetting them. | Actual cancellation/restart and linked accounting records, with no automatic execution. | None |
 | A later registration changes outcomes | Preserve the prior breakdown as history, mark affected work ineligible pending architectural reconciliation, and retain unaffected records and valid review coverage. | Version and dependency evidence across a real registration update; architecture restarts only manually after that re-registration is confirmed; a same-registration completed breakdown is viewed rather than replanned. | None |

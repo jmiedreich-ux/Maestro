@@ -1,44 +1,26 @@
-# EXE — Execution Milestone Declaration
-
-## Declaration identity
-
-| Field | Value |
-|---|---|
-| Project | Maestro |
-| Declaration | EXE — Execution |
-| Declaration version | 2 |
-| Status | Proposed delivery outcomes from the defined architecture; no implementation completion or confirmed registration claimed |
-| Architecture source | `docs/architecture.md` |
+# Execution outcomes
 
 ## Capability and scope
 
-This declaration delivers explicitly started Execution of a registered project's confirmed development breakdown: agent coordination, implementation, independent review, integration, milestone Quality Assurance, outcome review, promotion, recovery and recorded completion. Execution-specific CLI actions and monitoring are delivered with their corresponding service behavior.
+This outcome area delivers explicitly started Execution of a registered project's confirmed development breakdown: agent coordination, implementation, independent review, integration, milestone Quality Assurance, outcome review, promotion, recovery and recorded completion. Execution-specific CLI actions and monitoring are delivered with their corresponding service behavior.
 
-The [Runtime Service declaration](runtime-service-milestones.md) owns the installed service, shared SQLite storage, API/event transport, agent supervision and common process handling. The [CLI declaration](cli-milestones.md) owns the terminal workspace, attention, history and linked answers. The [registration declaration](registration-milestones.md) supplies the confirmed project and repository binding; the [Architecture Loop declaration](architecture-loop-milestones.md) supplies the confirmed breakdown, specialist guidance and versioned Quality Assurance plans. This declaration owns Execution-specific handlers, records, schema installation, coder adapters and route integration, repository-operation journals, worktrees, integration queues, isolated Quality Assurance supervision, and their connected CLI behavior. It extends those foundations without expanding their declared outcomes.
+The [Runtime Service outcomes](runtime-service.md) owns the installed service, shared SQLite storage, API/event transport, agent supervision and common process handling. The [CLI outcomes](cli.md) owns the terminal workspace, attention, history and linked answers. The [registration outcomes](registration.md) supplies the confirmed project and repository binding; the [Architecture Loop outcomes](architecture-loop.md) supplies the confirmed breakdown, specialist guidance and versioned Quality Assurance plans. This outcome area owns Execution-specific handlers, records, schema installation, coder adapters and route integration, repository-operation journals, worktrees, integration queues, isolated Quality Assurance supervision, and their connected CLI behavior. It extends those foundations without expanding their declared outcomes.
 
 Command center, mobile UI, unsolicited agent conversations, automatic initial Execution startup, changed project scope without re-registration, configurable hook frameworks, SQL backup/restore and automatically authorized production testing are excluded. Planning declarations do not start software Execution.
 
 ### Dependencies and connected acceptance
 
-The [project overview](../project-overview.md#current-state) records source evidence and its limits. Required runtime, CLI, registration and architecture-loop interfaces must be implemented and verified for the consuming journey; no installed service, agent route, credential, repository permission or environment is assumed ready. Relevant existing source is assessed during development preparation before reuse. The declaration makes no new source-readiness claim.
+The [project overview](../project-overview.md#current-state) records source evidence and its limits. Required runtime, CLI, registration and architecture-loop interfaces must be implemented and verified for the consuming journey; no installed service, agent route, credential, repository permission or environment is assumed ready. Relevant existing source is assessed during development preparation before reuse. The outcome area makes no new source-readiness claim.
 
 The order below organizes usable outcomes, not development tasks or a fixed serial work schedule. The architecture loop determines development milestones, smallest work packets and safe parallelism. Foundations may be implemented before all connected evidence exists. A shared journey can complete evidence for several outcomes, but a missing producer, handler, review or completion path remains unverified; a stub does not satisfy it.
 
-EXE-PM3 — Resolve architectural gaps within authorized scope uses findings produced by EXE-PM4 — Verify milestones and publish completed Execution. Their interfaces can be built independently; final finding-to-correction acceptance is shared. EXE-PM5 — Pause, stop and recover Execution verifies lifecycle behavior across every earlier outcome. Its required stopping and recovery controls must accompany the affected implementation before actual work depends on them; its position does not authorize an unsafe interim engine.
+Resolve architectural gaps within authorized scope uses findings produced by Verify milestones and publish completed Execution. Their interfaces can be built independently; final finding-to-correction acceptance is shared. Pause, stop and recover Execution verifies lifecycle behavior across every earlier outcome. Its required stopping and recovery controls must accompany the affected implementation before actual work depends on them; its position does not authorize an unsafe interim engine.
 
 Apply `docs/planning-guide/README.md#verification-expectations` and `docs/architecture.md#milestone-quality-assurance-and-test-data`: use actual connected paths and proportionate main-journey and essential-failure evidence. Necessary controlled inputs or fault simulation are identified, with origin and limitations. They cannot replace the service, agent, Git, review, setup or result-producing path being verified. Required missing or bypassed paths remain `UNTESTED`. Each definition of done also requires implementation revision, reproducible setup, actual observations and applicable independent implementation review, milestone Quality Assurance, outcome review and promotion evidence under the existing Execution rules. Documentation review alone satisfies none of these implementation gates.
 
-## Milestones and order
+## Outcomes
 
-| Position | Qualified milestone reference and plain subject | Milestone version | Milestone section |
-|---|---|---|---|
-| 1 | EXE-PM1 — Deliver independently reviewed work packets | 1 | `docs/milestones/execution-milestones.md#exe-pm1--deliver-independently-reviewed-work-packets` |
-| 2 | EXE-PM2 — Integrate work and deliver declared dependencies | 2 | `docs/milestones/execution-milestones.md#exe-pm2--integrate-work-and-deliver-declared-dependencies` |
-| 3 | EXE-PM3 — Resolve architectural gaps within authorized scope | 2 | `docs/milestones/execution-milestones.md#exe-pm3--resolve-architectural-gaps-within-authorized-scope` |
-| 4 | EXE-PM4 — Verify milestones and publish completed Execution | 2 | `docs/milestones/execution-milestones.md#exe-pm4--verify-milestones-and-publish-completed-execution` |
-| 5 | EXE-PM5 — Pause, stop and recover Execution | 2 | `docs/milestones/execution-milestones.md#exe-pm5--pause-stop-and-recover-execution` |
-
-## EXE-PM1 — Deliver independently reviewed work packets
+## Deliver independently reviewed work packets
 
 **Outcome:** An explicit CLI start uses a confirmed project breakdown to coordinate real coder work and return exact independently reviewed packet revisions, with saved progress, questions and evidence.
 
@@ -60,9 +42,9 @@ Apply `docs/planning-guide/README.md#verification-expectations` and `docs/archit
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Installed runtime, storage, transport and agent supervision | SVC-PM1 — Operate the persistent Maestro service; SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents; SVC-PM5 — Apply shared process definitions | Planned foundations; this outcome adds Execution-specific schemas, handlers and persistent manager/coder integration. Generic launch alone is insufficient. |
-| Terminal and linked responses | CLI-PM1 — Connected multi-project CLI workspace; CLI-PM2 — Reliable project questions and answers | Implemented foundations required; Execution actions and views are owned here. |
-| Confirmed project, exact breakdown and source-local specialist inputs | REG-PM1 — Register and confirm a project through the CLI; ARC-PM3 — Review and confirm the development breakdown | Actual published/confirmed inputs required, including packet execution requirements and source/repository bindings. ARC-PM2 — Produce a bounded and parallel-ready work breakdown owns the missing producer-schema extensions; confirmation and Execution consumption require that delivered validation, not the older schema alone. |
+| Installed runtime, storage, transport and agent supervision | Operate the persistent Maestro service; Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents; Apply shared process definitions | Planned foundations; this outcome adds Execution-specific schemas, handlers and persistent manager/coder integration. Generic launch alone is insufficient. |
+| Terminal and linked responses | Connected multi-project CLI workspace; Reliable project questions and answers | Implemented foundations required; Execution actions and views are owned here. |
+| Confirmed project, exact breakdown and source-local specialist inputs | Register and confirm a project through the CLI; Review and confirm the development breakdown | Actual published/confirmed inputs required, including packet execution requirements and source/repository bindings. Produce a bounded and parallel-ready work breakdown owns the missing producer-schema extensions; confirmation and Execution consumption require that delivered validation, not the older schema alone. |
 | Working installed coder and reviewer routes and repository access | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#execution-workspaces-and-repository-writes` | This outcome supplies Execution setup and verification, including local Qwen CLI/Ollama, configured Codex/Claude routes, exact model evidence, constrained worktrees and service-only Git credentials. |
 
 ### Acceptance criteria
@@ -73,7 +55,7 @@ Apply `docs/planning-guide/README.md#verification-expectations` and `docs/archit
 | Configuration and typed results are consumed | The installed bundle resolves from its declared source, and exact route/model, deadline, capability, location, context and concurrency checks run before use. Missing or unverifiable configuration blocks affected work while status remains readable. Saved settings are not silently replaced by later edits. | Installed bundle hash and configuration evidence, actual model identity and structured results; essential invalid configuration or route mismatch rejection. | None |
 | The manager plans and revises work | It reads current outcomes and blockers, retains one persistent session with one planning action at a time, requests eligible assignments and records selection reasons. Service reservations enforce dependencies, capacity and shared-code limits. Unrelated eligible work continues; stale requests cannot start. | Real multi-packet planning and event-driven reconsideration, correlated reservations and state, plus one linked question/answer; no polling model loop. | None |
 | A coder delivers its assigned change | The permitted route executes the exact packet and specialist context. Qwen remains the default; justified configured cloud selection needs no prior Qwen failure. The plan is saved and visible before work continues without a new approval gate. Result, local commit, scoped diff and service-verified remote revision agree. | Actual coder outputs, plan, checks, clean worktree, wrapper checks and Git journal; demonstrate local Qwen and configured cloud transport without requiring every model combination. | None |
-| Independent packet review completes or reaches its limit | A non-author reviews exact revisions in a separate read-only workspace. Valid findings return for correction; counts survive reassignment and technical recovery. Approval makes only that revision eligible for integration. Limit exhaustion stays unapproved and uses the architect recommendation and typed Owner decision. | Real review and affected correction evidence; essential exhausted-limit/grant handling may share EXE-PM3 — Resolve architectural gaps within authorized scope evidence. | None |
+| Independent packet review completes or reaches its limit | A non-author reviews exact revisions in a separate read-only workspace. Valid findings return for correction; counts survive reassignment and technical recovery. Approval makes only that revision eligible for integration. Limit exhaustion stays unapproved and uses the architect recommendation and typed Owner decision. | Real review and affected correction evidence; essential exhausted-limit/grant handling may share Resolve architectural gaps within authorized scope evidence. | None |
 | Monitoring follows saved work | CLI shows current work, plans, questions, blockers, review counts, activity history and saved runtime measurements. Packet, milestone and activity reports show queue, preflight, active, waiting, review, integration, Quality Assurance, correction, blocked and wall time; operation counts; and available tokens, cost and context. Parallel child time is distinct from wall time. Unknown/stale or unobserved measurements remain explicit; reconnect does not replay mutations. Agent progress is distinguishable from validated results. | Correlated CLI/API/SQL/events and actual runtime readings, with one unavailable-reading or reconnect case. | None |
 
 ### Definition of done
@@ -84,7 +66,7 @@ A real confirmed breakdown reaches independently reviewed, remotely verified pac
 
 Executable schemas, physical SQL tables, route installation and installed capability checks are delivery work owned here. Exact permitted model values and positive runtime durations are installed configuration inputs under the architecture. No new Owner behavior decision is proposed; an unavailable required capability remains a specific blocker.
 
-## EXE-PM2 — Integrate work and deliver declared dependencies
+## Integrate work and deliver declared dependencies
 
 **Outcome:** Independently approved packets are integrated into the correct milestone branches in durable project FIFO order, and eligible integrated code reaches dependent milestones with traceable readiness.
 
@@ -105,9 +87,9 @@ Executable schemas, physical SQL tables, route installation and installed capabi
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Actual approved packet revisions and shared Execution substrate | EXE-PM1 — Deliver independently reviewed work packets | Supplies exact revisions, review evidence, service credentials, worktrees, configuration and journals; this outcome adds integration and import operations. |
-| Declared dependency closure and promotion requirements | ARC-PM3 — Review and confirm the development breakdown | Exact confirmed packet/milestone dependencies and shared-code boundaries; insufficient declarations block affected work. |
-| Later promotion and lifecycle evidence | EXE-PM4 — Verify milestones and publish completed Execution; EXE-PM5 — Pause, stop and recover Execution | Those outcomes supply milestone gates and stopped/restarted queue journeys. Final shared evidence is not a prerequisite to writing integration code. |
+| Actual approved packet revisions and shared Execution substrate | Deliver independently reviewed work packets | Supplies exact revisions, review evidence, service credentials, worktrees, configuration and journals; this outcome adds integration and import operations. |
+| Declared dependency closure and promotion requirements | Review and confirm the development breakdown | Exact confirmed packet/milestone dependencies and shared-code boundaries; insufficient declarations block affected work. |
+| Later promotion and lifecycle evidence | Verify milestones and publish completed Execution; Pause, stop and recover Execution | Those outcomes supply milestone gates and stopped/restarted queue journeys. Final shared evidence is not a prerequisite to writing integration code. |
 
 ### Acceptance criteria
 
@@ -122,13 +104,13 @@ Executable schemas, physical SQL tables, route installation and installed capabi
 
 ### Definition of done
 
-Real reviewed code reaches the intended milestone branches and an eligible dependent milestone through the actual service, Git operations and independent integration review. Queue, branch and dependency records agree with verified remote revisions. Full promotion depends on EXE-PM4 — Verify milestones and publish completed Execution; packet integration alone does not complete a milestone.
+Real reviewed code reaches the intended milestone branches and an eligible dependent milestone through the actual service, Git operations and independent integration review. Queue, branch and dependency records agree with verified remote revisions. Full promotion depends on Verify milestones and publish completed Execution; packet integration alone does not complete a milestone.
 
 ### Unresolved details
 
 Git handlers, persistent Integration Manager integration and dependency state are implementation work under the cited contracts. Installed repository permissions and essential reconciliation behavior require evidence; source availability is not assumed.
 
-## EXE-PM3 — Resolve architectural gaps within authorized scope
+## Resolve architectural gaps within authorized scope
 
 **Outcome:** Missing specialist coverage and milestone findings reach the correct bounded architect assignment, and valid corrections become executable without altering confirmed scope or silently replacing approved records.
 
@@ -149,10 +131,10 @@ Git handlers, persistent Integration Manager integration and dependency state ar
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Saved assignments, review records, linked questions and repository operations | EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies | Implemented interfaces required; support, architectural-determination and supplement record semantics and handlers are owned here. |
-| Current confirmed roles, source and breakdown | ARC-PM3 — Review and confirm the development breakdown | Actual references and source-local ownership bound to the assignment. |
-| Actual milestone findings and correction verification | EXE-PM4 — Verify milestones and publish completed Execution | Supplies QA/outcome-review findings and verifies corrected behavior. Shared final acceptance must use that real path, not injected successful results. |
-| Work settlement and later re-registration | EXE-PM5 — Pause, stop and recover Execution; REG-PM2 — Update a registration without losing approved history | Execution owns disposition and settlement; registration owns its later explicit idle-only update. |
+| Saved assignments, review records, linked questions and repository operations | Deliver independently reviewed work packets; Integrate work and deliver declared dependencies | Implemented interfaces required; support, architectural-determination and supplement record semantics and handlers are owned here. |
+| Current confirmed roles, source and breakdown | Review and confirm the development breakdown | Actual references and source-local ownership bound to the assignment. |
+| Actual milestone findings and correction verification | Verify milestones and publish completed Execution | Supplies QA/outcome-review findings and verifies corrected behavior. Shared final acceptance must use that real path, not injected successful results. |
+| Work settlement and later re-registration | Pause, stop and recover Execution; Update a registration without losing approved history | Execution owns disposition and settlement; registration owns its later explicit idle-only update. |
 
 ### Acceptance criteria
 
@@ -160,7 +142,7 @@ Git handlers, persistent Integration Manager integration and dependency state ar
 |---|---|---|---|
 | A packet lacks adequate specialist guidance | A separate bounded support assignment validates an existing role or supplies an in-scope role/context. A new role receives independent fidelity review; its validated, remotely verified activation binds exact files to affected packets before reconsideration. Existing unchanged roles need applicability checks, not a new content review. | Actual missing-coverage request, architect response, new-role review and publication/activation records; no overwritten confirmed breakdown. | None |
 | A support route is unavailable or output fails | Assignment configuration comes from the parent Execution snapshot despite later file edits. Only configured eligible fallback is used, with stopping confirmed where needed and counters preserved. A failed assessment/review does not justify verdict-seeking model substitution. Neither usable route or uncertain stopping pauses affected work. | Actual configuration and route evidence plus essential cause-based fallback or blocked-route case. | None |
-| Milestone QA or outcome review reports a defect or gap | A distinct read-only milestone-gap assignment receives exact evidence and remaining allowances. Its validated result routes implementation defects to Integration, missing in-scope work to bounded supplements, and scope changes to Owner disposition. It cannot approve or dispatch code. | Actual finding-to-determination journey shared with EXE-PM4 — Verify milestones and publish completed Execution, including saved affected-work references. | None |
+| Milestone QA or outcome review reports a defect or gap | A distinct read-only milestone-gap assignment receives exact evidence and remaining allowances. Its validated result routes implementation defects to Integration, missing in-scope work to bounded supplements, and scope changes to Owner disposition. It cannot approve or dispatch code. | Actual finding-to-determination journey shared with Verify milestones and publish completed Execution, including saved affected-work references. | None |
 | An in-scope supplement is produced | Service-assigned identity/version, bounded paths, ownership, dependencies and exact finding references validate. Journaled publication verifies remote bytes/hash before atomic activation. Identical replay does not duplicate work; started versions remain immutable. Implemented corrections follow normal review and integration without resetting milestone counts. | Real supplement, external hash/journal, activation, correction packet and affected verification records; essential stale/conflicting or invalid payload rejection. | None |
 | Findings reach a process limit or need replanning | Packet/integration architectural questions and exhausted-review findings produce the configured bounded determination and validated saved recommendation; failed milestone findings use their distinct milestone-gap assignment. CLI presents the exact architect recommendation and typed Owner choices. Support-review exhaustion uses its own typed target and same-assignment architect recommendation. A grant remains bound to its review/assignment; disposition enforces the selected affected-work restrictions. Unrelated eligible work continues where allowed. Free text is not approval and a disposition does not start registration. | Linked decision, durable receipt, unchanged scope/counters and actual service enforcement; later idle transition shares lifecycle evidence. | None |
 
@@ -170,9 +152,9 @@ A real missing-role request and a real milestone finding are resolved through th
 
 ### Unresolved details
 
-Support and supplement validators, publication handlers and connected assignment integration remain implementation work. This declaration supplies no new architectural authority or default model selection.
+Support and supplement validators, publication handlers and connected assignment integration remain implementation work. This outcome area supplies no new architectural authority or default model selection.
 
-## EXE-PM4 — Verify milestones and publish completed Execution
+## Verify milestones and publish completed Execution
 
 **Outcome:** An assembled milestone is exercised in an isolated environment, independently reviewed against its promised outcome, promoted only when both gates pass, and included in verified milestone and Execution completion records visible through the CLI.
 
@@ -193,10 +175,10 @@ Support and supplement validators, publication handlers and connected assignment
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Integrated exact milestone branch and dependencies | EXE-PM2 — Integrate work and deliver declared dependencies | Must be verified and current; target changes or invalidated imports invalidate affected evidence. |
-| In-scope correction and scope-change handling | EXE-PM3 — Resolve architectural gaps within authorized scope | Required for real finding disposition and corrected acceptance; implementation can share the connected journey. |
-| Versioned QA plan, data/setup requirements and completion criteria | ARC-PM3 — Review and confirm the development breakdown | Supplies the exact confirmed plan after ARC-PM2 — Produce a bounded and parallel-ready work breakdown delivers its QA-plan/packet schema and inventory extensions. Missing product setup tooling is declared packet/dependency work, not improvised QA. |
-| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation, including operator provisioning, the service QA binding catalog and exact snapshot/credential resolution. ARC-PM2 — Produce a bounded and parallel-ready work breakdown owns plan selection/validation against that catalog; neither side assumes pre-existing references. |
+| Integrated exact milestone branch and dependencies | Integrate work and deliver declared dependencies | Must be verified and current; target changes or invalidated imports invalidate affected evidence. |
+| In-scope correction and scope-change handling | Resolve architectural gaps within authorized scope | Required for real finding disposition and corrected acceptance; implementation can share the connected journey. |
+| Versioned QA plan, data/setup requirements and completion criteria | Review and confirm the development breakdown | Supplies the exact confirmed plan after Produce a bounded and parallel-ready work breakdown delivers its QA-plan/packet schema and inventory extensions. Missing product setup tooling is declared packet/dependency work, not improvised QA. |
+| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation, including operator provisioning, the service QA binding catalog and exact snapshot/credential resolution. Produce a bounded and parallel-ready work breakdown owns plan selection/validation against that catalog; neither side assumes pre-existing references. |
 
 ### Acceptance criteria
 
@@ -217,7 +199,7 @@ The full installed path delivers a real confirmed outcome through integration, i
 
 QA supervision, artifact capture/retention, executable completion validators and Git/SQL handlers are implementation work. Product-specific setup and data come from the confirmed QA plan; referenced credentials come from its service-resolved project binding; missing prerequisites stay planned and unverified rather than being supplied by a fabricated passing result.
 
-## EXE-PM5 — Pause, stop and recover Execution
+## Pause, stop and recover Execution
 
 **Outcome:** The Owner can pause, resume or gracefully stop real Execution, and service/agent/repository interruptions recover from saved facts without duplicated effects, lost work, reset allowances or false completion.
 
@@ -238,9 +220,9 @@ QA supervision, artifact capture/retention, executable completion validators and
 
 | Required dependency | Reference | Current state or delivery responsibility |
 |---|---|---|
-| Real Execution stages to settle and recover | EXE-PM1 — Deliver independently reviewed work packets; EXE-PM2 — Integrate work and deliver declared dependencies; EXE-PM3 — Resolve architectural gaps within authorized scope; EXE-PM4 — Verify milestones and publish completed Execution | Controls are developed with affected stages; final connected evidence exercises actual assignments, queue/evidence and journal operations. |
-| Shared supervision and durable transport | SVC-PM2 — Preserve project activity and requests; SVC-PM3 — Connect the CLI to recorded service activity; SVC-PM4 — Run and recover assigned agents | Runtime provides persistence/supervision primitives; this outcome implements Execution-specific recovery and lifecycle semantics. |
-| Explicit later registration and architecture reconciliation | REG-PM2 — Update a registration without losing approved history; ARC-PM3 — Review and confirm the development breakdown | These processes retain their own authority and budgets. Connected transition evidence needs their actual implementations, not an assumed successful update. |
+| Real Execution stages to settle and recover | Deliver independently reviewed work packets; Integrate work and deliver declared dependencies; Resolve architectural gaps within authorized scope; Verify milestones and publish completed Execution | Controls are developed with affected stages; final connected evidence exercises actual assignments, queue/evidence and journal operations. |
+| Shared supervision and durable transport | Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents | Runtime provides persistence/supervision primitives; this outcome implements Execution-specific recovery and lifecycle semantics. |
+| Explicit later registration and architecture reconciliation | Update a registration without losing approved history; Review and confirm the development breakdown | These processes retain their own authority and budgets. Connected transition evidence needs their actual implementations, not an assumed successful update. |
 
 ### Acceptance criteria
 
@@ -263,4 +245,4 @@ Installed supervision and provider continuation behavior require verification du
 
 ## Partial-registration boundary
 
-No narrower portion is selected by this declaration. Any later partial registration names its included outcomes, architecture, outside dependencies and their evidence explicitly. A partial implementation or isolated component check does not establish the complete Execution engine.
+No narrower portion is selected by this outcome area. Any later partial registration names its included outcomes, architecture, outside dependencies and their evidence explicitly. A partial implementation or isolated component check does not establish the complete Execution engine.

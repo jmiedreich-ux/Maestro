@@ -4,7 +4,7 @@ Use this guide for breaking down the work of building Maestro itself. Maestro's 
 
 ## Plan the next checkpoint
 
-1. Start with the ordered outcomes in [the development roadmap](development-milestones.md).
+1. Start with the ordered outcomes in [the development roadmap](../../../plan/outcomes.md).
 2. List and prove blocking prerequisites, including host setup, credentials, real agent routes, installation, data, and observability. Record each assumption and its proving feature or explicit exclusion.
 3. Define complete features for the next usable result. Each feature names its real entry point, visible or durable result, key connections, permitted paths, environment prerequisites, owner, and verification.
 4. Check dependencies against existing code and active feature results. Walk through the feature in pseudocode or a concrete sequence before coding to uncover missing contracts, errors and scope.

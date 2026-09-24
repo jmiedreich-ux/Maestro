@@ -22,9 +22,9 @@ Architecture documentation explains system structure, responsibilities, data, in
 
 Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs separate from architecture. Planning and milestone records may be described as system functions or data, not as Maestro delivery work. Mark unresolved mechanisms without inventing decisions.
 
-## Milestone declarations
+## Development outcomes
 
-Follow the [Maestro Planning Guide](docs/planning-guide/README.md). Apply the conventions without repeating their explanations or migration history in declaration sheets. Keep references to other declarations limited to actual dependencies and delivery responsibility.
+Use [the Maestro development roadmap](plan/outcomes.md) for building Maestro. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance. The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 
@@ -32,7 +32,7 @@ Apply corrections directly to authoritative documents. Do not present detailed r
 
 ## Cross-document alignment
 
-Architecture owns software behavior; milestone declarations own delivery outcomes and completion evidence; the Planning Guide owns required project inputs; role files own authority; handoffs own discussion status. Keep each fact authoritative in one place and link elsewhere.
+Architecture owns software behavior; product outcome specifications own delivery outcomes and completion evidence; the Planning Guide owns required project inputs; role files own authority; handoffs own discussion status. Keep each fact authoritative in one place and link elsewhere.
 
 Use the [documentation review method](skills/project-architecture-workshop/references/reviews.md) for independent inputs, three separate passes, complete journey tracing, coverage, conclusions, and bounded corrections. Existing permissions, role authority, runtime contracts, and review limits remain unchanged.
 

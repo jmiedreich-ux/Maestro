@@ -2,15 +2,20 @@
 
 Maestro coordinates project development through Planning, Execution, and Monitoring.
 
-## Documentation
+## Development
 
-- [Project overview](docs/project-overview.md) — source entry, scope, and current-state evidence.
-- [Architecture](docs/architecture.md) — system structure and behavior.
-- [CLI project milestones](docs/milestones/cli-milestones.md)
-- [Registration project milestones](docs/milestones/registration-milestones.md)
-- [Planning Guide and templates](docs/planning-guide/README.md)
-- [Agent role library](docs/agents)
+- [Ordered development outcomes](plan/outcomes.md)
+- [Feature planning](docs/planning/manual-architecture/work-breakdown.md) and [delivery rules](docs/planning/manual-architecture/packet-rules.md)
+- [Current development registration](docs/planning/manual-registration.md)
 
-## Reusable skills
+## Product sources
 
-- [Project Architecture Workshop](skills/project-architecture-workshop/SKILL.md) — develop architecture and project milestones for a new or existing project; [installation and invocation](skills/project-architecture-workshop/INSTALL.md).
+- [Project overview](docs/project-overview.md)
+- [Architecture](docs/architecture.md)
+- [Product outcome details](docs/outcomes/)
+- [Planning Guide and templates for projects registered with Maestro](docs/planning-guide/README.md)
+- [Agent role library](docs/agents/)
+
+## Reusable skill
+
+- [Project Architecture Workshop](skills/project-architecture-workshop/SKILL.md)

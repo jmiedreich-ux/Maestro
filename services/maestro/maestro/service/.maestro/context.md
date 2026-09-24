@@ -8,11 +8,11 @@ Pinned source: `182bf4290ef2960d4691a7f41315ebf71d5bf85c`. Accepted manual regis
 
 Current public design uses authenticated loopback /api/v1 at default port 8787; the old scaffold defaults to 8765 and allows an extra host environment variable. Body actor data is not Owner identity.
 
-Semantic inspection is limited to [the named investigation locations](../../../../../docs/planning/manual-architecture/investigation.md#code-direction-findings). Downloaded/indexed files are not an exhaustive correctness audit. No installed service, credentials, model route or test result was verified.
+Inspect the current source and environment for the assigned feature. Source presence does not prove installed operation, credentials, model routes or test results.
 
 ## Source references
 
-Use [project structure](../../../../../docs/planning/manual-architecture/project-structure.md) and [draft work map](../../../../../docs/planning/manual-architecture/work-breakdown.md). Current source remains in place. Planned output paths and tests are not implemented capabilities. Detailed allocations and verification commands are in the linked packet records. Catalog-bound QA plans remain preparation work; the full architecture breakdown is not Owner-confirmed.
+Use [the development outcomes](../../../../../plan/outcomes.md) and [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md). Plan the next connected feature against actual code. The feature owner saves packet notes within its feature plan; no upfront packet inventory is authoritative.
 
 ## Knowledge gaps
 

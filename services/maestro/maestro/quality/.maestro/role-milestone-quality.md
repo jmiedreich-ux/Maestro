@@ -18,11 +18,11 @@ Work only after separately authorized implementation, within its route, paths, d
 
 ## Source area
 
-Intended area: `services/maestro/maestro/quality/`. Current related source: No implementation of the full current QA contract is established by the indexed source tree; deterministic check helpers require separate assessment. No product module has been moved by this role file. Proposed moves and shared ownership are in [project structure](../../../../../docs/planning/manual-architecture/project-structure.md).
+Intended area: `services/maestro/maestro/quality/`. Current related source: No implementation of the full current QA contract is established by the indexed source tree; deterministic check helpers require separate assessment. No product module has been moved by this role file. Proposed moves and shared ownership are in [development outcomes](../../../../../plan/outcomes.md).
 
 ### Read first
 
-Read the exact assigned source/confirmed plan, applicable architecture section, [investigation](../../../../../docs/planning/manual-architecture/investigation.md), [draft work map](../../../../../docs/planning/manual-architecture/work-breakdown.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
+Read the exact assigned source/confirmed plan, applicable architecture section, [current development outcomes](../../../../../plan/outcomes.md), [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
 
 ## Inputs and outputs
 
