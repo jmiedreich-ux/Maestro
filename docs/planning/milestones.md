@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: apply shared process definitions
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; code merged and installed at `ae62ddd`, outcome tagged `passed/apply-shared-process-definitions`.** The installed service had no schema bundles and never read the process sections; it now ships both bundles (added by the release upgrade), validates the registration and architecture sections, reports them to the Owner, holds an invalid process alone, saves the definition with each activity and gives assignments their limits from it. Proved with a real Codex run (45-second limit from the definition, timed out) and a real Claude Code run (1800 seconds, 2 recoveries), an edit between activity starts, and a missing and changed bundle. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) (outputs, review, confirmation, Owner limit decisions) wait for the registration and architecture outcomes. Feature: [Apply process definitions in the installed service](features/apply-process-definitions.md).
+
 ## Closed checkpoint: run and recover assigned agents
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; code merged at `fc37e03` and installed (tag `passed/stop-agent-runs-completely`), outcome tagged `passed/run-and-recover-assigned-agents`.** On the installed service a real Codex architect and a real Claude Code reviewer ran, saved and validated results; an invalid review was rejected and recovered once; a real stop, a timeout and a killed service all ended with the agent's processes and system unit gone and no duplicate run. Stopping first left the agent's system unit running; that was fixed. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) (context continuation, usage readings, late-result injection, reboot) are in the Result column. Feature: [Run and record assigned agents in the service](features/run-agents-from-the-service.md).
