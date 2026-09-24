@@ -18,13 +18,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from maestro.agents.architecture_contract import RESPONSE_SCHEMA
+from maestro.agents.architecture_contract import RESPONSE_SCHEMA, REVIEW_RESPONSE_SCHEMA
 from maestro.agents.session_state import SessionUse
 from maestro.agents.transport import AgentAssignment, _findings, _questions
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_json
 
 from . import architecture_breakdown as breakdown_module
 from . import architecture_records as records_module
+from . import architecture_review as review_module
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ConversationRecord, FindingRecord, QuestionRecord
 from .agent_runs import AgentRunError, AgentRunService, RunBuild
 from .architecture_records import FoundationError
@@ -192,8 +193,52 @@ ARCHITECTURE_MIGRATION_2 = DomainMigration(
     ),
 )
 
-_OPEN_STATES = ("architect", "architect_waiting", "publishing", "saved", "paused", "cancelling")
-_WORKING_STATES = ("architect", "publishing", "cancelling")
+ARCHITECTURE_MIGRATION_3 = DomainMigration(
+    domain="service_architecture",
+    version=3,
+    identity="service-architecture-v3-review-confirmation",
+    statements=(
+        "ALTER TABLE service_architectures ADD COLUMN confirmed_ref_json TEXT",
+        "ALTER TABLE service_architectures ADD COLUMN confirmation_json TEXT",
+        """
+        CREATE TABLE service_architecture_reviews(
+            activity_id TEXT NOT NULL REFERENCES service_architectures(activity_id),
+            review_round INTEGER NOT NULL,
+            assignment_id TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            outcome TEXT NOT NULL CHECK(outcome IN ('APPROVE', 'REQUEST_CHANGES')),
+            summary TEXT NOT NULL,
+            findings_json TEXT NOT NULL,
+            identities_json TEXT NOT NULL,
+            reviewed_ref_json TEXT NOT NULL,
+            published_json TEXT,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY(activity_id, review_round)
+        )
+        """,
+        """
+        CREATE TABLE service_architecture_publications_3(
+            operation_id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL REFERENCES service_architectures(activity_id),
+            kind TEXT NOT NULL CHECK(kind IN ('specialists', 'foundations', 'index', 'breakdown', 'review', 'confirmation')),
+            repository TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            files_json TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('prepared', 'writing', 'verified', 'applied', 'paused')),
+            commit_sha TEXT,
+            detail TEXT,
+            profile_json TEXT NOT NULL
+        )
+        """,
+        "INSERT INTO service_architecture_publications_3 SELECT * FROM service_architecture_publications",
+        "DROP TABLE service_architecture_publications",
+        "ALTER TABLE service_architecture_publications_3 RENAME TO service_architecture_publications",
+    ),
+)
+
+_OPEN_STATES = ("architect", "architect_waiting", "publishing", "saved", "reviewer", "review_publishing", "ready", "limit_paused", "confirming", "paused", "cancelling")
+_WORKING_STATES = ("architect", "publishing", "reviewer", "review_publishing", "confirming", "cancelling")
+_PUBLISHING_STATES = ("publishing", "review_publishing", "confirming")
 _SELECTION = ("tool", "model_id")
 _LOST_SESSION_CODES = frozenset({"identity_unverified"})
 
@@ -226,7 +271,27 @@ _BREAKDOWN_TASK = """You are the Maestro Project Architect. The foundations stag
 9. Compute the SHA-256 of the file with sha256sum and list it in `outputs` as {{"path":"output/breakdown.json","sha256":"<digest>","version":1}}. result is completed; failure is null; input_manifest, reviewed_set and review_outcome are null; allocations is [].
 {continuation} Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. findings may be [] because your findings are already saved. Return only the structured response."""
 
+_AMENDMENT = "\nThis is an amendment pass. The independent reviewer requested changes: input/review-findings.json lists the findings, each naming the affected records. Address every blocking finding that is justified; if you disagree with one, record why in decisions rather than ignoring it. input/current-breakdown.json is your last authored breakdown.json. Write the complete amended output/breakdown.json and keep every local key stable, so records the findings do not touch stay unchanged. Change nothing else."
+
+_REVIEW_TASK = """You are the independent Fidelity Reviewer for the architecture loop. Check the architect's investigation, project structure and work breakdown against the confirmed project outcomes and the recorded decisions. You did not write them and you cannot change them. Work only from this assignment, the files under input/, and the product source under source/ (fixed at commit {commit}). Never modify source/ or input/; write nothing under output/.
+
+1. Read input/registration-summary.json, input/outcomes.json and input/registration/ (the confirmed outcomes), input/decisions.json, then input/reviewed/index.json, which lists every record you review (id, subject, version, file, sha256) and the files beside it. input/reviewed-set.json identifies the exact set.
+2. Check that: every confirmed outcome has development-milestone and work-packet coverage; each packet has bounded scope, an expected result and clear completion criteria; dependencies, integration points and parallel opportunities are explicit and consistent; existing-code decisions have supporting findings and are reflected in the work; setup and essential connections are included so the combined result is usable; project structure, specialist guidance and architectural quality decisions agree with the breakdown. Check claims that cite the source against source/.
+3. This is not a search for improvements. A blocking finding must name a concrete omission, contradiction or defect that prevents an agreed outcome or violates a requirement. Wording preferences, alternative designs and optional improvements are not blocking; a real limitation the Owner should know about is non_blocking. Give every finding a unique local_key, the affected records in affected_items ({{"id","subject","version","path"}}) and the requested correction.
+4. Return review_outcome APPROVE only when there is no blocking finding and no open question; otherwise REQUEST_CHANGES with at least one blocking finding. Copy reviewed_set exactly from input/reviewed-set.json. result is completed, outputs is [], input_manifest is null and allocations is [].{later}
+Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. Return only the structured response."""
+
+_REVIEW_LATER = " This is a follow-up review: input/prior-findings.json holds the earlier findings and input/amendment.json lists the records the architect rewrote. Recheck the earlier findings and what the amendment changed; do not reopen unchanged reviewed work."
+
 _BREAKDOWN_CONTINUATION = "This session continues your earlier investigation: your conversation history is restored. Use it; do not repeat the investigation. input/foundations/ holds what you published."
+
+
+def shared_owner_decision(registration: Any, architecture: "ArchitectureService") -> OperationHandler:
+    """One ``owner.decision`` operation serves registration and the architecture loop; the activity says which one owns it."""
+    def prepare(request: RequestLike) -> PreparedOperation:
+        owner = architecture if architecture.owns(str(request.activity_id)) else registration
+        return owner.prepare_owner_decision(request)
+    return OperationHandler("owner.decision", prepare)
 
 
 class ArchitectureRejection(RequestRejection):
@@ -275,12 +340,14 @@ class ArchitectureService:
         self._trees: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
         database.registry.register(ARCHITECTURE_MIGRATION)
         database.registry.register(ARCHITECTURE_MIGRATION_2)
+        database.registry.register(ARCHITECTURE_MIGRATION_3)
         database.initialize()
 
     @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
         return (
             OperationHandler("architecture.start", self.prepare_start),
+            OperationHandler("architecture.confirm", self.prepare_confirm),
             OperationHandler("architecture.cancel", self.prepare_cancel),
             OperationHandler("architecture.retry", self.prepare_retry),
         )
@@ -457,8 +524,10 @@ class ArchitectureService:
             current = self._row(transaction, "SELECT version FROM entity_versions WHERE entity_id = ?", (activity_id,))
             if current is not None and int(current["version"]) != request.expected_version:
                 raise RequestRejection(409, "stale_version", "the activity changed since it was displayed", fields={"activity_version": int(current["version"])})
-            if row["state"] in {"cancelling", "cancelled"}:
+            if row["state"] in {"cancelling", "cancelled", "completed"}:
                 raise RequestRejection(409, "architecture_ended", "the architecture activity has ended or is already being cancelled", fields={"state": row["state"]})
+            if row["state"] == "confirming":
+                raise RequestRejection(409, "confirmation_pending", "the Owner's confirmation is already saved and is being published; it cannot be cancelled", fields={"state": row["state"]})
             pending = json.loads(row["pending_json"] or "{}")
             pending["cancel_request_id"] = request.request_id
             pending["cancel_reason"] = reason.strip()[:300]
@@ -505,7 +574,7 @@ class ArchitectureService:
                 label = "the publication"
             pending.pop("paused", None)
             transaction.execute("UPDATE service_architectures SET state = ?, pending_json = ?, note = NULL WHERE activity_id = ?", (paused["from"], canonical_json(pending), activity_id))
-            self._activity(transaction, activity_id, "investigating" if paused["from"] == "architect" else "publishing", f"Retry accepted; {label} is being resumed (intervention: {intervention.strip()[:200]})", (), version=next_version)
+            self._activity(transaction, activity_id, {"architect": "investigating", "reviewer": "reviewing"}.get(paused["from"], "publishing"), f"Retry accepted; {label} is being resumed (intervention: {intervention.strip()[:200]})", (), version=next_version)
             self._say(transaction, row["project_id"], activity_id, f"Retry accepted for {label}. Intervention recorded: {intervention.strip()[:300]}. The automatic recovery budget is unchanged.")
             return OperationResult(data={"activity_id": activity_id, "message": f"retry accepted; {label} resumes from its last verified step"}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
 
@@ -520,6 +589,7 @@ class ArchitectureService:
         except RecipientDeliveryInterrupted:
             log.warning("an answer delivery was interrupted and will be retried", exc_info=True)
         self._begin_breakdowns()
+        self._begin_reviews()
         with self.database.read_connection() as connection:
             ids = [str(r[0]) for r in connection.execute(
                 f"SELECT activity_id FROM service_architectures WHERE state IN ({','.join('?' for _ in _WORKING_STATES)}) ORDER BY created_at", _WORKING_STATES)]
@@ -564,6 +634,12 @@ class ArchitectureService:
             self._advance_agent(row)
         elif row["state"] == "publishing":
             self._advance_publish(row)
+        elif row["state"] == "reviewer":
+            self._advance_reviewer(row)
+        elif row["state"] == "review_publishing":
+            self._advance_publish_review(row)
+        elif row["state"] == "confirming":
+            self._advance_confirm(row)
 
     def _pause_on_error(self, activity_id: str, error: Exception) -> None:
         transient = isinstance(error, DestinationError) and (
@@ -680,6 +756,8 @@ class ArchitectureService:
         if stage == "breakdown":
             catalog = self._qa_snapshot(row)
             inputs.update(self._breakdown_inputs(row, destination, catalog))
+            if pending.get("amend"):
+                inputs.update(self._amendment_inputs(row, pending["amend"]))
         decision_version = f"d{row['decision_version']}"
         limits = {"run_timeout_seconds": terms.duration_seconds}
         note = "" if not recovery_note else f" The previous run's output was rejected: {recovery_note}. Fix exactly that."
@@ -687,7 +765,7 @@ class ArchitectureService:
         milestones = records_module.milestone_ids(outcomes)
         if stage == "breakdown":
             continuation = replacement_note or (_BREAKDOWN_CONTINUATION if session.provider_session_id is not None else "")
-            task = _BREAKDOWN_TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation, max_paths=breakdown_module.MAX_PACKET_PATHS, max_scope=breakdown_module.MAX_SCOPE_ITEMS) + note
+            task = _BREAKDOWN_TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation, max_paths=breakdown_module.MAX_PACKET_PATHS, max_scope=breakdown_module.MAX_SCOPE_ITEMS) + (_AMENDMENT if pending.get("amend") else "") + note
         else:
             continuation = replacement_note or (_CONTINUATION if resuming else "")
             task = _TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation) + note
@@ -815,6 +893,7 @@ class ArchitectureService:
             fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
             pending = json.loads(fresh["pending_json"] or "{}")
             pending.pop("architect_run", None)
+            pending.pop("amend", None)
             identities = self._save_findings(tx, fresh, response.get("findings", []), f"{row['activity_id']}-arch-{pass_number}")
             checked["finding_identities"] = {k: list(v) for k, v in identities.items()}
             column = "foundation_json" if row["stage"] == "foundations" else "breakdown_json"
@@ -863,7 +942,7 @@ class ArchitectureService:
         specialists = records_module.validate_specialist_files(structure, files)
         return {"investigation": investigation, "structure": structure, "specialists": specialists, "findings": raw_findings}
 
-    def _save_findings(self, tx: Transaction, row: Mapping[str, Any], findings: list[Mapping[str, Any]], marker: str) -> dict[str, tuple[str, int]]:
+    def _save_findings(self, tx: Transaction, row: Mapping[str, Any], findings: list[Mapping[str, Any]], marker: str, origin: str = "Architect") -> dict[str, tuple[str, int]]:
         """Bind each response-local key to one stable identity; a repeat keeps it and raises the version only when content changes."""
         identities: dict[str, tuple[str, int]] = {}
         seq = int(row["finding_seq"])
@@ -876,7 +955,7 @@ class ArchitectureService:
                 seq += 1
                 finding_id, version = f"finding-{seq}", 1
                 tx.execute("INSERT INTO service_architecture_findings VALUES (?, ?, ?, ?, ?)", (row["activity_id"], finding["local_key"], finding_id, version, digest))
-                self.records.create_finding(tx, FindingRecord(f"{row['activity_id']}-{finding_id}", row["project_id"], row["activity_id"], f"Architect: {finding['subject']}", detail, finding["severity"], 1))
+                self.records.create_finding(tx, FindingRecord(f"{row['activity_id']}-{finding_id}", row["project_id"], row["activity_id"], f"{origin}: {finding['subject']}", detail, finding["severity"], 1))
             else:
                 finding_id, version = known["finding_id"], int(known["version"])
                 if known["content_sha256"] != digest:
@@ -884,7 +963,7 @@ class ArchitectureService:
                     tx.execute("UPDATE service_architecture_findings SET version = ?, content_sha256 = ? WHERE activity_id = ? AND local_key = ?", (version, digest, row["activity_id"], finding["local_key"]))
                     current = self._row(tx, "SELECT version FROM service_findings WHERE finding_id = ?", (f"{row['activity_id']}-{finding_id}",))
                     if current is not None:
-                        self.records.update_finding(tx, FindingRecord(f"{row['activity_id']}-{finding_id}", row["project_id"], row["activity_id"], f"Architect: {finding['subject']}", detail, finding["severity"], int(current["version"]) + 1), expected_record_version=int(current["version"]))
+                        self.records.update_finding(tx, FindingRecord(f"{row['activity_id']}-{finding_id}", row["project_id"], row["activity_id"], f"{origin}: {finding['subject']}", detail, finding["severity"], int(current["version"]) + 1), expected_record_version=int(current["version"]))
             identities[finding["local_key"]] = (finding_id, version)
         tx.execute("UPDATE service_architectures SET finding_seq = ? WHERE activity_id = ?", (seq, row["activity_id"]))
         return identities
@@ -1165,12 +1244,425 @@ class ArchitectureService:
             return dict(files)
         return {str(p.relative_to(directory)): p.read_bytes() for p in sorted(directory.rglob("*")) if p.is_file()}
 
+    # -- independent review, amendment and confirmation
+
+    def _reviews(self, activity_id: str) -> list[dict[str, Any]]:
+        return self._rows("SELECT * FROM service_architecture_reviews WHERE activity_id = ? ORDER BY review_round", (activity_id,))
+
+    def _limit(self, row: Mapping[str, Any], pending: Mapping[str, Any] | None = None) -> int:
+        """The snapshotted base limit plus Owner grants: effective review allowance is this minus completed rounds."""
+        pending = json.loads(row["pending_json"] or "{}") if pending is None else pending
+        return self._review_limit(row["activity_id"]) + len(pending.get("grants", []))
+
+    def _cancel_action(self, activity_id: str) -> ActivityAction:
+        return ActivityAction(f"{activity_id}-cancel", "Cancel architecture", "action")
+
+    def _begin_reviews(self) -> None:
+        """A saved breakdown goes to a separate reviewer, in the same activity."""
+        for row in self._rows("SELECT activity_id FROM service_architectures WHERE state = 'saved' AND breakdown_ref_json IS NOT NULL"):
+            with self.database.transaction() as tx:
+                fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
+                if fresh is None or fresh["state"] != "saved" or fresh["breakdown_ref_json"] is None:
+                    continue
+                pending = json.loads(fresh["pending_json"] or "{}")
+                pending.pop("architect_run", None)
+                pending.pop("reviewer_run", None)
+                pending.pop("last_recovery_detail", None)
+                rounds = int(tx.execute("SELECT COUNT(*) FROM service_architecture_reviews WHERE activity_id = ?", (row["activity_id"],)).fetchone()[0]) + 1
+                tx.execute("UPDATE service_architectures SET state = 'reviewer', stage = 'review', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
+                limit = self._limit(fresh, pending)
+                self._activity(tx, row["activity_id"], "reviewing", f"Breakdown saved; a separate reviewer checks it against the confirmed outcomes · review round {rounds} of {limit}", (self._cancel_action(row["activity_id"]),))
+                self._say(tx, fresh["project_id"], row["activity_id"], f"Independent review round {rounds} of {limit} starts: {fresh['reviewer_tool']} {fresh['reviewer_model']} receives the exact published breakdown, foundations and confirmed outcomes.")
+
+    def _advance_reviewer(self, row: Mapping[str, Any]) -> None:
+        if self.runs is None:
+            raise AgentRunError("agents_unavailable", "no agent tools are configured")
+        pending = json.loads(row["pending_json"] or "{}")
+        current = pending.get("reviewer_run")
+        retry = pending.get("retry")
+        if retry and retry.get("kind") == "agent" and current is not None:
+            kept = {k: v for k, v in pending.items() if k not in {"retry", "paused"}}
+            self._start_reviewer(row, {**kept, "reviewer_run": None}, recovery_note="", kind="manual", intervention=retry["intervention"])
+            return
+        if current is None:
+            self._start_reviewer(row, pending)
+            return
+        view = self.runs.poll(current["run_id"])
+        if view.state in {"reserved", "running", "stopping"}:
+            return
+        assignment = self.runs.assignment_state(current["assignment_id"])
+        if view.state == "completed":
+            self._accept_reviewer(row, current)
+            return
+        if assignment["state"] == "needs_recovery":
+            detail = self.runs.view(current["run_id"]).terminal_reason or view.failure_code or "technical_failure"
+            if pending.get("last_recovery_detail") == detail:
+                self._pause(row, f"the same review error came back after a correction: {detail}")
+                return
+            pending["last_recovery_detail"] = detail
+            pending.pop("reviewer_run", None)
+            self._start_reviewer(row, {**pending, "reviewer_run": None}, recovery_note=detail)
+            return
+        if view.state == "cancelled":
+            return
+        self._pause(row, f"reviewer run {view.state}" + (f" ({view.failure_code})" if view.failure_code else "") + (f": {view.terminal_reason}" if view.terminal_reason else ""))
+
+    def _review_inputs(self, row: Mapping[str, Any], destination: GitHubDestination, pending: Mapping[str, Any], rounds: int) -> dict[str, bytes]:
+        outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
+        inputs = self._inputs(row, outcomes, destination, pending)
+        target = json.loads(row["breakdown_ref_json"])
+        manifest_bytes = destination.read_file(row["repository"], target["commit"], target["manifest_path"])
+        if manifest_bytes is None or records_module.sha256(manifest_bytes) != target["manifest_sha256"]:
+            raise FoundationError("the published working manifest no longer matches its recorded hash")
+        manifest = json.loads(manifest_bytes)
+        listed = []
+        for number, ref in enumerate(review_module.reviewed_refs(manifest, target["manifest_path"], target["commit"]), 1):
+            data = destination.read_file(row["repository"], ref["commit"], ref["path"])
+            if data is None or records_module.sha256(data) != ref["sha256"]:
+                raise FoundationError(f"the published record {ref['path']} no longer matches its recorded hash")
+            name = f"{number:02d}-{ref['path'].rsplit('/', 1)[-1]}"
+            inputs[f"reviewed/{name}"] = data
+            listed.append({"id": ref["id"], "subject": ref["subject"], "version": ref["version"], "file": f"input/reviewed/{name}", "sha256": ref["sha256"], "repository_path": ref["path"]})
+        inputs["reviewed/index.json"] = records_module.encode({"records": listed})
+        inputs["reviewed-manifest.json"] = manifest_bytes
+        inputs["reviewed-set.json"] = records_module.encode({k: target[k] for k in ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")})
+        if rounds > 1:
+            earlier = self._reviews(row["activity_id"])
+            inputs["prior-findings.json"] = records_module.encode({"round": earlier[-1]["review_round"], "findings": json.loads(earlier[-1]["findings_json"])})
+            inputs["amendment.json"] = records_module.encode({"rewritten": [{"id": e["id"], "subject": e["subject"], "version": e["version"]} for e in manifest["inventory"]]})
+        return inputs
+
+    def _start_reviewer(self, row: Mapping[str, Any], pending: dict[str, Any], recovery_note: str | None = None, kind: str | None = None, intervention: str = "") -> None:
+        assert self.runs is not None
+        activity_id, project_id = row["activity_id"], row["project_id"]
+        terms = self.definitions.assignment_terms(activity_id, "fidelity_reviewer")
+        rounds = len(self._reviews(activity_id)) + 1
+        assignment_id = f"{activity_id}-revi-{rounds}"
+        tool, model = row["reviewer_tool"], row["reviewer_model"]
+        destination = self._destination(self._profile_of(row))
+        mirror = self.state_dir / "sources" / f"{project_id}.git"
+        destination.fetch_source(row["repository"], row["source_commit"], mirror)
+        inputs = self._review_inputs(row, destination, pending, rounds)
+        outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
+        note = "" if not recovery_note else f" The previous run's output was rejected: {recovery_note}. Fix exactly that."
+        task = _REVIEW_TASK.format(commit=row["source_commit"], later=_REVIEW_LATER if rounds > 1 else "") + note
+        decision_version = f"d{row['decision_version']}"
+
+        def build(run_id: str) -> RunBuild:
+            assignment = AgentAssignment(
+                project_id=project_id, activity_id=activity_id, assignment_id=assignment_id, run_id=run_id, parent_assignment_id=None, role="fidelity_reviewer",
+                role_responsibilities=("Independently check the architect's investigation, project structure and work breakdown against the confirmed outcomes; never redesign or invent requirements.",),
+                task=task, source_commit=row["source_commit"], decision_version=decision_version,
+                instructions={
+                    "task_kind": "review", "session_id": f"{assignment_id}-session", "document_paths": [row["overview_path"]], "outcome_ids": [o["id"] for o in outcomes],
+                    "recorded_decisions": ["input/decisions.json"], "answers": ["input/answers.json"], "output_rules": {"exact": [], "patterns": []}, "replacement_session": False,
+                },
+                permitted_actions=("read_source", "write_output"), writable_locations=("output", "scratch"), limits={"run_timeout_seconds": terms.duration_seconds},
+                clarification_conditions=("Required information to judge the breakdown is absent or contradictory.",), response_schema=REVIEW_RESPONSE_SCHEMA, contract="architecture",
+            )
+            return RunBuild(assignment, mirror, inputs)
+
+        if not self._assignment_exists(assignment_id):
+            self.runs.create_assignment_from_terms(terms, assignment_id, project_id, activity_id, tool, model)
+        run_id = f"{assignment_id}-run{self.runs.run_count(assignment_id) + 1}"
+        kind = kind or ("initial" if recovery_note is None else "recovery")
+        before = self.runs.run_count(assignment_id)
+        try:
+            self.runs.start_run(assignment_id, run_id, kind, build, intervention=intervention)
+        except Exception:
+            if self.runs.run_count(assignment_id) > before:
+                with self.database.transaction() as tx:
+                    pending["reviewer_run"] = {"assignment_id": assignment_id, "run_id": run_id}
+                    tx.execute("UPDATE service_architectures SET pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
+            raise
+        pending["reviewer_run"] = {"assignment_id": assignment_id, "run_id": run_id}
+        if recovery_note is None or kind == "manual":
+            pending.pop("last_recovery_detail", None)
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_architectures SET pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
+            self._activity(tx, activity_id, "reviewing", f"Independent reviewer ({tool} {model}) is checking the breakdown · review round {rounds} of {self._limit(row, pending)}")
+            self._say(tx, project_id, activity_id, f"Independent reviewer started: {tool} {model}, assignment {assignment_id}, run {run_id}.")
+
+    def _accept_reviewer(self, row: Mapping[str, Any], current: Mapping[str, str]) -> None:
+        assert self.runs is not None
+        response = self.runs.response(current["run_id"]) or {}
+        target = json.loads(row["breakdown_ref_json"])
+        try:
+            if response.get("result") != "completed":
+                raise FoundationError("the reviewer must return a completed review, not questions")
+            outcome = response["review_outcome"]
+            review_module.check_reviewed_set(response["reviewed_set"], target)
+            keyed = [{**f, "local_key": f"review-{f['local_key']}"} for f in response.get("findings", [])]
+            for finding in keyed:
+                for ref in finding["source_refs"]:
+                    if not isinstance(ref.get("commit"), str) or len(ref["commit"]) != 40:
+                        raise FoundationError(f"finding {finding['local_key']} cites a source reference without a full commit")
+            normalized = [_normalize_finding(f) for f in keyed]
+        except (KeyError, TypeError, ValueError, FoundationError) as error:
+            self.runs.reject_result(current["run_id"], "malformed_output", f"review invalid: {error}")
+            return
+        with self.database.transaction() as tx:
+            fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
+            pending = json.loads(fresh["pending_json"] or "{}")
+            pending.pop("reviewer_run", None)
+            pending.pop("last_recovery_detail", None)
+            rounds = int(tx.execute("SELECT COUNT(*) FROM service_architecture_reviews WHERE activity_id = ?", (row["activity_id"],)).fetchone()[0]) + 1
+            identities = self._save_findings(tx, fresh, normalized, f"{row['activity_id']}-revi-{rounds}", "Reviewer")
+            tx.execute(
+                "INSERT INTO service_architecture_reviews(activity_id, review_round, assignment_id, run_id, outcome, summary, findings_json, identities_json, reviewed_ref_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (row["activity_id"], rounds, current["assignment_id"], current["run_id"], outcome, str(response.get("summary", "")), json.dumps(normalized, sort_keys=True, separators=(",", ":")),
+                 canonical_json({k: list(v) for k, v in identities.items()}), canonical_json(target), _now()),
+            )
+            pending["accepted_review"] = rounds
+            tx.execute("UPDATE service_architectures SET state = 'review_publishing', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
+            blocking = sum(1 for f in normalized if f["severity"] == "blocking")
+            self._activity(tx, row["activity_id"], "publishing", f"Review round {rounds} complete ({outcome}); publishing the review record to GitHub")
+            self._say(tx, row["project_id"], row["activity_id"], f"Independent review round {rounds} of {self._limit(fresh, pending)}: {outcome}. {len(normalized)} finding(s), {blocking} blocking. {response.get('summary', '')}".strip())
+
+    def _check_review_schema(self, record: Mapping[str, Any], manifest: Mapping[str, Any], kind: str = "review") -> None:
+        if self.breakdown_schema is None:
+            return
+        import jsonschema
+
+        for name, definition, document in ((kind, kind, record), ("manifest", "manifest", manifest)):
+            schema = {"$ref": f"#/$defs/{definition}", "$defs": self.breakdown_schema["$defs"]}
+            try:
+                jsonschema.Draft202012Validator(schema).validate(document)
+            except jsonschema.ValidationError as error:
+                raise FoundationError(f"the saved {name} does not satisfy the architecture breakdown schema: {error.message[:200]} at {'/'.join(str(p) for p in error.absolute_path)}") from error
+
+    def _clear_publication_retry(self, activity_id: str, pending: Mapping[str, Any]) -> None:
+        if pending.get("retry", {}).get("kind") == "publication":
+            with self.database.transaction() as tx:
+                fresh = self._row(tx, "SELECT pending_json FROM service_architectures WHERE activity_id = ?", (activity_id,))
+                kept = json.loads(fresh["pending_json"] or "{}")
+                kept.pop("retry", None)
+                tx.execute("UPDATE service_architectures SET pending_json = ? WHERE activity_id = ?", (canonical_json(kept), activity_id))
+
+    def _publish_record_set(self, row: Mapping[str, Any], destination: GitHubDestination, target: Mapping[str, Any], record: Mapping[str, Any], relative: str, stage: str, record_type: str,
+                            operation: str, message: str, *, confirmed: bool) -> tuple[dict[str, Any], dict[str, Any], str]:
+        """Add one review or confirmation record to a published version: journaled commit of the record and manifest, then a separate index commit."""
+        activity_id = row["activity_id"]
+        manifest_bytes = destination.read_file(row["repository"], target["commit"], target["manifest_path"])
+        if manifest_bytes is None or records_module.sha256(manifest_bytes) != target["manifest_sha256"]:
+            raise FoundationError("the published working manifest no longer matches its recorded hash")
+        manifest = json.loads(manifest_bytes)
+        updated, data = review_module.with_record(manifest, record_type=record_type, record=record, relative=relative, stage=stage)
+        base = target["manifest_path"].rsplit("/", 1)[0]
+        files = {f"{base}/{relative}": data, target["manifest_path"]: records_module.encode(updated)}
+        self._check_review_schema(record, updated, record_type)
+        commit = self._publish_stage(row, destination, f"{activity_id}-{operation}", record_type, files, message, frozenset({target["manifest_path"]}))
+        reference = records_module.set_ref(commit, updated, target["manifest_path"], files[target["manifest_path"]])
+        index_path = f"{records_module.ROOT}/index.json"
+        previous_raw = destination.read_file(row["repository"], commit, index_path)
+        index = records_module.discovery_index(row["project_id"], json.loads(previous_raw) if previous_raw else None, int(target["version"]), commit, target["manifest_path"], reference["manifest_sha256"], reference["reviewed_content_hash"])
+        if confirmed:
+            index = {**index, "confirmed_ref": reference}
+        index_commit = self._publish_stage(row, destination, f"{activity_id}-{operation}-index", "index", {index_path: records_module.encode(index)},
+                                           f"Update the architecture discovery index ({record_type}, version {target['version']})", frozenset({index_path}))
+        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"]}
+        record_ref = {"id": record["id"], "subject": record["subject"], "version": record["version"], "path": f"{base}/{relative}", "sha256": records_module.sha256(data), "commit": commit}
+        return final, record_ref, commit
+
+    def _advance_publish_review(self, row: Mapping[str, Any]) -> None:
+        activity_id = row["activity_id"]
+        destination = self._destination(self._profile_of(row))
+        pending = json.loads(row["pending_json"] or "{}")
+        self._clear_publication_retry(activity_id, pending)
+        rounds = int(pending["accepted_review"])
+        review = self._read("SELECT * FROM service_architecture_reviews WHERE activity_id = ? AND review_round = ?", (activity_id, rounds))
+        assert review is not None
+        target = json.loads(review["reviewed_ref_json"])
+        manifest_bytes = destination.read_file(row["repository"], target["commit"], target["manifest_path"])
+        if manifest_bytes is None:
+            raise FoundationError("the published working manifest cannot be read")
+        manifest = json.loads(manifest_bytes)
+        identities = {k: (v[0], v[1]) for k, v in json.loads(review["identities_json"]).items()}
+        record = review_module.build_review(
+            project_id=row["project_id"], activity_id=activity_id, number=rounds, registration_ref=json.loads(row["registration_json"]), source_commit=row["source_commit"],
+            assignment_id=review["assignment_id"], run_id=review["run_id"], working=target, manifest=manifest, outcome=review["outcome"],
+            findings=json.loads(review["findings_json"]), identities=identities,
+        )
+        stage = "reviewed" if review["outcome"] == "APPROVE" else manifest["stage"]
+        final, record_ref, commit = self._publish_record_set(row, destination, target, record, f"reviews/{record['id']}.json", stage, "review", f"review-{rounds}",
+                                                             f"Publish independent review {rounds} (architecture version {target['version']})", confirmed=False)
+        findings = json.loads(review["findings_json"])
+        blocking = sum(1 for f in findings if f["severity"] == "blocking")
+        with self.database.transaction() as tx:
+            fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (activity_id,))
+            pending = json.loads(fresh["pending_json"] or "{}")
+            pending.pop("accepted_review", None)
+            tx.execute("UPDATE service_architecture_reviews SET published_json = ? WHERE activity_id = ? AND review_round = ?", (canonical_json({"set": final, "record": record_ref}), activity_id, rounds))
+            common = ("breakdown_ref_json = ?", canonical_json(final))
+            limit = self._limit(fresh, pending)
+            if review["outcome"] == "APPROVE":
+                tx.execute(f"UPDATE service_architectures SET state = 'ready', {common[0]}, note = NULL, pending_json = ? WHERE activity_id = ?", (common[1], canonical_json(pending), activity_id))
+                self._activity(tx, activity_id, "waiting_for_confirmation", f"Independent review passed (round {rounds} of {limit}); version {final['version']} awaits your confirmation",
+                               (ActivityAction(f"{activity_id}-confirm", f"Confirm breakdown version {final['version']}", "decision"), self._cancel_action(activity_id)))
+                self._say(tx, row["project_id"], activity_id, f"Review record published ({commit[:12]}). The reviewer approved version {final['version']}; confirm it exactly, or cancel. Nothing is scheduled and execution is not started.")
+            elif rounds >= limit:
+                pending["limit"] = {"assignment_id": f"{activity_id}-revi-{rounds + 1}", "reached_at_round": rounds}
+                tx.execute(f"UPDATE service_architectures SET state = 'limit_paused', {common[0]}, pending_json = ? WHERE activity_id = ?", (common[1], canonical_json(pending), activity_id))
+                self._activity(tx, activity_id, "paused", f"The review limit was reached with {blocking} unresolved blocking finding(s) after round {rounds} of {limit}. Grant one extra review or leave it paused.",
+                               (ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"), ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"), self._cancel_action(activity_id)))
+                self._say(tx, row["project_id"], activity_id, f"Review limit reached: round {rounds} of {limit} still has {blocking} blocking finding(s). The activity waits for your decision; nothing was approved.")
+            else:
+                pending["amend"] = {"review_round": rounds}
+                pending["resume_after_answers"] = True
+                pending.pop("architect_run", None)
+                tx.execute(f"UPDATE service_architectures SET state = 'architect', stage = 'breakdown', {common[0]}, pending_json = ? WHERE activity_id = ?", (common[1], canonical_json(pending), activity_id))
+                self._activity(tx, activity_id, "investigating", f"The reviewer requested changes ({blocking} blocking finding(s), round {rounds} of {limit}); the architect amends the breakdown in the same session",
+                               (self._cancel_action(activity_id),))
+                self._say(tx, row["project_id"], activity_id, f"Review record published ({commit[:12]}). The architect receives the findings and amends the breakdown; unchanged records stay as they are.")
+            self._emit(tx, row["project_id"], activity_id, "architecture.review_recorded", {"activity_id": activity_id, "review_round": rounds, "outcome": review["outcome"], "working_ref": final})
+
+    def _amendment_inputs(self, row: Mapping[str, Any], amend: Mapping[str, Any]) -> dict[str, bytes]:
+        last = self._reviews(row["activity_id"])[-1]
+        current = self._read("SELECT content FROM service_architecture_outputs WHERE activity_id = ? AND path = 'breakdown.json' ORDER BY pass_number DESC LIMIT 1", (row["activity_id"],))
+        inputs = {"review-findings.json": records_module.encode({"review_round": last["review_round"], "outcome": last["outcome"], "findings": json.loads(last["findings_json"])})}
+        if current is not None:
+            inputs["current-breakdown.json"] = bytes(current["content"])
+        return inputs
+
+    # -- Owner decision at the review limit
+
+    def prepare_owner_decision(self, request: RequestLike) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None or request.expected_version is None:
+            raise ValueError("owner.decision needs project, activity and the displayed activity version")
+        payload = dict(request.payload)
+        if set(payload) != {"target", "choice", "assignment_id"}:
+            raise ValueError("owner.decision payload must be target, choice and assignment_id")
+        if payload["target"] != "fidelity_review" or payload["choice"] not in {"grant_one", "remain_paused"}:
+            raise ValueError("the architecture loop accepts only target fidelity_review with choice grant_one or remain_paused")
+        activity_id = request.activity_id
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            row = self._row(transaction, "SELECT * FROM service_architectures WHERE activity_id = ? AND project_id = ?", (activity_id, request.project_id))
+            if row is None:
+                raise RequestRejection(404, "architecture_not_found", "the architecture activity was not found", fields={"activity_id": activity_id})
+            current = self._row(transaction, "SELECT version FROM entity_versions WHERE entity_id = ?", (activity_id,))
+            if current is not None and int(current["version"]) != request.expected_version:
+                raise RequestRejection(409, "stale_version", "the activity changed since it was displayed", fields={"activity_version": int(current["version"])})
+            if row["state"] != "limit_paused":
+                raise RequestRejection(409, "no_decision_pending", "no review-limit decision is pending", fields={"state": row["state"]})
+            pending = json.loads(row["pending_json"] or "{}")
+            if payload["assignment_id"] != pending["limit"]["assignment_id"]:
+                raise RequestRejection(409, "stale_decision", "the decision names a different review assignment", fields={"assignment_id": pending["limit"]["assignment_id"]})
+            grants = list(pending.get("grants", []))
+            rounds = int(transaction.execute("SELECT COUNT(*) FROM service_architecture_reviews WHERE activity_id = ?", (activity_id,)).fetchone()[0])
+            base = self._review_limit(activity_id)
+            if payload["choice"] == "remain_paused":
+                text = f"Owner chose to keep the architecture paused at {rounds} of {base + len(grants)} review rounds. Nothing was approved and no count changed."
+                self._activity(transaction, activity_id, None, text, (ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"),
+                                                                  ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"), self._cancel_action(activity_id)), version=next_version)
+            else:
+                if rounds < base + len(grants):
+                    raise RequestRejection(409, "grant_recorded", "an extra attempt was already granted and is not yet used", fields={"assignment_id": payload["assignment_id"]})
+                self.definitions.policy.grant(transaction, activity_id, "fidelity_reviews")
+                grants.append({"request_id": request.request_id, "assignment_id": payload["assignment_id"], "granted_at": _now()})
+                pending["grants"] = grants
+                pending.pop("limit", None)
+                pending["amend"] = {"review_round": rounds}
+                pending["resume_after_answers"] = True
+                pending.pop("architect_run", None)
+                transaction.execute("UPDATE service_architectures SET state = 'architect', stage = 'breakdown', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
+                text = f"Owner granted one extra review attempt (round {rounds + 1} of {base + len(grants)}); the base limit of {base} is unchanged. It cannot force approval. The architect amends first."
+                self._activity(transaction, activity_id, "investigating", text, (self._cancel_action(activity_id),), version=next_version)
+            self._say(transaction, row["project_id"], activity_id, text)
+            return OperationResult(data={"activity_id": activity_id, "decision": payload["choice"], "review": {"used": rounds, "limit": base + len(grants)}, "message": text}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
+
+        return PreparedOperation(activity_id, "architecture.limit_decision_recorded", {"activity_id": activity_id}, apply)
+
+    # -- confirmation
+
+    def prepare_confirm(self, request: RequestLike) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None or request.expected_version is None:
+            raise ValueError("architecture.confirm needs project, activity and the displayed activity version")
+        payload = dict(request.payload)
+        if set(payload) != {"expected_working_ref", "accepted_limitations"}:
+            raise ValueError("architecture.confirm payload must be expected_working_ref and accepted_limitations")
+        expected = payload["expected_working_ref"]
+        if not isinstance(expected, dict) or set(expected) != {"version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash"}:
+            raise ValueError("expected_working_ref must name the exact version, commit, manifest path, manifest hash and reviewed content hash")
+        accepted = payload["accepted_limitations"]
+        if not isinstance(accepted, list) or any(not isinstance(a, dict) for a in accepted):
+            raise ValueError("accepted_limitations must be a list of finding references")
+        activity_id = request.activity_id
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            row = self._row(transaction, "SELECT * FROM service_architectures WHERE activity_id = ? AND project_id = ?", (activity_id, request.project_id))
+            if row is None:
+                raise RequestRejection(404, "architecture_not_found", "the architecture activity was not found", fields={"activity_id": activity_id})
+            pending = json.loads(row["pending_json"] or "{}")
+            if row["state"] == "confirming" and pending.get("confirm", {}).get("request_id") == request.request_id:
+                return OperationResult(data={"activity_id": activity_id, "message": "confirmation already accepted"}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
+            current = self._row(transaction, "SELECT version FROM entity_versions WHERE entity_id = ?", (activity_id,))
+            working = json.loads(row["breakdown_ref_json"]) if row["breakdown_ref_json"] else None
+            current_ref = None if working is None else {k: working[k] for k in expected}
+            if row["state"] != "ready" or working is None:
+                raise RequestRejection(409, "not_ready_for_confirmation", "the breakdown is not reviewed and waiting for confirmation", fields={"state": row["state"], "working_ref": current_ref})
+            if expected != current_ref:
+                raise RequestRejection(409, "working_ref_changed", "the working version changed since it was displayed; review the current version", fields={"working_ref": current_ref})
+            if current is not None and int(current["version"]) != request.expected_version:
+                raise RequestRejection(409, "stale_version", "the activity changed since it was displayed", fields={"activity_version": int(current["version"]), "working_ref": current_ref})
+            columns = ("review_round", "outcome", "findings_json", "identities_json", "reviewed_ref_json", "published_json")
+            found = transaction.execute(f"SELECT {', '.join(columns)} FROM service_architecture_reviews WHERE activity_id = ? ORDER BY review_round DESC LIMIT 1", (activity_id,)).fetchone()
+            last = None if found is None else dict(zip(columns, found))
+            if last is None or last["outcome"] != "APPROVE" or json.loads(last["reviewed_ref_json"])["reviewed_content_hash"] != working["reviewed_content_hash"] or last["published_json"] is None:
+                raise RequestRejection(409, "review_coverage_invalid", "no valid passing review covers this exact version", fields={"working_ref": current_ref})
+            published = json.loads(last["published_json"])
+            identities = json.loads(last["identities_json"])
+            limitations = {}
+            for finding in json.loads(last["findings_json"]):
+                identifier, version = identities[finding["local_key"]]
+                limitations[identifier] = {"id": identifier, "subject": finding["subject"], "version": version, "container": published["record"]}
+            for entry in accepted:
+                if limitations.get(entry.get("id")) != entry:
+                    raise RequestRejection(409, "unknown_limitation", "an accepted limitation does not match a finding of the passing review", fields={"limitation": entry.get("id")})
+            pending["confirm"] = {"request_id": request.request_id, "expected_working_ref": expected, "accepted_limitations": accepted, "requested_at": _now(),
+                                  "review_ref": published["record"], "owner_id": self.owner_id}
+            transaction.execute("UPDATE service_architectures SET state = 'confirming', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
+            self._activity(transaction, activity_id, "confirming", f"Confirmation of version {expected['version']} saved; publishing the receipt to GitHub", (), version=next_version)
+            self._say(transaction, row["project_id"], activity_id, f"Your confirmation of exactly version {expected['version']} (manifest {expected['manifest_sha256'][:12]}) is saved and is being published. Execution is not started.")
+            return OperationResult(data={"activity_id": activity_id, "message": "confirmation accepted; the receipt is being published before the loop completes"}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
+
+        return PreparedOperation(activity_id, "architecture.confirmation_requested", {"activity_id": activity_id}, apply)
+
+    def _advance_confirm(self, row: Mapping[str, Any]) -> None:
+        activity_id = row["activity_id"]
+        destination = self._destination(self._profile_of(row))
+        pending = json.loads(row["pending_json"] or "{}")
+        self._clear_publication_retry(activity_id, pending)
+        confirm = pending["confirm"]
+        target = confirm["expected_working_ref"]
+        working = json.loads(row["breakdown_ref_json"])
+        if {k: working[k] for k in target} != target:
+            raise FoundationError("the working version changed while a confirmation was pending; this must not happen")
+        record = review_module.build_confirmation(
+            project_id=row["project_id"], activity_id=activity_id, registration_ref=json.loads(row["registration_json"]), source_commit=row["source_commit"],
+            operation_id=f"{activity_id}-confirm", request_id=confirm["request_id"], owner_id=confirm["owner_id"], confirmed_at=confirm["requested_at"],
+            expected=target, accepted=confirm["accepted_limitations"], review_refs=[confirm["review_ref"]],
+        )
+        final, record_ref, commit = self._publish_record_set(row, destination, target, record, "confirmation.json", "confirmed", "confirmation", "confirm-1",
+                                                             f"Confirm architecture breakdown version {target['version']}", confirmed=True)
+        with self.database.transaction() as tx:
+            fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (activity_id,))
+            if fresh["state"] != "confirming":
+                return
+            tx.execute("UPDATE service_architectures SET state = 'completed', confirmed_ref_json = ?, breakdown_ref_json = ?, confirmation_json = ?, note = NULL WHERE activity_id = ?",
+                       (canonical_json(final), canonical_json(final), canonical_json({"record": record_ref, "request_id": confirm["request_id"], "confirmed_at": confirm["requested_at"]}), activity_id))
+            self._activity(tx, activity_id, "completed", f"Confirmed: architecture version {final['version']} at {commit[:12]}. Execution has not been started.", (), ended=True)
+            self.reservations.release(tx, row["project_id"], activity_id)
+            tx.execute("UPDATE service_request_results SET status = 'completed' WHERE request_id = ?", (confirm["request_id"],))
+            self._say(tx, row["project_id"], activity_id, f"Architecture version {final['version']} is confirmed and published ({commit[:12]}, receipt {record_ref['path']}). The loop is complete; nothing was scheduled or started.")
+            self._emit(tx, row["project_id"], activity_id, "architecture.confirmed", {"activity_id": activity_id, "confirmed_ref": final})
+
     # -- cancellation
 
     def _advance_cancel(self, row: Mapping[str, Any]) -> None:
         activity_id = row["activity_id"]
         pending = json.loads(row["pending_json"] or "{}")
-        current = pending.get("architect_run")
+        current = pending.get("architect_run") or pending.get("reviewer_run")
         if self.runs is not None and current is not None:
             view = self.runs.view(current["run_id"])
             if view.state in {"reserved", "running", "stopping"}:
@@ -1228,10 +1720,12 @@ class ArchitectureService:
         paused = None
         if fresh["state"] == "architect" and pending.get("architect_run") is not None:
             paused = {"kind": "agent", "from": "architect", "assignment_id": pending["architect_run"]["assignment_id"], "failed_run_id": pending["architect_run"]["run_id"]}
-        elif fresh["state"] == "publishing":
+        elif fresh["state"] == "reviewer" and pending.get("reviewer_run") is not None:
+            paused = {"kind": "agent", "from": "reviewer", "assignment_id": pending["reviewer_run"]["assignment_id"], "failed_run_id": pending["reviewer_run"]["run_id"]}
+        elif fresh["state"] in _PUBLISHING_STATES:
             op = self._row(tx, "SELECT operation_id FROM service_architecture_publications WHERE activity_id = ? AND state != 'applied' ORDER BY rowid DESC LIMIT 1", (activity_id,))
             if op is not None:
-                paused = {"kind": "publication", "from": "publishing", "operation_id": op["operation_id"]}
+                paused = {"kind": "publication", "from": fresh["state"], "operation_id": op["operation_id"]}
         if paused is None:
             pending.pop("paused", None)
         else:
@@ -1292,37 +1786,78 @@ class ArchitectureService:
         pending = json.loads(row["pending_json"] or "{}")
         version = self._read("SELECT version FROM entity_versions WHERE entity_id = ?", (activity_id,))
         foundations = None if row["foundations_ref_json"] is None else json.loads(row["foundations_ref_json"])
-        state = {"architect": "running", "architect_waiting": "waiting_for_answers", "publishing": "publishing", "saved": "running",
+        state = {"architect": "running", "architect_waiting": "waiting_for_answers", "publishing": "publishing", "saved": "running", "reviewer": "running", "review_publishing": "publishing",
+                 "ready": "waiting_for_confirmation", "limit_paused": "paused", "confirming": "publishing", "completed": "completed",
                  "paused": "paused", "cancelling": "cancelling", "cancelled": "cancelled"}[row["state"]]
+        reviews = self._reviews(activity_id)
+        last = reviews[-1] if reviews else None
         actions: list[str] = []
         blocking: list[str] = []
-        if row["state"] in {"architect", "architect_waiting", "publishing", "saved", "paused"}:
+        if row["state"] in {"architect", "architect_waiting", "publishing", "saved", "reviewer", "review_publishing", "ready", "limit_paused", "paused"}:
             actions.append("cancel")
+        if row["state"] == "ready":
+            actions.insert(0, "confirm")
+        if row["state"] == "limit_paused":
+            actions.insert(0, "respond_to_owner_decision")
         paused = pending.get("paused")
         if row["state"] == "paused" and isinstance(paused, dict):
             actions.append("retry_publication" if paused["kind"] == "publication" else "retry_agent")
         breakdown = None if row["breakdown_json"] is None else json.loads(row["breakdown_json"]).get("summary")
         working = json.loads(row["breakdown_ref_json"]) if row["breakdown_ref_json"] else foundations
+        confirmed = None if row["confirmed_ref_json"] is None else json.loads(row["confirmed_ref_json"])
+        base_limit = self._review_limit(activity_id)
+        limit = base_limit + len(pending.get("grants", []))
+        published = None if last is None or last["published_json"] is None else json.loads(last["published_json"])
+        coverage = bool(last and published and last["outcome"] == "APPROVE" and working and json.loads(last["reviewed_ref_json"])["reviewed_content_hash"] == working["reviewed_content_hash"])
         if row["state"] == "saved":
-            blocking.append("The work breakdown is saved; independent review and Owner confirmation are the next stages and have not been built yet." if row["breakdown_ref_json"] else "Foundations are saved; the work breakdown starts next.")
+            blocking.append("The work breakdown is saved; independent review starts next." if row["breakdown_ref_json"] else "Foundations are saved; the work breakdown starts next.")
+        if row["state"] == "limit_paused":
+            blocking.append(f"The review limit ({limit}) was reached with blocking findings unresolved; grant one extra review or leave it paused.")
         if row["state"] == "paused" and row["note"]:
             blocking.append(str(row["note"]))
+        review_views = []
+        limitations: list[dict[str, Any]] = []
+        for review in reviews:
+            identities = json.loads(review["identities_json"])
+            findings = [{"id": identities[f["local_key"]][0], "version": identities[f["local_key"]][1], "subject": f["subject"], "severity": f["severity"], "explanation": f["explanation"],
+                         "requested_correction": f["requested_correction"], "affected": [a["id"] for a in f["affected_items"]]} for f in json.loads(review["findings_json"])]
+            review_views.append({"round": review["review_round"], "outcome": review["outcome"], "summary": review["summary"], "findings": findings,
+                                 "record": None if review["published_json"] is None else json.loads(review["published_json"])["record"]})
+        if last is not None and published is not None and last["outcome"] == "APPROVE":
+            limitations = [{"id": f["id"], "subject": f["subject"], "version": f["version"], "container": published["record"], "explanation": f["explanation"]} for f in review_views[-1]["findings"]]
+        outcome_ids = [o["id"] for o in json.loads(row["outcome_refs_json"])["outcomes"] if o["path"].split("/")[-2] == "milestones"]
+        coverage_map = {}
+        if isinstance(breakdown, dict):
+            for oid in outcome_ids:
+                coverage_map[oid] = [m["id"] for m in breakdown["milestones"] if oid in m["outcome_ids"]]
+        records = [{k: r[k] for k in ("record_id", "kind", "subject", "version", "repo_path", "sha256", "commit_sha")} for r in self._rows("SELECT * FROM service_architecture_records WHERE activity_id = ? ORDER BY kind, record_id", (activity_id,))]
+        decisions_open = []
+        if row["state"] == "limit_paused":
+            decisions_open = [{"target": "fidelity_review", "assignment_id": pending["limit"]["assignment_id"], "state": "pending", "choices": ["grant_one", "remain_paused"],
+                               "reason": f"The review limit of {limit} rounds was reached with blocking findings unresolved."}]
         session = self._read("SELECT * FROM service_architecture_sessions WHERE activity_id = ? AND state = 'active' ORDER BY created_at DESC, rowid DESC LIMIT 1", (activity_id,))
         sessions = self._rows("SELECT session_id, tool, model, provider_session_id, prior_session_id, state, note FROM service_architecture_sessions WHERE activity_id = ? ORDER BY rowid", (activity_id,))
         return {
             "project_id": row["project_id"], "activity_id": activity_id, "activity_version": None if version is None else int(version["version"]),
             "state": state, "stage": {"architect": "investigating" if row["stage"] == "foundations" else "breaking_down", "architect_waiting": "waiting_for_answers", "publishing": "publishing",
-                                      "saved": "breakdown_saved" if row["breakdown_ref_json"] else "foundations_saved", "paused": "paused", "cancelling": "cancelling", "cancelled": "cancelled"}[row["state"]],
+                                      "saved": "breakdown_saved" if row["breakdown_ref_json"] else "foundations_saved", "reviewer": "reviewing", "review_publishing": "publishing_review",
+                                      "ready": "ready_for_confirmation", "limit_paused": "review_limit", "confirming": "confirming", "completed": "confirmed",
+                                      "paused": "paused", "cancelling": "cancelling", "cancelled": "cancelled"}[row["state"]],
             "registration_ref": json.loads(row["registration_json"]),
             "working_ref": None if working is None else {k: working[k] for k in ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")},
-            "confirmed_ref": None, "review_coverage_valid": False, "review_count": 0, "review_limit": self._review_limit(activity_id),
-            "available_actions": actions, "blocking_reasons": blocking, "allowances": [], "owner_decisions": [],
+            "confirmed_ref": None if confirmed is None else {k: confirmed[k] for k in ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")},
+            "review_coverage_valid": coverage, "review_count": len(reviews), "review_limit": limit,
+            "available_actions": actions, "blocking_reasons": blocking,
+            "allowances": [{"target": "fidelity_review", "assignment_id": f"{activity_id}-revi-{len(reviews) + 1}", "base_limit": base_limit, "granted": len(pending.get("grants", [])),
+                            "used": len(reviews), "remaining": max(limit - len(reviews), 0)}],
+            "owner_decisions": decisions_open, "reviews": review_views, "limitations": limitations, "coverage": coverage_map, "records": records,
             "repository": row["repository"], "source": {"ref": row["source_ref"], "commit": row["source_commit"]}, "publication_branch": row["publication_branch"],
             "roles": {"architect": {"tool": row["architect_tool"], "model_id": row["architect_model"]}, "reviewer": {"tool": row["reviewer_tool"], "model_id": row["reviewer_model"]}},
             "session": None if session is None else {k: session[k] for k in ("session_id", "tool", "model", "provider_session_id", "prior_session_id")},
             "sessions": sessions, "foundations": foundations, "breakdown": breakdown, "breakdown_ref": None if row["breakdown_ref_json"] is None else json.loads(row["breakdown_ref_json"]),
             "paused": paused, "note": row["note"],
             "outcomes": [{"id": o["id"], "subject": o["subject"]} for o in json.loads(row["outcome_refs_json"])["outcomes"] if o["path"].split("/")[-2] == "milestones"],
+            "confirmation": None if row["confirmation_json"] is None else json.loads(row["confirmation_json"]),
             "recovery": self._recovery_view(pending),
         }
 

@@ -72,6 +72,21 @@ RESPONSE_SCHEMA: dict[str, Any] = {
     "required": ["contract_version", "assignment_id", "run_id", "session_id", "project_id", "activity_id", "role", "source_commit", "decision_version", "input_manifest", "result", "summary", "findings", "questions", "outputs", "reviewed_set", "review_outcome", "failure", "allocations"],
     "additionalProperties": False,
 }
+_REVIEW_SET = {
+    "type": ["object", "null"],
+    "properties": {"manifest_sha256": _STR, "reviewed_content_hash": _STR},
+    "required": ["manifest_sha256", "reviewed_content_hash"],
+    "additionalProperties": False,
+}
+# The independent reviewer's response: the same fields, plus the exact reviewed set and the review outcome.
+REVIEW_RESPONSE_SCHEMA: dict[str, Any] = {
+    **RESPONSE_SCHEMA,
+    "properties": {
+        **RESPONSE_SCHEMA["properties"],
+        "reviewed_set": _REVIEW_SET,
+        "review_outcome": {"type": ["string", "null"], "enum": ["APPROVE", "REQUEST_CHANGES", None]},
+    },
+}
 _TOP_LEVEL = set(RESPONSE_SCHEMA["properties"])
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -108,7 +123,10 @@ class ArchitectureResponseValidator:
         for name, wanted in expected.items():
             if type(value[name]) is not type(wanted) or value[name] != wanted:
                 raise TransportError("stale_response", f"response {name} does not match assignment")
-        if value["input_manifest"] is not None or value["reviewed_set"] is not None or value["review_outcome"] is not None or value["allocations"] != []:
+        reviewer = assignment.role == "fidelity_reviewer"
+        if value["input_manifest"] is not None or value["allocations"] != []:
+            raise TransportError("conflicting_response", "an architecture response carries only its own fields")
+        if not reviewer and (value["reviewed_set"] is not None or value["review_outcome"] is not None):
             raise TransportError("conflicting_response", "an investigation response carries only its own fields")
         result = value["result"]
         if result not in {"completed", "clarification_required", "technical_failure"}:
@@ -123,6 +141,18 @@ class ArchitectureResponseValidator:
         if failure is not None:
             failure = _failure({"code": failure.get("code"), "message": failure.get("message")}) if isinstance(failure, Mapping) else _failure(failure)
         outputs = self._outputs(assignment, workspace, value["outputs"], result)
+        review_outcome = value["review_outcome"]
+        if reviewer and result == "completed":
+            reviewed = value["reviewed_set"]
+            if review_outcome not in {"APPROVE", "REQUEST_CHANGES"} or not isinstance(reviewed, Mapping):
+                raise TransportError("conflicting_response", "a completed review states its outcome and the exact set it reviewed")
+            blocking = any(f.get("severity") == "blocking" for f in findings)
+            if review_outcome == "APPROVE" and (blocking or questions):
+                raise TransportError("conflicting_response", "an approval cannot carry a blocking finding or an open question")
+            if review_outcome == "REQUEST_CHANGES" and not blocking:
+                raise TransportError("conflicting_response", "requested changes need at least one blocking finding")
+        elif reviewer and (review_outcome is not None or value["reviewed_set"] is not None):
+            raise TransportError("conflicting_response", "only a completed review carries an outcome")
         if result == "completed" and failure is not None:
             raise TransportError("conflicting_response", "completed response has a failure")
         if result == "clarification_required" and (not questions or failure is not None):

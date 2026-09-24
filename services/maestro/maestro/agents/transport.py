@@ -291,7 +291,7 @@ def validate_transport_context(
         profile.mounts()
     except WorkspaceError as error:
         raise TransportError(error.code, str(error), **error.fields) from error
-    if assignment.role == "fidelity_reviewer":
+    if assignment.role == "fidelity_reviewer" and assignment.contract != "architecture":
         _verify_reviewer_inputs(assignment, workspace)
 
 
