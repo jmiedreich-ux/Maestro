@@ -305,7 +305,9 @@ class ExecutionService:
         if architecture["registration_activity_id"] != active["activity_id"] or architecture["source_commit"] != active["source_commit"]:
             raise RequestRejection(409, "breakdown_not_current", "the confirmed breakdown does not belong to the current registration and its pinned source; re-run the architecture loop", fields={"registration": active["activity_id"]})
         confirmed = json.loads(architecture["confirmed_ref_json"])
-        if payload["confirmed_ref"] != confirmed:
+        supplied = payload["confirmed_ref"]
+        identity = ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")
+        if not isinstance(supplied, dict) or any(supplied.get(k) != confirmed.get(k) for k in identity):
             raise RequestRejection(409, "confirmed_ref_stale", "the confirmed breakdown reference is not the project's newest confirmed version", fields={"current": confirmed})
         try:
             config = execution_config.validate(self.config_source())
