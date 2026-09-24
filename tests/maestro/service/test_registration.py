@@ -174,7 +174,11 @@ class ScriptedDestination:
 
     def head(self, repository, branch): return self.branches[branch]
 
-    def publish(self, repository, branch, files, message):
+    def publish(self, repository, branch, files, message, replaceable=frozenset()):
+        held = self.trees.get(self.branches[branch], {})
+        clash = [p for p, d in files.items() if p in held and held[p] != d and p not in replaceable]
+        if clash:
+            raise DestinationError("publication_conflict", "a target path already holds different content", paths=clash)
         if getattr(self, "refuse_receipts", False) and any("/confirmations/" in path for path in files):
             raise DestinationError("publication_conflict", "a target path already holds different content", paths=list(files))
         commit = f"{len(self.published) + 3:040x}"

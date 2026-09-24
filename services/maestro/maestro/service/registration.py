@@ -1166,7 +1166,7 @@ class RegistrationService:
                         owner_id=self.owner_id, confirmed_at=pending["confirmed_at"], previous_confirmation_ref=previous["current_confirmation_ref"], previous_index=previous,
                     )
                     self._frozen(operation_id, files)
-            commit = destination.publish(row["repository"], row["publication_branch"], files, f"Confirm registration {package['candidate_id']} (version {package['registration_version']})")
+            commit = destination.publish(row["repository"], row["publication_branch"], files, f"Confirm registration {package['candidate_id']} (version {package['registration_version']})", frozenset({index_path}))
             destination.verify_files(row["repository"], commit, files)
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_registration_publications SET state = 'verified', commit_sha = ? WHERE operation_id = ?", (commit, operation_id))
