@@ -557,6 +557,17 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual("ready", self.row(receipt.activity_id)["state"])
         self.assertEqual(1, self.row(receipt.activity_id)["reviews_used"])
 
+    def test_unrelated_commit_is_not_a_source_change(self) -> None:
+        receipt = self.drive_to_ready()
+        self.destination.branches["source-head"] = NEW_COMMIT
+        self.destination.files[NEW_COMMIT] = {**self.destination.files[COMMIT], "reports/notes.md": b"an unrelated report"}
+        pending = json.loads(self.row(receipt.activity_id)["pending_json"])
+        pending["source_checked_at"] = 0
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_registrations SET pending_json = ? WHERE activity_id = ?", (json.dumps(pending), receipt.activity_id))
+        self.service.tick()
+        self.assertEqual("ready", self.row(receipt.activity_id)["state"])
+
     def test_blocking_assessment_is_never_offered_for_confirmation(self) -> None:
         blocked = json.loads(candidate_text())
         blocked["summary"]["assessment_outcome"] = "blocked"
