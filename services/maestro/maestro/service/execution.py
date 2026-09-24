@@ -15,7 +15,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 from maestro.agents.execution_contract import CODER_SCHEMA, MANAGER_SCHEMA, PLAN_KEYS, REVIEWER_SCHEMA
 from maestro.agents.session_state import SessionUse
@@ -224,6 +224,14 @@ _REVIEW_LATER = ", input/prior-findings.json (your earlier findings; recheck the
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def _paths_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
+    """True when any path in one set equals or lies inside a path in the other."""
+    def inside(x: str, y: str) -> bool:
+        x, y = x.strip("/"), y.strip("/")
+        return x == y or x.startswith(y + "/")
+    return any(inside(x, y) or inside(y, x) for x in a for y in b)
 
 
 class ExecutionService:
@@ -798,7 +806,8 @@ class ExecutionService:
             active = other["state"] in _PACKET_ACTIVE or any(a["packet_key"] == other_key for a in accepted)
             if not active or other_key == launch["packet_key"]:
                 continue
-            if mine & set(json.loads(other["record_json"]).get("permitted_paths", [])) and other_key not in parallel:
+            theirs = json.loads(other["record_json"]).get("permitted_paths", [])
+            if _paths_overlap(mine, theirs) and other_key not in parallel:
                 return f"it shares permitted paths with the running packet {other_key}, which is not a declared parallel opportunity"
         return None
 

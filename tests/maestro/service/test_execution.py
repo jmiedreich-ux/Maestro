@@ -171,6 +171,10 @@ class LaunchChecks(unittest.TestCase):
         self.assertIsNone(self.problem(packets, self.launch("p1")))
         self.assertIn("capacity", self.problem(packets, self.launch("p2"), [self.launch("p1")]))
 
+    def test_a_nested_permitted_path_counts_as_shared(self) -> None:
+        packets = [packet_row("p1", paths=("pkg/file.py",)), packet_row("p2", "coding", paths=("pkg",), route="cloud")]
+        self.assertIn("shares permitted paths", self.problem(packets, self.launch("p1")))
+
 
 class ScriptedRuns:
     def __init__(self):
