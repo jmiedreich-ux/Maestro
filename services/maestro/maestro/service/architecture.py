@@ -995,9 +995,10 @@ class ArchitectureService:
         outputs = {r["path"]: bytes(r["content"]) for r in self._rows("SELECT path, content FROM service_architecture_outputs WHERE activity_id = ? AND pass_number = ?", (activity_id, pass_number))}
         specialist_files = {p: d for p, d in outputs.items() if p.startswith("specialists/")}
         version = int(row["architecture_version"])
+        guidance = {records_module.repo_path(p): d for p, d in specialist_files.items()}
         specialists_commit = self._publish_stage(
-            row, destination, f"{activity_id}-specialists-{pass_number}", "specialists",
-            {records_module.repo_path(p): d for p, d in specialist_files.items()}, f"Publish architect specialist guidance (architecture version {version})",
+            row, destination, f"{activity_id}-specialists-{pass_number}", "specialists", guidance,
+            f"Publish architect specialist guidance (architecture version {version})", self._replaceable_guidance(row, destination, guidance),
         )
         package = json.loads(row["registration_json"])
         outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
@@ -1027,6 +1028,20 @@ class ArchitectureService:
             self._say(tx, row["project_id"], activity_id, f"Foundations saved and published to {row['repository']} branch {row['publication_branch']}: manifest {manifest_path} at {foundations_commit[:12]}, "
                       f"specialist guidance at {specialists_commit[:12]}, discovery index at {index_commit[:12]}. No specialist was launched and no source was changed.")
             self._emit(tx, row["project_id"], activity_id, "architecture.foundations_saved", {"activity_id": activity_id, "working_ref": reference})
+
+    def _replaceable_guidance(self, row: Mapping[str, Any], destination: GitHubDestination, guidance: Mapping[str, bytes]) -> frozenset[str]:
+        """Specialist files an earlier architecture of this project published may be updated, but only while they still hold exactly what Maestro wrote; anyone else's edit stays a conflict."""
+        earlier: dict[str, set[str]] = {}
+        for op in self._rows("SELECT files_json FROM service_architecture_publications p JOIN service_architectures a ON a.activity_id = p.activity_id WHERE a.project_id = ? AND p.kind = 'specialists' AND p.state IN ('applied', 'verified')", (row["project_id"],)):
+            for path, digest in json.loads(op["files_json"])["files"].items():
+                earlier.setdefault(path, set()).add(digest)
+        head = destination.head(row["repository"], row["publication_branch"])
+        replaceable = set()
+        for path in guidance:
+            current = destination.read_file(row["repository"], head, path)
+            if current is not None and records_module.sha256(current) in earlier.get(path, set()):
+                replaceable.add(path)
+        return frozenset(replaceable)
 
     # -- breakdown stage
 

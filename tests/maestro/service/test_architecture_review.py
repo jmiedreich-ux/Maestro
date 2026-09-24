@@ -298,6 +298,36 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaises(FoundationError):
             self.architecture._publish_stage(row, self.destination, "op-crashed", "review", {"a.json": b"{}"}, "x")
 
+    def test_a_later_architecture_may_update_specialist_guidance_maestro_wrote_but_not_someone_elses_edit(self) -> None:
+        project_id, activity = self.reach([])
+        for _ in range(20):
+            self.architecture.tick()
+            self.save_history(activity)
+            if self.row_a(activity)["state"] == "reviewer":
+                break
+        self.submit("architecture.cancel", project_id, activity, None, self.architecture.project_view(project_id)["activity_version"], {"reason": "start again"})
+        self.drive(activity, "cancelled")
+        path = "src/.maestro/context.md"
+        written = next(p[path] for p in self.destination.published if path in p)
+        newer = base.files_for(self.milestones, **{"specialists/src/.maestro/context.md": base.CONTEXT.decode().replace("x", "y", 1)})
+        self.runs.script = [base.architect_response(newer), self.breakdown_response(self.milestones)]
+        second = self.start_architecture(project_id, self.package).activity_id
+        for _ in range(20):
+            self.architecture.tick()
+            self.save_history(second)
+            if self.row_a(second)["foundations_ref_json"]:
+                break
+        self.assertIsNotNone(self.row_a(second)["foundations_ref_json"], self.row_a(second)["note"])
+        row = self.row_a(second)
+        head = self.destination.head(row["repository"], row["publication_branch"])
+        self.assertEqual(newer["specialists/src/.maestro/context.md"].encode(), self.destination.trees[head][path])
+        self.assertNotEqual(written, self.destination.trees[head][path])
+        # what Maestro wrote may be updated again; a file a person changed is a conflict
+        guidance = {path: b"updated again"}
+        self.assertEqual(frozenset({path}), self.architecture._replaceable_guidance(row, self.destination, guidance))
+        self.destination.trees[head][path] = b"# edited by a person"
+        self.assertEqual(frozenset(), self.architecture._replaceable_guidance(row, self.destination, guidance))
+
     def test_confirmation_needs_a_review_of_the_exact_version(self) -> None:
         project_id, activity = self.reach([review("REQUEST_CHANGES", [review_finding("b1", "blocking")])])
         for _ in range(12):
