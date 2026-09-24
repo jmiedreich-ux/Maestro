@@ -29,7 +29,9 @@ The milestone branch receives reviewed features. Assembled QA and outcome review
 
 The autopilot works through the [ordered outcomes](../planning/outcomes.md) without waiting for the Owner. The Owner has delegated these decisions to it:
 
-- **Accepting an outcome.** Accept it when every acceptance criterion is met with real evidence or carries an accepted exception. Do not keep working on anything that can wait; record it as an accepted exception and move on. Do not polish.
+- **Quality bar.** Quality comes first: an outcome's observable result must actually work, exercised end to end with real agents, real models and real repositories. Passing checks, mocks or file presence never count. An accepted exception may cover only detail outside the observable result, never the result itself.
+- **Accepting an outcome.** Accept it when its observable result works and every acceptance criterion is met with real evidence or carries an accepted exception. Do not keep working on anything that can wait; record it as an accepted exception and move on. Do not polish.
+- **Regression.** After accepting an outcome, rerun the real end-to-end path built so far. If an earlier result no longer works, fix it before continuing.
 - **Promoting.** Tag the merged master commit `passed/<plain name>`. The timer installs it when the installed service changes.
 - **Shaping the work.** Map each outcome to existing code and the installed host first. An outcome may need several features, each with one finish line and one owner; an outcome that is mostly built may need none. Plan only what the gap requires.
 - **Independent review.** Every feature is reviewed once by a different agent than the one that built it, by default Codex, against the code and real evidence rather than the builder's summary. Apply one targeted correction. A finding that changes the outcome goes to the Owner.
