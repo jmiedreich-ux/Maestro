@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 AUTHOR = ("Maestro Coder", "coder@maestro.invalid")
+INTEGRATOR = ("Maestro Integration", "integration@maestro.invalid")
 
 
 class GitError(ValueError):
@@ -21,18 +22,18 @@ class GitError(ValueError):
         self.code = code
 
 
-def _environment() -> dict[str, str]:
+def _environment(identity: tuple[str, str] = AUTHOR) -> dict[str, str]:
     return {
         "PATH": "/usr/bin:/bin", "HOME": "/nonexistent", "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0",
-        "GIT_AUTHOR_NAME": AUTHOR[0], "GIT_AUTHOR_EMAIL": AUTHOR[1], "GIT_COMMITTER_NAME": AUTHOR[0], "GIT_COMMITTER_EMAIL": AUTHOR[1],
+        "GIT_AUTHOR_NAME": identity[0], "GIT_AUTHOR_EMAIL": identity[1], "GIT_COMMITTER_NAME": identity[0], "GIT_COMMITTER_EMAIL": identity[1],
     }
 
 
-def git(workdir: Path, *arguments: str, check: bool = True) -> str:
+def git(workdir: Path, *arguments: str, check: bool = True, identity: tuple[str, str] = AUTHOR) -> str:
     done = subprocess.run(
         ["git", "-c", "safe.directory=*", "-C", str(workdir), *arguments],
-        stdin=subprocess.DEVNULL, capture_output=True, env=_environment(), check=False,
+        stdin=subprocess.DEVNULL, capture_output=True, env=_environment(identity), check=False,
     )
     if check and done.returncode != 0:
         raise GitError("git_failed", f"git {arguments[0]} failed: {done.stderr.decode('utf-8', errors='replace').strip()[-300:]}")
@@ -51,7 +52,11 @@ def prepare_clone(mirror: Path, base: str, destination: Path, branch: str) -> No
     git(destination, "remote", "remove", "origin")
     if git(destination, "rev-parse", "HEAD").strip() != base:
         raise GitError("clone_failed", "the work clone is not at the recorded base commit")
-    # The agent runs as another account; let it write everywhere in the clone (ownership is reclaimed after the run).
+    make_writable(destination)
+
+
+def make_writable(destination: Path) -> None:
+    """The agent runs as another account; let it write everywhere in the clone (ownership is reclaimed after the run)."""
     for path in [destination, *destination.rglob("*")]:
         if path.is_symlink():
             continue
@@ -97,3 +102,82 @@ def outside_scope(changed: Sequence[str], permitted: Sequence[str]) -> list[str]
 
 def diff_text(workdir: Path, base: str, head: str) -> str:
     return git(workdir, "diff", "--no-renames", "--no-color", base, head)
+
+
+def is_ancestor(workdir: Path, ancestor: str, descendant: str) -> bool:
+    done = subprocess.run(["git", "-c", "safe.directory=*", "-C", str(workdir), "merge-base", "--is-ancestor", ancestor, descendant], env=_environment(), capture_output=True)
+    return done.returncode == 0
+
+
+def prepare_merge(mirror: Path, target: str, source: str, destination: Path, branch: str, message: str) -> list[str]:
+    """A clone on a new branch at ``target`` with ``source`` merged without fast-forward.
+
+    Returns the conflicted paths: empty when the merge completed cleanly (the merge commit exists), otherwise
+    the clone is left in the merge-in-progress state for the Integration Manager to resolve.
+    """
+    prepare_clone(mirror, target, destination, branch)
+    for name in (target, source):
+        if git(destination, "cat-file", "-t", name, check=False).strip() != "commit":
+            raise GitError("commit_missing", f"commit {name[:12]} is not available in the work clone")
+    done = subprocess.run(
+        ["git", "-c", "safe.directory=*", "-C", str(destination), "merge", "--no-ff", "--no-edit", "-m", message, source],
+        stdin=subprocess.DEVNULL, capture_output=True, env=_environment(INTEGRATOR), check=False,
+    )
+    if done.returncode == 0:
+        return []
+    conflicted = sorted(p for p in git(destination, "diff", "--name-only", "--diff-filter=U").split("\n") if p)
+    if not conflicted:
+        raise GitError("merge_failed", "the merge failed: " + (done.stderr or done.stdout).decode("utf-8", errors="replace").strip()[-300:])
+    make_writable(destination)
+    return conflicted
+
+
+def seal_integration(workdir: Path, branch: str, target: str, source: str, message: str) -> dict[str, object]:
+    """Finish an integration clone: complete a resolved merge, commit leftovers and check the graph.
+
+    The result must be on the assigned branch, hold no unresolved paths or conflict markers, and descend from
+    both the target and the source, so the eventual merge into the milestone branch is a real merge.
+    """
+    current = git(workdir, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    if current != branch:
+        raise GitError("wrong_branch", f"the work clone is on {current}, not the assigned branch")
+    merging = (workdir / ".git" / "MERGE_HEAD").exists()
+    dirty = git(workdir, "status", "--porcelain", "--untracked-files=all").strip()
+    if merging or dirty:
+        git(workdir, "add", "-A")  # a resolved file the agent forgot to stage still counts as resolved; markers are checked below
+        if git(workdir, "ls-files", "--unmerged").strip():
+            raise GitError("unresolved_conflicts", "paths are still unmerged")
+        markers = [p for p in git(workdir, "diff", "--cached", "--name-only", "--no-renames").split("\n") if p and _has_marker(workdir / p)]
+        if markers:
+            raise GitError("conflict_markers", "conflict markers remain in " + ", ".join(markers[:5]), )
+        if merging:
+            git(workdir, "commit", "--quiet", "--no-edit", identity=INTEGRATOR)
+        elif git(workdir, "status", "--porcelain").strip():
+            git(workdir, "commit", "--quiet", "-m", message, identity=INTEGRATOR)
+    head = git(workdir, "rev-parse", "HEAD").strip()
+    if git(workdir, "status", "--porcelain", "--untracked-files=all").strip():
+        raise GitError("dirty_after_commit", "uncommitted output remains after the commit")
+    for name, label in ((target, "target"), (source, "source")):
+        if not is_ancestor(workdir, name, head):
+            raise GitError("bad_graph", f"the integration result does not contain the {label} commit {name[:12]}")
+    paths = sorted(p for p in git(workdir, "diff", "--name-only", "--no-renames", target, head).split("\n") if p)
+    return {"head": head, "changed_paths": paths}
+
+
+def _has_marker(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return any(line.startswith((b"<<<<<<< ", b">>>>>>> ")) for line in handle)
+    except OSError:
+        return False
+
+
+def merge_into(mirror: Path, target: str, source: str, destination: Path, branch: str, message: str) -> str:
+    """A non-fast-forward merge of ``source`` into ``target`` in a clone; the merge commit is returned."""
+    conflicted = prepare_merge(mirror, target, source, destination, branch, message)
+    if conflicted:
+        raise GitError("merge_conflict", "the reviewed integration branch no longer merges cleanly: " + ", ".join(conflicted[:5]))
+    head = git(destination, "rev-parse", "HEAD").strip()
+    if len(git(destination, "rev-list", "--parents", "-n", "1", "HEAD").split()) != 3:
+        raise GitError("bad_graph", "the milestone merge is not a two-parent merge commit")
+    return head

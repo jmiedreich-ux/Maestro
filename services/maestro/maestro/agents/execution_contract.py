@@ -91,7 +91,8 @@ REVIEWER_SCHEMA = _schema({
     "independence": _STR,
     "findings": {"type": "array", "items": _FINDING},
 })
-SCHEMAS = {"development_manager": MANAGER_SCHEMA, "packet_coder": CODER_SCHEMA, "packet_reviewer": REVIEWER_SCHEMA}
+SCHEMAS = {"development_manager": MANAGER_SCHEMA, "packet_coder": CODER_SCHEMA, "packet_reviewer": REVIEWER_SCHEMA,
+           "integration_manager": CODER_SCHEMA, "integration_reviewer": REVIEWER_SCHEMA}
 PLAN_KEYS = ("intended_changes", "existing_code", "connections", "verification", "blockers")
 
 
@@ -149,7 +150,7 @@ class ExecutionResponseValidator:
         outputs = self._outputs(assignment, workspace, result)
         return ValidatedAgentResponse(
             assignment.assignment_id, assignment.run_id, result, summary, (), questions, None, None, None,
-            value.get("review_outcome") if assignment.role == "packet_reviewer" and result == "completed" else None,
+            value.get("review_outcome") if assignment.role in {"packet_reviewer", "integration_reviewer"} and result == "completed" else None,
             failure, hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest(), outputs,
         )
 
@@ -164,7 +165,7 @@ class ExecutionResponseValidator:
             keys = [launch["packet_key"] for launch in value["launches"]]
             if len(set(keys)) != len(keys):
                 raise TransportError("conflicting_response", "a packet is requested more than once")
-        elif role == "packet_coder":
+        elif role in {"packet_coder", "integration_manager"}:
             if not isinstance(value["changed_paths"], list) or not all(isinstance(p, str) and p for p in value["changed_paths"]):
                 raise TransportError("malformed_response", "changed paths must be a list of paths")
             if not value["checks"]:
