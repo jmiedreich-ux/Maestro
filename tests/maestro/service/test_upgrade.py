@@ -119,6 +119,23 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(upgrade_module.installed_revision(self.target), new)
         self.assertEqual(json.loads((Path(receipt.backup) / "receipt.json").read_text())["outcome"], "upgraded")
 
+    def test_shipped_schema_bundles_are_added_once_and_never_changed(self) -> None:
+        shipped = self.target.under(self.target.venv / "share/maestro/schemas/demo-process/1")
+        shipped.mkdir(parents=True)
+        (shipped / "schema.json").write_text("{}")
+        installed = self.target.under(self.target.venv / "schemas")
+        added = upgrade_module._sync_schemas(self.target)
+        self.assertEqual(added, [installed / "demo-process/1"])
+        self.assertEqual((installed / "demo-process/1/schema.json").read_text(), "{}")
+        self.assertIn("demo-process/1/schema.json", (installed / ".bundles.sha256").read_text())
+        self.assertEqual(upgrade_module._sync_schemas(self.target), [])  # identical: nothing to do
+        (shipped / "schema.json").write_text('{"changed": true}')
+        with self.assertRaises(upgrade_module.UpgradeError):
+            upgrade_module._sync_schemas(self.target)
+        self.assertEqual((installed / "demo-process/1/schema.json").read_text(), "{}")
+        upgrade_module._unsync_schemas(self.target, added)
+        self.assertFalse((installed / "demo-process").exists())
+
     def test_failed_smoke_check_restores_the_previous_installation(self) -> None:
         new = self.commit("2", tag="passed/two")
         self.state["auth_status"] = 500

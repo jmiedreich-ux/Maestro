@@ -190,6 +190,15 @@ class AgentRunService:
 
     # -- assignments ---------------------------------------------------------
 
+    def create_assignment_from_terms(
+        self, terms, assignment_id: str, project_id: str, activity_id: str, tool: str, model_id: str
+    ) -> None:
+        """Create an assignment whose duration and recovery limit come from a process definition."""
+        self.create_assignment(
+            assignment_id, project_id, activity_id, terms.role, tool, model_id,
+            duration_seconds=terms.duration_seconds, automatic_limit=terms.automatic_limit,
+        )
+
     def create_assignment(
         self,
         assignment_id: str,

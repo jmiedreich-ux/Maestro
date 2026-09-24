@@ -11,7 +11,7 @@ import stat
 import sys
 import threading
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Mapping
@@ -29,7 +29,10 @@ from .events import EventHTTPResponse, EventStreamHTTPApplication, EventStreamSe
 from .http import MAX_REQUEST_BYTES, HTTPResponse
 from .projections import ProjectionError, ProjectionNotFound, ProjectionReader
 from .questions import QuestionHTTPApplication, QuestionRequestService, QuestionService
+from .process_definitions import PROCESS_TABLES, ProcessDefinitions, process_registry
+from .processes import ProcessPolicyService
 from .registry import OperationRegistry
+from .resources import InstalledSchemaResources, ProcessResourceError
 from .requests import RequestService
 
 
@@ -66,6 +69,8 @@ class ServiceSettings:
     port: int = DEFAULT_PORT
     agent_user: str = "maestro-agent"
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
+    config_path: Path | None = None
+    process_tables: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -151,13 +156,16 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
         raise ServiceConfigurationError("service.port must be an integer")
     if not isinstance(agent_user, str):
         raise ServiceConfigurationError("service.agent_user must be text")
+    process_tables = {name: value[name] for name in PROCESS_TABLES if name in value}
     return ServiceSettings(
+        process_tables=process_tables,
         storage=storage,
         owner=owner,
         host=host,
         port=port,
         agent_user=agent_user,
         workspace_root=Path(workspace_root),
+        config_path=path,
     )
 
 
@@ -183,6 +191,7 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
+        self.process_definitions = _process_definitions(self.database, settings.config_path)
 
     def start(self) -> None:
         self.event_application.start()
@@ -201,9 +210,23 @@ class InstalledServiceApplication:
         projection = self._projection_response(method, parsed, headers)
         if projection is not None:
             return projection
+        if method == "GET" and parsed.path == "/api/v1/processes":
+            return self._processes_response(headers)
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
+
+    def _processes_response(self, headers: Mapping[str, str]) -> HTTPResponse:
+        content = {"Content-Type": "application/json; charset=utf-8"}
+        try:
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+        except HTTPRejection as error:
+            return HTTPResponse(error.status_code, error.as_body(), {**content, **error.headers})
+        if self.process_definitions is None:
+            rows = [{"process": name, "state": "invalid", "error": {"code": "schema_bundles_unavailable", "message": "installed process schema bundles cannot be read"}} for name in PROCESS_TABLES]
+        else:
+            rows = self.process_definitions.report()
+        return HTTPResponse(200, {"processes": rows}, content)
 
     def _projection_response(
         self,
@@ -320,6 +343,24 @@ class InstalledServiceServer:
     def shutdown(self) -> None:
         self.application.stop()
         self._server.shutdown()
+
+
+def _process_definitions(database: Database, config_path: Path | None) -> ProcessDefinitions | None:
+    """Bind the shared process policy to the installed bundles and the live configuration file."""
+    if config_path is None:
+        return None
+    try:
+        policy = ProcessPolicyService(database, InstalledSchemaResources(), process_registry())
+    except (ValueError, ProcessResourceError):
+        return None
+
+    def source() -> Mapping[str, object]:
+        try:
+            return load_settings(config_path).process_tables
+        except ServiceConfigurationError as error:
+            raise ValueError(str(error)) from error
+
+    return ProcessDefinitions(policy, source)
 
 
 def build_application(settings: ServiceSettings) -> InstalledServiceApplication:
