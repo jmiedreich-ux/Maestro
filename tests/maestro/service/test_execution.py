@@ -40,6 +40,14 @@ def config_table(**over):
     return table
 
 
+def save_recommendation(database, assignment_id, recommendation, determination="implementation_defect"):
+    """The architect's saved recommendation for a review limit, as the determination assignment leaves it."""
+    result = {"determination": determination, "rationale": "r", "interpretation": None, "minimum_correction": "fix", "affected_work": [], "owner_recommendation": recommendation, "disposition_recommendation": None}
+    with database.transaction() as tx:
+        tx.execute("INSERT INTO service_execution_architect(activity_id, assignment_key, kind, packet_key, subject, trigger_json, state, version, config_json, pending_json, result_json, review_limit, created_at, updated_at) "
+                   "VALUES ('exec-1', ?, 'determination', NULL, 's', '{}', 'decided', 1, '{}', '{}', ?, 0, 't', 't')", (f"det-{assignment_id}", json.dumps(result)))
+
+
 class ConfigTests(unittest.TestCase):
     def test_defaults_are_applied_and_the_snapshot_is_stable(self) -> None:
         config = execution_config.validate(config_table())
@@ -295,6 +303,11 @@ class ReviewStateTests(unittest.TestCase):
                                   payload={"target": "packet_review", "choice": "grant_one", "assignment_id": "a-run-2"})
         version = self.service._read("SELECT version FROM entity_versions WHERE entity_id = 'exec-1'")["version"]
         request.expected_version = version
+        prepared = self.service.prepare_owner_decision(request)
+        with self.assertRaises(Exception) as caught, self.database.transaction() as tx:
+            prepared.apply(tx, version + 1)  # the grant waits for the architect's saved recommendation
+        self.assertIn("recommendation", str(caught.exception))
+        save_recommendation(self.database, "a-run-2", "grant_one")
         prepared = self.service.prepare_owner_decision(request)
         with self.database.transaction() as tx:
             prepared.apply(tx, version + 1)

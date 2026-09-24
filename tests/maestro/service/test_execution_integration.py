@@ -357,6 +357,12 @@ class MilestoneAndQueueTests(IntegrationBase):
                                   expected_version=self.service._read("SELECT version FROM entity_versions WHERE entity_id = 'exec-1'")["version"],
                                   payload={"target": "integration_review", "choice": "grant_one", "assignment_id": view["owner_decisions"][0]["assignment_id"]})
         prepared = self.service.prepare_owner_decision(request)
+        with self.assertRaises(Exception) as caught, self.database.transaction() as tx:
+            prepared.apply(tx, request.expected_version + 1)  # the grant waits for the architect's saved recommendation
+        self.assertIn("recommendation", str(caught.exception))
+        from test_execution import save_recommendation
+        save_recommendation(self.database, view["owner_decisions"][0]["assignment_id"], "grant_one")
+        prepared = self.service.prepare_owner_decision(request)
         with self.database.transaction() as tx:
             prepared.apply(tx, request.expected_version + 1)
         self.assertEqual(self.entry()["state"], "queued")
