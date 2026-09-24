@@ -24,3 +24,15 @@ Classify a finding before acting:
 | Environment failure | Fix setup and rerun preflight outside code review limits |
 
 The milestone branch receives reviewed features. Assembled QA and outcome review decide its promotion to master. When a passed milestone changes the installed service, CLI, schemas or installer, tag the promoted master commit `passed/<plain name>`. The [automatic upgrade](../../services/maestro/deploy/README.md#automatic-upgrade) installs only that exact revision, preserves configured settings, runs post-install health and smoke checks and restores its backup on failure. Record its receipt or blocker before starting a dependent milestone. A milestone that does not change these skips installation, and only the Owner-approved promotion step creates `passed/*` tags. A passed milestone closes; polish does not keep it open. Record timing and delay causes for a retrospective, then improve the relevant preflight, prerequisite check or rule when a real gap is found.
+
+## Autopilot
+
+The autopilot works through the [ordered outcomes](../planning/outcomes.md) without waiting for the Owner. The Owner has delegated these decisions to it:
+
+- **Accepting an outcome.** Accept it when every acceptance criterion is met with real evidence or carries an accepted exception. Do not keep working on anything that can wait; record it as an accepted exception and move on. Do not polish.
+- **Promoting.** Tag the merged master commit `passed/<plain name>`. The timer installs it when the installed service changes.
+- **Shaping the work.** Map each outcome to existing code and the installed host first. An outcome may need several features, each with one finish line and one owner; an outcome that is mostly built may need none. Plan only what the gap requires.
+- **Independent review.** Every feature is reviewed once by a different agent than the one that built it, by default Codex, against the code and real evidence rather than the builder's summary. Apply one targeted correction. A finding that changes the outcome goes to the Owner.
+- **Continuing.** After accepting an outcome, start the next one in roadmap order.
+
+Stop and report only for a genuine blocker: a credential or access the autopilot lacks, a decision that changes an outcome, or acceptance criteria that cannot be met or excepted. Record the blocker in the checkpoint.
