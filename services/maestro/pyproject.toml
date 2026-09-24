@@ -21,4 +21,4 @@ include = ["maestro*"]
 maestro = ["**/*.json"]
 
 [tool.setuptools.data-files]
-"share/maestro/deploy" = ["deploy/install.py", "deploy/maestro.service", "deploy/README.md", "deploy/maestro-agent-egress", "deploy/maestro-agent-egress.sudoers"]
+"share/maestro/deploy" = ["deploy/install.py", "deploy/maestro.service", "deploy/README.md", "deploy/maestro-agent-egress", "deploy/maestro-agent-egress.sudoers", "deploy/upgrade.py", "deploy/maestro-upgrade.service", "deploy/maestro-upgrade.timer"]

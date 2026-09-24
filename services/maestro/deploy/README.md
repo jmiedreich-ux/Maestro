@@ -102,6 +102,27 @@ persistence, and durable-request restart as `UNTESTED`: those observations
 require the approved disposable-host procedure below and cannot be replaced by
 a staged directory or a user unit running as the operator.
 
+## Automatic upgrade
+
+`deploy/upgrade.py` upgrades the installed service to a revision that has passed. A revision is installable only when it is a full commit on `master` that carries a `passed/*` tag; tag the merge commit after assembled QA and outcome review, for example `passed/verified-development-environment`. Anything else is refused.
+
+An upgrade backs up the installed package, deployment files, egress launchers, configuration and database under `/var/lib/maestro/upgrades/<time>/`, stops the service, installs the exact revision, re-renders the egress launchers from the new template with the installed values, and starts the service. Configuration, the Owner credential and provider profiles are never rewritten. Post-install checks require the service to be active, an authenticated workspace read to return 200 and an unauthenticated read to return 401; extra checks can be added with `--smoke`. If anything fails the backup is restored, the service is restarted and checked again, and the command exits 1 (`rolled_back`) or 2 (`rollback_failed`). Each attempt leaves `receipt.json` in its backup folder, and the installed revision is recorded in `/opt/maestro/share/maestro/INSTALLED_REVISION`.
+
+```text
+sudo python3 upgrade.py upgrade --source-repository /var/lib/maestro/upgrade-source \
+  --revision FULL_COMMIT --owner-token ~OPERATOR/.config/maestro/owner.token --port 18787
+```
+
+To install passed revisions automatically, enable the trigger once. It mirrors the repository and starts a timer that fetches `master` and its tags every minute and installs the newest passed revision that is not already installed:
+
+```text
+sudo /opt/maestro/bin/python /opt/maestro/share/maestro/deploy/upgrade.py install-trigger \
+  --source-repository /var/lib/maestro/upgrade-source --source-url REPOSITORY_URL \
+  --owner-token ~OPERATOR/.config/maestro/owner.token --port 18787
+```
+
+Anyone who can push a `passed/*` tag to the repository can cause an install, so restrict tag creation to the Owner.
+
 ## Development environment preflight
 
 One command applies the [environment contract](../../../docs/development-process/environment-contract.md) to a selected feature. It reports every category as pass, fail, excluded with a reason, or unverified, and lists all missing items together. It exits 0 only when every applicable check passes, and 1 otherwise.

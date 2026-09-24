@@ -1,0 +1,8 @@
+[Unit]
+Description=Install the newest passed Maestro revision
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=@PYTHON@ @DEPLOY_DIR@/upgrade.py watch --source-repository @SOURCE@ --owner-token @OWNER_TOKEN@ --port @PORT@
