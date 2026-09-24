@@ -264,6 +264,36 @@ class StageTests(unittest.TestCase):
         index = json.loads(self.destination.published[-1][".maestro/architecture/index.json"])
         self.assertEqual([1, 2], [v["version"] for v in index["versions"]])
 
+    def test_a_breakdown_question_reaches_the_owner_and_the_answer_returns_to_the_same_session(self) -> None:
+        project_id, package = self.registered()
+        outcomes, milestones = self.milestone_ids(package)
+        question = {"local_key": "q1", "subject": "Which search fields?", "question": "Search title only?", "reason": "The outcome does not say.", "recipient": "owner", "linked_finding_keys": [],
+                    "options": [{"local_key": "title", "label": "Title only", "tradeoff": "Simpler", "recommendation_reason": None}]}
+        ask = base.architect_response({}, result="clarification_required", questions=[question], findings=[])
+        ask["kind"] = "clarify"
+        self.runs.script = [base.architect_response(base.files_for(milestones)), ask, self.response(breakdown(milestones))]
+        activity = self.start_architecture(project_id, package).activity_id
+        for _ in range(20):
+            self.architecture.tick()
+            self.save_history(activity)
+            if self.row_a(activity)["state"] == "architect_waiting":
+                break
+        self.assertEqual("architect_waiting", self.row_a(activity)["state"])
+        self.assertEqual("breakdown", self.row_a(activity)["stage"])
+        (question_id, _status, version), = self.open_questions(activity)
+        self.submit("question.answer", project_id, activity, question_id, version, {"text": "Title only.", "choice_id": "title"})
+        for _ in range(20):
+            self.architecture.tick()
+            self.save_history(activity)
+            if self.row_a(activity)["breakdown_ref_json"]:
+                break
+        asked, resumed = [s for s in self.runs.started if s[3].assignment.instructions.get("task_kind") == "break_down"][-2:]
+        self.assertEqual(asked[3].assignment.instructions["session_id"], resumed[3].assignment.instructions["session_id"])
+        self.assertIn("Title only.", resumed[3].inputs["answers.json"].decode())
+        decisions = json.loads(self.destination.published[-2][".maestro/architecture/versions/2/decisions.json"])["decisions"]
+        self.assertEqual(["architect", "owner"], [decisions[0]["authority"]["kind"], decisions[-1]["authority"]["kind"]])  # the foundations decision is kept, the Owner's answer is added
+        self.assertEqual("Title only.", decisions[-1]["answer"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -253,6 +253,25 @@ class ArchitectureTests(unittest.TestCase):
         decisions = json.loads(self.destination.published[-2][".maestro/architecture/versions/1/decisions.json"])["decisions"]
         self.assertEqual("owner", decisions[-1]["authority"]["kind"])
 
+    def test_a_publication_that_definitely_conflicts_does_not_block_cancelling(self) -> None:
+        project_id, package = self.registered()
+        outcomes, milestones = self.milestone_ids(package)
+        self.runs.script = [architect_response(files_for(milestones))]
+        activity = self.start_architecture(project_id, package).activity_id
+        row = self.row_a(activity)
+        path = "src/.maestro/context.md"
+        self.destination.trees[self.destination.branches["publish"]] = {path: b"someone else's file"}
+        with self.database.transaction() as tx:
+            tx.execute("INSERT INTO service_architecture_publications(operation_id, activity_id, kind, repository, branch, files_json, state, profile_json) VALUES ('op1', ?, 'specialists', ?, ?, '{}', 'writing', ?)",
+                       (activity, row["repository"], row["publication_branch"], row["profile_json"]))
+        self.architecture._frozen("op1", {path: b"our file"})
+        view = self.architecture.project_view(project_id)
+        self.submit("architecture.cancel", project_id, activity, None, view["activity_version"], {"reason": "stuck"})
+        for _ in range(3):
+            self.architecture.tick()
+        self.assertEqual("cancelled", self.row_a(activity)["state"])
+        self.assertEqual("paused", self.architecture._read("SELECT state FROM service_architecture_publications WHERE operation_id = 'op1'")["state"])
+
     def test_a_missing_saved_conversation_starts_a_linked_replacement_session(self) -> None:
         project_id, package = self.registered()
         outcomes, milestones = self.milestone_ids(package)
