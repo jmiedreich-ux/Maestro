@@ -248,10 +248,20 @@ def _smoke(target: UpgradeTarget, effects: Effects, receipt: Receipt, extra: Seq
         except OSError:
             ok &= receipt.check("owner_token", False, "Owner credential unreadable")
     url = f"http://127.0.0.1:{target.port}/api/v1/workspace"
+
+    def answer(credential: str | None) -> int:
+        """Wait for the service to listen; an active unit is not yet an answering service."""
+        deadline = effects.now() + 60
+        status = effects.http_status(url, credential)
+        while status == 0 and effects.now() < deadline:
+            effects.sleep(2)
+            status = effects.http_status(url, credential)
+        return status
+
     if token is not None:
-        status = effects.http_status(url, token)
+        status = answer(token)
         ok &= receipt.check("authenticated_read", status == 200, f"HTTP {status}")
-    refused = effects.http_status(url, None)
+    refused = answer(None)
     ok &= receipt.check("unauthenticated_refused", refused == 401, f"HTTP {refused}")
     for command in extra:
         code, output = effects.run(command)
