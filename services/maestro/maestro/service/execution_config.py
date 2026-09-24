@@ -73,7 +73,21 @@ def validate(table: object) -> dict[str, Any]:
         reviewer["backup"] = _pair(packet["backup"], "reviewers.packet.backup")
         if (reviewer["backup"]["tool"], reviewer["backup"]["model"]) == (reviewer["primary"]["tool"], reviewer["primary"]["model"]):
             raise ExecutionConfigError("execution.reviewers.packet primary and backup must differ")
+    integration_reviewer = None
+    if isinstance(reviewers, Mapping) and isinstance(reviewers.get("integration"), Mapping):
+        integration = reviewers["integration"]
+        integration_reviewer = {"primary": _pair(integration.get("primary"), "reviewers.integration.primary")}
+        if "backup" in integration:
+            integration_reviewer["backup"] = _pair(integration["backup"], "reviewers.integration.backup")
+    manager_pair = None
+    if isinstance(table.get("integration_manager"), Mapping):
+        manager_pair = _pair(table["integration_manager"], "integration_manager")
+        if manager_pair["tool"] not in {"codex", "claude_code"}:
+            raise ExecutionConfigError("execution.integration_manager needs tool codex or claude_code")
     reviews = table.get("reviews", {})
+    integration_rounds = 2
+    if isinstance(reviews, Mapping) and isinstance(reviews.get("integration"), Mapping):
+        integration_rounds = reviews["integration"].get("maximum_completed_rounds", 2)
     rounds = reviews.get("packet", {}).get("maximum_completed_rounds", 2) if isinstance(reviews, Mapping) and isinstance(reviews.get("packet", {}), Mapping) else 2
     recovery = table.get("recovery", {}) if isinstance(table.get("recovery", {}), Mapping) else {}
     return {
@@ -82,7 +96,11 @@ def validate(table: object) -> dict[str, Any]:
         "reviewers": {"packet": reviewer},
         "coder_default_route_id": default,
         "coder_routes": coder_routes,
-        "reviews": {"packet": {"maximum_completed_rounds": _positive(rounds, "reviews.packet.maximum_completed_rounds")}},
+        "reviews": {"packet": {"maximum_completed_rounds": _positive(rounds, "reviews.packet.maximum_completed_rounds")},
+                    "integration": {"maximum_completed_rounds": _positive(integration_rounds, "reviews.integration.maximum_completed_rounds")}},
+        # Optional: without them the Integration Manager uses the Development Manager's route and integration review uses the packet reviewers.
+        **({"integration_manager": manager_pair} if manager_pair else {}),
+        **({"integration_reviewers": integration_reviewer} if integration_reviewer else {}),
         "recovery": {"automatic_recovery_attempts": recovery.get("automatic_recovery_attempts", 2), "manual_retry_attempts": recovery.get("manual_retry_attempts", 1)},
     }
 

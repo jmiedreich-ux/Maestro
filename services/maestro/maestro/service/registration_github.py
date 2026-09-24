@@ -358,16 +358,28 @@ class GitHubDestination:
         if not any(repository.lower() == r.lower() for r in self.profile.repositories):
             raise DestinationError("repository_not_allowed", f"{repository} is not in the profile's repository allowlist")
 
-    def push_branch(self, repository: str, workdir: Path, branch: str, commit: str) -> str:
+    def contains(self, repository: str, ancestor: str, descendant: str) -> bool:
+        """Whether ``descendant`` is ``ancestor`` or has it in its history, as the remote reports it."""
+        status, value = self._api("GET", f"/repos/{repository}/compare/{ancestor}...{descendant}")
+        if status == 404:
+            return False
+        if status != 200 or not isinstance(value, Mapping):
+            raise DestinationError("branch_unverifiable", "the remote history could not be compared", status=status)
+        return value.get("status") in {"ahead", "identical"}
+
+    def push_branch(self, repository: str, workdir: Path, branch: str, commit: str, expected_before: str | None = None) -> str:
         """Push exactly one local commit to a work branch without force and return the remote head read afterwards.
 
         A branch that already holds the commit is a lost acknowledgment and succeeds; a branch at some other
-        commit that is not an ancestor of it is refused.
+        commit that is not an ancestor of it is refused. When ``expected_before`` is given, the branch must still
+        be at that head (a changed target is reported, never overwritten).
         """
         self.check_code_branch(repository, branch)
         remote = self.branch_head(repository, branch)
         if remote == commit:
             return commit
+        if expected_before is not None and remote != expected_before:
+            raise DestinationError("target_changed", f"the branch {branch} moved from {expected_before[:12]} to {(remote or 'nothing')[:12]}", remote=remote)
         environment = _git_environment(self.token())
         done = subprocess.run(
             ["git", "-c", "safe.directory=*", "-C", str(workdir), "push", "--quiet", f"https://github.com/{repository}.git", f"{commit}:refs/heads/{branch}"],

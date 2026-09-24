@@ -121,7 +121,7 @@ class ExecutionExtension:
         request_id = self._unconfirmed.get(key) or self._request_id()
         try:
             response = context.client.submit({"request_id": request_id, "operation": "owner.decision", "project_id": project_id, "activity_id": activity_id, "question_id": None,
-                                              "expected_version": data["version"], "payload": {"target": "packet_review", "choice": choice, "assignment_id": target["assignment_id"]}})
+                                              "expected_version": data["version"], "payload": {"target": target.get("target", "packet_review"), "choice": choice, "assignment_id": target["assignment_id"]}})
         except ServiceError as error:
             self._unconfirmed.pop(key, None)
             raise ExecutionError(f"The decision was not accepted: {error}") from error
@@ -169,6 +169,9 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
                 for finding in review["findings"]:
                     lines.append(f"        {finding['severity']}: {finding['subject']} — {finding['requested_correction'][:200]}")
             lines.append(f"      active time: coder {packet['active_seconds']['coder']}s, reviewer {packet['active_seconds']['reviewer']}s")
+    integration = view.get("integration")
+    if isinstance(integration, Mapping):
+        lines.extend(_render_integration(integration, full=full))
     if view.get("open_questions"):
         lines.append("Waiting for your answer to: " + ", ".join(view["open_questions"]))  # type: ignore[arg-type]
     measured = view["measurements"]  # type: ignore[index]
@@ -179,6 +182,33 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
         if manager.get("blockers"):
             lines.append("blockers: " + "; ".join(f"{b['packet_key']}: {b['reason']}" for b in manager["blockers"]))
     return "\n".join(lines)
+
+
+def _render_integration(integration: Mapping[str, object], *, full: bool) -> list[str]:
+    lines: list[str] = []
+    for m in integration.get("milestones", []):  # type: ignore[union-attr]
+        if m["branch"]:
+            lines.append(f"Milestone {m['key']}: branch {m['branch']} at {str(m['head_commit'])[:12]} (from baseline {str(m['base_commit'])[:12]})" + (f"; depends on {', '.join(m['dependencies'])}" if m["dependencies"] else ""))
+    for e in integration.get("queue", []):  # type: ignore[union-attr]
+        what = e["packet_key"] if e["kind"] == "packet" else f"import {e['delivery_id']}"
+        parts = [f"queue {e['entry_id']} [{e['state']}] {what} -> milestone {e['milestone']}"]
+        if e.get("integration_head"):
+            parts.append(f"integration {str(e['integration_head'])[:12]} on {e['branch']}" + (" (code changed)" if e.get("code_changed") else " (clean merge, no code change)" if e.get("code_changed") is False else ""))
+        if e.get("conflicts"):
+            parts.append("conflicts: " + ", ".join(e["conflicts"]))
+        if e.get("merged_commit"):
+            parts.append(f"merged into the milestone at {str(e['merged_commit'])[:12]}")
+        if e["reviews"]:
+            parts.append(f"integration review {e['review']['completed']} of {e['review']['limit']}: " + ", ".join(f"round {r['round']} {r['outcome']} ({r['blocking']} blocking)" for r in e["reviews"]))
+        if e.get("note"):
+            parts.append(str(e["note"]))
+        lines.append("  " + " | ".join(parts))
+        if full and e.get("manager"):
+            lines.append(f"      integration manager: {e['manager']['tool']} {e['manager']['model']}; source {str(e['source_commit'])[:12]}, target before {str(e['target_before'])[:12]}")
+    for d in integration.get("deliveries", []):  # type: ignore[union-attr]
+        lines.append(f"  dependency {d['delivery_id']} [{d['state']}] {', '.join(d['packets'])} from {d['provider']} to {d['consumer']} at {str(d['source_commit'])[:12]}"
+                     + (f", imported as {str(d['import_commit'])[:12]}" if d.get("import_commit") else "") + (f" | {d['note']}" if d.get("note") else ""))
+    return lines
 
 
 def _receipt(response: Mapping[str, object]) -> Mapping[str, object]:
