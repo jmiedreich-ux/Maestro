@@ -314,7 +314,7 @@ class ExecutionService:
         route_id = payload["manager_route_id"]
         manager = config["development_manager"]["routes"].get(route_id) if isinstance(route_id, str) else None
         if manager is None:
-            raise ValueError("manager_route_id does not name a configured Development Manager route")
+            raise ValueError("manager_route_id does not name a configured Development Manager route; configured: " + ", ".join(config["development_manager"]["routes"]))
         try:
             self.runs.route_resolver("architect", manager["tool"], manager["model"])
         except Exception as error:  # noqa: BLE001 - any refusal to resolve the route means it cannot be launched
@@ -378,7 +378,7 @@ class ExecutionService:
                 transaction.execute(
                     "INSERT INTO service_execution_packets(activity_id, packet_key, subject, record_json, record_sha256, milestone_key, dependency_keys_json, state, round_limit, updated_at) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
-                    (activity_id, packet["key"], packet["record"]["subject"], canonical_json(packet["record"]), packet["sha256"], packet["milestone_key"], canonical_json(packet["dependency_keys"]), limit, now),
+                    (activity_id, packet["key"], packet["record"]["subject"], canonical_json(packet["record"]), packet["sha256"], packet["milestone_key"], _dump(packet["dependency_keys"]), limit, now),
                 )
             self._event(transaction, activity_id, "started", None, "Execution started; the Development Manager plans the first packets")
             self._say(transaction, project_id, activity_id,
@@ -738,7 +738,7 @@ class ExecutionService:
             number = int(fresh["pass_number"])
             tx.execute(
                 "INSERT INTO service_execution_plans(activity_id, pass_number, assignment_id, run_id, result_json, accepted_json, rejected_json, event_ids_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (row["activity_id"], number, current["assignment_id"], current["run_id"], canonical_json(response), canonical_json(accepted), canonical_json(rejected), canonical_json(event_ids), _now()),
+                (row["activity_id"], number, current["assignment_id"], current["run_id"], canonical_json(response), _dump(accepted), _dump(rejected), _dump(event_ids), _now()),
             )
             pending.pop("manager_run", None)
             pending["checkpoint"] = str(response.get("checkpoint", ""))[:4000]
@@ -1178,7 +1178,7 @@ class ExecutionService:
                 "INSERT INTO service_execution_reviews(activity_id, packet_key, review_round, assignment_id, run_id, reviewer_tool, reviewer_model, author_tool, author_model, reviewed_base, reviewed_head, outcome, summary, findings_json, independence, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (activity_id, key, round_number, current["assignment_id"], current["run_id"], reviewer["tool"], reviewer["model"], packet["tool"], packet["model"], expected["base"], expected["head"],
-                 outcome, str(response["summary"])[:2000], canonical_json(findings), str(response.get("independence", ""))[:500], _now()),
+                 outcome, str(response["summary"])[:2000], _dump(findings), str(response.get("independence", ""))[:500], _now()),
             )
             pending.pop("reviewer_run", None)
             pending.pop("last_recovery_detail", None)
@@ -1239,10 +1239,14 @@ class ExecutionService:
             if stuck:
                 parts.append(f"{len(stuck)} packet(s) need attention: " + "; ".join(p["packet_key"] for p in stuck))
             text = "No further packet can start: " + ("; ".join(parts) or "nothing left to run")
+        actions: tuple[ActivityAction, ...] = ()
+        if any(p["state"] == "limit_paused" for p in packets):
+            actions = (ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"), ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"))
+            text += ". Review limit reached: grant one extra attempt or keep it paused"
         if state != row["state"] or self._current_waiting(activity_id) != text:
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_executions SET state = ? WHERE activity_id = ? AND state IN ('running', 'blocked')", (state, activity_id))
-                self._activity(tx, activity_id, state, text)
+                self._activity(tx, activity_id, state, text, actions)
 
     def _current_waiting(self, activity_id: str) -> str | None:
         found = self._read("SELECT waiting_reason FROM service_activities WHERE activity_id = ?", (activity_id,))
@@ -1251,6 +1255,16 @@ class ExecutionService:
     def project_view(self, project_id: str) -> dict[str, Any] | None:
         row = self._read("SELECT activity_id FROM service_executions WHERE project_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1", (project_id,))
         return None if row is None else self.view(str(row["activity_id"]))
+
+    def configuration_view(self) -> dict[str, Any]:
+        """What a start can choose from, read from the current configuration; a plain error when it is unusable."""
+        try:
+            config = execution_config.validate(self.config_source())
+        except execution_config.ExecutionConfigError as error:
+            return {"valid": False, "error": str(error), "manager_routes": [], "coder_routes": []}
+        return {"valid": True, "error": None, "sha256": execution_config.digest(config),
+                "manager_routes": [{"route_id": rid, "tool": r["tool"], "model": r["model"]} for rid, r in config["development_manager"]["routes"].items()],
+                "coder_routes": [{"route_id": rid, "tool": r["tool"], "model": r["model"], "location": r["location"], "default": rid == config["coder_default_route_id"]} for rid, r in config["coder_routes"].items()]}
 
     def view(self, activity_id: str) -> dict[str, Any] | None:
         row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
@@ -1289,7 +1303,12 @@ class ExecutionService:
         events = self._rows("SELECT event_id, kind, packet_key, detail, handled FROM service_execution_events WHERE activity_id = ? ORDER BY event_id DESC LIMIT 20", (activity_id,))
         plans = self._rows("SELECT pass_number, run_id, accepted_json, rejected_json, created_at FROM service_execution_plans WHERE activity_id = ? ORDER BY pass_number", (activity_id,))
         actions: list[str] = []
-        if any(p["state"] == "limit_paused" for p in packets):
+        decisions = []
+        for p in self._packets(activity_id):
+            limit = self._packet_pending(p).get("limit")
+            if p["state"] == "limit_paused" and limit:
+                decisions.append({"packet_key": p["packet_key"], "assignment_id": limit["assignment_id"], "round": limit["round"]})
+        if decisions:
             actions.append("respond_to_owner_decision")
         open_questions = [q for q, i in pending.get("questions", {}).items() if not i.get("answered")]
         return {
@@ -1302,7 +1321,7 @@ class ExecutionService:
                         "planning": pending.get("manager_run") is not None, "understanding": pending.get("understanding"), "priorities": pending.get("priorities", []),
                         "blockers": pending.get("blockers", []), "checkpoint": pending.get("checkpoint")},
             "packets": packets, "plans": [{"pass": p["pass_number"], "accepted": json.loads(p["accepted_json"]), "rejected": json.loads(p["rejected_json"]), "at": p["created_at"]} for p in plans],
-            "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions,
+            "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions, "owner_decisions": decisions,
             "runs": [{"run_id": r["run_id"], "role": r["assignment_id"].rsplit("-", 2)[-2] if "-" in r["assignment_id"] else r["role"], "state": r["state"], "tool": r["tool"], "model": r["model_id"], "tool_version": r["tool_version"], "seconds": r["active_seconds"]} for r in runs],
         }
 
@@ -1415,6 +1434,11 @@ class ExecutionService:
 
 class BlockedResult(ValueError):
     """The coder reports it could not finish; the packet stops for attention instead of going to review."""
+
+
+def _dump(value: object) -> str:
+    """Canonical JSON for any value (the shared helper accepts only objects)."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 def _json(value: object) -> bytes:

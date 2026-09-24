@@ -29,8 +29,9 @@ class RegistrationError(ValueError):
 class RegistrationExtension:
     """Register /register, /registration and the registration actions on the workspace."""
 
-    def __init__(self, request_id_factory: Callable[[], str] | None = None, architecture: object | None = None) -> None:
+    def __init__(self, request_id_factory: Callable[[], str] | None = None, architecture: object | None = None, execution: object | None = None) -> None:
         self._architecture = architecture  # handles the actions of architecture activities, which share these action kinds
+        self._execution = execution  # handles the actions of Execution activities
         self._request_id = request_id_factory or (lambda: f"registration-{uuid.uuid4().hex}")
         self._unconfirmed: dict[tuple[str, str], str] = {}
         self._cancelling: set[str] = set()
@@ -101,6 +102,8 @@ class RegistrationExtension:
         if activity_id is None or project_id is None:
             raise RegistrationError("Select the registration activity first.")
         chosen = next((a for a in getattr(state, "activities", ()) if getattr(a, "activity_id", None) == activity_id), None)
+        if self._execution is not None and getattr(chosen, "kind", None) == "execution":
+            return self._execution.action(context, action_id)  # type: ignore[attr-defined]
         if self._architecture is not None and getattr(chosen, "kind", None) == "architecture":
             return self._architecture.action(context, action_id)  # type: ignore[attr-defined]
         if action_id.endswith("-confirm"):

@@ -301,7 +301,7 @@ class InstalledServiceApplication:
             cursor = _event_cursor(connection)
         if known is None:
             return HTTPResponse(404, {"error": {"code": "project_not_found", "message": "the project was not found"}}, content)
-        return HTTPResponse(200, {"data": self.execution.project_view(project_id), "event_cursor": str(cursor)}, content)  # type: ignore[union-attr]
+        return HTTPResponse(200, {"data": self.execution.project_view(project_id), "configuration": self.execution.configuration_view(), "event_cursor": str(cursor)}, content)  # type: ignore[union-attr]
 
     def _processes_response(self, headers: Mapping[str, str]) -> HTTPResponse:
         content = {"Content-Type": "application/json; charset=utf-8"}
