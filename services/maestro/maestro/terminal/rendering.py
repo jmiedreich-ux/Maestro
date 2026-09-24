@@ -104,6 +104,13 @@ class TerminalRenderer:
     @staticmethod
     def _conversation(workspace: Workspace, rows: int) -> list[str]:
         lines: list[str] = []
+        names = {project.project_id: project.name for project in workspace.projects}
+        for item in workspace.notices():
+            focus = _focus(workspace, "attention", item.cursor)
+            lines.append(
+                f"{focus} Attention: {names.get(item.project_id, item.project_id)}"
+                f" needs a response | {item.subject} | {item.source} | {item.type}"
+            )
         activity = next(
             (
                 item
@@ -123,6 +130,15 @@ class TerminalRenderer:
             )
             lines.append(f"{activity.subject} | {activity.state}{waiting}")
             lines.extend(_runtime_lines(workspace.activity_detail))
+            for finding in workspace.findings():
+                identity = str(finding["finding_id"])
+                focus = _focus(workspace, "finding", identity)
+                lines.append(
+                    f"{focus} Finding: {finding.get('subject', '')} | "
+                    f"{finding.get('status', '')}"
+                )
+                if workspace.detail_open and workspace.open_finding == identity:
+                    lines.append(f"    {finding.get('detail', '')}")
         detail = workspace.selected_attention_detail
         if detail is not None:
             prompt = detail.get("prompt")
