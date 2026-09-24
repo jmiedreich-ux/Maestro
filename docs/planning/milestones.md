@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: operate the persistent Maestro service
+
+**Accepted by the Owner on 2026-09-24 with recorded limitations.** The installed service, its accounts and permissions, startup failure reporting and Owner access were observed working. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) list what is deferred: observing boot and crash restart, and validating agent routes at startup.
+
 ## Closed checkpoint: verified Maestro development environment
 
 **Accepted by the Owner on 2026-09-24.** Evidence is in the [prerequisite pass](prerequisite-pass.md).
