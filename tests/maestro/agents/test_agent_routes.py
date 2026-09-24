@@ -624,24 +624,39 @@ class EnvironmentPreflightTests(unittest.TestCase):
         self.assertNotIn("source_and_workspace/clean_checkout", self.missing(report))
         self.assertEqual(self.missing(report), set(), report.render())
 
-    def test_github_administration_and_protected_branch_are_separate_checks(self) -> None:
+    def test_github_administration_and_write_are_separate_checks(self) -> None:
         repo = {"private": True, "permissions": {"pull": True, "push": True}}
         profile = self.profile(
             github_repository="owner/name",
             require_app_administration_read=True,
-            require_protected_branch=True,
+            exercise_github_write=True,
         )
+        real = self.preflight.host_probes()
+
+        def probes(app, write):
+            return self.preflight.EnvironmentProbes(
+                real.run, lambda: 1_000_000_000_000, lambda path: repo, lambda: app,
+                lambda url: None, lambda repository: write,
+            )
+
         report = self.preflight.run_environment_preflight(
-            profile, self.probes(repo=repo, app={"administration": "write"})
+            profile, probes({"administration": "write"}, (True, "created and deleted a scratch branch"))
         )
-        missing = self.missing(report)
-        self.assertNotIn("github_and_test_targets/app_administration_read", missing)
-        self.assertNotIn("github_and_test_targets/write_access", missing)
-        self.assertIn("github_and_test_targets/protected_branch_case", missing)
+        self.assertEqual(
+            {m for m in self.missing(report) if m.startswith("github")}, set(), report.render()
+        )
         no_admin = self.preflight.run_environment_preflight(
-            profile, self.probes(repo=repo, app={"contents": "write"})
+            profile, probes({"contents": "write"}, (True, "ok"))
         )
         self.assertIn("github_and_test_targets/app_administration_read", self.missing(no_admin))
+        refused = self.preflight.run_environment_preflight(
+            profile, probes({"administration": "write"}, (False, "creating a scratch branch was refused"))
+        )
+        self.assertIn("github_and_test_targets/write_access", self.missing(refused))
+        unexercised = self.preflight.run_environment_preflight(
+            self.profile(github_repository="owner/name"), probes(None, (True, "ok"))
+        )
+        self.assertIn("github_and_test_targets/write_access", self.missing(unexercised))
 
     def test_service_required_feature_reports_an_inactive_service(self) -> None:
         report = self.preflight.run_environment_preflight(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import stat
 import subprocess
 from dataclasses import dataclass
@@ -410,6 +411,26 @@ class WorkspaceManager:
         except BaseException:
             # Preserve an interrupted/failed workspace for diagnosis; callers choose cleanup.
             raise
+
+    def reset(self, workspace: PreparedWorkspace) -> None:
+        """Remove one run's workspace, including read-only and agent-locked entries."""
+        run = workspace.paths.root
+        if (
+            run.is_symlink()
+            or not run.is_dir()
+            or self.root not in run.parents
+            or run.parent.name != "runs"
+        ):
+            raise WorkspaceError("reset_refused", "path is not a run workspace owned by this manager")
+        for base, directories, _ in os.walk(run):
+            for name in directories:
+                path = Path(base, name)
+                if not path.is_symlink():
+                    path.chmod(path.lstat().st_mode | 0o700)
+        run.chmod(run.lstat().st_mode | 0o700)
+        shutil.rmtree(run)
+        if run.exists() or run.is_symlink():
+            raise WorkspaceError("reset_failed", "run workspace could not be removed")
 
     @staticmethod
     def _checkout(repository: Path, commit: str, destination: Path) -> None:

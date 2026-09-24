@@ -413,7 +413,7 @@ class FeatureProfile:
     credential_files: Mapping[str, Path] | None = None
     github_repository: str | None = None
     require_app_administration_read: bool = False
-    require_protected_branch: bool = False
+    exercise_github_write: bool = False
     needs_service: bool = False
     progress_log: Path | None = None
     require_progress_channel: bool = False
@@ -428,6 +428,10 @@ class EnvironmentProbes:
     github_api: Callable[[str], Mapping[str, object] | None]
     github_app_permissions: Callable[[], Mapping[str, str] | None]
     http_json: Callable[[str], Mapping[str, object] | None] = lambda url: None
+    github_write: Callable[[str], tuple[bool, str]] = lambda repository: (
+        False,
+        "no write probe supplied",
+    )
 
 
 @dataclass(frozen=True)
@@ -718,10 +722,14 @@ def _check_github(profile: FeatureProfile, probes: EnvironmentProbes) -> list[Ch
         _ok(c, "read_access", profile.github_repository)
         if permissions.get("pull")
         else _bad(c, "read_access", "no read access"),
-        _ok(c, "write_access", "token reports push permission (a write was not exercised)")
-        if permissions.get("push")
-        else _bad(c, "write_access", "token lacks push permission"),
     ]
+    if not permissions.get("push"):
+        out.append(_bad(c, "write_access", "token lacks push permission"))
+    elif profile.exercise_github_write:
+        wrote, detail = probes.github_write(profile.github_repository)
+        out.append(_ok(c, "write_access", detail) if wrote else _bad(c, "write_access", detail))
+    else:
+        out.append(_unknown(c, "write_access", "token reports push permission; a write was not exercised"))
     if profile.require_app_administration_read:
         app = probes.github_app_permissions()
         if app is None:
@@ -730,18 +738,6 @@ def _check_github(profile: FeatureProfile, probes: EnvironmentProbes) -> list[Ch
             out.append(_ok(c, "app_administration_read", f"granted ({app['administration']})"))
         else:
             out.append(_bad(c, "app_administration_read", "GitHub app lacks Administration: read"))
-    if profile.require_protected_branch:
-        if repo.get("private") is False:
-            out.append(_ok(c, "protected_branch_case", "public repository; branch protection is available"))
-        else:
-            out.append(
-                _unknown(
-                    c,
-                    "protected_branch_case",
-                    "private repository; enabling protection needs a paid plan and was not exercised. "
-                    "Use an eligible isolated target",
-                )
-            )
     return out
 
 
@@ -856,8 +852,30 @@ def host_probes(app: tuple[str, str, Path] | None = None) -> EnvironmentProbes:
             return None
         return value if isinstance(value, dict) else None
 
+    def github_write(repository: str) -> tuple[bool, str]:
+        """Create then delete one scratch branch; leaves no lasting change."""
+        info = github_api(f"repos/{repository}")
+        default = info.get("default_branch") if info else None
+        if not isinstance(default, str):
+            return False, f"cannot read the default branch of {repository}"
+        head = github_api(f"repos/{repository}/git/ref/heads/{default}")
+        sha = (head or {}).get("object", {}).get("sha") if isinstance(head, dict) else None
+        if not isinstance(sha, str):
+            return False, f"cannot read the {default} branch head"
+        name = f"maestro-preflight-{os.getpid()}-{int(time.time())}"
+        code, output = run(
+            ["gh", "api", "-X", "POST", f"repos/{repository}/git/refs",
+             "-f", f"ref=refs/heads/{name}", "-f", f"sha={sha}"]
+        )
+        if code != 0:
+            return False, "creating a scratch branch was refused"
+        code, _ = run(["gh", "api", "-X", "DELETE", f"repos/{repository}/git/refs/heads/{name}"])
+        if code != 0:
+            return False, f"created scratch branch {name} but could not delete it"
+        return True, "created and deleted a scratch branch"
+
     return EnvironmentProbes(
-        run, lambda: int(time.time() * 1000), github_api, app_permissions, http_json
+        run, lambda: int(time.time() * 1000), github_api, app_permissions, http_json, github_write
     )
 
 
@@ -873,7 +891,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--github-repository")
     parser.add_argument("--github-app", metavar="APP_ID:INSTALLATION_ID:KEYFILE")
     parser.add_argument("--require-app-administration-read", action="store_true")
-    parser.add_argument("--require-protected-branch", action="store_true")
+    parser.add_argument("--exercise-github-write", action="store_true")
     parser.add_argument("--needs-service", action="store_true")
     parser.add_argument("--progress-log", type=Path)
     parser.add_argument("--require-progress-channel", action="store_true")
@@ -891,7 +909,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         credential_files=credentials,
         github_repository=args.github_repository,
         require_app_administration_read=args.require_app_administration_read,
-        require_protected_branch=args.require_protected_branch,
+        exercise_github_write=args.exercise_github_write,
         needs_service=args.needs_service,
         progress_log=args.progress_log,
         require_progress_channel=args.require_progress_channel,

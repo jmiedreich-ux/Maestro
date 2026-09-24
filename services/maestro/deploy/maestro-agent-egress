@@ -232,8 +232,31 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
 def run_outer() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 5:
         fail("must run as root with route, run identifier, and isolated command")
-    process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+    try:
+        process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+    finally:
+        reclaim_run(sys.argv[2])
     raise SystemExit(process.returncode)
+
+
+def reclaim_run(run_id: str) -> None:
+    """Hand the agent-written folders of a finished run back to the service for reset."""
+    if not valid_run_id(run_id):
+        return
+    try:
+        root = load_workspace_root(load_configuration())
+        service = pwd.getpwnam(SERVICE_USER)
+    except (KeyError, SystemExit):
+        return
+    for run in root.glob(f"*/*/runs/{run_id}"):
+        if run.is_symlink() or not run.is_dir():
+            continue
+        for name in ("output", "scratch"):
+            folder = run / name
+            if folder.is_symlink() or not folder.is_dir():
+                continue
+            subprocess.run(["/usr/bin/chown", "-R", "-h", f"{service.pw_uid}:{service.pw_gid}", str(folder)], check=False)
+            subprocess.run(["/usr/bin/chmod", "-R", "u+rwX", str(folder)], check=False)
 
 
 def rule_table(unit: str) -> str:
