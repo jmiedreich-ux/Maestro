@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: review and confirm the development breakdown
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; tagged `passed/review-and-confirm-the-development-breakdown`, merge revision `1f96c38`, installed by the upgrade timer.** A real Codex reviewer approved a real saved breakdown, and the terminal confirmed the exact version after showing it and asking a second time; a confirmation interrupted by killing the service finished once. The [accepted exceptions](../outcomes/architecture-loop.md#acceptance-criteria-2) are listed in the Result column. Feature: [Review, amend and confirm the work breakdown](features/architecture-review-confirm.md).
+
 ## Closed checkpoint: establish the project's architectural foundations
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/establish-the-projects-architectural-foundations`; installed at `fff52cc` (upgrade timer, service active).** From the terminal, `/architecture start` on a confirmed real project reserved it and started a persistent architect session. A real Codex architect investigated real code and saved and published findings, project structure, a decisions snapshot and specialist role and context files; killed agents and service restarts resumed the same conversation, and a Claude Code architect resumed its session after rejected output. The [accepted exceptions](../outcomes/architecture-loop.md#establish-the-projects-architectural-foundations) (context-limit handling, a live Owner answer and replacement session, findings not named in decisions) are in the Result column. Feature: [Start the architecture loop and save project foundations](features/architecture-foundations.md).
