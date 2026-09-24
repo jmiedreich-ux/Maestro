@@ -1660,7 +1660,6 @@ After the configured limit, unresolved blocking findings keep the milestone unme
 
 ### Manual milestone retrospective
 
-After a milestone is promoted and before another development milestone starts, the Coordinator completes the [manual milestone retrospective](planning/manual-architecture/milestone-retrospective.md). It compares the exact completed milestone revision, its pinned architecture and milestone requirements, packet records, reviews, Quality Assurance and lifecycle measurements. The record identifies late-discovered missing requirements, dependencies, setup, integration or verification paths; explains their observed time or rework impact when measured; and separates them from implementation defects already handled by the normal correction process.
 
 The retrospective saves two plain lists: architecture and delivery gaps that need a future authorized change, and lessons learned that can improve later milestone preparation or execution. It does not reopen a passed review, create another correction allowance, change completed evidence, or treat a preference as a defect. A previously unrecognized unmet required outcome follows the normal milestone-gap path when found before promotion; after promotion it is recorded for the existing planning/change authority. Unmeasured time remains explicitly unknown. The procedure is manual until a later implementation automates collection or presentation without changing these boundaries.
 
