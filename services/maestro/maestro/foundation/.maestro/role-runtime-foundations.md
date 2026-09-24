@@ -22,7 +22,7 @@ Intended area: `services/maestro/maestro/foundation/`. Current related source: c
 
 ### Read first
 
-Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../plan/outcomes.md), [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
+Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/planning/outcomes.md), [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
 
 ## Inputs and outputs
 

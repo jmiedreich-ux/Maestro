@@ -1,7 +1,7 @@
 # Verify the Maestro development environment
 
 ## Outcome and result
-Deliver [the first roadmap outcome](../../docs/outcomes/development-environment.md#prepare-a-verified-development-environment). On the actual Linux development host, a developer runs one preflight for a selected feature. It reports every applicable prerequisite and missing item. A real assigned agent starts in a clean, reusable workspace, reads the assigned repository revision and inputs, writes an output, runs a baseline check and exits cleanly. The same preflight reports a deliberately absent prerequisite clearly.
+Deliver [the first roadmap outcome](../../outcomes/development-environment.md#prepare-a-verified-development-environment). On the actual Linux development host, a developer runs one preflight for a selected feature. It reports every applicable prerequisite and missing item. A real assigned agent starts in a clean, reusable workspace, reads the assigned repository revision and inputs, writes an output, runs a baseline check and exits cleanly. The same preflight reports a deliberately absent prerequisite clearly.
 
 ## Existing implementation assessment
 Inspect the deployment instructions and current scripts, CLI, agent route and supervisor modules, workspace handling, tests and installed host first. Reuse working checks and launch paths; adapt incomplete ones. Write new preflight or reset behavior only for a demonstrated gap. Source files and local tests do not establish installed readiness.

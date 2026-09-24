@@ -25,7 +25,7 @@ The Owner reports previous implementation through initial registration. Master c
 
 ## Authoritative development sources
 
-- [Ordered outcome roadmap](../plan/outcomes.md): what building Maestro must deliver and in what dependency order.
+- [Ordered outcome roadmap](planning/outcomes.md): what building Maestro must deliver and in what dependency order.
 - [Development environment](outcomes/development-environment.md): prerequisite result to prove first.
 - [Feature planning](planning/manual-architecture/work-breakdown.md) and [delivery rules](planning/manual-architecture/packet-rules.md): how Maestro itself is built.
 - [Current manual development registration](planning/manual-registration.md): the accepted planning boundary and source selection.

@@ -12,4 +12,4 @@ This outcome prepares the environment used to build Maestro itself. It does not 
 
 **Failure behavior:** Preflight blocks only affected work and reports all missing items together. Environment failures are fixed and rechecked outside the coder's review count. Unknown access or installed state remains unverified; the developer does not improvise a substitute.
 
-See [the development delivery rules](../planning/manual-architecture/packet-rules.md) and [the roadmap](../../plan/outcomes.md).
+See [the development delivery rules](../planning/manual-architecture/packet-rules.md) and [the roadmap](../planning/outcomes.md).

@@ -4,7 +4,7 @@ Use this guide for breaking down the work of building Maestro itself. Maestro's 
 
 ## Plan the next checkpoint
 
-1. Start with the ordered outcomes in [the development roadmap](../../../plan/outcomes.md).
+1. Start with the ordered outcomes in [the development roadmap](../outcomes.md).
 2. List and prove blocking prerequisites for the next feature, including applicable host setup, credentials, real agent routes, data, and observability. Treat missing service installation as a feature to deliver when it is not yet available. Record each assumption and its proving feature or explicit exclusion.
 3. Inspect the current implementation and tests for the next outcome, especially the previously implemented service, CLI, agents and initial registration. Trace the real entry path and saved result. Record each component as reuse as-is, adapt, replace for a specific incompatibility, or retire because nothing uses it. Separate the Owner's report of implementation from source-supported behavior and installed verification.
 4. Define complete features only for missing or incomplete behavior in the next usable result. Each feature names its real entry point, visible or durable result, key connections, permitted paths, environment prerequisites, owner, and verification.

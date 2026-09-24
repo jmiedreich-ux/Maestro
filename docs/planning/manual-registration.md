@@ -2,7 +2,7 @@
 
 ## Registered scope
 
-The Owner has directed a new outcome-based registration for building Maestro. This manual record registers the [ordered development outcomes](../../plan/outcomes.md) from the exact master source revision `d4702dcfcec74f376160756eda0f3c8216e05acc`. It includes the development environment outcome and the complete product scope in the [project overview](../project-overview.md), [architecture](../architecture.md), and six [outcome specifications](../outcomes/).
+The Owner has directed a new outcome-based registration for building Maestro. This manual record registers the [ordered development outcomes](outcomes.md) from the exact master source revision `d4702dcfcec74f376160756eda0f3c8216e05acc`. It includes the development environment outcome and the complete product scope in the [project overview](../project-overview.md), [architecture](../architecture.md), and six [outcome specifications](../outcomes/).
 
 The scope is Planning, Execution and Monitoring through a Linux service and terminal workspace. It includes registration and updates, architecture preparation, supervised agent work, reviewed delivery, integration, assembled QA, promotion, visibility, stopping and recovery. The overview's stated exclusions remain excluded. This registration does not add a command center or change how Maestro will govern projects once implemented.
 
