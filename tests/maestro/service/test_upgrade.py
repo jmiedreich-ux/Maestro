@@ -154,6 +154,35 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual((self.package / "marker.txt").read_text(), "1")
         self.assertTrue(self.state["active"])
 
+    def test_smoke_waits_for_a_service_that_is_active_but_not_yet_listening(self) -> None:
+        new = self.commit("2", tag="passed/two")
+        effects = self.effects()
+        calls = {"count": 0}
+        clock = {"now": 0.0}
+        inner = effects.http_status
+
+        def slow_start(url, token):
+            calls["count"] += 1
+            return 0 if calls["count"] <= 4 else inner(url, token)
+
+        effects.http_status = slow_start
+        effects.now = lambda: clock["now"]
+        effects.sleep = lambda seconds: clock.__setitem__("now", clock["now"] + seconds)
+        receipt = upgrade_module.upgrade(self.repo, new, self.target, effects)
+        self.assertEqual(receipt.outcome, "upgraded", receipt.checks)
+        self.assertGreater(calls["count"], 4)
+
+    def test_a_service_that_never_answers_is_rolled_back(self) -> None:
+        new = self.commit("2", tag="passed/two")
+        effects = self.effects()
+        clock = {"now": 0.0}
+        effects.http_status = lambda url, token: 0 if (self.package / "marker.txt").read_text() == "2" else (200 if token else 401)
+        effects.now = lambda: clock["now"]
+        effects.sleep = lambda seconds: clock.__setitem__("now", clock["now"] + seconds)
+        receipt = upgrade_module.upgrade(self.repo, new, self.target, effects)
+        self.assertEqual(receipt.outcome, "rolled_back", receipt.checks)
+        self.assertEqual((self.package / "marker.txt").read_text(), "1")
+
     def test_reinstalling_the_installed_revision_changes_nothing(self) -> None:
         receipt = self.run_upgrade(self.old)
         self.assertEqual(receipt.outcome, "already_installed")
