@@ -245,6 +245,7 @@ class SystemdUserUnits:
         raise SupervisionError("launch_unconfirmed", "systemd did not confirm the launched unit")
 
     def inspect(self, unit_name: str) -> UnitIdentity | None:
+        system_gone = self._system_unit_gone(unit_name)
         completed = subprocess.run(
             (
                 self.systemctl, "--user", "show", unit_name,
@@ -261,9 +262,22 @@ class SystemdUserUnits:
             return None
         active = pid > 0 and fields.get("ActiveState") in {"active", "activating", "deactivating"}
         invocation_id = fields.get("InvocationID", "")
+        # The agent itself runs in a root-supervised system unit of the same name; the run
+        # is stopped only when that unit is gone as well as this one's control group.
+        empty = self._cgroup_empty(fields.get("ControlGroup", "")) and system_gone
         if pid <= 0:
-            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
-        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
+            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, empty)
+        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, empty)
+
+    def _system_unit_gone(self, unit_name: str) -> bool:
+        completed = subprocess.run(
+            (self.systemctl, "show", unit_name, "--property=LoadState", "--property=ActiveState"),
+            capture_output=True, text=True, check=False,
+        )
+        if completed.returncode != 0:
+            return False
+        fields = dict(line.split("=", 1) for line in completed.stdout.splitlines() if "=" in line)
+        return fields.get("LoadState") == "not-found" or fields.get("ActiveState") in {"inactive", "failed"}
 
     def stop(self, unit_name: str) -> None:
         completed = subprocess.run(

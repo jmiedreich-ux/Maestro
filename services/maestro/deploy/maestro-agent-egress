@@ -7,6 +7,7 @@ import hashlib
 import ipaddress
 import os
 import pwd
+import signal
 import socket
 import stat
 import subprocess
@@ -18,6 +19,7 @@ CONFIG = Path("@CONFIG_FILE@")
 PROFILE_ROOT = Path("@DATA_DIR@")
 RUN_ROOT = Path("/run/maestro/agent-egress")
 SYSTEMD_RUN = "/usr/bin/systemd-run"
+SYSTEMCTL = "/usr/bin/systemctl"
 BWRAP = "/usr/bin/bwrap"
 RUNNER = "/usr/local/libexec/maestro-agent-egress-run"
 SERVICE_USER = "@SERVICE_USER@"
@@ -221,7 +223,7 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
     hosts_path = write_hosts(run_id, hosts)
     split = bwrap_arguments.index("--")
     sandbox = bwrap_arguments[:split] + ["--ro-bind", str(hosts_path), "/etc/hosts"] + bwrap_arguments[split:]
-    arguments = [SYSTEMD_RUN, "--pipe", "--wait", "--collect", f"--unit={unit_name(run_id)}", "--property=IPAddressDeny=any", "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK"]
+    arguments = [SYSTEMD_RUN, "--pipe", "--wait", "--collect", f"--unit={unit_name(run_id)}", "--property=TimeoutStopSec=20s", "--property=IPAddressDeny=any", "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK"]
     for addresses, _ in resolved:
         for address in addresses:
             suffix = "/128" if ipaddress.ip_address(address).version == 6 else "/32"
@@ -232,11 +234,26 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
 def run_outer() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 5:
         fail("must run as root with route, run identifier, and isolated command")
+    unit = f"{unit_name(sys.argv[2])}.service"
+    stopping: list[int] = []
+
+    def stop_unit(signum: int, _frame: object) -> None:
+        # The service stops a run by stopping its supervisor unit. The agent runs in a separate
+        # system unit that survives its client, so stop that unit here and wait for it to end.
+        stopping.append(signum)
+        subprocess.run([SYSTEMCTL, "stop", unit], check=False)
+
+    for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(signum, stop_unit)
     try:
-        process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+        process = subprocess.Popen(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]))
+        returncode = process.wait()
+        if stopping:
+            # A stop that arrived while the unit was still starting may have missed it.
+            subprocess.run([SYSTEMCTL, "stop", unit], check=False)
     finally:
         reclaim_run(sys.argv[2])
-    raise SystemExit(process.returncode)
+    raise SystemExit(returncode)
 
 
 def reclaim_run(run_id: str) -> None:
