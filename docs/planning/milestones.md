@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: register and confirm a project through the CLI
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/register-and-confirm-a-project-through-the-cli`.** A real Codex architect and Claude reviewer assessed real repositories through the service; the Owner answered questions, confirmed scope, handled a planning-input change, cancelled, and confirmed in the terminal, and the package and receipt were published to GitHub. The [accepted exceptions](../outcomes/registration.md#acceptance-criteria) are in the Result column.
+
 ## Closed checkpoint: apply shared process definitions
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; code merged and installed at `ae62ddd`, outcome tagged `passed/apply-shared-process-definitions`.** The installed service had no schema bundles and never read the process sections; it now ships both bundles (added by the release upgrade), validates the registration and architecture sections, reports them to the Owner, holds an invalid process alone, saves the definition with each activity and gives assignments their limits from it. Proved with a real Codex run (45-second limit from the definition, timed out) and a real Claude Code run (1800 seconds, 2 recoveries), an edit between activity starts, and a missing and changed bundle. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) (outputs, review, confirmation, Owner limit decisions) wait for the registration and architecture outcomes. Feature: [Apply process definitions in the installed service](features/apply-process-definitions.md).
