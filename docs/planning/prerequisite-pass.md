@@ -1,6 +1,6 @@
 # Prerequisite pass for the verified development environment
 
-Status: **observed on the Linux host on 2026-09-23; milestone not marked complete.** The feature code, including the automatic upgrade, is on `master`. Baseline runs used revision `827740cef6b16561bd582852f4ed1fa6e24b3b7b`; the post-install smoke used `ebbb1a1ebac497d2025c9ba888a169478b828160`. Use the [single environment contract](../development-process/environment-contract.md) as the full check list.
+Status: **observed on the Linux host on 2026-09-23; accepted by the Owner on 2026-09-24.** The feature code, including the automatic upgrade, is on `master`. Baseline runs used revision `827740cef6b16561bd582852f4ed1fa6e24b3b7b`; the post-install smoke used `ebbb1a1ebac497d2025c9ba888a169478b828160`. Use the [single environment contract](../development-process/environment-contract.md) as the full check list.
 
 | Assumption or category | Observed result | Status |
 |---|---|---|
