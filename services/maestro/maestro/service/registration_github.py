@@ -338,6 +338,48 @@ class GitHubDestination:
             raise DestinationError("publication_failed", "the branch could not be updated", status=status)
         raise DestinationError("publication_conflict", "the branch kept moving; publication paused")
 
+    # -- code branches --------------------------------------------------------
+
+    def branch_head(self, repository: str, branch: str) -> str | None:
+        """The head of a branch, or None when the branch does not exist."""
+        status, value = self._api("GET", f"/repos/{repository}/git/ref/heads/{urllib.parse.quote(branch, safe='/')}")
+        if status == 404:
+            return None
+        if status != 200 or not isinstance(value, Mapping) or not isinstance(value.get("object"), Mapping):
+            raise DestinationError("branch_unverifiable", f"the head of {branch} could not be read", status=status)
+        return str(value["object"]["sha"])
+
+    def check_code_branch(self, repository: str, branch: str) -> None:
+        """A work branch is created or extended only when its name is allowlisted; no force, no protected branch."""
+        if not isinstance(branch, str) or not branch or branch.startswith(("refs/", "/")) or ".." in branch:
+            raise DestinationError("invalid_work_branch", "the work branch name is invalid")
+        if not any(fnmatch.fnmatchcase(branch, pattern) for pattern in self.profile.branch_patterns):
+            raise DestinationError("branch_not_allowed", f"branch {branch} is not in the profile's branch allowlist")
+        if not any(repository.lower() == r.lower() for r in self.profile.repositories):
+            raise DestinationError("repository_not_allowed", f"{repository} is not in the profile's repository allowlist")
+
+    def push_branch(self, repository: str, workdir: Path, branch: str, commit: str) -> str:
+        """Push exactly one local commit to a work branch without force and return the remote head read afterwards.
+
+        A branch that already holds the commit is a lost acknowledgment and succeeds; a branch at some other
+        commit that is not an ancestor of it is refused.
+        """
+        self.check_code_branch(repository, branch)
+        remote = self.branch_head(repository, branch)
+        if remote == commit:
+            return commit
+        environment = _git_environment(self.token())
+        done = subprocess.run(
+            ["git", "-c", "safe.directory=*", "-C", str(workdir), "push", "--quiet", f"https://github.com/{repository}.git", f"{commit}:refs/heads/{branch}"],
+            capture_output=True, text=True, env=environment,
+        )
+        if done.returncode != 0:
+            raise DestinationError("push_failed", "the work branch could not be pushed", detail=(done.stderr.strip().splitlines() or [""])[-1][:300])
+        head = self.branch_head(repository, branch)
+        if head != commit:
+            raise DestinationError("push_unverified", "the remote branch does not hold the pushed commit", remote=head)
+        return head
+
     def verify_files(self, repository: str, commit: str, files: Mapping[str, bytes]) -> None:
         status, value = self._api("GET", f"/repos/{repository}/commits/{commit}")
         if status != 200:

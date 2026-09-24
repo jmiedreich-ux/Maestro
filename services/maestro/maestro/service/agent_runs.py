@@ -40,6 +40,8 @@ from maestro.agents.transport import (
     TransportError,
 )
 from maestro.agents.architecture_contract import ArchitectureResponseValidator
+from maestro.agents.execution_contract import ExecutionResponseValidator
+from maestro.agents.qwen_transport import QwenTransport
 from maestro.agents.session_state import SessionUse, harvest, seed
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspacePaths, WorkspaceManager
 from maestro.service.reservations import ReservationError, refuse_other_starts
@@ -165,6 +167,8 @@ class RunBuild:
     source_repository: Path
     inputs: Mapping[str, bytes]
     session: SessionUse | None = None
+    # Runs after the workspace exists and before the tool launches (a coder's writable clone is placed here).
+    prepare: Callable[[PreparedWorkspace], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -204,6 +208,7 @@ class AgentRunService:
         self.reconciler = RecoveryReconciler(supervisor.journal, supervisor.units)
         self.validator = RegistrationResponseValidator()
         self.architecture_validator = ArchitectureResponseValidator()
+        self.execution_validator = ExecutionResponseValidator()
         # In-memory only: an open tool conversation cannot survive a service restart.
         self._live: dict[str, _Live] = {}
         self._lock = threading.RLock()
@@ -290,6 +295,8 @@ class AgentRunService:
                 assignment_bytes=spec.assignment.to_bytes(),
                 inputs=spec.inputs,
             )
+            if spec.prepare is not None:
+                spec.prepare(workspace)
             live = _Live(route, spec.assignment, workspace, session=spec.session)
             self._save_snapshot(run_id, spec)
             if tool == "codex":
@@ -297,6 +304,8 @@ class AgentRunService:
                 launch = live.conversation.launch
             elif tool == "claude_code":
                 launch = ClaudeTransport().launch(route, spec.assignment, workspace, profile, spec.session)
+            elif tool == "qwen":
+                launch = QwenTransport().launch(route, spec.assignment, workspace, profile)
             else:
                 raise AgentRunError("unsupported_tool", "no adapter is installed for this tool")
             if spec.session is not None:
@@ -496,7 +505,7 @@ class AgentRunService:
                 raise
             with self.database.transaction() as tx:
                 current = tx.execute("SELECT current_run_id FROM service_agent_assignments WHERE assignment_id = ?", (identity.assignment_id,)).fetchone()[0]
-            validator = self.architecture_validator if live.assignment.contract == "architecture" else self.validator
+            validator = {"architecture": self.architecture_validator, "execution": self.execution_validator}.get(live.assignment.contract, self.validator)
             response = validator.validate(
                 decoded,
                 route=live.route,
@@ -536,6 +545,8 @@ class AgentRunService:
         raw = "\n".join(str(e["data"]).rstrip("\n") for e in record.events if e["kind"] == "stdout")
         session = live.session
         expected = None if session is None else (session.provider_session_id or session.assigned_provider_id)
+        if live.route.tool == "qwen":
+            return QwenTransport().decode(raw, live.route, live.workspace)
         return ClaudeTransport().decode(raw, live.route, expected)
 
     def _rebuild(self, identity: OperationIdentity, assignment: Mapping[str, object], record) -> "_Live":

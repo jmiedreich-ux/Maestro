@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -74,7 +75,7 @@ class InstalledSchemaResources:
     def __init__(self, installation_root: Path | None = None) -> None:
         # The active virtual environment is the installed Maestro root
         # (`/opt/maestro` in production). Tests pass an isolated installed root.
-        self.installation_root = Path(sys.prefix if installation_root is None else installation_root)
+        self.installation_root = Path(installation_root or os.environ.get("MAESTRO_INSTALLATION_ROOT") or sys.prefix)
         self._registry = self._load_registry()
 
     def resolve(self, reference: str) -> ResolvedBundle:

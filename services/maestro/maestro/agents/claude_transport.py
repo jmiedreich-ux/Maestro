@@ -50,8 +50,7 @@ class ClaudeTransport:
             "--json-schema",
             canonical_json(assignment.response_schema),
             "--allowedTools",
-            "Read",
-            "Write",
+            *(assignment.instructions.get("claude_tools") or ("Read", "Write")),
             "--permission-mode",
             "acceptEdits",
         )

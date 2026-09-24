@@ -187,15 +187,17 @@ class InstalledServiceApplication:
         self.process_definitions = _process_definitions(self.database, settings.config_path)
         self.registration = _registration(self.database, self.activities, self.questions, self.process_definitions, settings)
         self.architecture = _architecture(self.database, self.registration, self.questions, self.process_definitions, settings)
+        self.execution = _execution(self.database, self.registration, self.architecture, self.questions, settings)
         handlers = (
             self.questions.operation_handlers
             + (() if self.registration is None else self.registration.operation_handlers)
             + (() if self.architecture is None else self.architecture.operation_handlers)
+            + (() if self.execution is None else self.execution.operation_handlers)
         )
         if self.registration is not None and self.architecture is not None:
             from .architecture import shared_owner_decision
 
-            handlers = tuple(h for h in handlers if h.operation != "owner.decision") + (shared_owner_decision(self.registration, self.architecture),)
+            handlers = tuple(h for h in handlers if h.operation != "owner.decision") + (shared_owner_decision(self.registration, self.architecture, self.execution),)
 
         base_requests = RequestService(
             self.database,
@@ -226,7 +228,7 @@ class InstalledServiceApplication:
 
     def _work(self) -> None:
         while not self._worker_stop.wait(2.0):
-            for name, service in (("registration", self.registration), ("architecture", self.architecture)):
+            for name, service in (("registration", self.registration), ("architecture", self.architecture), ("execution", self.execution)):
                 if service is None:
                     continue
                 try:
@@ -258,6 +260,8 @@ class InstalledServiceApplication:
         parts = parsed.path.split("/")
         if method == "GET" and len(parts) == 6 and parts[:4] == ["", "api", "v1", "projects"] and parts[5] == "architecture" and self.architecture is not None:
             return self._architecture_response(unquote(parts[4]), headers)
+        if method == "GET" and len(parts) == 6 and parts[:4] == ["", "api", "v1", "projects"] and parts[5] == "execution" and self.execution is not None:
+            return self._execution_response(unquote(parts[4]), headers)
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
@@ -285,6 +289,19 @@ class InstalledServiceApplication:
         if known is None:
             return HTTPResponse(404, {"error": {"code": "project_not_found", "message": "the project was not found"}}, content)
         return HTTPResponse(200, {"data": self.architecture.project_view(project_id), "event_cursor": str(cursor)}, content)  # type: ignore[union-attr]
+
+    def _execution_response(self, project_id: str, headers: Mapping[str, str]) -> HTTPResponse:
+        content = {"Content-Type": "application/json; charset=utf-8"}
+        try:
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+        except HTTPRejection as error:
+            return HTTPResponse(error.status_code, error.as_body(), {**content, **error.headers})
+        with self.database.read_connection() as connection:
+            known = connection.execute("SELECT 1 FROM service_projects WHERE project_id = ?", (project_id,)).fetchone()
+            cursor = _event_cursor(connection)
+        if known is None:
+            return HTTPResponse(404, {"error": {"code": "project_not_found", "message": "the project was not found"}}, content)
+        return HTTPResponse(200, {"data": self.execution.project_view(project_id), "configuration": self.execution.configuration_view(), "event_cursor": str(cursor)}, content)  # type: ignore[union-attr]
 
     def _processes_response(self, headers: Mapping[str, str]) -> HTTPResponse:
         content = {"Content-Type": "application/json; charset=utf-8"}
@@ -520,6 +537,39 @@ def _architecture(database: Database, registration, questions: QuestionService, 
 
     def deliver(answer) -> None:
         (architecture_receive if service.owns(answer.activity_id) else registration_receive)(answer)
+
+    for identity in ("owner", "project_architect"):
+        questions.register_recipient(identity, deliver)
+    return service
+
+
+def _execution(database: Database, registration, architecture, questions: QuestionService, settings: ServiceSettings):
+    """Compose Execution on registration's agent runs, repositories and reservations."""
+    if registration is None or architecture is None or "execution" not in settings.registration_tables:
+        return None
+    from .execution import ExecutionService
+    from .resources import InstalledSchemaResources
+
+    try:
+        resources = InstalledSchemaResources()
+    except Exception:  # noqa: BLE001 - a missing bundle registry blocks new Execution work; status stays readable
+        log.exception("the execution schema bundle registry is unavailable")
+        resources = None
+    service = ExecutionService(
+        database, records=registration.records, questions=questions, reservations=registration.reservations, runs=registration.runs,
+        profiles=registration.profiles, destination=registration._destination, state_dir=registration.state_dir / "execution",
+        owner_id=registration.owner_id, config_source=lambda: settings.registration_tables.get("execution"), resources=resources,
+    )
+    service.state_dir.mkdir(parents=True, exist_ok=True)
+    registration_receive = registration.receive_answer
+
+    def deliver(answer) -> None:
+        if service.owns(answer.activity_id):
+            service.receive_answer(answer)
+        elif architecture.owns(answer.activity_id):
+            architecture.receive_answer(answer)
+        else:
+            registration_receive(answer)
 
     for identity in ("owner", "project_architect"):
         questions.register_recipient(identity, deliver)

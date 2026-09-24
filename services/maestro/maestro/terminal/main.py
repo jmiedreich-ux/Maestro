@@ -24,6 +24,7 @@ from .connection import (
 )
 from .extensions import ExtensionRegistry
 from .architecture import ArchitectureExtension
+from .execution import ExecutionExtension
 from .registration import RegistrationExtension
 from .questions import QuestionsExtension
 from .rendering import TerminalRenderer, TerminalSize
@@ -104,7 +105,9 @@ class TerminalApplication:
         QuestionsExtension().install(extensions)
         architecture = ArchitectureExtension()
         architecture.install(extensions)
-        RegistrationExtension(architecture=architecture).install(extensions)
+        execution = ExecutionExtension()
+        execution.install(extensions)
+        RegistrationExtension(architecture=architecture, execution=execution).install(extensions)
         self.workspace = Workspace(self.connection.client, extensions=extensions)
         self.renderer = TerminalRenderer()
         self._lock = threading.RLock()
