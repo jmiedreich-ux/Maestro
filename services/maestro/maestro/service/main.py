@@ -192,6 +192,11 @@ class InstalledServiceApplication:
             + (() if self.registration is None else self.registration.operation_handlers)
             + (() if self.architecture is None else self.architecture.operation_handlers)
         )
+        if self.registration is not None and self.architecture is not None:
+            from .architecture import shared_owner_decision
+
+            handlers = tuple(h for h in handlers if h.operation != "owner.decision") + (shared_owner_decision(self.registration, self.architecture),)
+
         base_requests = RequestService(
             self.database,
             self.authenticator,

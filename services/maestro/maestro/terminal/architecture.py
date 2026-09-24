@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from .connection import ServiceError, TerminalConnectionError
 from .extensions import ExtensionContext, ExtensionRegistry
 
-_USAGE = "usage: /architecture [start [--architect <tool:model>] [--reviewer <tool:model>] | retry <what you changed>]"
+_USAGE = "usage: /architecture [start [--architect <tool:model>] [--reviewer <tool:model>] | retry <what you changed> | full]"
 
 
 class ArchitectureError(ValueError):
@@ -46,6 +46,8 @@ class ArchitectureExtension:
             return self._start(context, words[1:])
         if words[0] == "retry":
             return self._retry(context, " ".join(words[1:]).strip())
+        if words[0] == "full":
+            return self._full(context)
         raise ArchitectureError(_USAGE)
 
     def _open(self, context: ExtensionContext) -> object:
@@ -148,6 +150,16 @@ class ArchitectureExtension:
             what = "publication" if (view.get("paused") or {}).get("kind") == "publication" else "agent run"
             _status(state, f"Retry the {what}: first fix what stopped it, then run /architecture retry <what you changed>. The automatic recovery budget stays unchanged.")
             return None
+        if action_id.endswith("-confirm"):
+            return self._begin_confirm(context, project_id, activity_id, action_id)
+        if action_id.endswith("-confirm-yes"):
+            return self._confirm(context, project_id, activity_id)
+        if action_id.endswith("-confirm-back"):
+            _reload(state, activity_id)
+            _status(state, "Confirmation not sent; the reviewed breakdown still waits for you.")
+            return None
+        if action_id.endswith("-grant") or action_id.endswith("-remain"):
+            return self._limit_decision(context, project_id, activity_id, "grant_one" if action_id.endswith("-grant") else "remain_paused")
         if action_id.endswith("-cancel"):
             return self._begin_cancel(context, project_id, activity_id, action_id)
         if action_id.endswith("-cancel-yes"):
@@ -158,6 +170,74 @@ class ArchitectureExtension:
             _status(state, "Cancellation abandoned; the architecture activity continues.")
             return None
         raise ArchitectureError("That action is not part of the architecture loop.")
+
+    def _full(self, context: ExtensionContext) -> object:
+        project_id = context.state.selected_project_id
+        if project_id is None:
+            raise ArchitectureError("Select a project first; /architecture full lists the saved records.")
+        view = self._view(context, project_id)
+        lines = [f"Saved records of architecture version {(view.get('working_ref') or {}).get('version')} in {view['repository']} (branch {view['publication_branch']}):"]
+        lines += [f"{r['kind']} {r['id']} v{r['version']} {r['path']} sha256 {str(r['sha256'])[:12]} commit {str(r['commit'])[:12]}" for r in view.get("records") or []]
+        for review in view.get("reviews") or []:
+            record = review.get("record") or {}
+            lines.append(f"review round {review['round']}: {review['outcome']}, {len(review['findings'])} finding(s) {record.get('path', '')}")
+        _status(context.state, "\n".join(lines))
+        return None
+
+    def _begin_confirm(self, context: ExtensionContext, project_id: str, activity_id: str, action_id: str) -> object:
+        view = self._view(context, project_id)
+        state = context.state
+        if view.get("state") != "waiting_for_confirmation" or not isinstance(view.get("working_ref"), Mapping):
+            raise ArchitectureError("The breakdown is not reviewed and waiting for confirmation.")
+        ref = view["working_ref"]
+        base = action_id[: -len("-confirm")]
+        detail = dict(state.activity_detail or {})
+        detail["available_actions"] = [
+            {"action_id": f"{base}-confirm-yes", "label": f"Confirm exactly version {ref['version']}", "kind": "decision"},
+            {"action_id": f"{base}-confirm-back", "label": "Go back", "kind": "action"},
+        ]
+        state.activity_detail = detail
+        breakdown = view.get("breakdown") or {}
+        packets = breakdown.get("packets") or []
+        milestones = breakdown.get("milestones") or []
+        coverage = view.get("coverage") or {}
+        dependencies = sum(len(p.get("depends_on") or []) for p in packets)
+        parallel = [p["id"] for p in packets if p.get("parallel_with")]
+        limitations = view.get("limitations") or []
+        text = (f"Confirm architecture version {ref['version']} of {view['repository']} (commit {str(ref['commit'])[:12]}, manifest {str(ref['manifest_sha256'])[:12]}, content {str(ref['reviewed_content_hash'])[:12]})? "
+                f"Independent review passed (round {view['review_count']} of {view['review_limit']}, coverage valid). "
+                f"{len(milestones)} milestones and {len(packets)} packets cover {len([o for o, m in coverage.items() if m])} of {len(coverage)} confirmed outcomes; {dependencies} packet dependencies; "
+                f"parallel opportunities: {', '.join(parallel) if parallel else 'none'}. "
+                + ("Limitations you accept: " + "; ".join(f"{item['subject']} — {item['explanation']}" for item in limitations) + ". " if limitations else "No limitations need acceptance. ")
+                + "Confirming saves only this exact version and does not start Execution. /architecture full lists every saved record.")
+        _status(state, text)
+        return None
+
+    def _confirm(self, context: ExtensionContext, project_id: str, activity_id: str) -> object:
+        view = self._view(context, project_id)
+        ref = view.get("working_ref")
+        if view.get("state") != "waiting_for_confirmation" or not isinstance(ref, Mapping):
+            raise ArchitectureError("The breakdown is not reviewed and waiting for confirmation.")
+        payload = {"expected_working_ref": dict(ref), "accepted_limitations": [{k: item[k] for k in ("id", "subject", "version", "container")} for item in view.get("limitations") or []]}
+        response = self._submit(context, ("confirm", f"{activity_id}:{ref['manifest_sha256']}"),
+                                {"operation": "architecture.confirm", "project_id": project_id, "activity_id": activity_id, "question_id": None,
+                                 "expected_version": view["activity_version"], "payload": payload}, "Confirmation was not accepted")
+        _status(context.state, f"Confirmation of version {ref['version']} accepted; the receipt is being published to GitHub before the loop completes. Execution is not started.")
+        _reload(context.state, activity_id)
+        return response
+
+    def _limit_decision(self, context: ExtensionContext, project_id: str, activity_id: str, choice: str) -> object:
+        view = self._view(context, project_id)
+        decisions = view.get("owner_decisions") or []
+        if not decisions:
+            raise ArchitectureError("No review-limit decision is pending.")
+        assignment_id = decisions[0]["assignment_id"]
+        response = self._submit(context, ("decision", f"{activity_id}:{assignment_id}:{choice}"),
+                                {"operation": "owner.decision", "project_id": project_id, "activity_id": activity_id, "question_id": None, "expected_version": view["activity_version"],
+                                 "payload": {"target": "fidelity_review", "choice": choice, "assignment_id": assignment_id}}, "The decision was not accepted")
+        _status(context.state, "One extra review attempt granted; the architect amends first." if choice == "grant_one" else "The architecture stays paused; nothing was approved.")
+        _reload(context.state, activity_id)
+        return response
 
     def _view(self, context: ExtensionContext, project_id: str) -> Mapping[str, object]:
         data = context.client.get_json(f"/projects/{urllib.parse.quote(project_id, safe='')}/architecture").get("data")
@@ -213,6 +293,13 @@ def _summary(view: Mapping[str, object]) -> str:
         packets = breakdown.get("packets") or []
         parallel = sum(1 for p in packets if p.get("parallel_with"))
         text += f" Work breakdown saved: {len(breakdown.get('milestones') or [])} milestones, {len(packets)} packets ({parallel} with parallel opportunities)."
+    if view.get("review_count"):
+        text += f" Independent review: {view['review_count']} of {view['review_limit']} rounds used" + ("; coverage valid for the working version." if view.get("review_coverage_valid") else ".")
+    confirmed = view.get("confirmed_ref")
+    if isinstance(confirmed, Mapping):
+        text += f" Confirmed: version {confirmed['version']} at {str(confirmed['commit'])[:12]}. Execution has not been started."
+    elif view.get("state") == "waiting_for_confirmation":
+        text += " Waiting for your confirmation of the exact reviewed version."
     reasons = view.get("blocking_reasons")
     if isinstance(reasons, list) and reasons:
         text += " " + " ".join(str(r) for r in reasons)
