@@ -7,7 +7,7 @@ from pathlib import Path
 
 from maestro.foundation import Database, StorageSettings
 from maestro.service.activities import ActivityRecord, ActivityRepository, ProjectRecord
-from maestro.service.reservations import ProjectReservations, ReservationError
+from maestro.service.reservations import ProjectReservations, ReservationError, refuse_other_starts
 
 
 class ProjectReservationTest(unittest.TestCase):
@@ -96,6 +96,15 @@ class ProjectReservationTest(unittest.TestCase):
         self.assertEqual("project_not_found", raised.exception.code)
         with self.assertRaises(ValueError):
             self._reserve("one", "other", "holder")
+
+    def test_reserved_project_refuses_other_starts_but_not_the_holder(self) -> None:
+        self._reserve("one", "re_registration", "holder")
+        with self.database.transaction() as transaction:
+            refuse_other_starts(transaction, "one", "holder")
+            refuse_other_starts(transaction, "two", "anyone")
+            with self.assertRaises(ReservationError) as raised:
+                refuse_other_starts(transaction, "one", "someone-else")
+        self.assertEqual("project_reserved", raised.exception.code)
 
 
 if __name__ == "__main__":

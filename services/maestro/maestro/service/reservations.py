@@ -121,6 +121,8 @@ class ProjectReservations:
                 activity_id=busy[0],
                 activity_state=busy[1],
             )
+        if purpose == "re_registration":
+            self._refuse_unresolved(transaction, project_id)
         transaction.execute(
             """
             INSERT INTO service_project_reservations(project_id, purpose, holder_id)
@@ -129,6 +131,38 @@ class ProjectReservations:
             (project_id, purpose, holder_id),
         )
         return Reservation(project_id, purpose, holder_id)
+
+    def _refuse_unresolved(self, transaction: Transaction, project_id: str) -> None:
+        """Agent runs and external writes that are not confirmed ended also mean the project is not idle."""
+        tables = {row[0] for row in transaction.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if "service_agent_runs" in tables:
+            run = transaction.execute(
+                """
+                SELECT r.run_id, r.state FROM service_agent_runs r
+                JOIN service_agent_assignments a ON a.assignment_id = r.assignment_id
+                WHERE a.project_id = ? AND r.state IN ('reserved', 'running', 'stopping', 'blocked') LIMIT 1
+                """,
+                (project_id,),
+            ).fetchone()
+            if run is not None:
+                raise ReservationError(
+                    "project_not_idle", "an agent run is not confirmed ended",
+                    project_id=project_id, run_id=run[0], run_state=run[1],
+                )
+        if "service_registration_publications" in tables:
+            write = transaction.execute(
+                """
+                SELECT p.operation_id, p.state FROM service_registration_publications p
+                JOIN service_registrations g ON g.activity_id = p.activity_id
+                WHERE g.project_id = ? AND p.state IN ('prepared', 'writing', 'verified') LIMIT 1
+                """,
+                (project_id,),
+            ).fetchone()
+            if write is not None:
+                raise ReservationError(
+                    "project_not_idle", "an external write is not confirmed resolved",
+                    project_id=project_id, operation_id=write[0], operation_state=write[1],
+                )
 
     def release(
         self, transaction: Transaction, project_id: str, holder_id: str
@@ -153,3 +187,20 @@ class ProjectReservations:
                 (project_id,),
             ).fetchone()
         return None if row is None else Reservation(project_id, row[0], row[1])
+
+
+def refuse_other_starts(transaction: Transaction, project_id: str, holder_id: str) -> None:
+    """Refuse work for a project reserved by someone else; the holder's own work proceeds."""
+    exists = transaction.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'service_project_reservations'"
+    ).fetchone()
+    if exists is None:
+        return
+    held = transaction.execute(
+        "SELECT purpose, holder_id FROM service_project_reservations WHERE project_id = ?", (project_id,)
+    ).fetchone()
+    if held is not None and held[1] != holder_id:
+        raise ReservationError(
+            "project_reserved", "the project is reserved; only the reserving activity may start work",
+            project_id=project_id, purpose=held[0],
+        )

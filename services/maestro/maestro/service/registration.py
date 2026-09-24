@@ -300,13 +300,19 @@ class RegistrationService:
         unknown = set(payload) - allowed
         if unknown:
             raise ValueError(f"registration.start does not accept: {', '.join(sorted(unknown))}")
-        for name in ("repository", "overview_path"):
-            if not isinstance(payload.get(name), str) or not payload[name].strip():
-                raise ValueError(f"registration.start needs {name}")
+        if not isinstance(payload.get("repository"), str) or not payload["repository"].strip():
+            raise ValueError("registration.start needs repository")
         if request.expected_version not in (None, 0):
             raise ValueError("registration.start expected_version must be zero")
-        repository, overview_path = payload["repository"].strip(), payload["overview_path"].strip()
+        repository = payload["repository"].strip()
         project_id = project_identity(repository)
+        previous = self._active_selection(project_id)
+        for name in ("overview_path",):
+            if payload.get(name) is None and previous is not None:
+                payload[name] = previous["overview_path"]
+            if not isinstance(payload.get(name), str) or not payload[name].strip():
+                raise ValueError(f"registration.start needs {name}")
+        overview_path = payload["overview_path"].strip()
         try:
             binding_name, profile = bind_repository(repository, self.profiles, self.bindings)
         except DestinationError as error:
@@ -322,6 +328,8 @@ class RegistrationService:
         selections = {}
         for role in ("architect", "reviewer"):
             value = payload.get(role)
+            if value is None and previous is not None and previous[f"{role}_tool"] is not None:
+                value = {"tool": previous[f"{role}_tool"], "model": previous[f"{role}_model"]}
             if value is None:
                 continue
             if not isinstance(value, Mapping) or set(value) != {"tool", "model"} or not all(isinstance(value[k], str) and value[k] for k in ("tool", "model")):
@@ -331,6 +339,9 @@ class RegistrationService:
         destination = self._destination(profile)
         try:
             branch = payload.get("publication_branch")
+            inherited_branch = branch is None and previous is not None and previous["publication_branch"] is not None
+            if inherited_branch:
+                branch = previous["publication_branch"]
             if branch is not None:
                 destination.check_publication_branch(repository, branch)
             default_branch = destination.default_branch(repository)
@@ -342,13 +353,17 @@ class RegistrationService:
         except SourceError as error:
             raise ValueError("the project sources cannot be registered: " + "; ".join(f"{p['document']}: {p['problem']}" for p in error.problems)) from error
         project = self._project_row(project_id)
-        if project is not None and project["registration_status"] not in {"not_registered", "unregistered"}:
-            raise ValueError("this project already has a registration; updating a registration is a separate process")
+        re_registration = previous is not None
+        if project is not None and project["registration_status"] not in {"not_registered", "unregistered", "registered"}:
+            raise ValueError("this project's registration cannot be started from its current state")
+        if re_registration and project["registration_status"] != "registered":
+            raise ValueError("this project's active registration is not in a state that can be updated")
         activity_id = f"registration-{uuid.uuid4().hex[:12]}"
         details = {
             "repository": repository, "binding": binding_name, "overview_path": overview_path, "scope": scope,
             "source_ref": source_ref, "source_commit": commit, "source_provenance": provenance,
-            "branch": branch, "default_branch": default_branch, "selections": selections,
+            "branch": branch, "branch_provenance": "inherited" if inherited_branch else ("supplied" if branch is not None else None),
+            "default_branch": default_branch, "selections": selections,
             "profile": profile.snapshot(binding_name), "project_name": model.project_name,
         }
 
@@ -363,9 +378,11 @@ class RegistrationService:
             if project is None:
                 self.records.create_project(transaction, ProjectRecord(project_id, model.project_name, "registering", 1))
             else:
-                self.records.update_project(transaction, ProjectRecord(project_id, model.project_name, "registering", int(project["version"]) + 1), expected_record_version=int(project["version"]))
+                shown = "updating_registration" if re_registration else "registering"
+                name = project["name"] if re_registration else model.project_name
+                self.records.update_project(transaction, ProjectRecord(project_id, name, shown, int(project["version"]) + 1), expected_record_version=int(project["version"]))
             try:
-                self.reservations.reserve(transaction, project_id, "start", activity_id)
+                self.reservations.reserve(transaction, project_id, "re_registration" if re_registration else "start", activity_id)
             except ReservationError as error:
                 raise RequestRejection(409, error.code, str(error), fields=error.fields) from error
 
@@ -373,7 +390,7 @@ class RegistrationService:
                 definition = snapshot.definition
                 version = int(tx.execute("SELECT COALESCE(MAX(registration_version), 0) + 1 FROM service_registrations WHERE project_id = ?", (project_id,)).fetchone()[0])
                 self.records.create_activity(tx, ActivityRecord(
-                    activity_id, project_id, "registration", f"Register {model.project_name}", "registering", 1,
+                    activity_id, project_id, "registration", f"{'Update registration of' if re_registration else 'Register'} {model.project_name}", "registering", 1,
                     "Intake", now, None, (ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),),
                 ))
                 tx.execute("INSERT INTO entity_versions(entity_id, version) VALUES (?, 1) ON CONFLICT(entity_id) DO UPDATE SET version = 1", (activity_id,))
@@ -389,12 +406,12 @@ class RegistrationService:
                     """,
                     (
                         activity_id, project_id, repository, binding_name, overview_path, canonical_json(scope), source_ref, commit,
-                        provenance, branch, None if branch is None else "supplied", default_branch, canonical_json(details["profile"]),
+                        provenance, branch, details["branch_provenance"], default_branch, canonical_json(details["profile"]),
                         *(chosen.get("architect", (None, None))), *(chosen.get("reviewer", (None, None))),
                         int(definition["maximum_fidelity_reviews"]), version, now, now,
                     ),
                 )
-                self._say(tx, project_id, activity_id, f"Registration started for {model.project_name}: source {source_ref} at {commit[:12]}, overview {overview_path}.")
+                self._say(tx, project_id, activity_id, f"{'Registration update' if re_registration else 'Registration'} started for {model.project_name}: source {source_ref} at {commit[:12]}, overview {overview_path}.")
                 self._next_intake_step(tx, activity_id)
 
             self.definitions.start_activity(transaction, "registration", activity_id, creator)
@@ -1018,6 +1035,7 @@ class RegistrationService:
                 decision_version=int(row["decision_version"]), model=model, scope=scope, candidate=candidate, assessment=assessment, findings=findings,
                 decisions=[{"subject": d["subject"], "question": d["question_text"], "answers": [{"answer_id": d["question_id"], "author": d["authority"], "text": d["answer_text"], "time": d["created_at"]}], "resolution": d["resolution"], "authority": d["authority"]} for d in decisions],
                 selection=selection, reviews=review_inputs, assessment_run={"assignment_id": latest["assignment_id"], "run_id": latest["run_id"]},
+                previous_ref=self._active_package(row["project_id"]),
             )
             try:
                 validate_package(files, manifest_path, row["source_commit"], scope)
@@ -1049,8 +1067,15 @@ class RegistrationService:
         assert op is not None
         manifest = json.loads(files[frozen["manifest_path"]])
         reference = package_reference(row["repository"], op["commit_sha"], manifest, frozen["manifest_path"], files[frozen["manifest_path"]])
+        comparison = self._comparison(row, files, frozen["manifest_path"])
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_registration_publications SET state = 'applied' WHERE operation_id = ?", (operation_id,))
+            if comparison is not None:
+                fresh = self._row(tx, "SELECT pending_json FROM service_registrations WHERE activity_id = ?", (activity_id,))
+                kept = json.loads(fresh["pending_json"] or "{}")
+                kept["comparison"] = comparison
+                tx.execute("UPDATE service_registrations SET pending_json = ? WHERE activity_id = ?", (canonical_json(kept), activity_id))
+                self._say(tx, row["project_id"], activity_id, self._comparison_text(comparison))
             tx.execute("UPDATE service_registrations SET state = 'ready', package_json = ? WHERE activity_id = ?", (canonical_json(reference), activity_id))
             self._activity(tx, activity_id, "ready", f"Candidate {reference['candidate_id']} (version {reference['registration_version']}) is published and reviewed; awaiting your confirmation",
                            self._ready_actions(activity_id, reference))
@@ -1119,7 +1144,7 @@ class RegistrationService:
             previous = destination.read_file(row["repository"], head, index_path)
             files, reference = receipt_and_index(
                 project_id=row["project_id"], confirmation_id=pending["confirmation_id"], request_id=pending["request_id"], package_ref=package,
-                owner_id=self.owner_id, confirmed_at=pending["confirmed_at"], previous_confirmation_ref=None, previous_index=json.loads(previous) if previous else None,
+                owner_id=self.owner_id, confirmed_at=pending["confirmed_at"], previous_confirmation_ref=self._active_receipt(row["project_id"]), previous_index=json.loads(previous) if previous else None,
             )
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_registration_publications SET files_json = ?, state = 'writing' WHERE operation_id = ?",
@@ -1158,7 +1183,8 @@ class RegistrationService:
             tx.execute("UPDATE service_registration_publications SET state = 'applied' WHERE operation_id = ?", (op["operation_id"],))
             tx.execute("UPDATE service_registrations SET state = 'confirmed', confirmation_json = ? WHERE activity_id = ?", (canonical_json(confirmation), activity_id))
             tx.execute(
-                "INSERT INTO service_registration_active(project_id, activity_id, package_json, confirmation_json, activated_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO service_registration_active(project_id, activity_id, package_json, confirmation_json, activated_at) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(project_id) DO UPDATE SET activity_id = excluded.activity_id, package_json = excluded.package_json, confirmation_json = excluded.confirmation_json, activated_at = excluded.activated_at",
                 (project_id, activity_id, canonical_json(package), canonical_json(confirmation), _now()),
             )
             project = self._row(tx, "SELECT * FROM service_projects WHERE project_id = ?", (project_id,))
@@ -1198,8 +1224,9 @@ class RegistrationService:
                     tx.execute("INSERT INTO entity_versions(entity_id, version) VALUES (?, ?) ON CONFLICT(entity_id) DO UPDATE SET version = excluded.version", (qid, int(q["version"]) + 1))
             project = self._row(tx, "SELECT * FROM service_projects WHERE project_id = ?", (row["project_id"],))
             active = tx.execute("SELECT 1 FROM service_registration_active WHERE project_id = ?", (row["project_id"],)).fetchone()
-            if not active:
-                self.records.update_project(tx, ProjectRecord(row["project_id"], project["name"], "not_registered", int(project["version"]) + 1), expected_record_version=int(project["version"]))
+            restored = "registered" if active else "not_registered"
+            if project["registration_status"] != restored:
+                self.records.update_project(tx, ProjectRecord(row["project_id"], project["name"], restored, int(project["version"]) + 1), expected_record_version=int(project["version"]))
             self._activity(tx, activity_id, "cancelled", "Registration cancelled; saved findings and decisions are retained", (), ended=True)
             self.reservations.release(tx, row["project_id"], activity_id)
             if pending.get("cancel_request_id"):
@@ -1281,6 +1308,7 @@ class RegistrationService:
             "package_ref": None if row["package_json"] is None else json.loads(row["package_json"]),
             "confirmation": None if row["confirmation_json"] is None else json.loads(row["confirmation_json"]),
             "active_package_ref": None if active is None else json.loads(active["package_json"]),
+            "comparison": json.loads(row["pending_json"] or "{}").get("comparison"),
             "note": row["note"],
         }
 
@@ -1307,6 +1335,91 @@ class RegistrationService:
 
     def _project_of(self, tx: Transaction, activity_id: str) -> str:
         return str(tx.execute("SELECT project_id FROM service_activities WHERE activity_id = ?", (activity_id,)).fetchone()[0])
+
+    def _active_package(self, project_id: str) -> dict[str, Any] | None:
+        active = self._read("SELECT package_json FROM service_registration_active WHERE project_id = ?", (project_id,))
+        return None if active is None else json.loads(active["package_json"])
+
+    def _active_receipt(self, project_id: str) -> dict[str, Any] | None:
+        active = self._read("SELECT confirmation_json FROM service_registration_active WHERE project_id = ?", (project_id,))
+        return None if active is None else json.loads(active["confirmation_json"])["receipt"]
+
+    def _active_selection(self, project_id: str) -> dict[str, Any] | None:
+        """The registration row of the project's active version, whose selections a re-registration inherits."""
+        return self._read(
+            "SELECT r.* FROM service_registrations r JOIN service_registration_active a ON a.activity_id = r.activity_id WHERE a.project_id = ?",
+            (project_id,),
+        )
+
+    def _comparison(self, row: Mapping[str, Any], files: Mapping[str, bytes], manifest_path: str) -> dict[str, Any] | None:
+        """Additions, changes and removals of the candidate against the active version, with reasons from findings and decisions."""
+        active = self._read("SELECT package_json, activity_id FROM service_registration_active WHERE project_id = ?", (row["project_id"],))
+        if active is None:
+            return None
+        previous = json.loads(active["package_json"])
+        destination = self._destination(self._profile_of(row))
+        old_manifest = json.loads(destination.read_file(row["repository"], previous["commit"], previous["manifest_path"]))
+        new_manifest = json.loads(files[manifest_path])
+        kinds = {"milestone", "requirement", "declaration", "summary"}
+
+        def records(manifest: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+            return {f"{f['record_type']}:{f['record_id']}": f for f in manifest["files"] if f["record_type"] in kinds}
+
+        before, after = records(old_manifest), records(new_manifest)
+        base_old = previous["manifest_path"].rsplit("/", 1)[0]
+        base_new = manifest_path.rsplit("/", 1)[0]
+
+        def body(base: str, entry: Mapping[str, Any], reader) -> Any:
+            return json.loads(reader(f"{base}/{entry['path']}"))["data"]
+
+        old_reader = lambda path: destination.read_file(row["repository"], previous["commit"], path)
+        new_reader = lambda path: files[path]
+        added, removed, changed = [], [], []
+        for key in sorted(after.keys() - before.keys()):
+            added.append({"record": key, "subject": after[key]["subject"], "version": after[key]["record_version"]})
+        for key in sorted(before.keys() - after.keys()):
+            removed.append({"record": key, "subject": before[key]["subject"], "version": before[key]["record_version"]})
+        for key in sorted(before.keys() & after.keys()):
+            if before[key]["sha256"] != after[key]["sha256"]:
+                changed.append({"record": key, "subject": after[key]["subject"], "version_before": before[key]["record_version"], "version_after": after[key]["record_version"]})
+        old_scope = body(base_old, before["summary:summary"], old_reader)["scope"] if "summary:summary" in before else None
+        new_scope = body(base_new, after["summary:summary"], new_reader)["scope"] if "summary:summary" in after else None
+        scope: dict[str, Any] = {}
+        if old_scope is not None and new_scope is not None:
+            was, now = {i["reference"] for i in old_scope["included"]}, {i["reference"] for i in new_scope["included"]}
+            scope = {"now_included": sorted(now - was), "no_longer_included": sorted(was - now)}
+        old_profile = json.loads(self._read("SELECT profile_json FROM service_registrations WHERE activity_id = ?", (active["activity_id"],))["profile_json"])
+        profile_change = None if old_profile == json.loads(row["profile_json"]) else {"before": old_profile, "after": json.loads(row["profile_json"])}
+        completion = [c for c in changed + added + removed if c["record"] == "requirement:project-completion"]
+        reasons = [{"decision": d["subject"], "resolution": d["resolution"]} for d in self._decisions(row["activity_id"])]
+        latest = self._latest_pass(row["activity_id"])
+        if latest is not None:
+            reasons += [{"finding": f.get("subject") or f.get("summary") or f.get("title"), "severity": f.get("severity")} for f in json.loads(latest["findings_json"])["findings"]]
+        return {
+            "active_version": int(previous["registration_version"]), "active_candidate": previous["candidate_id"], "active_commit": previous["commit"],
+            "candidate_version": int(new_manifest["registration_version"]), "added": added, "changed": changed, "removed": removed,
+            "scope": scope, "completion_requirement_changed": bool(completion), "profile_change": profile_change, "reasons": reasons,
+        }
+
+    @staticmethod
+    def _comparison_text(comparison: Mapping[str, Any]) -> str:
+        parts = [f"Compared with active version {comparison['active_version']} ({comparison['active_candidate']}): "
+                 f"{len(comparison['added'])} added, {len(comparison['changed'])} changed, {len(comparison['removed'])} removed."]
+        for label, key in (("Added", "added"), ("Changed", "changed"), ("Removed", "removed")):
+            if comparison[key]:
+                parts.append(f"{label}: " + "; ".join(item["subject"] for item in comparison[key]) + ".")
+        scope = comparison["scope"]
+        if scope.get("now_included"):
+            parts.append("Now in scope: " + ", ".join(scope["now_included"]) + ".")
+        if scope.get("no_longer_included"):
+            parts.append("No longer in scope: " + ", ".join(scope["no_longer_included"]) + ".")
+        if comparison["completion_requirement_changed"]:
+            parts.append("The project completion requirement changed.")
+        if comparison["profile_change"]:
+            parts.append("The repository profile changed; it becomes active only with this confirmation.")
+        if comparison["reasons"]:
+            parts.append("Reasons: " + "; ".join(str(r.get("decision") or r.get("finding")) for r in comparison["reasons"][:6]) + ".")
+        return " ".join(parts)
 
     def _open_registration(self, project_id: str, tx: Transaction | None = None) -> str | None:
         sql = f"SELECT activity_id FROM service_registrations WHERE project_id = ? AND state IN ({','.join('?' for _ in _OPEN_STATES)}) ORDER BY created_at DESC LIMIT 1"

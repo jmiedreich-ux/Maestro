@@ -205,6 +205,7 @@ class TerminalRenderer:
 _REGISTRATION_LABELS = {
     "registering": "Registering",
     "registered": "Registered",
+    "updating_registration": "Registered, updating registration",
     "not_registered": "Not registered",
     "unregistered": "Not registered",
 }

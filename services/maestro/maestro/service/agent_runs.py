@@ -39,6 +39,7 @@ from maestro.agents.transport import (
     TransportError,
 )
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspacePaths, WorkspaceManager
+from maestro.service.reservations import ReservationError, refuse_other_starts
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_identifier, canonical_json
 
 
@@ -243,6 +244,10 @@ class AgentRunService:
         with self.database.transaction() as tx:
             row = self._assignment(tx, assignment_id)
             project_id, activity_id, role, tool, model_id = row["project_id"], row["activity_id"], row["role"], row["tool"], row["model_id"]
+            try:
+                refuse_other_starts(tx, project_id, activity_id)
+            except ReservationError as error:
+                raise AgentRunError(error.code, str(error), **error.fields) from error
             duration = self._reserve(tx, row, run_id, kind, intervention)
         identity = OperationIdentity(project_id, activity_id, assignment_id, run_id)
         try:
