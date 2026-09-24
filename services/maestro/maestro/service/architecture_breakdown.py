@@ -56,7 +56,8 @@ def qa_catalog(binding: object) -> tuple[dict[str, Any], str | None]:
     for name, secret in secrets.items():
         if not isinstance(secret, Mapping) or secret.get("classification") != "test" or not secret.get("credential_ref") or not secret.get("environment_variable"):
             raise FoundationError(f"QA secret {name} must be classified test with a credential_ref and environment_variable")
-        catalog["secrets"][name] = {"classification": "test", "environment_variable": secret["environment_variable"]}
+        catalog["secrets"][name] = {"classification": "test", "environment_variable": secret["environment_variable"],
+                                    "credential_ref": secret["credential_ref"]}
     for name, dep in network.items():
         if not isinstance(dep, Mapping) or not dep.get("host") or not dep.get("protocol") or not isinstance(dep.get("ports"), list):
             raise FoundationError(f"QA network dependency {name} needs host, protocol and ports")
@@ -281,6 +282,12 @@ def validate_breakdown(
             theirs = {k for k in pkeys if by_key[k]["milestone_key"] == dep}
             if any(_reach(pdeps, k) & mine for k in theirs):
                 raise FoundationError(f"milestone {dep} depends on milestone {m['local_key']} through packets, but {m['local_key']} lists {dep} as its dependency")
+    mdeps = {m["local_key"]: m["dependency_keys"] for m in milestones}
+    for k in pkeys:
+        for dep in pdeps.get(k, ()):
+            a, b = by_key[k]["milestone_key"], by_key[dep]["milestone_key"]
+            if a != b and b not in _reach(mdeps, a):
+                raise FoundationError(f"packet {k} in milestone {a} depends on packet {dep} in milestone {b}, but milestone {a} does not list {b} as a dependency")
     decisions = _decisions(document["decisions"], pkeys | mkeys, finding_ids)
     return {"summary": document["summary"].strip(), "decisions": decisions, "milestones": milestones, "packets": packets}
 
@@ -292,13 +299,17 @@ def _fail(message: str):  # noqa: ANN202 - raises
 def _decisions(value: object, known: set[str], finding_ids: set[str]) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise FoundationError("breakdown.decisions must be a list (empty when no routine technical choice needed recording)")
-    result, seen = [], set()
+    result, seen, slugs = [], set(), set()
     for item in value:
         item = _exact(item, {"local_key", "subject", "answer", "rationale", "affected_keys", "finding_ids"}, "each breakdown decision")
         key = _text(item["local_key"], "decision.local_key")
         if key in seen:
             raise FoundationError(f"decision local_key {key} is used twice")
         seen.add(key)
+        slug = re.sub(r"[^a-z0-9]+", "-", key.lower()).strip("-")
+        if slug in slugs:
+            raise FoundationError(f"decision local_key {key} names the same decision as another key once normalized")
+        slugs.add(slug)
         affected = _keys(item["affected_keys"], f"decision {key} affected_keys", known)
         found = _texts(item["finding_ids"], f"decision {key} finding_ids")
         if any(f not in finding_ids for f in found):
@@ -477,7 +488,8 @@ def build_breakdown_set(
     # decisions snapshot: always part of the set; entries keep their identity and change version only when their content changes
     entries = [dict(e) for e in prior_decisions["decisions"]]
     seen_questions = {e["source_question_id"] for e in entries if e["source_question_id"]}
-    inv_ref = {"id": "investigation", "subject": "Code investigation", "version": 1, "path": "investigation.json"}
+    carried_inv = next((c["record_ref"] for c in carried_foundation if c["record_ref"]["id"] == "investigation"), None)
+    inv_ref = ({k: carried_inv[k] for k in ("id", "subject", "version", "path")} if carried_inv else {"id": "investigation", "subject": "Code investigation", "version": 1, "path": "investigation.json"})
     for owner in owner_decisions:
         if owner["question_id"] not in seen_questions:
             entries.append({"id": f"decision-{len(entries) + 1}", "subject": owner["subject"], "version": 1, "source_question_id": owner["question_id"], "source_finding_ref": None,

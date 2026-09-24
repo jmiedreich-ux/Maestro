@@ -94,6 +94,21 @@ class ValidationTests(unittest.TestCase):
         doc["packets"][0]["required_outputs"][0]["path"] = "src/shared/a.py"
         self.rejected(doc, "state the shared-code boundary")
 
+    def test_a_packet_dependency_across_milestones_needs_the_milestone_dependency_and_decision_keys_stay_distinct(self) -> None:
+        doc = breakdown(["o1"])
+        m2 = dict(doc["milestones"][0], local_key="m2", packet_keys=["b"], qa_plan=plan())
+        doc["milestones"][0]["packet_keys"] = ["a"]
+        doc["milestones"].append(m2)
+        doc["packets"][1]["milestone_key"] = "m2"
+        doc["packets"][1]["dependency_keys"] = ["a"]
+        self.rejected(doc, "does not list m1 as a dependency")
+        doc["milestones"][1]["dependency_keys"] = ["m1"]
+        check(doc)
+        doc = breakdown(["o1"])
+        one = {"local_key": "same-key", "subject": "S", "answer": "A", "rationale": "R", "affected_keys": ["a"], "finding_ids": []}
+        doc["decisions"] = [one, dict(one, local_key="same key")]
+        self.rejected(doc, "once normalized")
+
     def test_execution_inputs_and_findings_are_checked(self) -> None:
         doc = breakdown(["o1"])
         doc["packets"][0]["execution_requirements"]["required_capabilities"] = ["teleport"]

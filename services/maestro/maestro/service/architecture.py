@@ -725,6 +725,8 @@ class ArchitectureService:
             raise
         pending["architect_run"] = {"assignment_id": assignment_id, "run_id": run_id}
         pending.pop("resume_after_answers", None)
+        if recovery_note is None or kind == "manual":
+            pending.pop("last_recovery_detail", None)
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_architectures SET pass_number = ?, pending_json = ? WHERE activity_id = ?", (pass_number, canonical_json(pending), activity_id))
             self._activity(tx, activity_id, "investigating", f"Project architect ({tool} {model}) is working in session {session.session_id}" + (" (resumed)" if session.provider_session_id else ""))
@@ -765,6 +767,10 @@ class ArchitectureService:
     def _recover_agent(self, row: Mapping[str, Any], current: Mapping[str, str], pending: dict[str, Any], code: str) -> None:
         assert self.runs is not None
         detail = self.runs.view(current["run_id"]).terminal_reason or code
+        if pending.get("last_recovery_detail") == detail:
+            self._pause(row, f"the same output error came back after a correction: {detail}")
+            return
+        pending["last_recovery_detail"] = detail
         pending.pop("architect_run", None)
         self._start_agent(row, {**pending, "architect_run": None}, recovery_note=detail)
 
