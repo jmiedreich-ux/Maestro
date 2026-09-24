@@ -52,7 +52,7 @@ class ServiceProfileBinding:
     service_home: Path
 
     def __post_init__(self) -> None:
-        if self.tool not in {"codex", "claude_code"}:
+        if self.tool not in {"codex", "claude_code", "qwen"}:
             raise WorkspaceError("invalid_profile", "profile tool is unsupported")
         canonical_identifier(self.credential_profile, "credential_profile")
         canonical_identifier(self.settings_profile, "settings_profile")
@@ -74,6 +74,7 @@ class ServiceProfileBinding:
     def mounts(self) -> tuple[tuple[Path, PurePosixPath], ...]:
         layouts = {
             "codex": ((".codex/auth.json", ".codex/auth.json"),),
+            "qwen": ((".qwen/settings.json", ".qwen/settings.json"),),
             "claude_code": (
                 (".claude.json", ".claude.json"),
                 (".claude/.credentials.json", ".claude/.credentials.json"),
@@ -247,7 +248,7 @@ class PreparedWorkspace:
         self, route_tool: str, isolated_arguments: Sequence[str]
     ) -> tuple[str, ...]:
         """Bind an isolated launch to the installed root-supervised egress guard."""
-        if route_tool not in {"codex", "claude_code"}:
+        if route_tool not in {"codex", "claude_code", "qwen"}:
             raise WorkspaceError("invalid_launch", "agent route tool is unsupported")
         try:
             canonical_identifier(self.run_id, "run_id")
@@ -521,6 +522,8 @@ def _runtime_paths(executable: Path) -> tuple[Path, ...]:
         companion = executable.with_name("codex-code-mode-host")
         if companion.is_file() and os.access(companion, os.X_OK):
             tool_companions = (companion,)
+    elif executable.name == "node" and executable.with_name("qwen-code").is_dir():
+        tool_companions = (executable.with_name("qwen-code"),)
     candidates = (
         Path("/usr"),
         Path("/bin"),

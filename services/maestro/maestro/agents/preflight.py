@@ -43,7 +43,7 @@ class InstalledAdapter:
     capabilities: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.tool, str) or self.tool not in {"codex", "claude_code"}:
+        if not isinstance(self.tool, str) or self.tool not in {"codex", "claude_code", "qwen"}:
             raise AgentRouteError("unsupported_tool", f"adapter tool is unsupported: {self.tool}")
         if (
             not isinstance(self.provider, str)
@@ -427,6 +427,7 @@ class EnvironmentProbes:
     now_ms: Callable[[], int]
     github_api: Callable[[str], Mapping[str, object] | None]
     github_app_permissions: Callable[[], Mapping[str, str] | None]
+    http_json: Callable[[str], Mapping[str, object] | None] = lambda url: None
 
 
 @dataclass(frozen=True)
@@ -569,16 +570,27 @@ def _check_source(profile: FeatureProfile, probes: EnvironmentProbes) -> list[Ch
             out.append(
                 _unknown(c, "pinned_revision", f"no revision pinned; checkout is at {head.strip()}")
             )
+        _, bare = probes.run(["git", "-C", repo, "rev-parse", "--is-bare-repository"])
         code, status = probes.run(["git", "-C", repo, "status", "--porcelain"])
-        out.append(
-            _ok(c, "clean_checkout", "no uncommitted changes")
-            if code == 0 and not status.strip()
-            else _bad(
-                c,
-                "clean_checkout",
-                "uncommitted changes present" if code == 0 else "status unreadable",
+        if bare.strip() == "true":
+            out.append(
+                CheckResult(
+                    c,
+                    "clean_checkout",
+                    EXCLUDED,
+                    "bare repository has no working tree; each run gets its own exact checkout",
+                )
             )
-        )
+        else:
+            out.append(
+                _ok(c, "clean_checkout", "no uncommitted changes")
+                if code == 0 and not status.strip()
+                else _bad(
+                    c,
+                    "clean_checkout",
+                    "uncommitted changes present" if code == 0 else "status unreadable",
+                )
+            )
     root = profile.workspace_root
     writable = root.is_dir() and os.access(root, os.W_OK | os.X_OK)
     out.append(
@@ -629,6 +641,8 @@ def _check_credentials(profile: FeatureProfile, probes: EnvironmentProbes) -> li
                 else:
                     when = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(expires / 1000))
                     out.append(_ok(c, "claude_oauth", f"valid until {when}"))
+            elif tool == "qwen":
+                out.append(_ok(c, "qwen_profile", "local model profile present; no remote credential is used"))
             else:
                 out.append(_ok(c, f"{tool}_credential", "credential file present (contents not inspected)"))
         except PermissionError:
@@ -667,6 +681,28 @@ def _check_routes(profile: FeatureProfile, probes: EnvironmentProbes) -> list[Ch
         out.append(_ok(c, f"{tool}_route", f"{model} via {route.executable} reports '{version}'"))
         destinations = ", ".join(f"{d.hostname}:{d.port}" for d in route.permitted_destinations)
         out.append(_ok(c, f"{tool}_egress", f"permitted destinations: {destinations}"))
+        if tool == "qwen":
+            out.extend(_check_local_model_backend(route, model, probes))
+    return out
+
+
+def _check_local_model_backend(
+    route: ToolRoute, model: str, probes: EnvironmentProbes
+) -> list[CheckResult]:
+    c = "agent_routes"
+    out: list[CheckResult] = []
+    for destination in route.permitted_destinations:
+        base = f"http://{destination.hostname}:{destination.port}"
+        version = probes.http_json(f"{base}/api/version")
+        tags = probes.http_json(f"{base}/api/tags")
+        if version is None or tags is None:
+            out.append(_bad(c, "qwen_backend", f"local model server not reachable at {base}"))
+            continue
+        names = {m.get("name") for m in tags.get("models", []) if isinstance(m, dict)}
+        if model in names:
+            out.append(_ok(c, "qwen_backend", f"local server {version.get('version')} at {base} serves {model}"))
+        else:
+            out.append(_bad(c, "qwen_backend", f"{model} is not installed on the local server at {base}"))
     return out
 
 
@@ -809,7 +845,20 @@ def host_probes(app: tuple[str, str, Path] | None = None) -> EnvironmentProbes:
         permissions = value.get("permissions") if isinstance(value, dict) else None
         return permissions if isinstance(permissions, dict) else None
 
-    return EnvironmentProbes(run, lambda: int(time.time() * 1000), github_api, app_permissions)
+    def http_json(url: str) -> Mapping[str, object] | None:
+        import urllib.error
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen(url, timeout=10) as response:
+                value = json.load(response)
+        except (OSError, ValueError, urllib.error.URLError):
+            return None
+        return value if isinstance(value, dict) else None
+
+    return EnvironmentProbes(
+        run, lambda: int(time.time() * 1000), github_api, app_permissions, http_json
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

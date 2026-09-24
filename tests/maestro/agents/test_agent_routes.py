@@ -425,8 +425,9 @@ class AgentRouteTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "unknown_field")
 
         with self.assertRaises(AgentRouteError) as caught:
-            ToolModelSelection("qwen", "qwen/model")
+            ToolModelSelection("gemini", "gemini/model")
         self.assertEqual(caught.exception.code, "unsupported_tool")
+        self.assertEqual(ToolModelSelection("qwen", "qwen3.6:27b").tool, "qwen")
 
     def test_destination_policy_rejects_absent_empty_wildcard_and_malformed_entries(self) -> None:
         base = {
@@ -612,6 +613,17 @@ class EnvironmentPreflightTests(unittest.TestCase):
         report = self.preflight.run_environment_preflight(self.profile(), self.probes())
         self.assertIn("source_and_workspace/clean_checkout", self.missing(report))
 
+    def test_bare_mirror_has_no_working_tree_to_be_dirty(self) -> None:
+        import subprocess
+
+        bare = self.root / "mirror.git"
+        subprocess.run(["git", "clone", "-q", "--bare", str(self.repo), str(bare)], check=True, capture_output=True)
+        report = self.preflight.run_environment_preflight(
+            self.profile(repository=bare), self.probes()
+        )
+        self.assertNotIn("source_and_workspace/clean_checkout", self.missing(report))
+        self.assertEqual(self.missing(report), set(), report.render())
+
     def test_github_administration_and_protected_branch_are_separate_checks(self) -> None:
         repo = {"private": True, "permissions": {"pull": True, "push": True}}
         profile = self.profile(
@@ -642,6 +654,42 @@ class EnvironmentPreflightTests(unittest.TestCase):
             ),
         )
         self.assertIn("service_and_network/service_state", self.missing(report))
+
+    def test_local_qwen_route_needs_its_model_served_locally(self) -> None:
+        node = self.root / "fake-node"
+        node.write_text("#!/bin/sh\necho 'v22.0.0'\n")
+        node.chmod(0o755)
+        self.config.write_text(
+            self.config.read_text()
+            + "\n[tools.qwen]\n"
+            + f'executable = "{node}"\n'
+            + 'credential_profile = "local_ollama"\n'
+            + 'settings_profile = "qwen_local_v1"\n'
+            + 'allowed_model_ids = ["qwen3.6:27b"]\n'
+            + 'permitted_destinations = [{ hostname = "127.0.0.1", port = 11434 }]\n'
+        )
+        settings = self.root / "qwen-settings.json"
+        settings.write_text("{}")
+        profile = self.profile(
+            tools=(("qwen", "qwen3.6:27b"),), credential_files={"qwen": settings}
+        )
+        real = self.preflight.host_probes()
+
+        def probes(models):
+            def http_json(url):
+                if url.endswith("/api/version"):
+                    return {"version": "0.32.15"}
+                return {"models": [{"name": name} for name in models]}
+
+            return self.preflight.EnvironmentProbes(
+                real.run, lambda: 1_000_000_000_000, lambda path: None, lambda: None, http_json
+            )
+
+        served = self.preflight.run_environment_preflight(profile, probes(["qwen3.6:27b"]))
+        self.assertEqual(self.missing(served), set(), served.render())
+        self.assertIn("qwen_backend", served.render())
+        absent = self.preflight.run_environment_preflight(profile, probes(["other:1b"]))
+        self.assertIn("agent_routes/qwen_backend", self.missing(absent))
 
     def test_progress_channel_needs_a_delivered_receipt(self) -> None:
         log = self.root / "receipts.log"

@@ -11,7 +11,7 @@ from typing import Mapping
 
 _REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
-_SUPPORTED_TOOLS = frozenset({"codex", "claude_code"})
+_SUPPORTED_TOOLS = frozenset({"codex", "claude_code", "qwen"})
 _TOOL_FIELDS = frozenset(
     {
         "executable",
