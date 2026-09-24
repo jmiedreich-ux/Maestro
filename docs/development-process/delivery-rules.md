@@ -29,6 +29,7 @@ The milestone branch receives reviewed features. Assembled QA and outcome review
 
 The autopilot works through the [ordered outcomes](../planning/outcomes.md) without waiting for the Owner. The Owner has delegated these decisions to it:
 
+- **Checklist and completion record.** Work from the whole outcome document: its capability and scope, common requirements, Included and Excluded lists, every architecture section it references, its dependencies, each acceptance criterion and its definition of done. Verify every item with real evidence and record it in [completions](../planning/completions.md), one current-only section per closed outcome with the implementation revision, reproducible setup, observations and independent review. An outcome closes only when no item is unchecked except accepted exceptions.
 - **Quality bar.** Quality comes first: an outcome's observable result must actually work, exercised end to end with real agents, real models and real repositories. Passing checks, mocks or file presence never count. An accepted exception may cover only detail outside the observable result, never the result itself.
 - **Accepting an outcome.** Accept it when its observable result works and every acceptance criterion is met with real evidence or carries an accepted exception. Do not keep working on anything that can wait; record it as an accepted exception and move on. Do not polish.
 - **Regression.** After accepting an outcome, rerun the real end-to-end path built so far. If an earlier result no longer works, fix it before continuing.
