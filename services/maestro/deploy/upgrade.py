@@ -330,6 +330,9 @@ def upgrade(
     receipt = Receipt(revision, installed_revision(target))
     receipt.started = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     if receipt.previous_revision == revision:
+        # The release's bundles are added even when its code is already installed.
+        added = _sync_schemas(target)
+        receipt.check("schema_bundles", True, f"{len(added)} added")
         receipt.outcome = "already_installed"
         return receipt
     backup = target.backup_root / time.strftime("%Y%m%dT%H%M%S")
