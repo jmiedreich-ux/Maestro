@@ -154,8 +154,8 @@ class RegistrationExtension:
         _status(
             state,
             f"Cancel registration of {view['repository']} (attempt version {view['registration_version']}, state {view['state']})? "
-            "Any running agent is stopped first; saved findings, decisions and any published candidate are kept; the project is left Not registered "
-            "and no development starts." + ("" if published is None else f" Candidate {published['candidate_id']} stays in GitHub."),
+            "Any running agent is stopped first; saved findings, decisions and any published candidate are kept; the project keeps its earlier "
+            "registration status and its active version, and no work restarts." + ("" if published is None else f" Candidate {published['candidate_id']} stays in GitHub."),
         )
         return None
 

@@ -299,8 +299,9 @@ class GitHubDestination:
 
     # -- publication ----------------------------------------------------------
 
-    def publish(self, repository: str, branch: str, files: Mapping[str, bytes], message: str) -> str:
-        """Write all files in one commit on top of the current head; refuse different content at a target path.
+    def publish(self, repository: str, branch: str, files: Mapping[str, bytes], message: str, replaceable: frozenset[str] = frozenset()) -> str:
+        """Write all files in one commit on top of the current head; refuse different content at a target path
+        unless the path is listed as replaceable (the confirmation index, which each confirmation extends).
 
         Returns the new commit, or the head that already holds exactly these bytes.
         """
@@ -310,7 +311,7 @@ class GitHubDestination:
             existing = {path: self.read_file(repository, head, path) for path in files}
             if all(existing[path] == data for path, data in files.items()):
                 return head
-            conflicts = [path for path, data in files.items() if existing[path] is not None and existing[path] != data]
+            conflicts = [path for path, data in files.items() if existing[path] is not None and existing[path] != data and path not in replaceable]
             if conflicts:
                 raise DestinationError("publication_conflict", "a target path already holds different content", paths=conflicts)
             status, commit = self._api("GET", f"/repos/{repository}/git/commits/{head}")

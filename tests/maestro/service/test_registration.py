@@ -13,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from maestro.foundation import Database, StorageSettings
-from maestro.service.activities import ActivityRepository
+from maestro.service.activities import ActivityRecord, ActivityRepository
 from maestro.service.authentication import OwnerAuthenticationSettings, OwnerAuthenticator, token_digest
 from maestro.service.process_definitions import ProcessDefinitions, process_registry
 from maestro.service.processes import ProcessPolicyService
@@ -174,7 +174,11 @@ class ScriptedDestination:
 
     def head(self, repository, branch): return self.branches[branch]
 
-    def publish(self, repository, branch, files, message):
+    def publish(self, repository, branch, files, message, replaceable=frozenset()):
+        held = self.trees.get(self.branches[branch], {})
+        clash = [p for p, d in files.items() if p in held and held[p] != d and p not in replaceable]
+        if clash:
+            raise DestinationError("publication_conflict", "a target path already holds different content", paths=clash)
         if getattr(self, "refuse_receipts", False) and any("/confirmations/" in path for path in files):
             raise DestinationError("publication_conflict", "a target path already holds different content", paths=list(files))
         commit = f"{len(self.published) + 3:040x}"
@@ -526,6 +530,81 @@ class RegistrationTests(unittest.TestCase):
         self.run_until(receipt.activity_id, "ready")
         decisions = self.service._decisions(receipt.activity_id)
         self.assertIn("Linux only", [d["answer_text"] for d in decisions])
+
+    def register_and_confirm(self):
+        receipt = self.drive_to_ready()
+        package = json.loads(self.row(receipt.activity_id)["package_json"])
+        self.submit("registration.confirm", receipt.project_id, receipt.activity_id, None, self.version(receipt.activity_id), {"package_ref": package})
+        self.service.tick()
+        return receipt, package
+
+    def change_source(self):
+        newer = "e" * 40
+        files = {p: t for p, t in self.destination.files[COMMIT].items()}
+        files["docs/milestones.md"] = files["docs/milestones.md"].replace(b"| 1 | NOTES-PM1 \xe2\x80\x94 Capture a note | 1 |", b"| 1 | NOTES-PM1 \xe2\x80\x94 Capture a note | 2 |")
+        self.assertNotEqual(files["docs/milestones.md"], self.destination.files[COMMIT]["docs/milestones.md"])
+        self.destination.files[newer] = files
+        self.destination.branches["source-head"] = newer
+
+    def test_update_registration_keeps_history_compares_and_activates_exact_candidate(self) -> None:
+        first, first_package = self.register_and_confirm()
+        self.change_source()
+        self.runs.script = [ARCH_OK, reviewer_done("APPROVE")]
+        second = self.start(overview_path=None, publication_branch=None, architect=None, reviewer=None, source_ref="refs/heads/main")
+        self.assertNotEqual(first.activity_id, second.activity_id)
+        with self.database.read_connection() as connection:
+            self.assertEqual("updating_registration", connection.execute("SELECT registration_status FROM service_projects").fetchone()[0])
+            self.assertEqual("re_registration", connection.execute("SELECT purpose FROM service_project_reservations").fetchone()[0])
+        row = self.row(second.activity_id)
+        self.assertEqual(("publish", "inherited", "codex", "claude_code"), (row["publication_branch"], row["branch_provenance"], row["architect_tool"], row["reviewer_tool"]))
+        self.answer(second, "confirm-scope")
+        self.run_until(second.activity_id, "ready")
+        view = self.service.view(second.activity_id)
+        self.assertEqual(first_package, view["active_package_ref"])
+        comparison = view["comparison"]
+        self.assertEqual(["NOTES-PM1 \u2014 Capture a note"], [c["subject"] for c in comparison["changed"] if c["record"].startswith("milestone:")])
+        self.assertEqual(2, comparison["candidate_version"])
+        self.assertNotIn("requirement:project-completion", [c["record"] for c in comparison["changed"]])
+        self.assertFalse(comparison["completion_requirement_changed"])
+        package = json.loads(row_package := self.row(second.activity_id)["package_json"])
+        self.assertEqual(2, package["registration_version"])
+        # the prior version is untouched until the exact candidate is confirmed
+        self.assertEqual(first_package, self.service.view(second.activity_id)["active_package_ref"])
+        self.submit("registration.confirm", second.project_id, second.activity_id, None, self.version(second.activity_id), {"package_ref": package})
+        self.service.tick()
+        with self.database.read_connection() as connection:
+            self.assertEqual("registered", connection.execute("SELECT registration_status FROM service_projects").fetchone()[0])
+            self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM service_project_reservations").fetchone()[0])
+            self.assertEqual(package, json.loads(connection.execute("SELECT package_json FROM service_registration_active").fetchone()[0]))
+        index = json.loads(self.destination.published[-1][".maestro/registrations/index.json"])
+        self.assertEqual(2, len(index["confirmation_refs"]))
+        receipt_path = next(p for p in self.destination.published[-1] if "/confirmations/" in p)
+        self.assertIsNotNone(json.loads(self.destination.published[-1][receipt_path])["previous_confirmation_ref"])
+        # version 1 is still in the destination
+        self.assertIn(first_package["manifest_path"], self.destination.trees[self.destination.branches["publish"]])
+
+    def test_cancelled_update_leaves_the_active_version_in_place(self) -> None:
+        _first, first_package = self.register_and_confirm()
+        self.runs.script = [{"kind": "running"}]
+        second = self.start(overview_path=None)
+        self.answer(second, "confirm-scope")
+        self.submit("registration.cancel", second.project_id, second.activity_id, None, self.version(second.activity_id))
+        self.run_until(second.activity_id, "cancelled")
+        with self.database.read_connection() as connection:
+            self.assertEqual("registered", connection.execute("SELECT registration_status FROM service_projects").fetchone()[0])
+            self.assertEqual(first_package, json.loads(connection.execute("SELECT package_json FROM service_registration_active").fetchone()[0]))
+            self.assertEqual(0, connection.execute("SELECT COUNT(*) FROM service_project_reservations").fetchone()[0])
+
+    def test_update_is_refused_while_project_work_is_unfinished(self) -> None:
+        first, _package = self.register_and_confirm()
+        with self.database.transaction() as tx:
+            self.service.records.create_activity(tx, ActivityRecord("other-work", first.project_id, "generic", "Other work", "running", 1))
+        with self.assertRaises(RequestRejection) as caught:
+            self.start(overview_path=None)
+        self.assertEqual("project_not_idle", caught.exception.code)
+        self.assertEqual("other-work", caught.exception.fields["activity_id"])
+        with self.database.read_connection() as connection:
+            self.assertEqual("registered", connection.execute("SELECT registration_status FROM service_projects").fetchone()[0])
 
     def test_cancel_stops_the_run_and_releases_the_project(self) -> None:
         self.runs.script = [{"kind": "running"}]
