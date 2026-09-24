@@ -815,7 +815,7 @@ class RegistrationService:
         reason = f"{getattr(error, 'code', type(error).__name__)}: {error}"
         with self.database.transaction() as tx:
             row = self._row(tx, "SELECT state FROM service_registrations WHERE activity_id = ?", (activity_id,))
-            if row is not None and row["state"] == "confirming" and getattr(error, "code", None) == "publication_conflict":
+            if row is not None and row["state"] == "confirming" and isinstance(error, DestinationError):
                 # Definite refusal: no receipt was written, so the confirmation did not take effect and the Owner may retry after intervening or cancel.
                 tx.execute("UPDATE service_registration_publications SET state = 'paused' WHERE operation_id = ?", (f"{activity_id}-confirm",))
                 self._pause_in(tx, activity_id, f"Confirmation refused, nothing was written: {reason[:300]}")

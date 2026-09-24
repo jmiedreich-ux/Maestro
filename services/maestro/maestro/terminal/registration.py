@@ -176,7 +176,7 @@ class RegistrationExtension:
             raise RegistrationError("This registration is not paused by a technical failure; there is nothing to retry.")
         payload = ({"publication_operation_id": paused["operation_id"], "intervention": intervention} if paused["kind"] == "publication"
                    else {"assignment_id": paused["assignment_id"], "failed_run_id": paused["failed_run_id"], "intervention": intervention})
-        response = self._submit(context, ("retry", f"{activity_id}:{intervention}"), {"operation": "registration.retry", "project_id": project_id, "activity_id": activity_id,
+        response = self._submit(context, ("retry", f"{activity_id}:{payload.get('publication_operation_id') or payload['failed_run_id']}:{intervention}"), {"operation": "registration.retry", "project_id": project_id, "activity_id": activity_id,
                                 "question_id": None, "expected_version": view["activity_version"], "payload": payload}, "Retry was not accepted")
         _status(state, "Retry accepted; it resumes from the last verified step.")
         _reload(state, activity_id)
