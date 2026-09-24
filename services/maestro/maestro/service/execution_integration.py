@@ -903,8 +903,13 @@ class IntegrationMixin:
         """Atomically invalidate a delivery and its consumers: start nothing new on it, quarantine running results, keep every old record."""
         activity_id = row["activity_id"]
         provided = set(json.loads(delivery["packet_set_json"]))
+        downstream = [d for d in self._deliveries(activity_id)
+                      if d["state"] in {"queued", "delivered", "held"} and d["delivery_id"] != delivery["delivery_id"]
+                      and d["provider_milestone"] == delivery["consumer_milestone"] and provided & set(json.loads(d["packet_set_json"]))]
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_execution_deliveries SET state = 'invalidated', note = ?, updated_at = ? WHERE activity_id = ? AND delivery_id = ?", (reason[:500], _now(), activity_id, delivery["delivery_id"]))
+            if delivery["queue_entry"]:
+                tx.execute("UPDATE service_execution_queue SET state = 'invalidated', note = ?, updated_at = ? WHERE activity_id = ? AND entry_id = ? AND state NOT IN ('merged', 'withdrawn', 'invalidated')", (reason[:300], _now(), activity_id, delivery["queue_entry"]))
             affected: list[str] = []
             for packet in self._row_list(tx, "SELECT * FROM service_execution_packets WHERE activity_id = ? AND milestone_key = ?", (activity_id, delivery["consumer_milestone"])):
                 if not provided & set(json.loads(packet["dependency_keys_json"])):
@@ -919,6 +924,8 @@ class IntegrationMixin:
                     tx.execute("UPDATE service_execution_queue SET state = 'invalidated', note = ?, updated_at = ? WHERE activity_id = ? AND packet_key = ? AND state NOT IN ('merged', 'withdrawn', 'invalidated')", (reason[:300], _now(), activity_id, packet["packet_key"]))
             self._event(tx, activity_id, "dependency_invalidated", None, f"{delivery['delivery_id']} invalidated: {reason[:200]}; affected packets: {', '.join(affected) or 'none'}")
             self._say(tx, row["project_id"], activity_id, f"Dependency delivery {delivery['delivery_id']} is invalidated: {reason}. New starts and merges on it stop; affected packets: {', '.join(affected) or 'none'}. Old records are kept; a replacement delivery is queued when its provider is integrated again.")
+        for later in downstream:
+            self.invalidate_delivery(row, later, f"it was built on invalidated delivery {delivery['delivery_id']}: {reason[:150]}")
 
     def _integration_decision(self, tx: Any, request: Any, row: Mapping[str, Any], payload: Mapping[str, Any], next_version: int) -> Any:
         """The Owner's typed choice at an integration review limit: one extra correction attempt or stay paused; approval is never forced."""
