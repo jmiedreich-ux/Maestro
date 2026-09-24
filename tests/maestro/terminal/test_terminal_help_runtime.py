@@ -3,7 +3,9 @@ from __future__ import annotations
 import unittest
 
 from maestro.terminal.main import HELP_TOPICS, help_text
-from maestro.terminal.rendering import _runtime_lines
+from maestro.terminal.rendering import _fit, _runtime_lines
+from maestro.terminal.questions import QuestionInteraction
+from maestro.terminal.workspace import AttentionItem
 
 
 class HelpAndRuntimeTests(unittest.TestCase):
@@ -47,3 +49,30 @@ class HelpAndRuntimeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QuestionDisplayTests(unittest.TestCase):
+    def test_status_line_after_a_question_is_wrapped_not_cut(self) -> None:
+        text = "Question: Which?\nNot sent — " + "long explanation " * 8 + "twice."
+        lines = _fit([text], 60)
+        self.assertTrue(all(len(line) <= 60 for line in lines))
+        self.assertIn("twice.", " ".join(lines))
+
+    def test_closed_question_offers_replacement_without_moving_text(self) -> None:
+        class State:
+            input = None
+            attention = (
+                AttentionItem("c1", "question", "q-new", "p", "a", "Pick again", "proc"),
+                AttentionItem("c2", "question", "q-old", "p", "a", "Pick", "proc"),
+                AttentionItem("c3", "question", "q-other", "p", "b", "Other", "proc"),
+            )
+
+        class Context:
+            state = State()
+
+        message = QuestionInteraction()._closed_message(
+            Context(), {"project_id": "p", "activity_id": "a", "question_id": "q-old"}
+        )
+        self.assertIn("your text was not applied", message)
+        self.assertIn("Pick again (q-new)", message)
+        self.assertNotIn("q-other", message)

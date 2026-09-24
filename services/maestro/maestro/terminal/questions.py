@@ -202,7 +202,10 @@ class QuestionInteraction:
         try:
             response = context.client.submit(self.pending.envelope)
         except ServiceError as error:
-            self._show_status(state, f"Not sent — {error}.")
+            if error.code in {"stale_question", "question_not_awaiting_answer"}:
+                self._show_status(state, self._closed_message(context, question))
+            else:
+                self._show_status(state, f"Not sent — {error}.")
             if error.status_code in {400, 404, 409}:
                 self.pending = None
             raise
@@ -218,6 +221,32 @@ class QuestionInteraction:
             raise ValueError("service returned a receipt for another request")
         self._accepted(state, str(receipt["request_id"]))
         return response
+
+    def _closed_message(
+        self, context: ExtensionContext, question: Mapping[str, object]
+    ) -> str:
+        """Explain a closed or changed question and list other open ones in its activity."""
+        state = _state(context)
+        message = (
+            "Not sent — this question is no longer open in this form (it may "
+            "have been replaced, cancelled, changed or already answered); "
+            "your text was not applied."
+        )
+        replacements = [
+            item
+            for item in getattr(state, "attention", ())
+            if item.type == "question"
+            and item.project_id == question["project_id"]
+            and item.activity_id == question["activity_id"]
+            and item.record_id != question["question_id"]
+        ]
+        if replacements:
+            names = "; ".join(f"{item.subject} ({item.record_id})" for item in replacements)
+            message += (
+                f" Other open question in this activity: {names}. Open it from /attention; "
+                "your text stays here and is not moved."
+            )
+        return message
 
     def retry(self, context: ExtensionContext) -> Mapping[str, object]:
         if self.pending is None:

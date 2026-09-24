@@ -257,6 +257,8 @@ class Workspace:
             raise WorkspaceError("selected project is not in the workspace")
         if project_id != self.selected_project_id:
             self.input.clear()
+            if not self.stale:
+                self.error = None
             self.selected_activity_id = None
             self.selected_attention = None
             self.selected_attention_detail = None
