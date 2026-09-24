@@ -17,3 +17,14 @@ This is the first feature; no later product outcome is presumed complete. Access
 
 ## Verification and stop
 At milestone start, run the applicable preflight and smoke check again. Capture host/tool versions, non-secret credential and route status, preflight output, pinned source, agent launch/output/exit, baseline result, reset result and the absent-prerequisite report. Record whether a supervised, restartable Claude Code task runner and an authorized progress channel already exist on the host. If present, verify their actual command, stop behavior, output and receipt before reusing them; if absent, record a separate gap without using the older packet loop or local notification row as proof of external updates. Stop and report a real access or route blocker if the actual target cannot be reached; a mock route or documentation-only result cannot close the outcome.
+
+## Implementation notes
+Recorded 2026-09-23 on the local branch `feature/verify-development-environment` (commits `e68cbcc`, `16764be`); not yet reviewed or integrated. Evidence is in the [prerequisite pass](../prerequisite-pass.md).
+
+**Gap found.** The existing route preflight resolves one route and stops at its first failure, and nothing reported every category together. Workspace creation, isolation, egress guard and supervision were reused unchanged.
+
+**Files changed.** Allowlist files: `maestro/agents/preflight.py` (aggregate preflight, run with `python -m maestro.agents.preflight`), `routes.py`, `workspaces.py` and `tests/maestro/agents/test_agent_routes.py`. Justified additions outside the allowlist: `services/maestro/deploy/maestro-agent-egress`, so the egress guard accepts the local Qwen route. Reason: the Owner requires the local Qwen coder to be tested through the same launch path, and the route table, profile mounts and guard each name the supported tools. An existing test that asserted Qwen was unsupported now asserts an unrelated tool is.
+
+**Results.** 116 tests passed on the pinned revision; 48 agent tests pass with the change (foundation 7, service 49 with 1 skipped, terminal 22 unchanged).
+
+**Not done here.** The installed launcher, installed `agents.toml` and running service were not changed; a verification-only launcher and configuration were used. Adding the Qwen route to the installed service, an elevated reset for agent-written files, the protected-branch case and the Claude setup token's lifetime remain open.
