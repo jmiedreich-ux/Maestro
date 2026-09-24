@@ -208,6 +208,11 @@ def _summary(view: Mapping[str, object]) -> str:
     foundations = view.get("foundations")
     if isinstance(foundations, Mapping):
         text += f" Foundations saved: version {foundations['version']} at {str(foundations['commit'])[:12]}."
+    breakdown = view.get("breakdown")
+    if isinstance(breakdown, Mapping):
+        packets = breakdown.get("packets") or []
+        parallel = sum(1 for p in packets if p.get("parallel_with"))
+        text += f" Work breakdown saved: {len(breakdown.get('milestones') or [])} milestones, {len(packets)} packets ({parallel} with parallel opportunities)."
     reasons = view.get("blocking_reasons")
     if isinstance(reasons, list) and reasons:
         text += " " + " ".join(str(r) for r in reasons)

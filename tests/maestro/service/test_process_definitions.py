@@ -38,7 +38,7 @@ ARCHITECTURE = {
 
 class PackagedBundleTests(unittest.TestCase):
     def test_packaged_bundles_match_the_documented_schemas(self) -> None:
-        for name in ("registration-process", "architecture-loop"):
+        for name in ("registration-process", "architecture-loop", "architecture-breakdown"):
             self.assertTrue(filecmp.cmp(PACKAGED / name / "1/schema.json", ROOT / f"docs/schemas/{name}.schema.json", shallow=False), name)
 
 

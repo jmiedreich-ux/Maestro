@@ -161,7 +161,7 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
     if not isinstance(agent_user, str):
         raise ServiceConfigurationError("service.agent_user must be text")
     process_tables = {name: value[name] for name in PROCESS_TABLES if name in value}
-    registration_tables = {name: value[name] for name in ("tools", "repositories", "repository_bindings") if name in value}
+    registration_tables = {name: value[name] for name in ("tools", "repositories", "repository_bindings", "execution") if name in value}
     return ServiceSettings(
         process_tables=process_tables,
         registration_tables=registration_tables,
@@ -498,10 +498,17 @@ def _architecture(database: Database, registration, questions: QuestionService, 
         schema = InstalledSchemaResources().resolve("architecture-loop@1").schema
     except ProcessResourceError:
         log.exception("the architecture-loop schema bundle is unavailable; saved records are not schema-checked")
+    breakdown_schema = None
+    try:
+        breakdown_schema = InstalledSchemaResources().resolve("architecture-breakdown@1").schema
+    except ProcessResourceError:
+        log.exception("the architecture-breakdown schema bundle is unavailable; saved breakdown records are not schema-checked")
+    execution = settings.registration_tables.get("execution")
+    bindings = ((execution.get("qa") or {}).get("project_bindings") or {}) if isinstance(execution, Mapping) and isinstance(execution.get("qa"), Mapping) else {}
     service = ArchitectureService(
         database, records=registration.records, questions=questions, reservations=registration.reservations, definitions=definitions,
         runs=registration.runs, profiles=registration.profiles, destination=registration._destination, state_dir=registration.state_dir / "architecture",
-        owner_id=registration.owner_id, schema=schema,
+        owner_id=registration.owner_id, schema=schema, breakdown_schema=breakdown_schema, qa_bindings=lambda project_id: bindings.get(project_id),
     )
     (service.state_dir).mkdir(parents=True, exist_ok=True)
     architecture_receive, registration_receive = service.receive_answer, registration.receive_answer
