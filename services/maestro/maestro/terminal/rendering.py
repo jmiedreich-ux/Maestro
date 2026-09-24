@@ -67,7 +67,7 @@ class TerminalRenderer:
                 if project.attention_count else ""
             )
             lines.append(
-                f"{focus} {project.name} | {project.registration_status} | "
+                f"{focus} {project.name} | {_REGISTRATION_LABELS.get(project.registration_status, project.registration_status)} | "
                 f"{project.activity_state}{attention}"
             )
         return lines
@@ -200,6 +200,14 @@ class TerminalRenderer:
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
         focus = _focus(workspace, "editor", "input")
         return [f"{focus} Input | {context}"] + [f"> {line}" for line in text_lines]
+
+
+_REGISTRATION_LABELS = {
+    "registering": "Registering",
+    "registered": "Registered",
+    "not_registered": "Not registered",
+    "unregistered": "Not registered",
+}
 
 
 def _fit(lines: list[str], columns: int) -> list[str]:

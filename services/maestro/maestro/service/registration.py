@@ -563,7 +563,7 @@ class RegistrationService:
             self._decision(tx, row, "source", "Retain the reviewed source", answer, question, "Owner chose to keep the reviewed source; newer changes are excluded from the package.")
             pending = {"questions": pending["questions"], "source_choice": "retained", "source_checked": {"commit": pending["latest"]["commit"]}}
             tx.execute("UPDATE service_registrations SET state = 'ready', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
-            self._activity(tx, row["activity_id"], "ready", "Awaiting your confirmation of the reviewed candidate", self._ready_actions(row["activity_id"]))
+            self._activity(tx, row["activity_id"], "ready", "Awaiting your confirmation of the reviewed candidate", self._ready_actions(row["activity_id"], json.loads(row["package_json"])))
         elif answer.choice_id == "include-update":
             latest = pending["latest"]
             self._decision(tx, row, "source", "Include updated source", answer, question, f"Owner chose to assess the updated source at {latest['commit']}.")
@@ -1035,13 +1035,14 @@ class RegistrationService:
             tx.execute("UPDATE service_registration_publications SET state = 'applied' WHERE operation_id = ?", (operation_id,))
             tx.execute("UPDATE service_registrations SET state = 'ready', package_json = ? WHERE activity_id = ?", (canonical_json(reference), activity_id))
             self._activity(tx, activity_id, "ready", f"Candidate {reference['candidate_id']} (version {reference['registration_version']}) is published and reviewed; awaiting your confirmation",
-                           self._ready_actions(activity_id))
+                           self._ready_actions(activity_id, reference))
             self._say(tx, row["project_id"], activity_id,
                       f"Candidate {reference['candidate_id']} published to {reference['repository']} at commit {reference['commit'][:12]} ({reference['manifest_path']}). Inspect it, then confirm or cancel registration.")
 
-    def _ready_actions(self, activity_id: str) -> tuple[ActivityAction, ...]:
+    def _ready_actions(self, activity_id: str, package: Mapping[str, Any]) -> tuple[ActivityAction, ...]:
+        label = f"Confirm registration of candidate {package['candidate_id']} (version {package['registration_version']})"
         return (
-            ActivityAction(f"{activity_id}-confirm", "Confirm registration", "decision"),
+            ActivityAction(f"{activity_id}-confirm", label, "decision"),
             ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),
         )
 
@@ -1233,6 +1234,27 @@ class RegistrationService:
         )
 
     # ------------------------------------------------------------------ reads
+
+    def view(self, activity_id: str) -> dict[str, Any] | None:
+        """The registration as the CLI shows it: selections, roles, review count, candidate and confirmation."""
+        row = self._read("SELECT * FROM service_registrations WHERE activity_id = ?", (activity_id,))
+        if row is None:
+            return None
+        version = self._read("SELECT version FROM entity_versions WHERE entity_id = ?", (activity_id,))
+        active = self._read("SELECT package_json FROM service_registration_active WHERE project_id = ?", (row["project_id"],))
+        return {
+            "activity_id": activity_id, "project_id": row["project_id"], "state": row["state"], "activity_version": None if version is None else int(version["version"]),
+            "repository": row["repository"], "overview_path": row["overview_path"], "scope": json.loads(row["scope_json"]),
+            "source": {"ref": row["source_ref"], "commit": row["source_commit"], "provenance": row["source_provenance"]},
+            "publication": {"branch": row["publication_branch"], "provenance": row["branch_provenance"]},
+            "roles": {"architect": {"tool": row["architect_tool"], "model": row["architect_model"]}, "reviewer": {"tool": row["reviewer_tool"], "model": row["reviewer_model"]}},
+            "review": {"used": int(row["reviews_used"]), "limit": int(row["review_limit"])},
+            "registration_version": int(row["registration_version"]), "candidate_id": row["candidate_id"],
+            "package_ref": None if row["package_json"] is None else json.loads(row["package_json"]),
+            "confirmation": None if row["confirmation_json"] is None else json.loads(row["confirmation_json"]),
+            "active_package_ref": None if active is None else json.loads(active["package_json"]),
+            "note": row["note"],
+        }
 
     @staticmethod
     def _row(tx: Transaction, sql: str, params: tuple[object, ...] = ()) -> dict[str, Any] | None:

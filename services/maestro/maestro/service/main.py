@@ -240,9 +240,22 @@ class InstalledServiceApplication:
             return projection
         if method == "GET" and parsed.path == "/api/v1/processes":
             return self._processes_response(headers)
+        if method == "GET" and parsed.path.startswith("/api/v1/registrations/") and self.registration is not None:
+            return self._registration_response(parsed.path.rsplit("/", 1)[1], headers)
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
+
+    def _registration_response(self, activity_id: str, headers: Mapping[str, str]) -> HTTPResponse:
+        content = {"Content-Type": "application/json; charset=utf-8"}
+        try:
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+        except HTTPRejection as error:
+            return HTTPResponse(error.status_code, error.as_body(), {**content, **error.headers})
+        view = self.registration.view(unquote(activity_id))  # type: ignore[union-attr]
+        if view is None:
+            return HTTPResponse(404, {"error": {"code": "registration_not_found", "message": "the registration was not found"}}, content)
+        return HTTPResponse(200, {"data": view}, content)
 
     def _processes_response(self, headers: Mapping[str, str]) -> HTTPResponse:
         content = {"Content-Type": "application/json; charset=utf-8"}
