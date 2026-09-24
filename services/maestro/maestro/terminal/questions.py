@@ -225,11 +225,12 @@ class QuestionInteraction:
     def _closed_message(
         self, context: ExtensionContext, question: Mapping[str, object]
     ) -> str:
-        """Explain a replaced or closed question and offer an open replacement."""
+        """Explain a closed or changed question and list other open ones in its activity."""
         state = _state(context)
         message = (
-            "Not sent — this question was replaced, cancelled or already "
-            "answered; your text was not applied."
+            "Not sent — this question is no longer open in this form (it may "
+            "have been replaced, cancelled, changed or already answered); "
+            "your text was not applied."
         )
         replacements = [
             item
@@ -242,7 +243,7 @@ class QuestionInteraction:
         if replacements:
             names = "; ".join(f"{item.subject} ({item.record_id})" for item in replacements)
             message += (
-                f" Open question available: {names}. Open it from /attention; "
+                f" Other open question in this activity: {names}. Open it from /attention; "
                 "your text stays here and is not moved."
             )
         return message
