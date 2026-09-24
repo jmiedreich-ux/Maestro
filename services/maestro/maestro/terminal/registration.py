@@ -72,6 +72,9 @@ class RegistrationExtension:
 
     def open_registration(self, context: ExtensionContext, arguments: str) -> object:
         state = context.state
+        words = arguments.split(None, 1)
+        if words and words[0] == "retry":
+            return self._retry(context, words[1].strip() if len(words) > 1 else "")
         project_id = state.selected_project_id
         if project_id is None:
             raise RegistrationError("Select a project first; /registration opens its registration process.")
@@ -98,6 +101,13 @@ class RegistrationExtension:
             raise RegistrationError("Select the registration activity first.")
         if action_id.endswith("-confirm"):
             return self._confirm(context, project_id, activity_id)
+        if action_id.endswith("-retry"):
+            view = self._view(context, activity_id)
+            what = "publication" if (view.get("paused") or {}).get("kind") == "publication" else "agent run"
+            _status(state, f"Retry the {what}: first fix what stopped it, then run /registration retry <what you changed>. Review counts and the automatic recovery budget stay unchanged.")
+            return None
+        if action_id.endswith("-grant") or action_id.endswith("-remain"):
+            return self._limit_decision(context, project_id, activity_id, "grant_one" if action_id.endswith("-grant") else "remain_paused")
         if action_id.endswith("-cancel"):
             return self._begin_cancel(context, activity_id, action_id)
         if action_id.endswith("-cancel-yes"):
@@ -136,6 +146,48 @@ class RegistrationExtension:
         self._unconfirmed.pop(key, None)
         _receipt(response)
         _status(context.state, f"Confirmation of candidate {package['candidate_id']} accepted; the receipt is being published to GitHub before registration becomes active.")
+        _reload(context.state, activity_id)
+        return response
+
+    def _submit(self, context: ExtensionContext, key: tuple[str, str], envelope: dict[str, object], refused: str) -> object:
+        request_id = self._unconfirmed.get(key) or self._request_id()
+        try:
+            response = context.client.submit({"request_id": request_id, **envelope})
+        except ServiceError as error:
+            self._unconfirmed.pop(key, None)
+            raise RegistrationError(f"{refused}: {error}") from error
+        except TerminalConnectionError as error:
+            self._unconfirmed[key] = request_id
+            raise RegistrationError(f"Outcome not confirmed: {error}. Doing it again reuses the same request and cannot happen twice.") from error
+        self._unconfirmed.pop(key, None)
+        _receipt(response)
+        return response
+
+    def _retry(self, context: ExtensionContext, intervention: str) -> object:
+        state = context.state
+        activity_id, project_id = state.selected_activity_id, state.selected_project_id
+        if activity_id is None or project_id is None:
+            raise RegistrationError("Select the registration activity first.")
+        if not intervention:
+            raise RegistrationError("Say what you changed: /registration retry <what you changed>.")
+        view = self._view(context, activity_id)
+        paused = view.get("paused")
+        if not isinstance(paused, Mapping):
+            raise RegistrationError("This registration is not paused by a technical failure; there is nothing to retry.")
+        payload = ({"publication_operation_id": paused["operation_id"], "intervention": intervention} if paused["kind"] == "publication"
+                   else {"assignment_id": paused["assignment_id"], "failed_run_id": paused["failed_run_id"], "intervention": intervention})
+        response = self._submit(context, ("retry", f"{activity_id}:{payload.get('publication_operation_id') or payload['failed_run_id']}:{intervention}"), {"operation": "registration.retry", "project_id": project_id, "activity_id": activity_id,
+                                "question_id": None, "expected_version": view["activity_version"], "payload": payload}, "Retry was not accepted")
+        _status(state, "Retry accepted; it resumes from the last verified step.")
+        _reload(state, activity_id)
+        return response
+
+    def _limit_decision(self, context: ExtensionContext, project_id: str, activity_id: str, choice: str) -> object:
+        view = self._view(context, activity_id)
+        assignment_id = f"{activity_id}-revi-{view['review']['used'] + 1}"
+        response = self._submit(context, ("decision", f"{activity_id}:{assignment_id}:{choice}"), {"operation": "owner.decision", "project_id": project_id, "activity_id": activity_id,
+                                "question_id": None, "expected_version": view["activity_version"], "payload": {"target": "fidelity_review", "choice": choice, "assignment_id": assignment_id}}, "The decision was not accepted")
+        _status(context.state, "One extra review attempt granted." if choice == "grant_one" else "Registration stays paused; nothing was approved.")
         _reload(context.state, activity_id)
         return response
 

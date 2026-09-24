@@ -150,6 +150,7 @@ class ScriptedDestination:
         self.trees = {"9" * 40: {}}
         self.published: list[dict[str, bytes]] = []
         self.blocked_branch: set[str] = set()
+        self.fail_publish = 0
 
     def default_branch(self, repository): return "main"
 
@@ -175,6 +176,9 @@ class ScriptedDestination:
     def head(self, repository, branch): return self.branches[branch]
 
     def publish(self, repository, branch, files, message, replaceable=frozenset()):
+        if self.fail_publish:
+            self.fail_publish -= 1
+            raise DestinationError("publication_failed", "the branch could not be updated", status=403)
         held = self.trees.get(self.branches[branch], {})
         clash = [p for p, d in files.items() if p in held and held[p] != d and p not in replaceable]
         if clash:
@@ -235,7 +239,7 @@ class ScriptedRuns:
             raise AgentRunError("assignment_not_found", "no")
         return self.state[assignment_id]
 
-    def start_run(self, assignment_id, run_id, kind, build):
+    def start_run(self, assignment_id, run_id, kind, build, intervention=""):
         spec = build(run_id)
         self.started.append((assignment_id, run_id, kind, spec))
         outcome = self.script.pop(0)
@@ -508,6 +512,52 @@ class RegistrationTests(unittest.TestCase):
         # amendment pass carries the reviewer's findings as immutable input
         self.assertIn("review-findings.json", self.runs.started[2][3].inputs)
         self.assertEqual([], [r for r in self.destination.published])
+
+    def test_owner_grants_one_extra_review_once_and_it_cannot_force_approval(self) -> None:
+        self.runs.script = [ARCH_OK, reviewer_done("REQUEST_CHANGES", [FINDING]), ARCH_OK, reviewer_done("REQUEST_CHANGES", [FINDING]), ARCH_OK, reviewer_done("APPROVE")]
+        receipt = self.start()
+        self.answer(receipt, "confirm-scope")
+        self.run_until(receipt.activity_id, "limit_paused")
+        activity = receipt.activity_id
+        payload = {"target": "fidelity_review", "choice": "grant_one", "assignment_id": f"{activity}-revi-3"}
+        with self.assertRaises(RequestRejection):  # a decision naming another assignment is stale
+            self.submit("owner.decision", receipt.project_id, activity, None, self.version(activity), {**payload, "assignment_id": f"{activity}-revi-9"})
+        self.submit("owner.decision", receipt.project_id, activity, None, self.version(activity), payload)
+        row = self.row(activity)
+        self.assertEqual(("architect", 3, 2), (row["state"], row["review_limit"], row["reviews_used"]))
+        with self.assertRaises(RequestRejection):  # no decision is pending any more
+            self.submit("owner.decision", receipt.project_id, activity, None, self.version(activity), payload)
+        self.run_until(activity, "ready")
+        self.assertEqual(3, self.row(activity)["reviews_used"])
+        with self.assertRaises(Exception):  # the grant is spent: a fourth review cannot be consumed
+            self.service.definitions.policy.consume(activity, "fidelity_reviews")
+
+    def test_remain_paused_keeps_the_limit_and_the_pending_decision(self) -> None:
+        self.runs.script = [ARCH_OK, reviewer_done("REQUEST_CHANGES", [FINDING]), ARCH_OK, reviewer_done("REQUEST_CHANGES", [FINDING])]
+        receipt = self.start()
+        self.answer(receipt, "confirm-scope")
+        self.run_until(receipt.activity_id, "limit_paused")
+        activity = receipt.activity_id
+        self.submit("owner.decision", receipt.project_id, activity, None, self.version(activity), {"target": "fidelity_review", "choice": "remain_paused", "assignment_id": f"{activity}-revi-3"})
+        row = self.row(activity)
+        self.assertEqual(("limit_paused", 2, 2), (row["state"], row["review_limit"], row["reviews_used"]))
+
+    def test_publication_failure_pauses_and_retry_publication_resumes_without_a_new_review(self) -> None:
+        self.destination.fail_publish = 1
+        self.runs.script = [ARCH_OK, reviewer_done("APPROVE")]
+        receipt = self.start()
+        self.answer(receipt, "confirm-scope")
+        self.run_until(receipt.activity_id, "paused")
+        activity = receipt.activity_id
+        paused = json.loads(self.row(activity)["pending_json"])["paused"]
+        self.assertEqual("publication", paused["kind"])
+        with self.assertRaises(RequestRejection):  # a retry records what changed
+            self.submit("registration.retry", receipt.project_id, activity, None, self.version(activity), {"publication_operation_id": paused["operation_id"], "intervention": " "})
+        with self.assertRaises(RequestRejection):
+            self.submit("registration.retry", receipt.project_id, activity, None, self.version(activity), {"publication_operation_id": "other", "intervention": "restored access"})
+        self.submit("registration.retry", receipt.project_id, activity, None, self.version(activity), {"publication_operation_id": paused["operation_id"], "intervention": "restored access"})
+        self.run_until(activity, "ready")
+        self.assertEqual((1, 2, 2), (self.row(activity)["reviews_used"], len(self.runs.started), 1 + len(self.destination.published)))
 
     def test_invalid_architect_output_enters_recovery_without_consuming_a_review(self) -> None:
         bad = {"kind": "completed", "response": architect_done, "files": {"candidate": candidate_text(("NOTES-PM9",)), "assessment": ASSESSMENT}}
