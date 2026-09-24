@@ -178,7 +178,7 @@ class InstalledTerminalEntryTest(unittest.TestCase):
         )
 
         self.assertIn("Maestro | No project selected | connected", output)
-        self.assertIn("Terminal project | unregistered | waiting | attention: 1", output)
+        self.assertIn("Terminal project | Not registered | waiting | attention: 1", output)
         self.assertIn("Question: Which source should the terminal use?", output)
         self.assertIn("Delivery not confirmed", output)
         self.assertIn("Answer received — saved receipt", output)

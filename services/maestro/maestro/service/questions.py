@@ -176,6 +176,13 @@ class QuestionService:
             if not callable(recipient):
                 raise TypeError("question recipient must be callable")
 
+    def register_recipient(self, identity: str, recipient: Recipient) -> None:
+        """Add a process's answer recipient after construction (the process needs this service first)."""
+        canonical_identifier(identity, "recipient")
+        if not callable(recipient):
+            raise TypeError("question recipient must be callable")
+        self._recipients[identity] = recipient
+
     @property
     def operation_handler(self) -> OperationHandler:
         return OperationHandler("question.answer", self.prepare_answer)

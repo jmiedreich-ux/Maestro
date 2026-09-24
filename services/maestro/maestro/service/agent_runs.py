@@ -580,6 +580,39 @@ class AgentRunService:
             views.append(self._finalize(identity, record, assignment))
         return views
 
+    def reject_result(self, run_id: str, code: str, reason: str) -> RunView:
+        """The process found a completed run's saved output unusable: keep it as evidence and enter recovery."""
+        with self._lock:
+            run = self._run(run_id)
+            if run["state"] != "completed":
+                return self.view(run_id)
+            assignment = self._assignment_for_run(run_id)
+            with self.database.transaction() as tx:
+                tx.execute(
+                    "UPDATE service_agent_runs SET state = 'failed', failure_code = ?, terminal_reason = ? WHERE run_id = ? AND state = 'completed'",
+                    (code, reason[:_DETAIL_LIMIT], run_id),
+                )
+            self._settle_failure(str(assignment["assignment_id"]), run_id, code)
+            return self.view(run_id)
+
+    def run_count(self, assignment_id: str) -> int:
+        with self.database.read_connection() as connection:
+            return int(connection.execute("SELECT COUNT(*) FROM service_agent_runs WHERE assignment_id = ?", (assignment_id,)).fetchone()[0])
+
+    def run_evidence(self, run_id: str) -> dict[str, object]:
+        """What the tool itself reported for the run: version, model and route configuration."""
+        run = self._run(run_id)
+        return {key: run[key] for key in ("tool_version", "model_id", "configuration_hash", "session_id")}
+
+    def artifacts(self, run_id: str) -> dict[str, tuple[str, str, str]]:
+        with self.database.read_connection() as connection:
+            return {str(f): (str(p), str(h), str(s)) for f, p, h, s in connection.execute(
+                "SELECT field, path, sha256, stored_path FROM service_agent_artifacts WHERE run_id = ?", (run_id,))}
+
+    def response(self, run_id: str) -> dict[str, object] | None:
+        run = self._run(run_id)
+        return None if run["response_json"] is None else json.loads(str(run["response_json"]))
+
     # -- outcomes ------------------------------------------------------------
 
     def _settle(self, assignment_id: str, run_id: str, outcome: str) -> None:

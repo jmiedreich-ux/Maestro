@@ -54,6 +54,39 @@ Installation copies versioned schema resources declared by the installed
 package. Bundles are local, immutable directories named `<name>/<version>` and
 must contain `schema.json`; linked or malformed bundles fail installation.
 
+## Registration configuration
+
+`registration.start` is available only when `/etc/maestro/agents.toml` holds a
+valid `registration` process table, a `repositories.<profile>` table with its
+`github` App identity and allowlists, and a `repository_bindings.<name>` table
+binding the project repository to that profile. The agent tool routes come from
+the existing `tools` tables. Without them the service still runs and reports
+`operation is unavailable` for registration requests.
+
+```text
+[repositories.project]
+credential_profile = "coordinator-app"
+allowed_repositories = ["OWNER/REPOSITORY"]
+allowed_branch_patterns = ["registration/*"]
+[repositories.project.github]
+app_id = 1
+installation_id = 2
+app_slug = "app-slug"
+[repository_bindings.project]
+repository = "OWNER/REPOSITORY"
+profile = "project"
+```
+
+The App private key is the service-only file `~maestro/credentials/<credential_profile>.pem`
+(mode 0600, directory 0700, owned by `maestro`). Agents, the terminal and repositories never
+receive it or the installation tokens the service creates from it. Registration writes only to
+an existing branch that matches the allowlist, has no branch protection and no active rules; the
+App needs contents write and administration read permission. The service keeps its source
+mirrors, frozen candidates and run journal under `<database folder>/registration`. The Owner
+starts a registration from the terminal with `/register OWNER/REPOSITORY docs/project-overview.md`
+and answers the questions that follow; confirmation and cancellation are actions in the
+registration view.
+
 ## Verification and operation
 
 Validate configuration and storage without starting another listener:
