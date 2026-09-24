@@ -40,7 +40,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 |---|---|---|
 | Running service and readable project/event records | Operate the persistent Maestro service; Preserve project activity and requests; Connect the CLI to recorded service activity | Runtime Service owns server installation, API, SQL, and event delivery. Implemented interfaces support CLI development; final connected evidence is shared, not a prerequisite loop. |
 | Real project and question records | Register and confirm a project through the CLI | Registration supplies records for final connected acceptance; foundation development supports an empty service. |
-| Existing component evidence | `docs/project-overview.md#current-state` | Earlier source observations are not proof of current integrated operation. |
+| Existing component evidence | `docs/project-overview.md#current-condition` | Current source must be checked; file presence does not prove integrated operation. |
 
 ### Acceptance criteria
 
