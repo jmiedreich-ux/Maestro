@@ -480,6 +480,9 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(4, len(self.runs.started))
         with self.assertRaises(Exception):  # the shared allowance is exhausted; a third review cannot be consumed
             self.service.definitions.policy.consume(receipt.activity_id, "fidelity_reviews")
+        with self.database.read_connection() as connection:
+            statuses = sorted(r[0] for r in connection.execute("SELECT DISTINCT status FROM service_findings WHERE activity_id = ?", (receipt.activity_id,)))
+        self.assertIn("superseded", statuses)
         # amendment pass carries the reviewer's findings as immutable input
         self.assertIn("review-findings.json", self.runs.started[2][3].inputs)
         self.assertEqual([], [r for r in self.destination.published])
@@ -550,6 +553,22 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(["Cancel registration"], labels)
         with self.assertRaises(RequestRejection):
             self.submit("registration.confirm", receipt.project_id, receipt.activity_id, None, self.version(receipt.activity_id), {"package_ref": {}})
+
+    def test_binding_must_match_exactly_one_configured_profile(self) -> None:
+        from maestro.service.registration_github import bind_repository
+        profiles, bindings = parse_repository_configuration({
+            "repositories": {"a": {"credential_profile": "k", "allowed_repositories": [REPO], "allowed_branch_patterns": ["x"], "github": {"app_id": 1, "installation_id": 2, "app_slug": "s"}}},
+            "repository_bindings": {"one": {"repository": REPO, "profile": "a"}, "two": {"repository": REPO.upper(), "profile": "a"}, "three": {"repository": "acme/other", "profile": "missing"}},
+        })
+        with self.assertRaises(DestinationError) as ambiguous:
+            bind_repository(REPO, profiles, bindings)
+        self.assertEqual("binding_ambiguous", ambiguous.exception.code)
+        with self.assertRaises(DestinationError) as unknown:
+            bind_repository("acme/other", profiles, bindings)
+        self.assertEqual("binding_profile_unknown", unknown.exception.code)
+        with self.assertRaises(DestinationError) as missing:
+            bind_repository("acme/none", profiles, bindings)
+        self.assertEqual("binding_missing", missing.exception.code)
 
     def test_scope_interpretation_never_expands_a_selection(self) -> None:
         model = validate_sources("docs/project-overview.md", lambda p: FILES[p].encode() if p in FILES else None)

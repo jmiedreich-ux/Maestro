@@ -691,7 +691,9 @@ class RegistrationService:
             self._check_source(row)
 
     def _pause_on_error(self, activity_id: str, error: Exception) -> None:
-        transient = isinstance(error, DestinationError) and error.code in {"github_unreachable"}
+        transient = isinstance(error, DestinationError) and (
+            error.code == "github_unreachable" or (isinstance(error.fields.get("status"), int) and error.fields["status"] >= 500)
+        )
         if transient:
             return
         reason = f"{getattr(error, 'code', type(error).__name__)}: {error}"
