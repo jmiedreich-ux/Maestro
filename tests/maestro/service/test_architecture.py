@@ -107,6 +107,7 @@ class ArchitectureTests(unittest.TestCase):
             runs=self.runs, profiles=self.service.profiles, destination=lambda profile: self.destination, state_dir=root / "architecture-state", owner_id="owner", schema=schema,
         )
         self.architecture._source_paths = lambda row: (SOURCE_FILES, SOURCE_DIRS)
+        self.architecture._begin_breakdowns = lambda: None  # the foundations tests stop at saved foundations; test_architecture_breakdown continues
         for identity in ("owner", "project_architect"):
             self.questions.register_recipient(identity, lambda answer: (self.architecture if self.architecture.owns(answer.activity_id) else self.service).receive_answer(answer))
         from maestro.service.authentication import OwnerAuthenticationSettings, OwnerAuthenticator, token_digest

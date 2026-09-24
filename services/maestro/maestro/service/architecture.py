@@ -23,6 +23,7 @@ from maestro.agents.session_state import SessionUse
 from maestro.agents.transport import AgentAssignment, _findings, _questions
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_json
 
+from . import architecture_breakdown as breakdown_module
 from . import architecture_records as records_module
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ConversationRecord, FindingRecord, QuestionRecord
 from .agent_runs import AgentRunError, AgentRunService, RunBuild
@@ -138,6 +139,59 @@ ARCHITECTURE_MIGRATION = DomainMigration(
     ),
 )
 
+ARCHITECTURE_MIGRATION_2 = DomainMigration(
+    domain="service_architecture",
+    version=2,
+    identity="service-architecture-v2-breakdown",
+    statements=(
+        "ALTER TABLE service_architectures ADD COLUMN stage TEXT NOT NULL DEFAULT 'foundations'",
+        "ALTER TABLE service_architectures ADD COLUMN breakdown_json TEXT",
+        "ALTER TABLE service_architectures ADD COLUMN breakdown_ref_json TEXT",
+        "ALTER TABLE service_architectures ADD COLUMN qa_snapshot_json TEXT",
+        """
+        CREATE TABLE service_architecture_records(
+            activity_id TEXT NOT NULL REFERENCES service_architectures(activity_id),
+            record_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            authored_sha256 TEXT NOT NULL,
+            repo_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            set_version INTEGER NOT NULL,
+            commit_sha TEXT NOT NULL,
+            PRIMARY KEY(activity_id, record_id)
+        )
+        """,
+        """
+        CREATE TABLE service_architecture_keys(
+            activity_id TEXT NOT NULL REFERENCES service_architectures(activity_id),
+            kind TEXT NOT NULL,
+            local_key TEXT NOT NULL,
+            record_id TEXT NOT NULL,
+            PRIMARY KEY(activity_id, kind, local_key)
+        )
+        """,
+        """
+        CREATE TABLE service_architecture_publications_2(
+            operation_id TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL REFERENCES service_architectures(activity_id),
+            kind TEXT NOT NULL CHECK(kind IN ('specialists', 'foundations', 'index', 'breakdown')),
+            repository TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            files_json TEXT NOT NULL,
+            state TEXT NOT NULL CHECK(state IN ('prepared', 'writing', 'verified', 'applied', 'paused')),
+            commit_sha TEXT,
+            detail TEXT,
+            profile_json TEXT NOT NULL
+        )
+        """,
+        "INSERT INTO service_architecture_publications_2 SELECT * FROM service_architecture_publications",
+        "DROP TABLE service_architecture_publications",
+        "ALTER TABLE service_architecture_publications_2 RENAME TO service_architecture_publications",
+    ),
+)
+
 _OPEN_STATES = ("architect", "architect_waiting", "publishing", "saved", "paused", "cancelling")
 _WORKING_STATES = ("architect", "publishing", "cancelling")
 _SELECTION = ("tool", "model_id")
@@ -157,6 +211,22 @@ _TASK = """You are the Maestro Project Architect. This is the first stage of the
 
 _CONTINUATION = "This session continues your earlier work: your conversation history is restored. Use your earlier investigation; do not repeat it from scratch. input/answers.json holds any Owner answers recorded since. Then produce the files."
 _REPLACEMENT = "Your earlier conversation was unavailable, so this is a replacement session. The verified records in input/ (decisions, answers) are authoritative; nothing of your earlier work is assumed."
+
+
+_BREAKDOWN_TASK = """You are the Maestro Project Architect. The foundations stage is saved (your investigation, project structure and specialist guidance, published). This is the second stage of the architecture loop: turn the confirmed outcomes and your foundations into the smallest bounded work packets, organized into development milestones with explicit dependencies, parallel opportunities and a Quality Assurance plan per milestone. Work only from this assignment, the files under input/, and the product source under source/ (fixed at commit {commit}). Never modify source/ or input/; write only under output/.
+
+1. Read input/foundations/ (your published investigation.json, project-structure.json and decisions.json), input/findings.json (the saved finding ids you must cite), input/specialists.json, input/qa-catalog.json (the operator's provisioned QA environments, secrets and network dependencies) and the confirmed records under input/registration/. input/answers.json holds Owner answers recorded since.
+2. Design the packets first. A packet has one responsible implementer, a usable result, the code connections needed to produce it, and observable completion criteria that include essential failure behavior. Setup, access, integration and basic verification belong inside the packet; routine wiring is not left to a later step. An enabling provider packet is valid only when it names its consumer and demonstrates its actual boundary with a minimal caller. Do not create tiny disconnected fragments, and do not claim a component works without a real path that exercises it. Keep each packet bounded (at most {max_paths} permitted paths and {max_scope} scope items; split anything larger). Use the existing code you found: reuse and amend what your investigation says to reuse or amend, and plan replacement, retirement and missing work as the findings require. Apply established patterns, clear responsibilities and shared code where a concrete need exists, without unnecessary duplication.
+3. Group packets into development milestones. Milestones may differ from the project's confirmed milestones but together must deliver every confirmed outcome: every id in {milestones} must appear in outcome_ids of at least one milestone and one packet. Each milestone lists its packets, the milestones it depends on, its integration points and the completion criteria that establish the connected outcome (packet completion alone does not).
+4. Parallel work is a first-class concern. Give every packet its dependency_keys (prerequisites, never schedules) and parallel_with_keys (packets that can genuinely run independently: neither may depend on the other). Two parallel packets must not permit overlapping paths unless both state the boundary in shared_code_constraints. Do not invent parallelism for inherently dependent work, and do not assign start times or workers.
+5. Each packet's execution_requirements: required_capabilities from code_edit, local_command, repository_search, image_inspection, approved_network (only what the work needs), allowed_locations from local_ai_box, cloud, and a positive minimum_context_tokens. finding_ids cite saved finding ids from input/findings.json that justify the packet. specialist_key is the local_key of a specialist in input/specialists.json. required_outputs list what the packet delivers: each path must lie inside its permitted_paths, format names the kind (Python, TypeScript, JSON, Markdown ...) and schema_ref is null unless a schema applies.
+6. Each milestone's qa_plan: setup_steps and support_processes use only repository-relative scripts or argument arrays (never shell text). For a script that already exists at the source commit give its exact SHA-256 (compute it with sha256sum on source/); for one that does not exist give script_sha256 null and name in planned_by_packet_key a packet of the same milestone that creates it (its permitted_paths must cover the script). Select environment_refs, secret_refs and allowed_network_dependencies only from input/qa-catalog.json; project_binding_hash is the catalog's project_binding_hash when you select any of them, otherwise null (a self-contained plan). data_requirements name the dataset or generator, its SHA-256 (or null with planned_by_packet_key when a packet creates it), classification, sanitization, setup operation, the real input path, expected result and the real capability path; test data may feed the real path but never replace the capability being verified. checks give the user journey, failure cases and required artifacts. Give cleanup_steps and a reset_check. If a needed environment, secret or network destination is not in the catalog, do not invent it: ask the Owner what the operator must provision.
+7. Record routine technical choices in decisions ({{"local_key","subject","answer","rationale","affected_keys":[milestone or packet local keys],"finding_ids":[saved finding ids]}}). Ask the Owner only when missing information affects intended outcomes, scope, conflicting requirements or an Owner-reserved decision: return result clarification_required with specific questions and no output files. Never fill a gap with an unsupported assumption.
+8. Write output/breakdown.json exactly as {{"schema":"architecture_breakdown_v1","summary":"<plain summary>","decisions":[...],"milestones":[{{"local_key","subject","outcome","outcome_ids":[...],"included_scope":[...],"exclusions":[...],"packet_keys":[...],"dependency_keys":[...],"integration_points":[...],"completion_criteria":[{{"subject","expected_result","pass_boundary","verification"}}],"qa_plan":{{"setup_steps":[{{"subject","command":[...],"script_path","script_sha256","environment_ref","planned_by_packet_key"}}],"support_processes":[{{same fields plus "health_condition","port_rule"}}],"environment_refs":[],"secret_refs":[],"allowed_network_dependencies":[],"project_binding_hash":null,"data_requirements":[{{"subject","dataset_or_generator","sha256","classification":"test|synthetic|sanitized_copy","sanitization","setup_operation","real_input_path","expected_result","capability_path","planned_by_packet_key"}}],"checks":[{{"subject","user_journey","failure_cases":[...],"required_artifacts":[...]}}],"artifact_requirements":[],"cleanup_steps":[...],"reset_check"}}}}],"packets":[{{"local_key","subject","purpose","milestone_key","outcome_ids","included_scope","exclusions","permitted_paths","specialist_key","finding_ids","dependency_keys","shared_code_constraints","parallel_with_keys","execution_requirements":{{"required_capabilities":[],"allowed_locations":[],"minimum_context_tokens":0}},"completion_criteria":[{{"subject","expected_result","pass_boundary","verification"}}],"verification":[...],"essential_failure_checks":[...],"required_outputs":[{{"subject","path","format","schema_ref"}}]}}]}}. Local keys are yours; the service assigns the identities. Write nothing else under output/.
+9. Compute the SHA-256 of the file with sha256sum and list it in `outputs` as {{"path":"output/breakdown.json","sha256":"<digest>","version":1}}. result is completed; failure is null; input_manifest, reviewed_set and review_outcome are null; allocations is [].
+{continuation} Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. findings may be [] because your findings are already saved. Return only the structured response."""
+
+_BREAKDOWN_CONTINUATION = "This session continues your earlier investigation: your conversation history is restored. Use it; do not repeat the investigation. input/foundations/ holds what you published."
 
 
 class ArchitectureRejection(RequestRejection):
@@ -184,6 +254,8 @@ class ArchitectureService:
         state_dir: Path,
         owner_id: str,
         schema: Mapping[str, Any] | None = None,
+        breakdown_schema: Mapping[str, Any] | None = None,
+        qa_bindings: Callable[[str], object] | None = None,
     ) -> None:
         self.database = database
         self.records = records
@@ -196,10 +268,13 @@ class ArchitectureService:
         self.state_dir = state_dir
         self.owner_id = owner_id
         self.schema = schema
+        self.breakdown_schema = breakdown_schema
+        self.qa_bindings = qa_bindings or (lambda project_id: None)
         self._locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
         self._trees: dict[tuple[str, str], tuple[set[str], set[str]]] = {}
         database.registry.register(ARCHITECTURE_MIGRATION)
+        database.registry.register(ARCHITECTURE_MIGRATION_2)
         database.initialize()
 
     @property
@@ -444,6 +519,7 @@ class ArchitectureService:
             self.questions.deliver_pending()
         except RecipientDeliveryInterrupted:
             log.warning("an answer delivery was interrupted and will be retried", exc_info=True)
+        self._begin_breakdowns()
         with self.database.read_connection() as connection:
             ids = [str(r[0]) for r in connection.execute(
                 f"SELECT activity_id FROM service_architectures WHERE state IN ({','.join('?' for _ in _WORKING_STATES)}) ORDER BY created_at", _WORKING_STATES)]
@@ -458,6 +534,21 @@ class ArchitectureService:
                 self._pause_on_error(activity_id, error)
             finally:
                 lock.release()
+
+    def _begin_breakdowns(self) -> None:
+        """Saved foundations lead straight into the breakdown stage of the same activity and persistent session."""
+        for row in self._rows("SELECT activity_id, project_id, pending_json FROM service_architectures WHERE state = 'saved' AND breakdown_ref_json IS NULL AND foundations_ref_json IS NOT NULL"):
+            with self.database.transaction() as tx:
+                fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
+                if fresh is None or fresh["state"] != "saved" or fresh["breakdown_ref_json"] is not None:
+                    continue
+                pending = json.loads(fresh["pending_json"] or "{}")
+                pending.pop("architect_run", None)
+                pending["stage"] = "breakdown"
+                pending["resume_after_answers"] = True
+                tx.execute("UPDATE service_architectures SET state = 'architect', stage = 'breakdown', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
+                self._activity(tx, row["activity_id"], "investigating", "Foundations saved; the architect is turning the confirmed outcomes into a work breakdown")
+                self._say(tx, row["project_id"], row["activity_id"], "Starting the work breakdown stage: bounded work packets, development milestones, dependencies, parallel opportunities and Quality Assurance plans.")
 
     def _lock(self, activity_id: str) -> threading.Lock:
         with self._guard:
@@ -583,14 +674,23 @@ class ArchitectureService:
         destination.fetch_source(row["repository"], row["source_commit"], mirror)
         session, session_row, replacement_note = self._session_use(row)
         outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
+        stage = row["stage"]
         inputs = self._inputs(row, outcomes, destination, pending)
+        catalog: dict[str, Any] | None = None
+        if stage == "breakdown":
+            catalog = self._qa_snapshot(row)
+            inputs.update(self._breakdown_inputs(row, destination, catalog))
         decision_version = f"d{row['decision_version']}"
         limits = {"run_timeout_seconds": terms.duration_seconds}
         note = "" if not recovery_note else f" The previous run's output was rejected: {recovery_note}. Fix exactly that."
         resuming = session.provider_session_id is not None and (pending.get("resume_after_answers") or bool(recovery_note) or kind == "manual")
-        continuation = replacement_note or (_CONTINUATION if resuming else "")
         milestones = records_module.milestone_ids(outcomes)
-        task = _TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation) + note
+        if stage == "breakdown":
+            continuation = replacement_note or (_BREAKDOWN_CONTINUATION if session.provider_session_id is not None else "")
+            task = _BREAKDOWN_TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation, max_paths=breakdown_module.MAX_PACKET_PATHS, max_scope=breakdown_module.MAX_SCOPE_ITEMS) + note
+        else:
+            continuation = replacement_note or (_CONTINUATION if resuming else "")
+            task = _TASK.format(commit=row["source_commit"], milestones=", ".join(milestones), continuation=continuation) + note
 
         def build(run_id: str) -> RunBuild:
             assignment = AgentAssignment(
@@ -599,9 +699,10 @@ class ArchitectureService:
                 role_responsibilities=("Investigate the existing code for the confirmed outcomes and save project structure and specialist guidance; never invent requirements.",),
                 task=task, source_commit=row["source_commit"], decision_version=decision_version,
                 instructions={
-                    "task_kind": "investigate", "session_id": session.session_id, "document_paths": [row["overview_path"]],
+                    "task_kind": "break_down" if stage == "breakdown" else "investigate", "session_id": session.session_id, "document_paths": [row["overview_path"]],
                     "outcome_ids": [o["id"] for o in outcomes], "recorded_decisions": ["input/decisions.json"], "answers": ["input/answers.json"],
-                    "output_rules": records_module.OUTPUT_RULES, "replacement_session": replacement_note is not None,
+                    "output_rules": breakdown_module.OUTPUT_RULES if stage == "breakdown" else records_module.OUTPUT_RULES, "replacement_session": replacement_note is not None,
+                    **({} if catalog is None else {"qa_catalog": "input/qa-catalog.json", "project_binding_hash": catalog["project_binding_hash"]}),
                 },
                 permitted_actions=("read_source", "write_output"), writable_locations=("output", "scratch"), limits=limits,
                 clarification_conditions=("Information affecting intended outcomes, scope or Owner-reserved decisions is missing or conflicting.",),
@@ -699,7 +800,7 @@ class ArchitectureService:
         artifacts = self.runs.artifacts(current["run_id"])
         try:
             files = {path[len("output/"):]: Path(stored).read_bytes() for field, (path, _, stored) in artifacts.items() if field.startswith("output:")}
-            checked = self._validate_outputs(row, response, files)
+            checked = self._validate_outputs(row, response, files) if row["stage"] == "foundations" else self._validate_breakdown(row, response, files)
         except (KeyError, OSError, ValueError, FoundationError) as error:
             self.runs.reject_result(current["run_id"], "malformed_output", f"architecture output invalid: {error}")
             return
@@ -710,12 +811,18 @@ class ArchitectureService:
             pending.pop("architect_run", None)
             identities = self._save_findings(tx, fresh, response.get("findings", []), f"{row['activity_id']}-arch-{pass_number}")
             checked["finding_identities"] = {k: list(v) for k, v in identities.items()}
+            column = "foundation_json" if row["stage"] == "foundations" else "breakdown_json"
             for path, data in files.items():
                 tx.execute("INSERT OR REPLACE INTO service_architecture_outputs VALUES (?, ?, ?, ?, ?)", (row["activity_id"], pass_number, path, records_module.sha256(data), data))
             pending["accepted_pass"] = pass_number
-            tx.execute("UPDATE service_architectures SET state = 'publishing', foundation_json = ?, pending_json = ? WHERE activity_id = ?", (canonical_json(checked), canonical_json(pending), row["activity_id"]))
-            self._activity(tx, row["activity_id"], "publishing", "Investigation validated; publishing structure, specialist guidance and records to GitHub")
-            self._say(tx, row["project_id"], row["activity_id"], f"Architect investigation complete: {response.get('summary', '')} ({len(response.get('findings', []))} finding(s)). Validated; publishing next.")
+            tx.execute(f"UPDATE service_architectures SET state = 'publishing', {column} = ?, pending_json = ? WHERE activity_id = ?", (canonical_json(checked), canonical_json(pending), row["activity_id"]))
+            if row["stage"] == "foundations":
+                self._activity(tx, row["activity_id"], "publishing", "Investigation validated; publishing structure, specialist guidance and records to GitHub")
+                self._say(tx, row["project_id"], row["activity_id"], f"Architect investigation complete: {response.get('summary', '')} ({len(response.get('findings', []))} finding(s)). Validated; publishing next.")
+            else:
+                shape = checked["breakdown"]
+                self._activity(tx, row["activity_id"], "publishing", "Breakdown validated; publishing milestones, packets and Quality Assurance plans to GitHub")
+                self._say(tx, row["project_id"], row["activity_id"], f"Architect breakdown complete: {len(shape['milestones'])} milestone(s), {len(shape['packets'])} packet(s). Deterministic checks passed; publishing next.")
 
     def _source_paths(self, row: Mapping[str, Any]) -> tuple[set[str], set[str]]:
         key = (row["project_id"], row["source_commit"])
@@ -779,6 +886,9 @@ class ArchitectureService:
     # -- publication
 
     def _advance_publish(self, row: Mapping[str, Any]) -> None:
+        if row["stage"] == "breakdown":
+            self._advance_publish_breakdown(row)
+            return
         activity_id = row["activity_id"]
         destination = self._destination(self._profile_of(row))
         pending = json.loads(row["pending_json"] or "{}")
@@ -826,6 +936,178 @@ class ArchitectureService:
             self._say(tx, row["project_id"], activity_id, f"Foundations saved and published to {row['repository']} branch {row['publication_branch']}: manifest {manifest_path} at {foundations_commit[:12]}, "
                       f"specialist guidance at {specialists_commit[:12]}, discovery index at {index_commit[:12]}. No specialist was launched and no source was changed.")
             self._emit(tx, row["project_id"], activity_id, "architecture.foundations_saved", {"activity_id": activity_id, "working_ref": reference})
+
+    # -- breakdown stage
+
+    def _qa_snapshot(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        """The operator's QA binding for this project, saved once as a non-secret snapshot with its hash."""
+        if row["qa_snapshot_json"]:
+            return json.loads(row["qa_snapshot_json"])["catalog"]
+        catalog, digest = breakdown_module.qa_catalog(self.qa_bindings(row["project_id"]))
+        snapshot = {"catalog": catalog, "project_binding_hash": digest, "provenance": "operator configuration execution.qa.project_bindings", "recorded_at": _now()}
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_architectures SET qa_snapshot_json = ? WHERE activity_id = ? AND qa_snapshot_json IS NULL", (canonical_json(snapshot), row["activity_id"]))
+        return catalog
+
+    def _foundation_context(self, row: Mapping[str, Any], destination: GitHubDestination) -> dict[str, Any]:
+        """Read back the published foundations set: the exact references breakdown records must cite."""
+        foundations = json.loads(row["foundations_ref_json"])
+        commit, manifest_path = foundations["commit"], foundations["manifest_path"]
+        repository = row["repository"]
+        base = manifest_path.rsplit("/", 1)[0]
+
+        def read(path: str) -> bytes:
+            data = destination.read_file(repository, commit, path)
+            if data is None:
+                raise FoundationError(f"the published foundations file {path} cannot be read at {commit[:12]}")
+            return data
+
+        manifest_bytes = read(manifest_path)
+        if records_module.sha256(manifest_bytes) != foundations["manifest_sha256"]:
+            raise FoundationError("the published foundations manifest no longer matches its recorded hash")
+        manifest = json.loads(manifest_bytes)
+        raw = {name: read(f"{base}/{name}") for name in ("investigation.json", "project-structure.json", "decisions.json")}
+        entries = {e["path"]: e for e in manifest["inventory"]}
+        for name, data in raw.items():
+            if records_module.sha256(data) != entries[name]["sha256"]:
+                raise FoundationError(f"the published {name} no longer matches the foundations manifest")
+
+        def published(entry: Mapping[str, Any]) -> dict[str, Any]:
+            return {"id": entry["id"], "subject": entry["subject"], "version": entry["version"], "path": f"{base}/{entry['path']}" if not entry["path"].startswith(".") and entry["record_type"] not in {"specialist_role", "specialist_context", "specialist_memory"} else entry["path"],
+                    "sha256": entry["sha256"], "commit": entry["commit"] or commit}
+
+        investigation, structure = json.loads(raw["investigation.json"]), json.loads(raw["project-structure.json"])
+        inv_ref, structure_ref = published(entries["investigation.json"]), published(entries["project-structure.json"])
+        finding_refs = {f["id"]: {"id": f["id"], "subject": f["subject"], "version": f["version"], "container": inv_ref} for f in investigation["findings"]}
+        checked = json.loads(row["foundation_json"])
+        order = [s["specialist"] for s in checked["specialists"]]
+        role_refs = {spec["local_key"]: structure["specialists"][n]["role_ref"] for n, spec in enumerate(order)}
+        carried = []
+        package = json.loads(row["registration_json"])
+        for entry in manifest["inventory"]:
+            if entry["record_type"] == "decisions":
+                continue
+            carried.append({"record_ref": published(entry), "validated_registration_ref": package, "validated_source_commit": row["source_commit"],
+                            "reason": "Published with the foundations; the breakdown builds on it unchanged."})
+        return {"raw": raw, "investigation": investigation, "structure": structure, "decisions": json.loads(raw["decisions.json"]), "finding_refs": finding_refs, "role_refs": role_refs,
+                "carried": carried, "document_refs": [inv_ref, structure_ref], "specialists": order}
+
+    def _breakdown_inputs(self, row: Mapping[str, Any], destination: GitHubDestination, catalog: Mapping[str, Any]) -> dict[str, bytes]:
+        context = self._foundation_context(row, destination)
+        checked = json.loads(row["foundation_json"])
+        identities = checked["finding_identities"]
+        findings = [{"finding_id": identities[f["local_key"]][0], "local_key": f["local_key"], "subject": f["subject"], "severity": f["severity"]} for f in checked["findings"]]
+        specialists = [{"local_key": s["local_key"], "subject": s["subject"], "role_title": s["role_title"], "source_area": s["source_area"]} for s in context["specialists"]]
+        inputs = {f"foundations/{name}": data for name, data in context["raw"].items()}
+        inputs["findings.json"] = records_module.encode({"findings": findings})
+        inputs["specialists.json"] = records_module.encode({"specialists": specialists})
+        inputs["qa-catalog.json"] = records_module.encode(dict(catalog))
+        return inputs
+
+    def _source_sha(self, row: Mapping[str, Any]) -> Callable[[str], str | None]:
+        mirror = self.state_dir / "sources" / f"{row['project_id']}.git"
+        files, _ = self._source_paths(row)
+
+        def sha(path: str) -> str | None:
+            if path not in files:
+                return None
+            data = subprocess.run(["git", "-C", str(mirror), "show", f"{row['source_commit']}:{path}"], capture_output=True, check=True).stdout
+            return records_module.sha256(data)
+        return sha
+
+    def _validate_breakdown(self, row: Mapping[str, Any], response: Mapping[str, Any], files: Mapping[str, bytes]) -> dict[str, Any]:
+        destination = self._destination(self._profile_of(row))
+        context = self._foundation_context(row, destination)
+        catalog = self._qa_snapshot(row)
+        outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
+        try:
+            document = json.loads(files["breakdown.json"])
+        except KeyError as error:
+            raise FoundationError("breakdown.json is missing") from error
+        except json.JSONDecodeError as error:
+            raise FoundationError(f"breakdown.json is not valid JSON: {error}") from error
+        source_files, source_dirs = self._source_paths(row)
+        raw_findings = response.get("findings", [])
+        records_module.validate_findings(raw_findings, row["source_commit"], lambda p: p in source_files or p in source_dirs)
+        checked = breakdown_module.validate_breakdown(
+            document, outcome_ids={o["id"] for o in outcomes}, required_outcomes=set(records_module.milestone_ids(outcomes)),
+            finding_ids=set(context["finding_refs"]), specialist_keys={s["local_key"] for s in context["specialists"]}, catalog=catalog, source_sha=self._source_sha(row),
+        )
+        return {"breakdown": checked, "findings": raw_findings}
+
+    def _advance_publish_breakdown(self, row: Mapping[str, Any]) -> None:
+        activity_id = row["activity_id"]
+        destination = self._destination(self._profile_of(row))
+        pending = json.loads(row["pending_json"] or "{}")
+        if pending.get("retry", {}).get("kind") == "publication":
+            with self.database.transaction() as tx:
+                fresh = self._row(tx, "SELECT pending_json FROM service_architectures WHERE activity_id = ?", (activity_id,))
+                kept = json.loads(fresh["pending_json"] or "{}")
+                kept.pop("retry", None)
+                tx.execute("UPDATE service_architectures SET pending_json = ? WHERE activity_id = ?", (canonical_json(kept), activity_id))
+        stored = json.loads(row["breakdown_json"])
+        checked = stored["breakdown"]
+        pass_number = int(pending["accepted_pass"])
+        context = self._foundation_context(row, destination)
+        previous = {r["record_id"]: {**r, "version": int(r["version"]), "commit": r["commit_sha"]} for r in self._rows("SELECT * FROM service_architecture_records WHERE activity_id = ?", (activity_id,))}
+        known = {(r["kind"], r["local_key"]): r["record_id"] for r in self._rows("SELECT kind, local_key, record_id FROM service_architecture_keys WHERE activity_id = ?", (activity_id,))}
+        ids = breakdown_module.assign_ids(checked, known)
+        version = int(row["architecture_version"]) + 1
+        outcomes = json.loads(row["outcome_refs_json"])["outcomes"]
+        owner_decisions = [{"subject": d["subject"], "question_id": d["question_id"], "answer": d["answer_text"], "rationale": d["rationale"]} for d in self._decisions(activity_id)]
+        files, manifest, manifest_path, states = breakdown_module.build_breakdown_set(
+            project_id=row["project_id"], activity_id=activity_id, version=version, registration_ref=json.loads(row["registration_json"]), source_commit=row["source_commit"],
+            decision_version=int(row["decision_version"]), outcomes=outcomes, checked=checked, ids=ids, previous=previous, carried_foundation=context["carried"],
+            prior_decisions=context["decisions"] if not previous else self._published_decisions(row, destination), owner_decisions=owner_decisions, owner_id=self.owner_id,
+            finding_refs=context["finding_refs"], role_refs=context["role_refs"], document_refs=context["document_refs"],
+        )
+        self._check_breakdown_schema(files, manifest_path)
+        commit = self._publish_stage(row, destination, f"{activity_id}-breakdown-{pass_number}", "breakdown", files, f"Publish architecture work breakdown (version {version})")
+        reference = records_module.set_ref(commit, manifest, manifest_path, files[manifest_path])
+        index_path = f"{records_module.ROOT}/index.json"
+        previous_raw = destination.read_file(row["repository"], commit, index_path)
+        index = records_module.discovery_index(row["project_id"], json.loads(previous_raw) if previous_raw else None, version, commit, manifest_path, reference["manifest_sha256"], manifest["reviewed_content_hash"])
+        index_commit = self._publish_stage(row, destination, f"{activity_id}-bindex-{pass_number}", "index", {index_path: records_module.encode(index)}, f"Update the architecture discovery index (version {version})", frozenset({index_path}))
+        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"]}
+        summary = breakdown_module.summary(states, checked, ids)
+        with self.database.transaction() as tx:
+            for kind_key, record_id in ids.items():
+                tx.execute("INSERT OR IGNORE INTO service_architecture_keys VALUES (?, ?, ?, ?)", (activity_id, kind_key[0], kind_key[1], record_id))
+            for record_id, state in states.items():
+                tx.execute("INSERT OR REPLACE INTO service_architecture_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (activity_id, record_id, state["kind"], state["subject"], state["version"], state["authored_sha256"], state["repo_path"], state["sha256"], state["set_version"],
+                            commit if state["rewritten"] else previous[record_id]["commit"]))
+            tx.execute("UPDATE service_architectures SET state = 'saved', breakdown_ref_json = ?, breakdown_json = ?, architecture_version = ?, note = NULL WHERE activity_id = ?",
+                       (canonical_json(final), canonical_json({**stored, "summary": summary, "ids": {f"{k[0]}:{k[1]}": v for k, v in ids.items()}}), version, activity_id))
+            self._activity(tx, activity_id, "breakdown_saved",
+                           f"Breakdown saved: architecture version {version} at {commit[:12]} ({len(summary['milestones'])} milestones, {len(summary['packets'])} packets). Independent review and confirmation are the next stages.",
+                           (ActivityAction(f"{activity_id}-cancel", "Cancel architecture", "action"),))
+            self._say(tx, row["project_id"], activity_id, f"Work breakdown saved and published to {row['repository']} branch {row['publication_branch']}: manifest {manifest_path} at {commit[:12]}, "
+                      f"{len(summary['milestones'])} milestone(s) and {len(summary['packets'])} packet(s) with Quality Assurance plans. No worker was scheduled and no source was changed.")
+            self._emit(tx, row["project_id"], activity_id, "architecture.breakdown_saved", {"activity_id": activity_id, "working_ref": reference})
+
+    def _published_decisions(self, row: Mapping[str, Any], destination: GitHubDestination) -> dict[str, Any]:
+        ref = json.loads(row["breakdown_ref_json"]) if row["breakdown_ref_json"] else json.loads(row["foundations_ref_json"])
+        path = ref["manifest_path"].rsplit("/", 1)[0] + "/decisions.json"
+        data = destination.read_file(row["repository"], ref["commit"], path)
+        if data is None:
+            raise FoundationError("the published decisions snapshot cannot be read")
+        return json.loads(data)
+
+    def _check_breakdown_schema(self, files: Mapping[str, bytes], manifest_path: str) -> None:
+        if self.breakdown_schema is None:
+            return
+        import jsonschema
+
+        base = manifest_path.rsplit("/", 1)[0]
+        for path, data in files.items():
+            relative = path[len(base) + 1:]
+            definition = {"manifest.json": "manifest", "decisions.json": "decisions"}.get(relative) or {"development-milestones": "developmentMilestone", "work-packets": "workPacket", "qa-plans": "qaPlan"}[relative.split("/")[0]]
+            schema = {"$ref": f"#/$defs/{definition}", "$defs": self.breakdown_schema["$defs"]}
+            try:
+                jsonschema.Draft202012Validator(schema).validate(json.loads(data))
+            except jsonschema.ValidationError as error:
+                raise FoundationError(f"the saved {relative} does not satisfy the architecture breakdown schema: {error.message[:200]} at {'/'.join(str(p) for p in error.absolute_path)}") from error
 
     def _check_schema(self, files: Mapping[str, bytes], manifest_path: str) -> None:
         if self.schema is None:
@@ -914,7 +1196,15 @@ class ArchitectureService:
         destination = self._destination(self._profile_of(row))
         for op in self._rows("SELECT * FROM service_architecture_publications WHERE activity_id = ? AND state IN ('prepared', 'writing')", (row["activity_id"],)):
             frozen = self._frozen(op["operation_id"])
-            commit = destination.publish(op["repository"], op["branch"], frozen, "Reconcile an interrupted architecture publication", frozenset({f"{records_module.ROOT}/index.json"}))
+            try:
+                commit = destination.publish(op["repository"], op["branch"], frozen, "Reconcile an interrupted architecture publication", frozenset({f"{records_module.ROOT}/index.json"}))
+            except DestinationError as error:
+                if error.code != "publication_conflict":
+                    raise
+                # a target already holds different content, so this write definitely did not land; it cannot block ending the activity
+                with self.database.transaction() as tx:
+                    tx.execute("UPDATE service_architecture_publications SET state = 'paused', detail = ? WHERE operation_id = ?", (f"publication_conflict: {error}", op["operation_id"]))
+                continue
             destination.verify_files(op["repository"], commit, frozen)
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_architecture_publications SET state = 'applied', commit_sha = ? WHERE operation_id = ?", (commit, op["operation_id"]))
@@ -1005,24 +1295,27 @@ class ArchitectureService:
         paused = pending.get("paused")
         if row["state"] == "paused" and isinstance(paused, dict):
             actions.append("retry_publication" if paused["kind"] == "publication" else "retry_agent")
+        breakdown = None if row["breakdown_json"] is None else json.loads(row["breakdown_json"]).get("summary")
+        working = json.loads(row["breakdown_ref_json"]) if row["breakdown_ref_json"] else foundations
         if row["state"] == "saved":
-            blocking.append("Foundations are saved; producing the work breakdown is the next stage and has not been built yet.")
+            blocking.append("The work breakdown is saved; independent review and Owner confirmation are the next stages and have not been built yet." if row["breakdown_ref_json"] else "Foundations are saved; the work breakdown starts next.")
         if row["state"] == "paused" and row["note"]:
             blocking.append(str(row["note"]))
         session = self._read("SELECT * FROM service_architecture_sessions WHERE activity_id = ? AND state = 'active' ORDER BY created_at DESC, rowid DESC LIMIT 1", (activity_id,))
         sessions = self._rows("SELECT session_id, tool, model, provider_session_id, prior_session_id, state, note FROM service_architecture_sessions WHERE activity_id = ? ORDER BY rowid", (activity_id,))
         return {
             "project_id": row["project_id"], "activity_id": activity_id, "activity_version": None if version is None else int(version["version"]),
-            "state": state, "stage": {"architect": "investigating", "architect_waiting": "waiting_for_answers", "publishing": "publishing", "saved": "foundations_saved",
-                                      "paused": "paused", "cancelling": "cancelling", "cancelled": "cancelled"}[row["state"]],
+            "state": state, "stage": {"architect": "investigating" if row["stage"] == "foundations" else "breaking_down", "architect_waiting": "waiting_for_answers", "publishing": "publishing",
+                                      "saved": "breakdown_saved" if row["breakdown_ref_json"] else "foundations_saved", "paused": "paused", "cancelling": "cancelling", "cancelled": "cancelled"}[row["state"]],
             "registration_ref": json.loads(row["registration_json"]),
-            "working_ref": None if foundations is None else {k: foundations[k] for k in ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")},
+            "working_ref": None if working is None else {k: working[k] for k in ("version", "commit", "manifest_path", "manifest_sha256", "reviewed_content_hash")},
             "confirmed_ref": None, "review_coverage_valid": False, "review_count": 0, "review_limit": self._review_limit(activity_id),
             "available_actions": actions, "blocking_reasons": blocking, "allowances": [], "owner_decisions": [],
             "repository": row["repository"], "source": {"ref": row["source_ref"], "commit": row["source_commit"]}, "publication_branch": row["publication_branch"],
             "roles": {"architect": {"tool": row["architect_tool"], "model_id": row["architect_model"]}, "reviewer": {"tool": row["reviewer_tool"], "model_id": row["reviewer_model"]}},
             "session": None if session is None else {k: session[k] for k in ("session_id", "tool", "model", "provider_session_id", "prior_session_id")},
-            "sessions": sessions, "foundations": foundations, "paused": paused, "note": row["note"],
+            "sessions": sessions, "foundations": foundations, "breakdown": breakdown, "breakdown_ref": None if row["breakdown_ref_json"] is None else json.loads(row["breakdown_ref_json"]),
+            "paused": paused, "note": row["note"],
             "outcomes": [{"id": o["id"], "subject": o["subject"]} for o in json.loads(row["outcome_refs_json"])["outcomes"] if o["path"].split("/")[-2] == "milestones"],
             "recovery": self._recovery_view(pending),
         }
