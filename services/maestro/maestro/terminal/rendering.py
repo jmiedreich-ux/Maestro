@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass
 
 from .workspace import View, Workspace
@@ -39,7 +40,7 @@ class TerminalRenderer:
         else:
             lines.extend(self._conversation(workspace, size.rows))
         lines.extend(self._input(workspace))
-        return "\n".join(line[: size.columns] for line in lines)
+        return "\n".join(_fit(lines, size.columns))
 
     @staticmethod
     def _header(workspace: Workspace) -> str:
@@ -199,6 +200,21 @@ class TerminalRenderer:
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
         focus = _focus(workspace, "editor", "input")
         return [f"{focus} Input | {context}"] + [f"> {line}" for line in text_lines]
+
+
+def _fit(lines: list[str], columns: int) -> list[str]:
+    """Split embedded line breaks; wrap question text and status, clip the rest."""
+    fitted: list[str] = []
+    for line in lines:
+        parts = line.split("\n")
+        for index, part in enumerate(parts):
+            if index or part.startswith("Question: "):
+                fitted.extend(
+                    textwrap.wrap(part, columns, subsequent_indent="  ") or [""]
+                )
+            else:
+                fitted.append(part[:columns])
+    return fitted
 
 
 def _focus(workspace: Workspace, kind: str, identity: str) -> str:
