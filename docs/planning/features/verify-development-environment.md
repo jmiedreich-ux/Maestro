@@ -27,4 +27,4 @@ Recorded 2026-09-23; code merged to `master` as `ebbb1a1`. Evidence is in the [p
 
 **Results.** 128 tests pass on `master`. Real launches passed on all three routes before and after the installed service was upgraded.
 
-**Not done.** The rollback path and an automatic merge-triggered installer were not exercised, and the Claude setup token's real lifetime has not yet been observed.
+**Deferred.** The automatic merge-triggered installer and its rollback belong to the first milestone that changes the installed service, per the [delivery rules](../../development-process/delivery-rules.md). This milestone uses the manual procedure. Not yet observed: the Claude setup token's real lifetime has not yet been observed.
