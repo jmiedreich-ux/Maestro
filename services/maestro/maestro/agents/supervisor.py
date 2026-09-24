@@ -221,7 +221,7 @@ class SystemdUserUnits:
         unit = request.identity.unit_name
         arguments = (
             self.systemd_run, "--user", "--unit", unit, "--quiet", "--pipe",
-            "--property=KillMode=control-group", "--property=TimeoutStopSec=30s",
+            "--property=KillMode=control-group", "--property=TimeoutStopSec=60s",
             "--property=SendSIGKILL=yes", "--property=RemainAfterExit=yes",
             f"--working-directory={request.cwd}", "--", *request.command,
         )

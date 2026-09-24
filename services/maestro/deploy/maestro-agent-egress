@@ -12,6 +12,7 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 import tomllib
 from pathlib import Path
 
@@ -223,7 +224,7 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
     hosts_path = write_hosts(run_id, hosts)
     split = bwrap_arguments.index("--")
     sandbox = bwrap_arguments[:split] + ["--ro-bind", str(hosts_path), "/etc/hosts"] + bwrap_arguments[split:]
-    arguments = [SYSTEMD_RUN, "--pipe", "--wait", "--collect", f"--unit={unit_name(run_id)}", "--property=TimeoutStopSec=20s", "--property=IPAddressDeny=any", "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK"]
+    arguments = [SYSTEMD_RUN, "--pipe", "--wait", "--collect", f"--unit={unit_name(run_id)}", "--property=TimeoutStopSec=30s", "--property=IPAddressDeny=any", "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK"]
     for addresses, _ in resolved:
         for address in addresses:
             suffix = "/128" if ipaddress.ip_address(address).version == 6 else "/32"
@@ -237,20 +238,29 @@ def run_outer() -> None:
     unit = f"{unit_name(sys.argv[2])}.service"
     stopping: list[int] = []
 
-    def stop_unit(signum: int, _frame: object) -> None:
+    def stop_unit() -> bool:
+        return subprocess.run([SYSTEMCTL, "stop", unit], check=False).returncode == 0
+
+    def on_signal(signum: int, _frame: object) -> None:
         # The service stops a run by stopping its supervisor unit. The agent runs in a separate
         # system unit that survives its client, so stop that unit here and wait for it to end.
         stopping.append(signum)
-        subprocess.run([SYSTEMCTL, "stop", unit], check=False)
+        for _ in range(3):
+            if stop_unit():
+                return
+            time.sleep(1)
 
     for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        signal.signal(signum, stop_unit)
+        signal.signal(signum, on_signal)
+    returncode = 143
     try:
-        process = subprocess.Popen(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]))
-        returncode = process.wait()
+        command = outer_command(sys.argv[1], sys.argv[2], sys.argv[3:])
+        if not stopping:
+            process = subprocess.Popen(command)
+            returncode = process.wait()
         if stopping:
-            # A stop that arrived while the unit was still starting may have missed it.
-            subprocess.run([SYSTEMCTL, "stop", unit], check=False)
+            # A stop that arrived before the unit existed could not stop it; stop it now.
+            stop_unit()
     finally:
         reclaim_run(sys.argv[2])
     raise SystemExit(returncode)

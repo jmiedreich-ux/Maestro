@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -32,11 +33,12 @@ from maestro.agents.supervisor import (
 )
 from maestro.agents.transport import (
     AgentAssignment,
+    ArtifactReference,
     DecodedToolResult,
     RegistrationResponseValidator,
     TransportError,
 )
-from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspaceManager
+from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspacePaths, WorkspaceManager
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_identifier, canonical_json
 
 
@@ -83,7 +85,13 @@ AGENT_RUN_MIGRATION = DomainMigration(
             terminal_reason TEXT,
             active_seconds REAL,
             response_sha256 TEXT,
-            response_json TEXT
+            response_json TEXT,
+            assignment_sha256 TEXT,
+            source_commit TEXT,
+            decision_version TEXT,
+            assignment_json TEXT,
+            workspace_json TEXT,
+            inputs_json TEXT
         )
         """,
         """
@@ -115,7 +123,7 @@ _RETRYABLE = frozenset(
     {
         "malformed_response", "malformed_output", "missing_output", "tool_failure",
         "conflicting_response", "artifact_mismatch", "artifact_missing", "protocol_error",
-        "stalled", "interrupted", "process_exited",
+        "stalled", "interrupted", "process_exited", "technical_failure",
     }
 )
 _POST_RESULT_GRACE_SECONDS = 30.0
@@ -176,6 +184,7 @@ class AgentRunService:
         self.validator = RegistrationResponseValidator()
         # In-memory only: an open tool conversation cannot survive a service restart.
         self._live: dict[str, _Live] = {}
+        self._lock = threading.RLock()
         database.registry.register(AGENT_RUN_MIGRATION)
         database.initialize()
 
@@ -232,6 +241,7 @@ class AgentRunService:
             spec = build(run_id)
             if spec.assignment.run_id != run_id or spec.assignment.assignment_id != assignment_id:
                 raise AgentRunError("assignment_mismatch", "assignment does not match the reserved run")
+            self._check_baseline(assignment_id, spec.assignment)
             profile = self.profile_resolver(route)
             workspace = self.workspaces.prepare(
                 project_id=project_id,
@@ -243,6 +253,7 @@ class AgentRunService:
                 inputs=spec.inputs,
             )
             live = _Live(route, spec.assignment, workspace)
+            self._save_snapshot(run_id, spec)
             if tool == "codex":
                 live.conversation = CodexTransport().open(route, spec.assignment, workspace, profile)
                 launch = live.conversation.launch
@@ -250,7 +261,7 @@ class AgentRunService:
                 launch = ClaudeTransport().launch(route, spec.assignment, workspace, profile)
             else:
                 raise AgentRunError("unsupported_tool", "no adapter is installed for this tool")
-        except (AgentRunError, TransportError, ValueError, OSError) as error:
+        except Exception as error:
             code = getattr(error, "code", "launch_setup_failed")
             self._finish(run_id, "failed", failure_code=code, reason=str(error)[:_DETAIL_LIMIT])
             self._settle_failure(assignment_id, run_id, code)
@@ -265,6 +276,7 @@ class AgentRunService:
             raise
         self._live[run_id] = live
         with self.database.transaction() as tx:
+            tx.execute("UPDATE service_agent_runs SET workspace_json = ? WHERE run_id = ?", (_workspace_json(workspace), run_id))
             tx.execute(
                 """
                 UPDATE service_agent_runs SET state = 'running', unit_name = ?, invocation_id = ?,
@@ -323,9 +335,33 @@ class AgentRunService:
         )
         return duration
 
+    def _check_baseline(self, assignment_id: str, assignment: AgentAssignment) -> None:
+        """A later run may change task and inputs, never the assigned source or decision version."""
+        with self.database.read_connection() as connection:
+            first = connection.execute(
+                "SELECT source_commit, decision_version FROM service_agent_runs WHERE assignment_id = ? AND source_commit IS NOT NULL ORDER BY rowid LIMIT 1",
+                (assignment_id,),
+            ).fetchone()
+        if first is not None and tuple(first) != (assignment.source_commit, assignment.decision_version):
+            raise AgentRunError("assignment_changed", "a later run cannot change the assigned source or decision version")
+
+    def _save_snapshot(self, run_id: str, spec: RunBuild) -> None:
+        assignment_bytes = spec.assignment.to_bytes()
+        inputs = {name: hashlib.sha256(data).hexdigest() for name, data in sorted(spec.inputs.items())}
+        with self.database.transaction() as tx:
+            tx.execute(
+                "UPDATE service_agent_runs SET assignment_sha256 = ?, source_commit = ?, decision_version = ?, assignment_json = ?, inputs_json = ? WHERE run_id = ?",
+                (hashlib.sha256(assignment_bytes).hexdigest(), spec.assignment.source_commit, spec.assignment.decision_version,
+                 assignment_bytes.decode("utf-8"), canonical_json(inputs), run_id),
+            )
+
     # -- progress and completion --------------------------------------------
 
     def poll(self, run_id: str) -> RunView:
+        with self._lock:
+            return self._poll(run_id)
+
+    def _poll(self, run_id: str) -> RunView:
         run = self._run(run_id)
         if run["state"] not in _OPEN_RUN_STATES:
             return self.view(run_id)
@@ -380,6 +416,8 @@ class AgentRunService:
 
     def _finalize(self, identity: OperationIdentity, record, assignment: Mapping[str, object]) -> RunView:
         run_id = identity.run_id
+        if self._run(run_id)["state"] not in _OPEN_RUN_STATES:
+            return self.view(run_id)  # already settled: never overwrite accepted work
         live = self._live.pop(run_id, None)
         seconds = max(0.0, self.clock() - record.launched_monotonic)
         state = record.state
@@ -395,17 +433,21 @@ class AgentRunService:
             self._finish(run_id, "cancelled", reason=record.terminal_reason, seconds=seconds)
             self._settle(identity.assignment_id, run_id, "cancelled")
             return self.view(run_id)
-        if state in {"stopped", "stalled"} and (live is None or live.failure is None):
-            code = "stalled" if state == "stalled" else "interrupted"
-            self._finish(run_id, "failed", failure_code=code, reason=record.terminal_reason, seconds=seconds)
-            self._settle_failure(identity.assignment_id, run_id, code)
-            return self.view(run_id)
         try:
             if live is None:
-                live = self._rebuild(identity, assignment)
+                live = self._rebuild(identity, assignment, record)
             if live.failure is not None:
                 raise TransportError(live.failure, "the tool conversation failed")
-            decoded = self._decode(assignment, live, record)
+            try:
+                decoded = self._decode(assignment, live, record)
+            except TransportError:
+                if state in {"stopped", "stalled"}:
+                    # Stopped before a complete result was saved.
+                    code = "stalled" if state == "stalled" else "interrupted"
+                    self._finish(run_id, "failed", failure_code=code, reason=record.terminal_reason, seconds=seconds)
+                    self._settle_failure(identity.assignment_id, run_id, code)
+                    return self.view(run_id)
+                raise
             with self.database.transaction() as tx:
                 current = tx.execute("SELECT current_run_id FROM service_agent_assignments WHERE assignment_id = ?", (identity.assignment_id,)).fetchone()[0]
             response = self.validator.validate(
@@ -430,8 +472,15 @@ class AgentRunService:
             self._settle_failure(identity.assignment_id, run_id, code)
             return self.view(run_id)
         stored = self._store_artifacts(run_id, live, response)
-        self._finish(run_id, "completed", reason=record.terminal_reason, seconds=seconds, response=response, session=decoded.session_id or decoded.thread_id, stored=stored)
-        self._settle(identity.assignment_id, run_id, "completed")
+        session = decoded.session_id or decoded.thread_id
+        if response.result == "technical_failure":
+            # A valid report of failure is still a failure: it enters technical recovery.
+            self._finish(run_id, "failed", failure_code="technical_failure", reason=str((response.failure or {}).get("message", ""))[:_DETAIL_LIMIT],
+                         seconds=seconds, response=response, raw=decoded.response, session=session, stored=stored)
+            self._settle_failure(identity.assignment_id, run_id, "technical_failure")
+            return self.view(run_id)
+        self._finish(run_id, "completed", reason=record.terminal_reason, seconds=seconds, response=response, raw=decoded.response, session=session, stored=stored)
+        self._settle(identity.assignment_id, run_id, "waiting_for_answers" if response.result == "clarification_required" else "completed")
         return self.view(run_id)
 
     def _decode(self, assignment: Mapping[str, object], live: "_Live", record) -> DecodedToolResult:
@@ -440,11 +489,24 @@ class AgentRunService:
         raw = "\n".join(str(e["data"]).rstrip("\n") for e in record.events if e["kind"] == "stdout")
         return ClaudeTransport().decode(raw, live.route)
 
-    def _rebuild(self, identity: OperationIdentity, assignment: Mapping[str, object]) -> "_Live":
-        """After a service restart only a tool with a complete saved stream can still be decoded."""
-        if assignment["tool"] != "claude_code":
-            raise TransportError("interrupted", "the tool conversation cannot be resumed")
-        raise TransportError("interrupted", "the run's saved context is not held by this service instance")
+    def _rebuild(self, identity: OperationIdentity, assignment: Mapping[str, object], record) -> "_Live":
+        """After a restart, rebuild the run from its saved snapshot and replay its saved output."""
+        run = self._run(identity.run_id)
+        if not run["assignment_json"] or not run["workspace_json"]:
+            raise TransportError("interrupted", "the run has no saved assignment snapshot")
+        saved = json.loads(str(run["assignment_json"]))
+        route = self.route_resolver(str(assignment["role"]), str(assignment["tool"]), str(assignment["model_id"]))
+        if route.configuration_hash != run["configuration_hash"]:
+            raise TransportError("configuration_changed", "the route configuration changed since the run started")
+        prepared = _workspace_from_json(str(run["workspace_json"]), self.workspaces)
+        parsed = _assignment_from_json(saved)
+        live = _Live(route, parsed, prepared)
+        if assignment["tool"] == "codex":
+            live.conversation = CodexTransport().open(route, parsed, prepared, self.profile_resolver(route))
+            for event in record.events:
+                if event["kind"] == "stdout":
+                    live.conversation.receive(str(event["data"]).encode("utf-8"))
+        return live
 
     def _store_artifacts(self, run_id: str, live: "_Live", response) -> dict[str, tuple[str, str, str]]:
         stored: dict[str, tuple[str, str, str]] = {}
@@ -465,6 +527,12 @@ class AgentRunService:
     # -- stop, recovery ------------------------------------------------------
 
     def stop(self, run_id: str, reason: str = "cancelled") -> RunView:
+        with self._lock:
+            return self._stop(run_id, reason)
+
+    def _stop(self, run_id: str, reason: str) -> RunView:
+        if self._run(run_id)["state"] not in _OPEN_RUN_STATES:
+            return self.view(run_id)
         assignment = self._assignment_for_run(run_id)
         identity = OperationIdentity(assignment["project_id"], assignment["activity_id"], assignment["assignment_id"], run_id)
         with self.database.transaction() as tx:
@@ -474,6 +542,10 @@ class AgentRunService:
         return self._finalize(identity, record, assignment)
 
     def recover(self) -> list[RunView]:
+        with self._lock:
+            return self._recover()
+
+    def _recover(self) -> list[RunView]:
         """After a service restart: reconcile every open run against its saved supervisor record.
 
         Never launches anything. A run that is still alive but whose tool conversation this
@@ -526,7 +598,7 @@ class AgentRunService:
             self._emit(tx, row["project_id"], row["activity_id"], "agent_run.paused", {"run_id": run_id, "assignment_id": assignment_id, "reason": reason})
 
     def _finish(self, run_id: str, state: str, *, failure_code: str | None = None, reason: str | None = None,
-                seconds: float | None = None, response=None, session: str | None = None, stored=None) -> None:
+                seconds: float | None = None, response=None, raw=None, session: str | None = None, stored=None) -> None:
         with self.database.transaction() as tx:
             tx.execute(
                 """
@@ -537,7 +609,7 @@ class AgentRunService:
                 (
                     state, failure_code, reason, _now(), seconds, session,
                     None if response is None else response.response_sha256,
-                    None if response is None else canonical_json({"result": response.result, "summary": response.summary, "review_outcome": response.review_outcome, "findings": list(response.findings)}),
+                    None if raw is None else canonical_json(raw),
                     run_id,
                 ),
             )
@@ -641,3 +713,33 @@ def _progress(tool: str, event: Mapping[str, object]) -> str | None:
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 return f"using {block.get('name')}"
     return None
+
+
+def _workspace_json(workspace: PreparedWorkspace) -> str:
+    return json.dumps({
+        "project_id": workspace.project_id, "activity_id": workspace.activity_id, "run_id": workspace.run_id,
+        "source_commit": workspace.source_commit, "paths": {k: str(v) for k, v in vars(workspace.paths).items()},
+        "assignment_sha256": workspace.assignment_sha256, "immutable_hashes": [list(pair) for pair in workspace.immutable_hashes],
+        "isolation_executable": str(workspace.isolation_executable), "workspace_root": str(workspace.workspace_root),
+    })
+
+
+def _workspace_from_json(text: str, manager: WorkspaceManager) -> PreparedWorkspace:
+    value = json.loads(text)
+    return PreparedWorkspace(
+        value["project_id"], value["activity_id"], value["run_id"], value["source_commit"],
+        WorkspacePaths(**{k: Path(v) for k, v in value["paths"].items()}), value["assignment_sha256"],
+        tuple((a, b) for a, b in value["immutable_hashes"]), Path(value["isolation_executable"]), Path(value["workspace_root"]),
+    )
+
+
+def _assignment_from_json(value: Mapping[str, object]) -> AgentAssignment:
+    return AgentAssignment(
+        project_id=value["project_id"], activity_id=value["activity_id"], assignment_id=value["assignment_id"], run_id=value["run_id"],
+        parent_assignment_id=value["parent_assignment_id"], role=value["role"], role_responsibilities=tuple(value["role_responsibilities"]),
+        task=value["task"], source_commit=value["source_commit"], decision_version=value["decision_version"],
+        instructions=value["instructions"], permitted_actions=tuple(value["permitted_actions"]),
+        writable_locations=tuple(value["writable_locations"]), limits=value["limits"],
+        clarification_conditions=tuple(value["clarification_conditions"]), response_schema=value["required_response"]["schema"],
+        assigned_artifacts={k: ArtifactReference.from_mapping(v, k) for k, v in value["assigned_artifacts"].items()},
+    )
