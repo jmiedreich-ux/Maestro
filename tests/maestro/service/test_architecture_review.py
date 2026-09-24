@@ -22,7 +22,7 @@ BASE = ".maestro/architecture/versions"
 
 def review_finding(key, severity, packet="packet-1"):
     return {"local_key": key, "subject": f"Finding {key}", "severity": severity, "explanation": "Because", "impact": "It matters", "requested_correction": "Fix it",
-            "source_refs": [{"path": f"{BASE}/2/work-packets/{packet}.json", "commit": COMMIT, "locator": "purpose"}], "missing_information": None,
+            "source_refs": [{"path": "src/store.py", "commit": COMMIT, "locator": "Store"}], "missing_information": None,
             "affected_items": [{"id": packet, "subject": "Packet a", "version": 1, "path": f"work-packets/{packet}.json"}]}
 
 
@@ -150,6 +150,10 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaises(RequestRejection) as caught:
             self.confirm(project_id, activity, limitations=[{"id": "finding-99", "subject": "x", "version": 1, "container": record}])
         self.assertEqual("unknown_limitation", caught.exception.code)
+        with self.assertRaises(RequestRejection) as caught:
+            self.confirm(project_id, activity, limitations=[])
+        self.assertEqual("limitations_not_accepted", caught.exception.code)
+        self.assertEqual(1, len(caught.exception.fields["limitations"]))
         receipt = self.confirm(project_id, activity, limitations=view["limitations"] and [{k: v for k, v in view["limitations"][0].items() if k != "explanation"}])
         self.assertEqual("accepted", receipt.status)
         self.assertEqual("confirming", self.row_a(activity)["state"])
@@ -159,6 +163,8 @@ class ReviewTests(unittest.TestCase):
         self.drive(activity, "completed")
         done = self.architecture.project_view(project_id)
         self.assertEqual(done["working_ref"], done["confirmed_ref"])
+        listed = {r["id"] for r in done["records"]}
+        self.assertTrue({"investigation", "project-structure", "decisions", "packet-1", "qa-plan-1", "review-1", "confirmation"} <= listed, listed)
         self.assertEqual(2, done["confirmed_ref"]["version"])
         receipt_files = self.destination.published[-2]
         confirmation = json.loads(receipt_files[f"{BASE}/2/confirmation.json"])
@@ -252,6 +258,45 @@ class ReviewTests(unittest.TestCase):
         runs = self.reviewer_runs(activity)
         self.assertEqual(["initial", "recovery"], [s[2] for s in runs])
         self.assertEqual(runs[0][0], runs[1][0])
+
+    def test_a_finding_that_points_at_nothing_real_is_rejected_and_not_counted(self) -> None:
+        nowhere = review_finding("x1", "blocking")
+        nowhere["source_refs"] = [{"path": "src/not-there.py", "commit": COMMIT, "locator": "x"}]
+        unlisted = review_finding("x2", "blocking", "packet-99")
+        vague = {**review_finding("x3", "blocking"), "source_refs": [], "affected_items": []}
+        project_id, activity = self.reach([review("REQUEST_CHANGES", [nowhere]), review("REQUEST_CHANGES", [unlisted]), review("REQUEST_CHANGES", [vague]), review("APPROVE")])
+        self.drive(activity, "ready")
+        view = self.architecture.project_view(project_id)
+        self.assertEqual(1, view["review_count"])
+        runs = self.reviewer_runs(activity)
+        self.assertEqual(["initial", "recovery", "recovery", "recovery"], [r[2] for r in runs])
+        self.assertEqual(1, len({r[0] for r in runs}))
+
+    def test_a_result_that_arrives_after_a_cancellation_does_not_undo_it(self) -> None:
+        project_id, activity = self.reach([review("APPROVE")])
+        for _ in range(12):
+            self.architecture.tick()
+            self.save_history(activity)
+            if json.loads(self.row_a(activity)["pending_json"]).get("reviewer_run"):
+                break
+        stale = self.row_a(activity)
+        current = json.loads(stale["pending_json"])["reviewer_run"]
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_architectures SET state = 'cancelling' WHERE activity_id = ?", (activity,))
+        self.architecture._accept_reviewer(stale, current)
+        self.assertEqual("cancelling", self.row_a(activity)["state"])
+        self.assertEqual([], self.architecture._reviews(activity))
+
+    def test_a_publication_whose_frozen_bytes_are_missing_is_not_treated_as_written(self) -> None:
+        project_id, activity = self.reach([])
+        row = self.row_a(activity)
+        from maestro.service import architecture_records as records
+        with self.database.transaction() as tx:
+            tx.execute("INSERT INTO service_architecture_publications(operation_id, activity_id, kind, repository, branch, files_json, state, profile_json) VALUES ('op-crashed', ?, 'review', ?, ?, ?, 'prepared', ?)",
+                       (activity, row["repository"], row["publication_branch"], json.dumps({"files": {"a.json": records.sha256(b"{}")}}), row["profile_json"]))
+        from maestro.service.architecture_records import FoundationError
+        with self.assertRaises(FoundationError):
+            self.architecture._publish_stage(row, self.destination, "op-crashed", "review", {"a.json": b"{}"}, "x")
 
     def test_confirmation_needs_a_review_of_the_exact_version(self) -> None:
         project_id, activity = self.reach([review("REQUEST_CHANGES", [review_finding("b1", "blocking")])])

@@ -177,7 +177,7 @@ class ArchitectureExtension:
             raise ArchitectureError("Select a project first; /architecture full lists the saved records.")
         view = self._view(context, project_id)
         lines = [f"Saved records of architecture version {(view.get('working_ref') or {}).get('version')} in {view['repository']} (branch {view['publication_branch']}):"]
-        lines += [f"{r['kind']} {r['record_id']} v{r['version']} {r['repo_path']} sha256 {str(r['sha256'])[:12]} commit {str(r['commit_sha'])[:12]}" for r in view.get("records") or []]
+        lines += [f"{r['kind']} {r['id']} v{r['version']} {r['path']} sha256 {str(r['sha256'])[:12]} commit {str(r['commit'])[:12]}" for r in view.get("records") or []]
         for review in view.get("reviews") or []:
             record = review.get("record") or {}
             lines.append(f"review round {review['round']}: {review['outcome']}, {len(review['findings'])} finding(s) {record.get('path', '')}")

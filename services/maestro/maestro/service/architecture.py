@@ -895,6 +895,8 @@ class ArchitectureService:
         pass_number = int(row["pass_number"])
         with self.database.transaction() as tx:
             fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
+            if fresh["state"] != "architect":
+                return  # cancelled or paused while the result was being read
             pending = json.loads(fresh["pending_json"] or "{}")
             pending.pop("architect_run", None)
             pending.pop("amend", None)
@@ -1157,7 +1159,7 @@ class ArchitectureService:
         previous_raw = destination.read_file(row["repository"], commit, index_path)
         index = records_module.discovery_index(row["project_id"], json.loads(previous_raw) if previous_raw else None, version, commit, manifest_path, reference["manifest_sha256"], manifest["reviewed_content_hash"])
         index_commit = self._publish_stage(row, destination, f"{activity_id}-bindex-{pass_number}", "index", {index_path: records_module.encode(index)}, f"Update the architecture discovery index (version {version})", frozenset({index_path}))
-        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"]}
+        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"], "listing": review_module.listing(manifest, manifest_path, commit)}
         summary = breakdown_module.summary(states, checked, ids)
         with self.database.transaction() as tx:
             for kind_key, record_id in ids.items():
@@ -1216,18 +1218,21 @@ class ArchitectureService:
         """Write one journaled commit; return the commit that holds exactly these bytes (an earlier attempt's, if it landed)."""
         op = self._read("SELECT * FROM service_architecture_publications WHERE operation_id = ?", (operation_id,))
         if op is None:
+            # the exact bytes are on disk before the journal row exists, so a crash between the two leaves nothing that looks published
+            self._frozen(operation_id, files)
             with self.database.transaction() as tx:
                 tx.execute(
                     "INSERT INTO service_architecture_publications(operation_id, activity_id, kind, repository, branch, files_json, state, profile_json) VALUES (?, ?, ?, ?, ?, ?, 'prepared', ?)",
                     (operation_id, row["activity_id"], kind, row["repository"], row["publication_branch"],
                      canonical_json({"files": {p: records_module.sha256(d) for p, d in files.items()}}), row["profile_json"]),
                 )
-            self._frozen(operation_id, files)
             op = self._read("SELECT * FROM service_architecture_publications WHERE operation_id = ?", (operation_id,))
         assert op is not None
         if op["state"] in {"verified", "applied"}:
             return str(op["commit_sha"])
         frozen = self._frozen(operation_id)
+        if {p: records_module.sha256(d) for p, d in frozen.items()} != json.loads(op["files_json"])["files"]:
+            raise FoundationError("the frozen bytes of the publication do not match its journal; it is not written on an assumption")
         destination.check_publication_branch(row["repository"], row["publication_branch"])
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_architecture_publications SET state = 'writing' WHERE operation_id = ?", (operation_id,))
@@ -1397,16 +1402,15 @@ class ArchitectureService:
             outcome = response["review_outcome"]
             review_module.check_reviewed_set(response["reviewed_set"], target)
             keyed = [{**f, "local_key": f"review-{f['local_key']}"} for f in response.get("findings", [])]
-            for finding in keyed:
-                for ref in finding["source_refs"]:
-                    if not isinstance(ref.get("commit"), str) or len(ref["commit"]) != 40:
-                        raise FoundationError(f"finding {finding['local_key']} cites a source reference without a full commit")
             normalized = [_normalize_finding(f) for f in keyed]
+            self._check_review_findings(row, target, normalized)
         except (KeyError, TypeError, ValueError, FoundationError) as error:
             self.runs.reject_result(current["run_id"], "malformed_output", f"review invalid: {error}")
             return
         with self.database.transaction() as tx:
             fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (row["activity_id"],))
+            if fresh["state"] != "reviewer":
+                return  # cancelled or paused while the result was being read: the review is not applied
             pending = json.loads(fresh["pending_json"] or "{}")
             pending.pop("reviewer_run", None)
             pending.pop("last_recovery_detail", None)
@@ -1422,6 +1426,35 @@ class ArchitectureService:
             blocking = sum(1 for f in normalized if f["severity"] == "blocking")
             self._activity(tx, row["activity_id"], "publishing", f"Review round {rounds} complete ({outcome}); publishing the review record to GitHub")
             self._say(tx, row["project_id"], row["activity_id"], f"Independent review round {rounds} of {self._limit(fresh, pending)}: {outcome}. {len(normalized)} finding(s), {blocking} blocking. {response.get('summary', '')}".strip())
+
+    def _check_review_findings(self, row: Mapping[str, Any], target: Mapping[str, Any], findings: list[dict[str, Any]]) -> None:
+        """A finding must point at something real: a record of the reviewed set or an existing source path. A blocking finding needs at least one such pointer."""
+        destination = self._destination(self._profile_of(row))
+        manifest_bytes = destination.read_file(row["repository"], target["commit"], target["manifest_path"])
+        if manifest_bytes is None:
+            raise FoundationError("the reviewed manifest cannot be read to check the findings")
+        refs = review_module.reviewed_refs(json.loads(manifest_bytes), target["manifest_path"], target["commit"])
+        ids = {r["id"] for r in refs}
+        record_commit = {r["path"]: r["commit"] for r in refs}
+        files, directories = self._source_paths(row)
+        for finding in findings:
+            pointers = 0
+            for item in finding["affected_items"]:
+                if item["id"] not in ids:
+                    raise FoundationError(f"finding {finding['local_key']} names a record that was not in the reviewed set: {item['id']}")
+                pointers += 1
+            for ref in finding["source_refs"]:
+                path, commit = str(ref["path"]).strip("/"), ref["commit"]
+                if path in record_commit and commit == record_commit[path]:
+                    pointers += 1
+                elif (path in files or path in directories) and commit == row["source_commit"]:
+                    pointers += 1
+                elif path.startswith("input/") and isinstance(commit, str) and len(commit) == 40:
+                    pointers += 1
+                else:
+                    raise FoundationError(f"finding {finding['local_key']} cites {ref['path']} at {commit}, which is neither a reviewed record nor an existing source path at the assigned commit")
+            if finding["severity"] == "blocking" and pointers == 0:
+                raise FoundationError(f"blocking finding {finding['local_key']} does not identify an affected record or source location")
 
     def _check_review_schema(self, record: Mapping[str, Any], manifest: Mapping[str, Any], kind: str = "review") -> None:
         if self.breakdown_schema is None:
@@ -1464,7 +1497,7 @@ class ArchitectureService:
             index = {**index, "confirmed_ref": reference}
         index_commit = self._publish_stage(row, destination, f"{activity_id}-{operation}-index", "index", {index_path: records_module.encode(index)},
                                            f"Update the architecture discovery index ({record_type}, version {target['version']})", frozenset({index_path}))
-        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"]}
+        final = {**reference, "index_commit": index_commit, "repository": row["repository"], "branch": row["publication_branch"], "listing": review_module.listing(updated, target["manifest_path"], commit)}
         record_ref = {"id": record["id"], "subject": record["subject"], "version": record["version"], "path": f"{base}/{relative}", "sha256": records_module.sha256(data), "commit": commit}
         return final, record_ref, commit
 
@@ -1494,6 +1527,8 @@ class ArchitectureService:
         blocking = sum(1 for f in findings if f["severity"] == "blocking")
         with self.database.transaction() as tx:
             fresh = self._row(tx, "SELECT * FROM service_architectures WHERE activity_id = ?", (activity_id,))
+            if fresh["state"] != "review_publishing":
+                return  # cancelled or paused while the review was being published; the published record stays as history
             pending = json.loads(fresh["pending_json"] or "{}")
             pending.pop("accepted_review", None)
             tx.execute("UPDATE service_architecture_reviews SET published_json = ? WHERE activity_id = ? AND review_round = ?", (canonical_json({"set": final, "record": record_ref}), activity_id, rounds))
@@ -1623,6 +1658,9 @@ class ArchitectureService:
             for entry in accepted:
                 if limitations.get(entry.get("id")) != entry:
                     raise RequestRejection(409, "unknown_limitation", "an accepted limitation does not match a finding of the passing review", fields={"limitation": entry.get("id")})
+            missing = sorted(set(limitations) - {entry["id"] for entry in accepted})
+            if missing:
+                raise RequestRejection(409, "limitations_not_accepted", "the passing review lists limitations that the confirmation does not accept", fields={"limitations": missing, "working_ref": current_ref})
             pending["confirm"] = {"request_id": request.request_id, "expected_working_ref": expected, "accepted_limitations": accepted, "requested_at": _now(),
                                   "review_ref": published["record"], "owner_id": self.owner_id}
             transaction.execute("UPDATE service_architectures SET state = 'confirming', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
@@ -1834,7 +1872,7 @@ class ArchitectureService:
         if isinstance(breakdown, dict):
             for oid in outcome_ids:
                 coverage_map[oid] = [m["id"] for m in breakdown["milestones"] if oid in m["outcome_ids"]]
-        records = [{k: r[k] for k in ("record_id", "kind", "subject", "version", "repo_path", "sha256", "commit_sha")} for r in self._rows("SELECT * FROM service_architecture_records WHERE activity_id = ? ORDER BY kind, record_id", (activity_id,))]
+        records = list((working or {}).get("listing") or [])
         decisions_open = []
         if row["state"] == "limit_paused":
             decisions_open = [{"target": "fidelity_review", "assignment_id": pending["limit"]["assignment_id"], "state": "pending", "choices": ["grant_one", "remain_paused"],

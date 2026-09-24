@@ -37,6 +37,15 @@ def reviewed_refs(manifest: Mapping[str, Any], manifest_path: str, commit: str) 
     return sorted(refs, key=lambda r: (r["path"], r["id"], r["version"]))
 
 
+def listing(manifest: Mapping[str, Any], manifest_path: str, commit: str) -> list[dict[str, Any]]:
+    """Every saved record of a working version for the Owner: this set's own files (with review and confirmation) and the records it carries forward."""
+    base = manifest_path.rsplit("/", 1)[0]
+    rows = [{"kind": e["record_type"], "id": e["id"], "subject": e["subject"], "version": e["version"], "path": f"{base}/{e['path']}", "sha256": e["sha256"], "commit": e["commit"] or commit}
+            for e in manifest["inventory"]]
+    rows += [{"kind": "carried_forward", **{k: c["record_ref"][k] for k in ("id", "subject", "version", "path", "sha256", "commit")}} for c in manifest["carried_forward"]]
+    return sorted(rows, key=lambda r: (r["path"], r["id"]))
+
+
 def review_id(number: int) -> str:
     return f"review-{number}"
 
@@ -84,4 +93,4 @@ def canonical_hash(value: Any) -> str:
     return sha256(canonical_json(value).encode("utf-8"))
 
 
-__all__ = ["ROOT", "build_confirmation", "build_review", "canonical_hash", "check_reviewed_set", "coverage_valid", "review_id", "reviewed_refs", "with_record"]
+__all__ = ["ROOT", "build_confirmation", "build_review", "canonical_hash", "check_reviewed_set", "coverage_valid", "listing", "review_id", "reviewed_refs", "with_record"]
