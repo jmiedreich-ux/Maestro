@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: preserve project activity and requests
+
+**Accepted 2026-09-24 under the autopilot's delegated authority.** Storage, identities, repeated and conflicting requests, cross-project refusal and restart recovery were observed working on a disposable copy of the installed service, and the atomic project start reservation was built and contention-proven. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) list what waits for later outcomes: agent-run status in the idle check, real findings and allowances, and performance records. Feature: [Reserve a project start atomically](features/project-start-reservation.md).
+
 ## Closed checkpoint: operate the persistent Maestro service
 
 **Accepted by the Owner on 2026-09-24 with recorded limitations.** The installed service, its accounts and permissions, startup failure reporting and Owner access were observed working. The [accepted exceptions](../outcomes/runtime-service.md#acceptance-criteria) list what is deferred: observing boot and crash restart, and validating agent routes at startup.
