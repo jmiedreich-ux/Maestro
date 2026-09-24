@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: update a registration without losing approved history
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/update-a-registration-without-losing-approved-history`.** A real Codex architect and Claude reviewer re-registered an idle registered project: the update was refused while work was unfinished, inherited the earlier selections, showed a comparison before confirmation, could be cancelled with the earlier version kept, and confirmed only the exact candidate, with version 1 still in GitHub. The [accepted exceptions](../outcomes/registration.md#acceptance-criteria) are in the Result column. Feature: [Update a registration through the service and CLI](features/update-a-registration.md).
+
 ## Closed checkpoint: register and confirm a project through the CLI
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/register-and-confirm-a-project-through-the-cli`.** A real Codex architect and Claude reviewer assessed real repositories through the service; the Owner answered questions, confirmed scope, handled a planning-input change, cancelled, and confirmed in the terminal, and the package and receipt were published to GitHub. The [accepted exceptions](../outcomes/registration.md#acceptance-criteria) are in the Result column.
