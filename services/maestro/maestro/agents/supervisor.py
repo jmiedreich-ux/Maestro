@@ -466,6 +466,26 @@ class AgentSupervisor:
         self._close_managed(identity.key)
         return stopped
 
+    @_synchronized
+    def send(self, identity: OperationIdentity, data: bytes, *, close: bool = False) -> None:
+        """Write to the running tool's input; a conversation is not resumable across a service restart."""
+        self._required(identity)
+        managed = self._managed.get(identity.key)
+        stream = managed.process.stdin if managed is not None and managed.process is not None else None
+        if stream is None or stream.closed:
+            raise SupervisionError("input_unavailable", "the tool input is not attached")
+        try:
+            if data:
+                stream.write(data)
+                stream.flush()
+            if close:
+                stream.close()
+        except (BrokenPipeError, OSError) as error:
+            raise SupervisionError("input_unavailable", "the tool input is closed") from error
+
+    def attached(self, identity: OperationIdentity) -> bool:
+        return identity.key in self._managed
+
     def _drain(self, key: str, managed: ManagedUnit, stream_name: str) -> None:
         stream = getattr(managed, stream_name)
         if stream is None:
