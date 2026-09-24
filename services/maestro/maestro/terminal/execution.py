@@ -130,7 +130,8 @@ class ExecutionExtension:
             raise ExecutionError(f"Outcome not confirmed: {error}. Doing it again reuses the same request and cannot happen twice.") from error
         self._unconfirmed.pop(key, None)
         _receipt(response)
-        _status(context.state, f"One extra review attempt granted for {target['packet_key']}; approval is not forced." if choice == "grant_one" else f"{target['packet_key']} stays paused; nothing was approved.")
+        what = "fidelity review" if target.get("target") == "execution_support_fidelity_review" else "review attempt"
+        _status(context.state, f"One extra {what} granted for {target['packet_key']}; nothing is approved or activated by the grant." if choice == "grant_one" else f"{target['packet_key']} stays paused; nothing was approved.")
         _reload(context.state, activity_id)
         return response
 
@@ -172,6 +173,7 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
     integration = view.get("integration")
     if isinstance(integration, Mapping):
         lines.extend(_render_integration(integration, full=full))
+    lines.extend(_render_support(view, full=full))
     if view.get("open_questions"):
         lines.append("Waiting for your answer to: " + ", ".join(view["open_questions"]))  # type: ignore[arg-type]
     measured = view["measurements"]  # type: ignore[index]
@@ -182,6 +184,34 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
         if manager.get("blockers"):
             lines.append("blockers: " + "; ".join(f"{b['packet_key']}: {b['reason']}" for b in manager["blockers"]))
     return "\n".join(lines)
+
+
+_TARGETS = {"packet_review": "packet review", "integration_review": "integration review", "execution_support_fidelity_review": "support fidelity review"}
+
+
+def _render_support(view: Mapping[str, object], *, full: bool) -> list[str]:
+    lines: list[str] = []
+    for a in view.get("support", []) or []:  # type: ignore[union-attr]
+        parts = [f"support {a['support_id']} [{a['state']}] for {a['packet_key']}"]
+        if a.get("disposition"):
+            parts.append(f"{a['disposition'].replace('_', ' ')}" + (f": {a['role_path']}" if a.get("role_path") else ""))
+        if a["reviews"]["completed"]:
+            parts.append(f"fidelity review {a['reviews']['completed']} of {a['reviews']['limit']}: " + ", ".join(f"round {r['round']} {r['outcome']} ({r['blocking']} blocking)" for r in a["review_results"]))
+        if a.get("note"):
+            parts.append(str(a["note"]))
+        lines.append("  " + " | ".join(parts))
+        if full:
+            lines.append(f"      why: {str(a.get('reason'))[:240]}")
+            routes = a.get("routes") or {}
+            for name in ("architect", "reviewer"):
+                if routes.get(name):
+                    lines.append(f"      {name}: {routes[name]['tool']} {routes[name]['model']}")
+            for switch in routes.get("switches", []):
+                lines.append(f"      route switch: {switch['role']} moved to {switch['switched_to']} because {switch['reason']}")
+    for d in view.get("owner_decisions", []) or []:  # type: ignore[union-attr]
+        if d.get("recommendation"):
+            lines.append(f"Decision pending, {_TARGETS.get(d['target'], d['target'])} for {d['packet_key']}: the architect recommends {d['recommendation']}" + (f" ({str(d['rationale'])[:300]})" if d.get("rationale") else "") + ". Grant one extra attempt or keep it paused.")
+    return lines
 
 
 def _render_integration(integration: Mapping[str, object], *, full: bool) -> list[str]:

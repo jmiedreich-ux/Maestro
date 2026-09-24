@@ -27,6 +27,33 @@ def _pair(value: object, name: str) -> dict[str, Any]:
     return {"tool": value["tool"], "model": value["model"], "run_timeout_seconds": _positive(value.get("run_timeout_seconds"), f"{name}.run_timeout_seconds")}
 
 
+def _routes(value: object, name: str) -> dict[str, Any]:
+    """Primary and backup routes for a Project Architect or fidelity reviewer role: both required and distinct."""
+    if not isinstance(value, Mapping):
+        raise ExecutionConfigError(f"execution.{name} needs primary and backup routes")
+    result: dict[str, Any] = {}
+    for slot in ("primary", "backup"):
+        route = value.get(slot)
+        if not isinstance(route, Mapping) or route.get("tool") not in {"codex", "claude_code"} or not isinstance(route.get("model"), str) or not route["model"]:
+            raise ExecutionConfigError(f"execution.{name}.{slot} needs tool codex or claude_code and an exact model")
+        result[slot] = {"tool": route["tool"], "model": route["model"]}
+    if (result["primary"]["tool"], result["primary"]["model"]) == (result["backup"]["tool"], result["backup"]["model"]):
+        raise ExecutionConfigError(f"execution.{name} primary and backup must be different tool and model pairs")
+    result["run_timeout_seconds"] = _positive(value.get("run_timeout_seconds"), f"{name}.run_timeout_seconds")
+    return result
+
+
+def _support(table: object) -> dict[str, Any] | None:
+    if table is None:
+        return None
+    if not isinstance(table, Mapping):
+        raise ExecutionConfigError("execution.architectural_support must be a table")
+    reviews = table.get("maximum_fidelity_reviews", 2)
+    return {"architect": _routes(table.get("architect"), "architectural_support.architect"),
+            "fidelity_reviewer": _routes(table.get("fidelity_reviewer"), "architectural_support.fidelity_reviewer"),
+            "maximum_fidelity_reviews": _positive(reviews, "architectural_support.maximum_fidelity_reviews")}
+
+
 def validate(table: object) -> dict[str, Any]:
     """The normalized configuration with defaults applied, or a plain error naming the missing or invalid setting."""
     if not isinstance(table, Mapping):
@@ -90,6 +117,8 @@ def validate(table: object) -> dict[str, Any]:
         integration_rounds = reviews["integration"].get("maximum_completed_rounds", 2)
     rounds = reviews.get("packet", {}).get("maximum_completed_rounds", 2) if isinstance(reviews, Mapping) and isinstance(reviews.get("packet", {}), Mapping) else 2
     recovery = table.get("recovery", {}) if isinstance(table.get("recovery", {}), Mapping) else {}
+    support = _support(table.get("architectural_support"))
+    gap = _routes(table["milestone_gap_architect"], "milestone_gap_architect") if table.get("milestone_gap_architect") is not None else None
     return {
         "schema": "execution@1",
         "development_manager": {"routes": routes, "run_timeout_seconds": _positive(manager.get("run_timeout_seconds"), "development_manager.run_timeout_seconds")},
@@ -99,6 +128,8 @@ def validate(table: object) -> dict[str, Any]:
         "reviews": {"packet": {"maximum_completed_rounds": _positive(rounds, "reviews.packet.maximum_completed_rounds")},
                     "integration": {"maximum_completed_rounds": _positive(integration_rounds, "reviews.integration.maximum_completed_rounds")}},
         # Optional: without them the Integration Manager uses the Development Manager's route and integration review uses the packet reviewers.
+        **({"architectural_support": support} if support else {}),
+        **({"milestone_gap_architect": gap} if gap else {}),
         **({"integration_manager": manager_pair} if manager_pair else {}),
         **({"integration_reviewers": integration_reviewer} if integration_reviewer else {}),
         "recovery": {"automatic_recovery_attempts": recovery.get("automatic_recovery_attempts", 2), "manual_retry_attempts": recovery.get("manual_retry_attempts", 1)},

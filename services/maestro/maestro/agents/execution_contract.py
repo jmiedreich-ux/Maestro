@@ -69,11 +69,15 @@ def _schema(extra: Mapping[str, Any]) -> dict[str, Any]:
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
 
 
+_SUPPORT_REQUEST = {"type": "object", "properties": {"packet_key": _STR, "reason": _STR}, "required": ["packet_key", "reason"], "additionalProperties": False}
+_ARCH_QUESTION = {"type": "object", "properties": {"packet_key": _STR, "question": _STR}, "required": ["packet_key", "question"], "additionalProperties": False}
 MANAGER_SCHEMA = _schema({
     "understanding": _STR,
     "launches": {"type": "array", "items": _LAUNCH},
     "priorities": _STRS,
     "blockers": {"type": "array", "items": _BLOCKER},
+    "support_requests": {"type": "array", "items": _SUPPORT_REQUEST},
+    "architectural_questions": {"type": "array", "items": _ARCH_QUESTION},
     "checkpoint": _STR,
 })
 CODER_SCHEMA = _schema({
@@ -91,8 +95,54 @@ REVIEWER_SCHEMA = _schema({
     "independence": _STR,
     "findings": {"type": "array", "items": _FINDING},
 })
+SUPPORT_DISPOSITIONS = ("use_existing", "create_role", "replanning_required")
+SUPPORT_ARCHITECT_SCHEMA = _schema({
+    "disposition": {"type": "string", "enum": list(SUPPORT_DISPOSITIONS)},
+    "rationale": _STR,
+    "existing_role_path": _NULLABLE_STR,
+    "source_area": _NULLABLE_STR,
+    "role_title": _NULLABLE_STR,
+    "role_markdown": _NULLABLE_STR,
+    "context_markdown": _NULLABLE_STR,
+    "packet_keys": _STRS,
+})
+RECOMMENDATIONS = ("grant_one", "remain_paused")
+DISPOSITION_CHOICES = ("continue_unaffected", "finish_safe_work", "stop_affected_or_all", "finish_current_for_replanning")
+SUPPORT_LIMIT_SCHEMA = _schema({
+    "support_id": _STR,
+    "support_version": {"type": "integer"},
+    "completed_reviews": {"type": "integer"},
+    "recommendation": {"type": "string", "enum": list(RECOMMENDATIONS)},
+    "rationale": _STR,
+})
+_SUPPLEMENT_PACKET = {
+    "type": "object",
+    "properties": {
+        "key": _STR, "subject": _STR, "purpose": _STR, "permitted_paths": _STRS, "dependencies": _STRS,
+        "completion_criteria": _STRS, "essential_failure_checks": _STRS,
+    },
+    "required": ["key", "subject", "purpose", "permitted_paths", "dependencies", "completion_criteria", "essential_failure_checks"], "additionalProperties": False,
+}
+_SUPPLEMENT = {
+    "type": ["object", "null"],
+    "properties": {"scope_explanation": _STR, "packets": {"type": "array", "items": _SUPPLEMENT_PACKET}},
+    "required": ["scope_explanation", "packets"], "additionalProperties": False,
+}
+DETERMINATIONS = ("within_confirmed_design", "implementation_defect", "reregistration_required", "in_scope_supplement")
+DETERMINATION_SCHEMA = _schema({
+    "determination": {"type": "string", "enum": list(DETERMINATIONS)},
+    "rationale": _STR,
+    "interpretation": _NULLABLE_STR,
+    "minimum_correction": _NULLABLE_STR,
+    "affected_work": _STRS,
+    "owner_recommendation": {"type": ["string", "null"], "enum": [*RECOMMENDATIONS, None]},
+    "disposition_recommendation": {"type": ["string", "null"], "enum": [*DISPOSITION_CHOICES, None]},
+    "supplement": _SUPPLEMENT,
+})
 SCHEMAS = {"development_manager": MANAGER_SCHEMA, "packet_coder": CODER_SCHEMA, "packet_reviewer": REVIEWER_SCHEMA,
-           "integration_manager": CODER_SCHEMA, "integration_reviewer": REVIEWER_SCHEMA}
+           "integration_manager": CODER_SCHEMA, "integration_reviewer": REVIEWER_SCHEMA,
+           "support_architect": SUPPORT_ARCHITECT_SCHEMA, "support_reviewer": REVIEWER_SCHEMA, "support_limit_architect": SUPPORT_LIMIT_SCHEMA,
+           "determination_architect": DETERMINATION_SCHEMA, "milestone_gap_architect": DETERMINATION_SCHEMA}
 PLAN_KEYS = ("intended_changes", "existing_code", "connections", "verification", "blockers")
 
 
@@ -150,7 +200,7 @@ class ExecutionResponseValidator:
         outputs = self._outputs(assignment, workspace, result)
         return ValidatedAgentResponse(
             assignment.assignment_id, assignment.run_id, result, summary, (), questions, None, None, None,
-            value.get("review_outcome") if assignment.role in {"packet_reviewer", "integration_reviewer"} and result == "completed" else None,
+            value.get("review_outcome") if assignment.role in {"packet_reviewer", "integration_reviewer", "support_reviewer"} and result == "completed" else None,
             failure, hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest(), outputs,
         )
 
@@ -165,6 +215,32 @@ class ExecutionResponseValidator:
             keys = [launch["packet_key"] for launch in value["launches"]]
             if len(set(keys)) != len(keys):
                 raise TransportError("conflicting_response", "a packet is requested more than once")
+        elif role == "support_architect":
+            if value["disposition"] not in SUPPORT_DISPOSITIONS or not isinstance(value["rationale"], str) or not value["rationale"].strip():
+                raise TransportError("malformed_response", "a support result states its disposition and rationale")
+            if value["disposition"] == "use_existing" and not value["existing_role_path"]:
+                raise TransportError("conflicting_response", "using an existing role names it")
+            if value["disposition"] == "create_role" and not all(isinstance(value[k], str) and value[k].strip() for k in ("source_area", "role_title", "role_markdown", "context_markdown")):
+                raise TransportError("conflicting_response", "a new role supplies its source area, title, role text and starting context")
+            if not value["packet_keys"]:
+                raise TransportError("conflicting_response", "a support result names the packets it covers")
+        elif role == "support_limit_architect":
+            if value["recommendation"] not in RECOMMENDATIONS or not isinstance(value["rationale"], str) or not value["rationale"].strip():
+                raise TransportError("malformed_response", "a recommendation names grant_one or remain_paused with a rationale")
+        elif role in {"determination_architect", "milestone_gap_architect"}:
+            kind = value["determination"]
+            if kind not in DETERMINATIONS or not isinstance(value["rationale"], str) or not value["rationale"].strip():
+                raise TransportError("malformed_response", "a determination states its kind and rationale")
+            if kind == "in_scope_supplement" and (role != "milestone_gap_architect" or not value["supplement"] or not value["supplement"]["packets"]):
+                raise TransportError("conflicting_response", "only a milestone-gap result supplies a supplement, with at least one packet")
+            if kind != "in_scope_supplement" and value["supplement"] is not None:
+                raise TransportError("conflicting_response", "a supplement accompanies only an in-scope supplement determination")
+            if kind == "implementation_defect" and not value["minimum_correction"]:
+                raise TransportError("conflicting_response", "an implementation defect states the minimum correction")
+            if kind == "within_confirmed_design" and not value["interpretation"]:
+                raise TransportError("conflicting_response", "an interpretation states it")
+            if kind == "reregistration_required" and not value["disposition_recommendation"]:
+                raise TransportError("conflicting_response", "a re-registration result recommends a work disposition")
         elif role in {"packet_coder", "integration_manager"}:
             if not isinstance(value["changed_paths"], list) or not all(isinstance(p, str) and p for p in value["changed_paths"]):
                 raise TransportError("malformed_response", "changed paths must be a list of paths")

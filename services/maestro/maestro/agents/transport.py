@@ -72,7 +72,8 @@ class ArtifactReference:
 
 
 # Execution roles run on the same run service; the run service's own role class (architect or fidelity_reviewer) selects the route requirements.
-ASSIGNMENT_ROLES = frozenset({"project_architect", "fidelity_reviewer", "development_manager", "packet_coder", "packet_reviewer", "integration_manager", "integration_reviewer"})
+ASSIGNMENT_ROLES = frozenset({"project_architect", "fidelity_reviewer", "development_manager", "packet_coder", "packet_reviewer", "integration_manager", "integration_reviewer",
+                              "support_architect", "support_reviewer", "support_limit_architect", "determination_architect", "milestone_gap_architect"})
 
 
 @dataclass(frozen=True)
@@ -268,8 +269,8 @@ def validate_transport_context(
     profile: ServiceProfileBinding,
 ) -> None:
     expected_roles = {
-        "architect": {"project_architect", "development_manager", "packet_coder", "integration_manager"},
-        "fidelity_reviewer": {"fidelity_reviewer", "packet_reviewer", "integration_reviewer"},
+        "architect": {"project_architect", "development_manager", "packet_coder", "integration_manager", "support_architect", "support_limit_architect", "determination_architect", "milestone_gap_architect"},
+        "fidelity_reviewer": {"fidelity_reviewer", "packet_reviewer", "integration_reviewer", "support_reviewer"},
     }.get(route.role, set())
     if route.tool != tool or assignment.role not in expected_roles:
         raise TransportError("route_mismatch", "route does not match the assignment")
