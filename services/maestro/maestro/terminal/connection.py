@@ -235,6 +235,11 @@ def load_owner_credential(path: Path) -> str:
             os.close(directory_descriptor)
     except CredentialError:
         raise
+    except FileNotFoundError as error:
+        raise CredentialError(
+            "Owner credential file was not found; install it as described in "
+            "the CLI instructions, then use /retry"
+        ) from error
     except OSError as error:
         raise CredentialError(
             f"cannot read Owner credential: {type(error).__name__}"
