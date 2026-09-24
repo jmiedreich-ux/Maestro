@@ -17,4 +17,4 @@ Status: **not proved**. This is the planning coverage record, not a passing host
 | Data migration and reset | Reset run-owned workspace data; service schema migration excluded for baseline | Unverified reset; schema excluded until applicable |
 | Logs, smoke and failure report | Real output/exit, baseline check, absent-prerequisite case | Unverified; no outcome acceptance |
 
-No prerequisite pass or outcome completion is recorded. The feature owner must replace the unverified cells with observed evidence, revision and date, or a justified exclusion; a simulated route or unknown permission cannot close the pass.
+Implementation owner: Claude Code. Evidence reviewer: Codex. No prerequisite pass or outcome completion is recorded. The feature owner must replace the unverified cells with observed evidence, revision and date, or a justified exclusion; a simulated route or unknown permission cannot close the pass.
