@@ -26,7 +26,7 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Development outcomes
 
-Use [the Maestro development roadmap](plan/outcomes.md) for building Maestro. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance. The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
+Use [the Maestro development roadmap](plan/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance. The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 

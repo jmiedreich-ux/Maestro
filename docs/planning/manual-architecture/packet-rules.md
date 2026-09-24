@@ -6,7 +6,7 @@ These rules govern people and agents building Maestro. They do not prescribe how
 
 Each feature has one observable finish line, one owner and a connected implementation. The owner includes necessary wiring, essential errors and recovery. Packet notes are saved within the feature plan as progress and recovery context; they are not separate repository planning files. Delegation to other agents is explicit, and the owner still delivers the whole flow.
 
-Before dispatch, provide a short brief pointing to authoritative sources. Check the environment contract with one preflight command. If setup is absent, report the exact blocker; do not improvise a substitute or count it as a code defect. Use a known-good workspace and perform a small authorized feasibility check for an uncertain route.
+Before dispatch, use the existing implementation assessment. Reuse or adapt a working path whenever it can meet the feature's result; authorize replacement only for a recorded technical or behavioral incompatibility. A new feature should close the demonstrated gap, not recreate working code. Provide a short brief pointing to authoritative sources. Check the environment contract with one preflight command. If setup is absent, report the exact blocker; do not improvise a substitute or count it as a code defect. Use a known-good workspace and perform a small authorized feasibility check for an uncertain route.
 
 ## Review and correction
 

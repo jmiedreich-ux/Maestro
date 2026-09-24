@@ -21,7 +21,7 @@ Command center, mobile presentation, unsolicited agent conversations, cross-proj
 
 ## Current condition
 
-Master contains Python source and tests for service foundations, agent handling and terminal work. Source presence alone does not establish an installed or integrated outcome. Current host, credential, model-route, repository and end-to-end evidence must be checked during development. No outcome in the roadmap is marked completed here.
+The Owner reports previous implementation through initial registration. Master contains Python source and tests for service, agent, terminal and registration paths. Assess that code for reuse and adaptation against the current outcomes before planning new implementation. Source presence and the reported extent do not establish installed or integrated acceptance; current host, credential, model-route, repository and end-to-end evidence must be checked. No outcome in the roadmap is marked completed here.
 
 ## Authoritative development sources
 
