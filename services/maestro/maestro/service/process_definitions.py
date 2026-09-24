@@ -42,7 +42,8 @@ class AssignmentTerms:
     """Limits a process definition gives one agent assignment."""
 
     process: str
-    role: str
+    role: str  # the run service's role: architect or fidelity_reviewer
+    process_role: str  # the role name the process definition assigns
     duration_seconds: int
     automatic_limit: int
     definition_sha256: str
@@ -61,6 +62,7 @@ def _agent_session(snapshot: ProcessSnapshot, role: str) -> AssignmentTerms:
         raise ProcessPolicyError("unsupported_role", f"role is not defined by the process: {role}")
     return AssignmentTerms(
         snapshot.process_name,
+        role,
         definition["agent_session"][_ROLE_KEYS[role]],
         int(definition[role]["run_timeout_seconds"]),
         int(definition["recovery"]["automatic_recovery_attempts"]),
