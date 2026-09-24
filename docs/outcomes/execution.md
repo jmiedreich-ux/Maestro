@@ -10,7 +10,7 @@ Command center, mobile UI, unsolicited agent conversations, automatic initial Ex
 
 ### Dependencies and connected acceptance
 
-The [project overview](../project-overview.md#current-state) records source evidence and its limits. Required runtime, CLI, registration and architecture-loop interfaces must be implemented and verified for the consuming journey; no installed service, agent route, credential, repository permission or environment is assumed ready. Relevant existing source is assessed during development preparation before reuse. The outcome area makes no new source-readiness claim.
+The [project overview](../project-overview.md#current-condition) records source evidence and its limits. Required runtime, CLI, registration and architecture-loop interfaces must be implemented and verified for the consuming journey; no installed service, agent route, credential, repository permission or environment is assumed ready. Relevant existing source is assessed during development preparation before reuse. The outcome area makes no new source-readiness claim.
 
 The order below organizes usable outcomes, not development tasks or a fixed serial work schedule. The architecture loop determines development milestones, smallest work packets and safe parallelism. Foundations may be implemented before all connected evidence exists. A shared journey can complete evidence for several outcomes, but a missing producer, handler, review or completion path remains unverified; a stub does not satisfy it.
 

@@ -1,21 +1,13 @@
-# Runtime foundations — starting context
+# Runtime foundations
 
-Status: source-supported starting knowledge for manual architecture preparation, version 2. Specialist owner: Runtime foundations. The architect created this context; no implementation session is active.
+## Scope
 
-## Verified facts
+This context supports Maestro development in `services/maestro/maestro/foundation/`. Read the [registered development outcomes](../../../../../plan/outcomes.md), [current registration](../../../../../docs/planning/manual-registration.md), [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md), and the applicable [product architecture](../../../../../docs/architecture.md).
 
-Pinned source: `182bf4290ef2960d4691a7f41315ebf71d5bf85c`. Accepted manual registration: version 1 at `4953aa555b9e5da5b73407f62184c7905efb7898`; actual Owner receipt is in [the handoff](../../../../../ai/handoffs/current.md#manual-registration-owner-confirmation).
+## Starting condition
 
-Existing runtime paths are restricted to repository var; the new service uses its installed storage setting. WAL/foreign-key setup is visible, while FULL synchronous setup must be explicit. Old schema/state compatibility is not presumed.
+Inspect current source and the actual environment before planning or implementing an assigned feature. Existing code and tests do not prove installed behavior, connected agent routes, credentials or real external effects. Record a verified finding with the source revision and its practical limit. The feature owner keeps packet notes inside the active feature plan.
 
-Inspect the current source and environment for the assigned feature. Source presence does not prove installed operation, credentials, model routes or test results.
+## Authority
 
-## Source references
-
-Use [the development outcomes](../../../../../plan/outcomes.md) and [feature planning](../../../../../docs/planning/manual-architecture/work-breakdown.md). Plan the next connected feature against actual code. The feature owner saves packet notes within its feature plan; no upfront packet inventory is authoritative.
-
-## Knowledge gaps
-
-Installed resources, connected runtime behavior and final catalog-bound QA plans remain unverified. The facts above are supported by source inspection, not operational verification.
-
-Record future verified discoveries with revision/location and their practical limit. Preserve source history and remaining process budgets. Only the architect changes direction or this role definition; context maintenance is not implementation, review or merge authority.
+The assigned feature and repository rules bound changes. This context records useful current facts, not approvals, review results, implementation status or a second specification.
