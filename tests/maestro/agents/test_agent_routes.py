@@ -492,3 +492,164 @@ class AgentRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EnvironmentPreflightTests(unittest.TestCase):
+    """Unit checks of the aggregate preflight logic. These use fake executables and
+    prove report shape only; they are not evidence that the real host is ready."""
+
+    def setUp(self) -> None:
+        import subprocess
+
+        from maestro.agents import preflight
+
+        self.preflight = preflight
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        for command in (
+            ["git", "init", "-q", "-b", "main"],
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+             "commit", "-q", "--allow-empty", "-m", "seed"],
+        ):
+            subprocess.run(command, cwd=self.repo, check=True, capture_output=True)
+        self.workspaces = self.root / "workspaces"
+        self.workspaces.mkdir()
+        self.executable = self.root / "fake-claude"
+        self.executable.write_text("#!/bin/sh\necho '9.9.9 (Fake Claude)'\n")
+        self.executable.chmod(0o755)
+        self.config = self.root / "agents.toml"
+        self.config.write_text(
+            "[tools.claude_code]\n"
+            f'executable = "{self.executable}"\n'
+            'credential_profile = "claude_max"\n'
+            'settings_profile = "claude_max_v1"\n'
+            'allowed_model_ids = ["claude-opus-4-6"]\n'
+            'permitted_destinations = [{ hostname = "api.anthropic.com", port = 443 }]\n'
+        )
+        self.credential = self.root / "credentials.json"
+        self.write_credential(expires_at=4_000_000_000_000)
+
+    def write_credential(self, *, expires_at: int) -> None:
+        import json
+
+        self.credential.write_text(
+            json.dumps(
+                {"claudeAiOauth": {"accessToken": "SECRET-TOKEN-VALUE", "refreshToken": "SECRET-REFRESH", "expiresAt": expires_at}}
+            )
+        )
+
+    def profile(self, **changes):
+        base = dict(
+            name="test feature",
+            repository=self.repo,
+            revision="HEAD",
+            agents_config=self.config,
+            workspace_root=self.workspaces,
+            tools=(("claude_code", "claude-opus-4-6"),),
+            credential_files={"claude_code": self.credential},
+        )
+        base.update(changes)
+        return self.preflight.FeatureProfile(**base)
+
+    def probes(self, *, now_ms: int = 1_000_000_000_000, repo=None, app=None):
+        real = self.preflight.host_probes()
+        return self.preflight.EnvironmentProbes(
+            real.run, lambda: now_ms, lambda path: repo, lambda: app
+        )
+
+    def missing(self, report) -> set[str]:
+        return {f"{r.category}/{r.check}" for r in report.blocking}
+
+    def test_every_category_is_reported_even_when_all_targets_are_absent(self) -> None:
+        profile = self.profile(
+            repository=self.root / "no-repo",
+            agents_config=self.root / "no-agents.toml",
+            workspace_root=self.root / "no-workspaces",
+            credential_files={},
+        )
+        report = self.preflight.run_environment_preflight(profile, self.probes())
+        self.assertEqual(
+            {r.category for r in report.results}, set(self.preflight.ENVIRONMENT_CATEGORIES)
+        )
+        self.assertFalse(report.passed)
+        missing = self.missing(report)
+        self.assertIn("source_and_workspace/repository", missing)
+        self.assertIn("agent_routes/agents_toml", missing)
+        self.assertIn("source_and_workspace/workspace_root", missing)
+        self.assertGreaterEqual(len(report.blocking), 3)
+        for category in self.preflight.ENVIRONMENT_CATEGORIES:
+            self.assertIn(f"[{category}]", report.render())
+
+    def test_baseline_passes_and_service_checks_are_excluded_with_a_reason(self) -> None:
+        report = self.preflight.run_environment_preflight(self.profile(), self.probes())
+        self.assertEqual(self.missing(report), set(), report.render())
+        excluded = [r for r in report.results if r.status == self.preflight.EXCLUDED]
+        self.assertTrue(excluded)
+        self.assertTrue(all(r.detail for r in excluded))
+
+    def test_removed_prerequisite_blocks_and_restoring_it_passes_again(self) -> None:
+        self.executable.chmod(0o644)
+        blocked = self.preflight.run_environment_preflight(self.profile(), self.probes())
+        self.assertIn("agent_routes/claude_code_executable", self.missing(blocked))
+        self.assertIn("claude_code_executable", blocked.render())
+        self.executable.chmod(0o755)
+        restored = self.preflight.run_environment_preflight(self.profile(), self.probes())
+        self.assertTrue(restored.passed, restored.render())
+
+    def test_expired_claude_oauth_is_reported_without_printing_secrets(self) -> None:
+        self.write_credential(expires_at=1_000)
+        report = self.preflight.run_environment_preflight(self.profile(), self.probes())
+        self.assertIn("identity_and_credentials/claude_oauth", self.missing(report))
+        rendered = report.render() + str(report.as_dict())
+        self.assertIn("expired", rendered)
+        self.assertNotIn("SECRET", rendered)
+
+    def test_dirty_checkout_is_reported(self) -> None:
+        (self.repo / "untracked.txt").write_text("x")
+        report = self.preflight.run_environment_preflight(self.profile(), self.probes())
+        self.assertIn("source_and_workspace/clean_checkout", self.missing(report))
+
+    def test_github_administration_and_protected_branch_are_separate_checks(self) -> None:
+        repo = {"private": True, "permissions": {"pull": True, "push": True}}
+        profile = self.profile(
+            github_repository="owner/name",
+            require_app_administration_read=True,
+            require_protected_branch=True,
+        )
+        report = self.preflight.run_environment_preflight(
+            profile, self.probes(repo=repo, app={"administration": "write"})
+        )
+        missing = self.missing(report)
+        self.assertNotIn("github_and_test_targets/app_administration_read", missing)
+        self.assertNotIn("github_and_test_targets/write_access", missing)
+        self.assertIn("github_and_test_targets/protected_branch_case", missing)
+        no_admin = self.preflight.run_environment_preflight(
+            profile, self.probes(repo=repo, app={"contents": "write"})
+        )
+        self.assertIn("github_and_test_targets/app_administration_read", self.missing(no_admin))
+
+    def test_service_required_feature_reports_an_inactive_service(self) -> None:
+        report = self.preflight.run_environment_preflight(
+            self.profile(needs_service=True),
+            self.preflight.EnvironmentProbes(
+                lambda command: (3, "inactive\n") if command[0] == "systemctl" else self.preflight.host_probes().run(command),
+                lambda: 1_000_000_000_000,
+                lambda path: None,
+                lambda: None,
+            ),
+        )
+        self.assertIn("service_and_network/service_state", self.missing(report))
+
+    def test_progress_channel_needs_a_delivered_receipt(self) -> None:
+        log = self.root / "receipts.log"
+        log.write_text("")
+        empty = self.preflight.run_environment_preflight(
+            self.profile(progress_log=log, require_progress_channel=True), self.probes()
+        )
+        self.assertIn("observability_and_smoke/progress_channel", self.missing(empty))
+        log.write_text("[2026-09-23T21:42:07-04:00] sent heartbeat\n")
+        delivered = self.preflight.run_environment_preflight(self.profile(progress_log=log), self.probes())
+        self.assertNotIn("observability_and_smoke/progress_channel", self.missing(delivered))
