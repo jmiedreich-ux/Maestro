@@ -18,6 +18,9 @@ from .connection import (
 from .extensions import ExtensionContext, ExtensionRegistry, InputSubmission
 
 
+MAXIMUM_NOTICES = 3
+
+
 class WorkspaceError(ValueError):
     """A service projection cannot safely be displayed."""
 
@@ -188,13 +191,15 @@ class Workspace:
     new_messages: bool = False
     focus: int = 0
     detail_open: bool = False
-    detail_reading_offset: int = 0
+    open_finding: str | None = None
+    detail_anchor: str | None = None
     selected_attention_detail: Mapping[str, object] | None = None
     extension_view_name: str | None = None
     extension_view_content: object | None = None
 
     def refresh(self) -> None:
         """Load a cursor-consistent snapshot, preserving still-valid selection."""
+        previous_focus = self.focused_target
         try:
             response = self.client.workspace()
             data = _object(response.get("data"), "workspace data")
@@ -240,6 +245,11 @@ class Workspace:
             ) as error:
                 self.error = str(error)
                 self.stale = True
+        if previous_focus is not None and (
+            previous_focus.kind != "editor" or self.view == View.CONVERSATION
+        ):
+            # Records arriving above the focused control must not move focus.
+            self._focus_target(previous_focus.kind, previous_focus.identity)
 
     def select_project(self, project_id: str) -> None:
         self._require_online()
@@ -249,6 +259,10 @@ class Workspace:
             self.input.clear()
             self.selected_activity_id = None
             self.selected_attention = None
+            self.selected_attention_detail = None
+            self.activity_detail = None
+            self.detail_open = False
+            self.open_finding = None
             self.messages = ()
             self.activities = ()
             self.conversation_cursor = None
@@ -424,8 +438,7 @@ class Workspace:
             if not self._move_focus(1, same_kind=True):
                 self.scroll_messages(1)
         elif normalized == "ESCAPE":
-            self.detail_open = False
-            self.detail_reading_offset = 0
+            self._close_detail()
         elif normalized == "SHIFT+ENTER":
             if self._editor_focused():
                 self.input.insert("\n")
@@ -459,6 +472,7 @@ class Workspace:
                 for item in self.attention
             )
         elif self.view == View.CONVERSATION:
+            targets.extend(self._notice_targets())
             if len(self.activities) > 1:
                 targets.extend(
                     FocusTarget("activity", item.activity_id, item.subject)
@@ -470,6 +484,7 @@ class Workspace:
                 )
             if self.new_messages:
                 targets.append(FocusTarget("control", "new-messages", "New messages"))
+            targets.extend(self._finding_targets())
             targets.extend(self._choice_targets())
             targets.extend(self._activity_action_targets())
         targets.append(FocusTarget("editor", "input", "Input"))
@@ -493,6 +508,9 @@ class Workspace:
             self.input.text = value
             self.input.cursor = len(value)
             self.input.choice_id = target.identity
+            return None
+        if target.kind == "finding":
+            self._toggle_finding(target.identity)
             return None
         if target.kind == "action":
             return self.invoke_activity_action(target.identity)
@@ -523,12 +541,15 @@ class Workspace:
                 )
             raise WorkspaceError("answer submission is not installed in this workspace")
         command, _, arguments = text[1:].partition(" ")
-        result = self.run_command(command, arguments)
-        self.input.clear()
-        return result
+        try:
+            return self.run_command(command, arguments)
+        finally:
+            self.input.clear()
 
     def run_command(self, command: str, arguments: str = "") -> object | None:
         name = command.casefold()
+        if self.connection_state == ConnectionState.CONNECTED and not self.stale:
+            self.error = None
         if name == "projects":
             self.view = View.PROJECTS
             self.focus = 0
@@ -825,6 +846,59 @@ class Workspace:
                 self.conversation_offset = len(self.messages) - index - 1
                 return
 
+    def notices(self) -> tuple[AttentionItem, ...]:
+        """Attention for projects other than the selected one, without moving focus."""
+        return tuple(
+            item
+            for item in self.attention
+            if item.project_id != self.selected_project_id
+        )[:MAXIMUM_NOTICES]
+
+    def _notice_targets(self) -> tuple[FocusTarget, ...]:
+        return tuple(
+            FocusTarget("attention", item.cursor, item.subject)
+            for item in self.notices()
+        )
+
+    def findings(self) -> tuple[Mapping[str, object], ...]:
+        values = (
+            None if self.activity_detail is None else self.activity_detail.get("findings")
+        )
+        if not isinstance(values, list):
+            return ()
+        return tuple(
+            value
+            for value in values
+            if isinstance(value, Mapping) and isinstance(value.get("finding_id"), str)
+        )
+
+    def _finding_targets(self) -> tuple[FocusTarget, ...]:
+        return tuple(
+            FocusTarget("finding", str(value["finding_id"]), str(value.get("subject", "")))
+            for value in self.findings()
+        )
+
+    def _toggle_finding(self, finding_id: str) -> None:
+        """Expand or fold a finding inline; viewing never changes it."""
+        if self.detail_open and self.open_finding == finding_id:
+            self._close_detail()
+            return
+        if not self.detail_open:
+            self.detail_anchor = self._reading_anchor()
+        self.detail_open = True
+        self.open_finding = finding_id
+
+    def _close_detail(self) -> None:
+        if not self.detail_open:
+            return
+        self.detail_open = False
+        self.open_finding = None
+        if self.detail_anchor is None:
+            self.scroll_to_latest()
+        else:
+            self._restore_reading_anchor(self.detail_anchor)
+        self.detail_anchor = None
+
     def _choice_targets(self) -> tuple[FocusTarget, ...]:
         detail = self.selected_attention_detail
         choices = None if detail is None else detail.get("choices")
@@ -881,7 +955,7 @@ class Workspace:
         if 0 <= candidate < len(targets) and targets[candidate].kind == kind:
             self.focus = candidate
             return True
-        return kind in {"project", "activity", "attention", "choice"}
+        return kind in {"project", "activity", "attention", "choice", "finding"}
 
     def _editor_focused(self) -> bool:
         target = self.focused_target

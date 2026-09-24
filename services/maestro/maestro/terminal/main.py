@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import codecs
+import os
+import select
+import signal
 import sys
 import termios
 import threading
@@ -21,14 +25,64 @@ from .connection import (
 from .extensions import ExtensionRegistry
 from .questions import QuestionsExtension
 from .rendering import TerminalRenderer, TerminalSize
-from .workspace import Workspace, WorkspaceError
+from .workspace import View, Workspace, WorkspaceError
 
 
-OFFLINE_HELP = """Available commands:
-  /help   Show commands available in the current terminal.
-  /retry  Reload connection configuration and retry immediately.
-  /exit   Exit the terminal without stopping service work.
-"""
+HELP_TOPICS = {
+    "help": (
+        "/help [command]",
+        "List the commands, or show the syntax of one. Works without the service.",
+        "/help projects",
+        "No project context needed.",
+    ),
+    "projects": (
+        "/projects",
+        "Open the project overview; choose a project with the arrow keys and Enter.",
+        "/projects",
+        "No project context needed; needs a connected service.",
+    ),
+    "attention": (
+        "/attention",
+        "List questions and actions that need you, across all projects.",
+        "/attention",
+        "No project context needed; needs a connected service.",
+    ),
+    "findings": (
+        "/findings",
+        "List findings of the selected activity. Viewing changes nothing.",
+        "/findings",
+        "Needs a selected project activity.",
+    ),
+    "retry": (
+        "/retry",
+        "Reread connection settings and reconnect now; repeats no earlier command or answer.",
+        "/retry",
+        "No project context needed.",
+    ),
+    "exit": (
+        "/exit",
+        "Leave the terminal; service work and saved records continue. Unsent text asks you to repeat /exit.",
+        "/exit",
+        "No project context needed.",
+    ),
+}
+OFFLINE_HELP = (
+    "Available commands:\n"
+    + "".join(f"  /{name:<10}{topic[1]}\n" for name, topic in HELP_TOPICS.items())
+    + "Keys: Tab and Shift+Tab move focus, Up and Down move in a list, Enter activates, "
+    "Escape closes details. Type /help <command> for syntax.\n"
+)
+
+
+def help_text(argument: str) -> str:
+    name = argument.strip().lstrip("/").casefold()
+    if not name:
+        return OFFLINE_HELP
+    topic = HELP_TOPICS.get(name)
+    if topic is None:
+        return f"No command named /{name}. Type /help for the commands.\n"
+    syntax, explanation, example, context = topic
+    return f"{syntax}\n  {explanation}\n  Example: {example}\n  Context: {context}\n"
 
 
 class TerminalApplication:
@@ -50,6 +104,7 @@ class TerminalApplication:
         self.renderer = TerminalRenderer()
         self._lock = threading.RLock()
         self._stopping = threading.Event()
+        self._resized = threading.Event()
         self._event_generation = 0
         self._explicit_connect = False
         self._exit_warning_text: str | None = None
@@ -85,6 +140,15 @@ class TerminalApplication:
             if bracketed_paste:
                 self.output.write("\x1b[?2004h")
                 self.output.flush()
+            previous_winch = None
+            if bracketed_paste:
+                try:
+                    previous_winch = signal.signal(
+                        signal.SIGWINCH, lambda *_: self._resized.set()
+                    )
+                    threading.Thread(target=self._redraw_on_resize, daemon=True).start()
+                except ValueError:
+                    previous_winch = None
             try:
                 with _terminal_input(self.input):
                     for key in _keys(self.input):
@@ -127,6 +191,8 @@ class TerminalApplication:
                                 self.workspace.error = str(error)
                                 self._render_locked()
             finally:
+                if previous_winch is not None:
+                    signal.signal(signal.SIGWINCH, previous_winch)
                 if bracketed_paste:
                     self.output.write("\x1b[?2004l")
                     self.output.flush()
@@ -136,9 +202,19 @@ class TerminalApplication:
             self._event_generation += 1
             self.connection.close()
 
+    def _redraw_on_resize(self) -> None:
+        # The signal handler only sets the flag; drawing waits for the normal lock.
+        while not self._stopping.is_set():
+            if self._resized.wait(0.2):
+                self._resized.clear()
+                self._render()
+
     def _local_command(self, command: str) -> bool:
         command = command.strip()
-        if command not in {"/exit", "/help", "/retry"}:
+        name, _, argument = command.partition(" ")
+        if name not in {"/exit", "/help", "/retry"} or (
+            argument and name != "/help"
+        ):
             return False
         self._remove_local_command(command)
         if command == "/exit":
@@ -155,9 +231,11 @@ class TerminalApplication:
             self._write("Exiting Maestro; service work continues.")
             return True
         self._exit_warning_text = None
-        if command == "/help":
-            self.output.write(OFFLINE_HELP)
-            self.output.flush()
+        if name == "/help":
+            with self._lock:
+                self.workspace.extension_view_name = "Help"
+                self.workspace.extension_view_content = help_text(argument)
+                self.workspace.view = View.EXTENSION
             self._render()
             return True
         try:
@@ -281,7 +359,48 @@ def _terminal_input(stream: TextIO):
         termios.tcsetattr(descriptor, termios.TCSADRAIN, previous)
 
 
+ESCAPE_WAIT_SECONDS = 0.05
+
+
+class _Characters:
+    """Read characters one at a time, telling a lone Escape from a key sequence."""
+
+    def __init__(self, stream: TextIO) -> None:
+        self.stream = stream
+        self.terminal = getattr(stream, "isatty", lambda: False)()
+        self.pending = ""
+        self.decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
+    def _fill(self, count: int) -> bool:
+        if not self.terminal:
+            text = self.stream.read(count)
+            self.pending += text
+            return bool(text)
+        data = os.read(self.stream.fileno(), 4096)
+        if not data:
+            return False
+        self.pending += self.decoder.decode(data)
+        return True
+
+    def read(self, count: int = 1) -> str:
+        while len(self.pending) < count:
+            if not self._fill(count - len(self.pending)):
+                break
+        text, self.pending = self.pending[:count], self.pending[count:]
+        return text
+
+    def unread(self, text: str) -> None:
+        self.pending = text + self.pending
+
+    def ready(self) -> bool:
+        """Whether more input is already waiting, or arrives at once."""
+        if not self.terminal or self.pending:
+            return True
+        return bool(select.select([self.stream], [], [], ESCAPE_WAIT_SECONDS)[0])
+
+
 def _keys(stream: TextIO):
+    stream = _Characters(stream)
     while True:
         character = stream.read(1)
         if character == "":
@@ -293,7 +412,15 @@ def _keys(stream: TextIO):
         elif character in {"\x08", "\x7f"}:
             yield "BACKSPACE"
         elif character == "\x1b":
-            suffix = stream.read(2)
+            if not stream.ready():
+                yield "ESCAPE"
+                continue
+            opener = stream.read(1)
+            if opener != "[":
+                stream.unread(opener)
+                yield "ESCAPE"
+                continue
+            suffix = opener + stream.read(1)
             if suffix == "[2":
                 remainder = stream.read(3)
                 if remainder == "00~":
@@ -312,7 +439,7 @@ def _keys(stream: TextIO):
             yield character
 
 
-def _paste_keys(stream: TextIO):
+def _paste_keys(stream: _Characters):
     terminator = "\x1b[201~"
     content = ""
     while True:

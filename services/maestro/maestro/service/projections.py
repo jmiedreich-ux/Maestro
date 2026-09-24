@@ -225,6 +225,8 @@ class ProjectionReader:
                 _action(action) for action in actions[:MAX_PAGE_SIZE]
             ]
             data["action_next_cursor"] = _next_identity(actions)
+            # No agent run records exist yet; empty arrays, never invented zeros.
+            data["runtime"] = {"runs": [], "sessions": [], "assignment_totals": []}
         return ProjectionResult(data, event_cursor)
 
     def questions(

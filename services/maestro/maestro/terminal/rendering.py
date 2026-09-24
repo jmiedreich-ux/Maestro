@@ -104,6 +104,13 @@ class TerminalRenderer:
     @staticmethod
     def _conversation(workspace: Workspace, rows: int) -> list[str]:
         lines: list[str] = []
+        names = {project.project_id: project.name for project in workspace.projects}
+        for item in workspace.notices():
+            focus = _focus(workspace, "attention", item.cursor)
+            lines.append(
+                f"{focus} Attention: {names.get(item.project_id, item.project_id)}"
+                f" needs a response | {item.subject} | {item.source} | {item.type}"
+            )
         activity = next(
             (
                 item
@@ -122,6 +129,16 @@ class TerminalRenderer:
                 f" — {activity.waiting_reason}" if activity.waiting_reason else ""
             )
             lines.append(f"{activity.subject} | {activity.state}{waiting}")
+            lines.extend(_runtime_lines(workspace.activity_detail))
+            for finding in workspace.findings():
+                identity = str(finding["finding_id"])
+                focus = _focus(workspace, "finding", identity)
+                lines.append(
+                    f"{focus} Finding: {finding.get('subject', '')} | "
+                    f"{finding.get('status', '')}"
+                )
+                if workspace.detail_open and workspace.open_finding == identity:
+                    lines.append(f"    {finding.get('detail', '')}")
         detail = workspace.selected_attention_detail
         if detail is not None:
             prompt = detail.get("prompt")
@@ -190,3 +207,46 @@ def _focus(workspace: Workspace, kind: str, identity: str) -> str:
         kind,
         identity,
     ) else " "
+
+
+def _runtime_lines(detail: object) -> list[str]:
+    """Show recorded runtime readings; unknown, estimated and stale stay explicit."""
+    runtime = detail.get("runtime") if isinstance(detail, dict) else None
+    if not isinstance(runtime, dict):
+        return []
+    entries = [
+        item
+        for name in ("runs", "sessions", "assignment_totals")
+        for item in (runtime.get(name) or [])
+        if isinstance(item, dict)
+    ]
+    if not entries:
+        return ["Runtime: no measurements recorded"]
+    lines = []
+    for item in entries:
+        quality = str(item.get("quality") or "unknown")
+        if item.get("stale"):
+            quality += ", stale"
+        percent = item.get("context_percent")
+        context = (
+            "context unknown"
+            if item.get("context_used") is None
+            else f"context {item.get('context_used')}/{_reading(item.get('context_limit'))}"
+            + ("" if percent is None else f" ({percent}%)")
+        )
+        name = item.get("role") or item.get("run_id") or item.get("session_id") or ""
+        lines.append(
+            f"Runtime {name} [{quality}; {item.get('observed_at') or 'time unknown'}]"
+        )
+        lines.append(
+            f"  active {_reading(item.get('active_seconds'))}s, "
+            f"waiting {_reading(item.get('waiting_seconds'))}s, "
+            f"tokens in {_reading(item.get('input_tokens'))} "
+            f"out {_reading(item.get('output_tokens'))}"
+        )
+        lines.append(f"  {context}")
+    return lines
+
+
+def _reading(value: object) -> str:
+    return "unknown" if value is None else str(value)
