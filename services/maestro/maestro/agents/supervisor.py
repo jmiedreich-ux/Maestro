@@ -288,6 +288,9 @@ class SystemdUserUnits:
             return True
         try:
             return not Path("/sys/fs/cgroup", control_group.lstrip("/"), "cgroup.procs").read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            # systemd removes a unit's control group only once it holds no processes.
+            return True
         except OSError:
             return False
 
