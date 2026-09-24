@@ -313,12 +313,29 @@ class ProcessPolicyService:
         self.registry.provider(status.snapshot.process_name)
         return status
 
+    def grant(self, transaction: Transaction, activity_id: str, counter_name: str, scope_id: str = "activity") -> int:
+        """Record one Owner-granted extra attempt beside the snapshotted limit; the limit itself never changes."""
+        name = f"{counter_name}_grants"
+        transaction.execute(
+            """INSERT INTO service_process_counters(activity_id, counter_name, scope_id, consumed) VALUES (?, ?, ?, 1)
+               ON CONFLICT(activity_id, counter_name, scope_id) DO UPDATE SET consumed = consumed + 1""",
+            (activity_id, name, scope_id),
+        )
+        return int(transaction.execute(
+            "SELECT consumed FROM service_process_counters WHERE activity_id = ? AND counter_name = ? AND scope_id = ?", (activity_id, name, scope_id)
+        ).fetchone()[0])
+
     def consume(self, activity_id: str, counter_name: str, scope_id: str = "activity") -> int:
         canonical_identifier(activity_id, "activity_id")
         canonical_identifier(scope_id, "scope_id")
         status = self.resume(activity_id)
         limit = _counter_limit(status.snapshot.definition, counter_name)
         with self.database.transaction() as transaction:
+            granted = transaction.execute(
+                "SELECT consumed FROM service_process_counters WHERE activity_id = ? AND counter_name = ? AND scope_id = ?",
+                (activity_id, f"{counter_name}_grants", scope_id),
+            ).fetchone()
+            limit += 0 if granted is None else int(granted[0])
             row = transaction.execute(
                 """SELECT consumed FROM service_process_counters
                    WHERE activity_id = ? AND counter_name = ? AND scope_id = ?""",

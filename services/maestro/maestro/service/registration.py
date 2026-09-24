@@ -284,6 +284,8 @@ class RegistrationService:
             OperationHandler("registration.start", self.prepare_start),
             OperationHandler("registration.confirm", self.prepare_confirm),
             OperationHandler("registration.cancel", self.prepare_cancel),
+            OperationHandler("registration.retry", self.prepare_retry),
+            OperationHandler("owner.decision", self.prepare_owner_decision),
         )
 
     @property
@@ -665,6 +667,100 @@ class RegistrationService:
 
         return PreparedOperation(activity_id, "registration.cancel_requested", {"activity_id": activity_id}, apply)
 
+
+    # ------------------------------------------------------- retry and decisions
+
+    def prepare_retry(self, request: RequestLike) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None or request.expected_version is None:
+            raise ValueError("registration.retry needs project, activity and the displayed activity version")
+        payload = dict(request.payload)
+        intervention = payload.get("intervention")
+        if not isinstance(intervention, str) or not intervention.strip():
+            raise ValueError("registration.retry needs a nonempty intervention describing what changed")
+        agent_keys, publication_keys = {"assignment_id", "failed_run_id", "intervention"}, {"publication_operation_id", "intervention"}
+        if set(payload) not in (agent_keys, publication_keys):
+            raise ValueError("registration.retry payload must be assignment_id, failed_run_id and intervention, or publication_operation_id and intervention")
+        activity_id = request.activity_id
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            row = self._row(transaction, "SELECT * FROM service_registrations WHERE activity_id = ? AND project_id = ?", (activity_id, request.project_id))
+            if row is None:
+                raise RequestRejection(404, "registration_not_found", "the registration was not found", fields={"activity_id": activity_id})
+            pending = json.loads(row["pending_json"] or "{}")
+            paused = pending.get("paused")
+            if row["state"] != "paused" or not isinstance(paused, dict):
+                raise RequestRejection(409, "not_technically_paused", "the registration is not paused by a technical failure", fields={"state": row["state"]})
+            if set(payload) == agent_keys:
+                if paused["kind"] != "agent" or payload["assignment_id"] != paused["assignment_id"] or payload["failed_run_id"] != paused["failed_run_id"]:
+                    raise RequestRejection(409, "stale_retry", "the failed run named is not the current failed run", fields={"paused": paused})
+                if self.runs is None or self.runs.view(paused["failed_run_id"]).state in {"reserved", "running", "stopping", "blocked"}:
+                    raise RequestRejection(409, "run_not_ended", "the earlier run is not confirmed ended, so it cannot be replaced", fields={"run_id": paused["failed_run_id"]})
+                pending["retry"] = {"kind": "agent", "role": paused["role"], "request_id": request.request_id, "intervention": intervention.strip()[:500]}
+                label = "the agent run"
+            else:
+                if paused["kind"] != "publication" or payload["publication_operation_id"] != paused["operation_id"]:
+                    raise RequestRejection(409, "stale_retry", "the publication named is not the current paused publication", fields={"paused": paused})
+                transaction.execute("UPDATE service_registration_publications SET state = 'prepared' WHERE operation_id = ? AND state IN ('paused', 'writing', 'prepared')", (paused["operation_id"],))
+                pending["retry"] = {"kind": "publication", "request_id": request.request_id, "intervention": intervention.strip()[:500]}
+                label = "the publication"
+            pending.pop("paused", None)
+            transaction.execute("UPDATE service_registrations SET state = ?, pending_json = ?, note = NULL WHERE activity_id = ?", (paused["from"], canonical_json(pending), activity_id))
+            self._activity(transaction, activity_id, "assessing" if paused["from"] == "architect" else ("reviewing" if paused["from"] == "reviewer" else paused["from"]),
+                           f"Retry accepted; {label} is being resumed (intervention: {intervention.strip()[:200]})", (), version=next_version)
+            self._say(transaction, row["project_id"], activity_id, f"Retry accepted for {label}. Intervention recorded: {intervention.strip()[:300]}. Review counts and the automatic recovery budget are unchanged.")
+            return OperationResult(data={"activity_id": activity_id, "message": f"retry accepted; {label} resumes from its last verified step"}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
+
+        return PreparedOperation(activity_id, "registration.retry_requested", {"activity_id": activity_id}, apply)
+
+    def prepare_owner_decision(self, request: RequestLike) -> PreparedOperation:
+        if request.project_id is None or request.activity_id is None or request.expected_version is None:
+            raise ValueError("owner.decision needs project, activity and the displayed activity version")
+        payload = dict(request.payload)
+        if set(payload) != {"target", "choice", "assignment_id"}:
+            raise ValueError("owner.decision payload must be target, choice and assignment_id")
+        if payload["target"] != "fidelity_review" or payload["choice"] not in {"grant_one", "remain_paused"}:
+            raise ValueError("registration accepts only target fidelity_review with choice grant_one or remain_paused")
+        activity_id = request.activity_id
+
+        def apply(transaction: Transaction, next_version: int) -> OperationResult:
+            row = self._row(transaction, "SELECT * FROM service_registrations WHERE activity_id = ? AND project_id = ?", (activity_id, request.project_id))
+            if row is None:
+                raise RequestRejection(404, "registration_not_found", "the registration was not found", fields={"activity_id": activity_id})
+            if row["state"] != "limit_paused":
+                raise RequestRejection(409, "no_decision_pending", "no review-limit decision is pending", fields={"state": row["state"]})
+            assignment_id = f"{activity_id}-revi-{int(row['reviews_used']) + 1}"
+            if payload["assignment_id"] != assignment_id:
+                raise RequestRejection(409, "stale_decision", "the decision names a different review assignment", fields={"assignment_id": assignment_id})
+            pending = json.loads(row["pending_json"] or "{}")
+            grants = list(pending.get("grants", []))
+            if any(g["assignment_id"] == assignment_id for g in grants):
+                raise RequestRejection(409, "grant_recorded", "an extra attempt was already granted for this review; it is used before another decision", fields={"assignment_id": assignment_id})
+            decision_id = f"{activity_id}-limit-{len(grants) + 1}-{payload['choice']}"
+            if payload["choice"] == "remain_paused":
+                tx_text = f"Owner chose to keep the registration paused at {row['reviews_used']} of {row['review_limit']} review rounds. Nothing was approved and no count changed."
+                resolution, limit = "remain_paused", int(row["review_limit"])
+            else:
+                self.definitions.policy.grant(transaction, activity_id, "fidelity_reviews")
+                limit = int(row["review_limit"]) + 1
+                grants.append({"request_id": request.request_id, "assignment_id": assignment_id, "granted_at": _now()})
+                pending["grants"] = grants
+                amend = self._row(transaction, "SELECT 1 AS n FROM service_registration_reviews r JOIN service_registration_passes p ON p.activity_id = r.activity_id AND p.candidate_sha256 = r.candidate_sha256 AND p.assessment_sha256 = r.assessment_sha256 WHERE r.activity_id = ? AND p.pass_number = ?", (activity_id, int(row["pass_number"]))) is not None
+                tx_text = f"Owner granted one extra review attempt (round {int(row['reviews_used']) + 1} of {limit}); the base limit of {int(row['review_limit']) - len(grants) + 1} is unchanged. It cannot force approval."
+                resolution = "grant_one"
+                next_state = "architect" if amend else "reviewer"
+                transaction.execute("UPDATE service_registrations SET state = ?, review_limit = ?, pending_json = ? WHERE activity_id = ?", (next_state, limit, canonical_json(pending), activity_id))
+            transaction.execute(
+                "INSERT INTO service_registration_decisions(decision_id, activity_id, kind, subject, question_id, question_text, answer_text, choice_id, resolution, authority, decision_version, created_at) VALUES (?, ?, 'review_limit', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (decision_id, activity_id, "Review limit reached", decision_id, f"The review limit was reached at {row['reviews_used']} of {row['review_limit']} rounds. Grant one extra review attempt?",
+                 "Grant one extra review attempt" if resolution == "grant_one" else "Remain paused", payload["choice"], resolution, f"Owner {self.owner_id} through the CLI", int(row["decision_version"]), _now()),
+            )
+            self._activity(transaction, activity_id, None if resolution == "remain_paused" else ("assessing" if next_state == "architect" else "reviewing"), tx_text,
+                           self._limit_actions(activity_id) if resolution == "remain_paused" else (), version=next_version)
+            self._say(transaction, row["project_id"], activity_id, tx_text)
+            return OperationResult(data={"activity_id": activity_id, "decision": resolution, "review": {"used": int(row["reviews_used"]), "limit": limit}, "message": tx_text}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
+
+        return PreparedOperation(activity_id, "registration.limit_decision_recorded", {"activity_id": activity_id}, apply)
+
     # ----------------------------------------------------------------- worker
 
     def tick(self) -> None:
@@ -720,17 +816,13 @@ class RegistrationService:
         with self.database.transaction() as tx:
             row = self._row(tx, "SELECT state FROM service_registrations WHERE activity_id = ?", (activity_id,))
             if row is not None and row["state"] == "confirming" and getattr(error, "code", None) == "publication_conflict":
-                # Definite refusal: no receipt was written, so the confirmation did not take effect and the Owner may cancel.
+                # Definite refusal: no receipt was written, so the confirmation did not take effect and the Owner may retry after intervening or cancel.
                 tx.execute("UPDATE service_registration_publications SET state = 'paused' WHERE operation_id = ?", (f"{activity_id}-confirm",))
-                tx.execute("UPDATE service_registrations SET state = 'paused', note = ? WHERE activity_id = ?", (reason[:500], activity_id))
-                self._activity(tx, activity_id, "paused", f"Confirmation refused, nothing was written: {reason[:300]}", (ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),))
-                self._say(tx, self._project_of(tx, activity_id), activity_id, f"Confirmation refused; nothing was written to GitHub: {reason[:400]}")
+                self._pause_in(tx, activity_id, f"Confirmation refused, nothing was written: {reason[:300]}")
                 return
             if row is None or row["state"] in {"cancelled", "confirmed", "cancelling", "confirming"}:
                 return
-            tx.execute("UPDATE service_registrations SET state = 'paused', note = ? WHERE activity_id = ?", (reason[:500], activity_id))
-            self._activity(tx, activity_id, "paused", f"Paused: {reason[:300]}", (ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),))
-            self._say(tx, self._project_of(tx, activity_id), activity_id, f"Registration paused: {reason[:400]}")
+            self._pause_in(tx, activity_id, reason)
 
     # -- agents
 
@@ -747,6 +839,11 @@ class RegistrationService:
         activity_id = row["activity_id"]
         pending = json.loads(row["pending_json"] or "{}")
         current = pending.get(f"{role}_run")
+        retry = pending.get("retry")
+        if retry and retry.get("kind") == "agent" and retry.get("role") == role and current is not None:
+            kept = {k: v for k, v in pending.items() if k not in {"retry", "paused"}}
+            self._start_agent(row, role, {**kept, f"{role}_run": None}, recovery_note="", kind="manual", intervention=retry["intervention"])
+            return
         if current is None:
             if role == "reviewer" and int(row["reviews_used"]) >= int(row["review_limit"]):
                 self._limit_pause(row)
@@ -771,7 +868,7 @@ class RegistrationService:
         reason = f"{role} run {view.state}" + (f" ({view.failure_code})" if view.failure_code else "") + (f": {view.terminal_reason}" if view.terminal_reason else "")
         self._pause(row, reason)
 
-    def _start_agent(self, row: Mapping[str, Any], role: str, pending: dict[str, Any], recovery_note: str | None = None) -> None:
+    def _start_agent(self, row: Mapping[str, Any], role: str, pending: dict[str, Any], recovery_note: str | None = None, kind: str | None = None, intervention: str = "") -> None:
         assert self.runs is not None
         activity_id, project_id = row["activity_id"], row["project_id"]
         run_role = "architect" if role == "architect" else "fidelity_reviewer"
@@ -818,8 +915,17 @@ class RegistrationService:
         if not existing:
             self.runs.create_assignment_from_terms(terms, assignment_id, project_id, activity_id, tool, model)
         run_id = f"{assignment_id}-run{self.runs.run_count(assignment_id) + 1}"
-        kind = "initial" if recovery_note is None else "recovery"
-        self.runs.start_run(assignment_id, run_id, kind, build)
+        kind = kind or ("initial" if recovery_note is None else "recovery")
+        before = self.runs.run_count(assignment_id)
+        try:
+            self.runs.start_run(assignment_id, run_id, kind, build, intervention=intervention)
+        except Exception:
+            if self.runs.run_count(assignment_id) > before:
+                # The run was reserved before the launch failed: keep it as the failed run a manual retry must name.
+                with self.database.transaction() as tx:
+                    pending[f"{role}_run"] = {"assignment_id": assignment_id, "run_id": run_id}
+                    tx.execute("UPDATE service_registrations SET pending_json = ? WHERE activity_id = ?", (canonical_json(pending), activity_id))
+            raise
         pending[f"{role}_run"] = {"assignment_id": assignment_id, "run_id": run_id}
         with self.database.transaction() as tx:
             updates = "pass_number = ?, " if role == "architect" else ""
@@ -990,15 +1096,57 @@ class RegistrationService:
             self._limit_message(tx, self._row(tx, "SELECT * FROM service_registrations WHERE activity_id = ?", (row["activity_id"],)))
 
     def _limit_message(self, tx: Transaction, row: Mapping[str, Any]) -> None:
-        text = f"Review limit reached: {row['reviews_used']} of {row['review_limit']} rounds used and blocking findings remain. Registration is paused for an Owner decision; it is not approved and the count is not reset."
-        self._activity(tx, row["activity_id"], "paused", text, (ActivityAction(f"{row['activity_id']}-cancel", "Cancel registration", "action"),))
+        text = f"Review limit reached: {row['reviews_used']} of {row['review_limit']} rounds used and blocking findings remain. Registration is paused for an Owner decision: grant one extra review attempt or remain paused. It is not approved and the count is not reset."
+        self._activity(tx, row["activity_id"], "paused", text, self._limit_actions(row["activity_id"]))
         self._say(tx, row["project_id"], row["activity_id"], text)
 
     def _pause(self, row: Mapping[str, Any], reason: str) -> None:
         with self.database.transaction() as tx:
-            tx.execute("UPDATE service_registrations SET state = 'paused', note = ? WHERE activity_id = ?", (reason[:500], row["activity_id"]))
-            self._activity(tx, row["activity_id"], "paused", f"Paused: {reason[:300]}", (ActivityAction(f"{row['activity_id']}-cancel", "Cancel registration", "action"),))
-            self._say(tx, row["project_id"], row["activity_id"], f"Registration paused: {reason[:400]}")
+            self._pause_in(tx, row["activity_id"], reason)
+
+    def _pause_in(self, tx: Transaction, activity_id: str, reason: str) -> None:
+        """Pause with the exact step to resume and the retry action that fits it; counters are untouched."""
+        fresh = self._row(tx, "SELECT * FROM service_registrations WHERE activity_id = ?", (activity_id,))
+        pending = json.loads(fresh["pending_json"] or "{}")
+        pending.pop("retry", None)
+        paused = self._paused_from(fresh, pending)
+        if paused is None:
+            pending.pop("paused", None)
+        else:
+            pending["paused"] = paused
+        tx.execute("UPDATE service_registrations SET state = 'paused', note = ?, pending_json = ? WHERE activity_id = ?", (reason[:500], canonical_json(pending), activity_id))
+        self._activity(tx, activity_id, "paused", f"Paused: {reason[:300]}", self._paused_actions(activity_id, paused))
+        self._say(tx, fresh["project_id"], activity_id, f"Registration paused: {reason[:400]}")
+
+    def _paused_from(self, row: Mapping[str, Any], pending: Mapping[str, Any]) -> dict[str, Any] | None:
+        state = row["state"]
+        if state in {"architect", "reviewer"}:
+            role = state
+            current = pending.get(f"{role}_run")
+            if current is None:
+                return None
+            return {"kind": "agent", "from": state, "role": role, "assignment_id": current["assignment_id"], "failed_run_id": current["run_id"]}
+        if state == "publishing":
+            return {"kind": "publication", "from": state, "operation_id": f"{row['activity_id']}-candidate-{row['pass_number']}-{row['reviews_used']}"}
+        if state == "confirming":
+            return {"kind": "publication", "from": state, "operation_id": f"{row['activity_id']}-confirm"}
+        return None
+
+    @staticmethod
+    def _paused_actions(activity_id: str, paused: Mapping[str, Any] | None) -> tuple[ActivityAction, ...]:
+        cancel = ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action")
+        if paused is None:
+            return (cancel,)
+        label = "Retry publication" if paused["kind"] == "publication" else "Retry activity"
+        return (ActivityAction(f"{activity_id}-retry", label, "action"), cancel)
+
+    @staticmethod
+    def _limit_actions(activity_id: str) -> tuple[ActivityAction, ...]:
+        return (
+            ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"),
+            ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"),
+            ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),
+        )
 
     # -- publication and confirmation
 
@@ -1313,7 +1461,22 @@ class RegistrationService:
             "active_package_ref": None if active is None else json.loads(active["package_json"]),
             "comparison": json.loads(row["pending_json"] or "{}").get("comparison"),
             "note": row["note"],
+            "paused": json.loads(row["pending_json"] or "{}").get("paused"),
+            "grants": json.loads(row["pending_json"] or "{}").get("grants", []),
+            "recovery": self._recovery_view(row),
         }
+
+    def _recovery_view(self, row: Mapping[str, Any]) -> dict[str, Any] | None:
+        pending = json.loads(row["pending_json"] or "{}")
+        paused = pending.get("paused")
+        current = (paused or {}).get("assignment_id") or next((pending[f"{r}_run"]["assignment_id"] for r in ("reviewer", "architect") if pending.get(f"{r}_run")), None)
+        if current is None or self.runs is None:
+            return None
+        try:
+            state = self.runs.assignment_state(current)
+        except AgentRunError:
+            return None
+        return {"assignment_id": current, **{k: state.get(k) for k in ("state", "automatic_used", "automatic_limit", "manual_used", "pause_reason", "duration_seconds")}}
 
     @staticmethod
     def _row(tx: Transaction, sql: str, params: tuple[object, ...] = ()) -> dict[str, Any] | None:
