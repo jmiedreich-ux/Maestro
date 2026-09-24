@@ -99,6 +99,19 @@ class GitTests(unittest.TestCase):
         sealed = execution_git.seal(self.work, self.base, "branch-x", "message")
         self.assertEqual(sealed["changed_paths"], ["pkg/a.py"])
 
+    def test_tracked_bytecode_rewritten_by_test_runs_is_restored(self) -> None:
+        (self.work / "pkg").mkdir(exist_ok=True)
+        (self.work / "pkg" / "__pycache__").mkdir()
+        pyc = self.work / "pkg" / "__pycache__" / "a.cpython-312.pyc"
+        pyc.write_bytes(b"x")
+        execution_git.git(self.work, "add", "-f", "-A")
+        execution_git.git(self.work, "commit", "--quiet", "-m", "track bytecode")
+        base = execution_git.git(self.work, "rev-parse", "HEAD").strip()
+        pyc.write_bytes(b"rewritten")
+        (self.work / "pkg" / "a.py").write_text("changed again\n")
+        sealed = execution_git.seal(self.work, base, "branch-x", "message")
+        self.assertEqual(sealed["changed_paths"], ["pkg/a.py"])
+
     def test_a_wrong_branch_and_no_change_are_visible(self) -> None:
         with self.assertRaises(execution_git.GitError):
             execution_git.seal(self.work, self.base, "another", "message")

@@ -73,10 +73,14 @@ def prepare_agent_home(home: Path) -> None:
 
 
 def _drop_bytecode_caches(workdir: Path) -> None:
-    """Untracked Python bytecode left by the agent running tests is not part of its change."""
+    """Bytecode written by the agent running tests is not part of its change, whether or not the repository tracks it."""
     for path in git(workdir, "ls-files", "--others", "--exclude-standard").split("\n"):
         if path.endswith(".pyc") and "__pycache__/" in path:
             (workdir / path).unlink(missing_ok=True)
+    changed = git(workdir, "ls-files", "--modified", "--deleted").split("\n")
+    tracked = sorted({p for p in changed if p.endswith(".pyc") and "__pycache__/" in p})
+    if tracked:
+        git(workdir, "checkout", "--quiet", "--", *tracked)
 
 
 def seal(workdir: Path, base: str, branch: str, message: str) -> dict[str, object]:
@@ -91,7 +95,7 @@ def seal(workdir: Path, base: str, branch: str, message: str) -> dict[str, objec
     if git(workdir, "status", "--porcelain", "--untracked-files=all").strip():
         git(workdir, "add", "-A")
         git(workdir, "commit", "--quiet", "-m", message)
-    head =git(workdir, "rev-parse", "HEAD").strip()
+    head = git(workdir, "rev-parse", "HEAD").strip()
     if git(workdir, "status", "--porcelain", "--untracked-files=all").strip():
         raise GitError("dirty_after_commit", "uncommitted output remains after the commit")
     changed = sorted(p for p in git(workdir, "diff", "--name-only", "--no-renames", base, head).split("\n") if p)
