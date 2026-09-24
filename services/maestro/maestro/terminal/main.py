@@ -222,7 +222,7 @@ class TerminalApplication:
             self._write("Exiting Maestro; service work continues.")
             return True
         self._exit_warning_text = None
-        if command == "/help":
+        if name == "/help":
             with self._lock:
                 self.workspace.extension_view_name = "Help"
                 self.workspace.extension_view_content = help_text(argument)
