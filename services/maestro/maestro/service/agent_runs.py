@@ -143,7 +143,7 @@ _RETRYABLE = frozenset(
     {
         "malformed_response", "malformed_output", "missing_output", "tool_failure",
         "conflicting_response", "artifact_mismatch", "artifact_missing", "protocol_error",
-        "stalled", "interrupted", "process_exited", "technical_failure",
+        "stalled", "interrupted", "process_exited", "technical_failure", "artifact_out_of_scope",
     }
 )
 _POST_RESULT_GRACE_SECONDS = 30.0

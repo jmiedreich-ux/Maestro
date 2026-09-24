@@ -147,15 +147,15 @@ _TASK = """You are the Maestro Project Architect. This is the first stage of the
 
 1. Read input/registration-summary.json and input/outcomes.json, then the confirmed milestone and requirement records under input/registration/ (the outcomes you must serve). input/decisions.json holds Owner answers already recorded.
 2. Investigate the existing source that bears on those outcomes: responsibilities, interfaces, dependencies, setup and how the parts actually connect. Read code and run only read-only commands. Reading code shows what it supports; it does not prove it works, so never claim operation. Stay proportionate: cover what the confirmed outcomes touch. For every outcome say whether existing code supports it (reuse), needs changes (update), is better replaced or retired, or is missing (missing). Choose the strongest path for the outcome; reuse is not presumed. Consider effects across the whole product.
-3. Report findings in the response `findings`: each cites real source (path relative to the repository root as under source/, the assigned commit, and a locator such as a symbol or line), or, if nothing exists to cite, states missing_information. Blocking means the missing or contradictory information prevents reliable architecture; observations and risks are non_blocking. Give each finding a unique local_key.
-4. Write output/investigation.json exactly as {{"schema":"architecture_investigation_v1","summary":"<plain summary>","decisions":[{{"local_key":"<unique key>","subject":"<plain subject>","disposition":"reuse|update|replace|retire|missing","rationale":"<why>","code_paths":["<existing path under source/>"],"evidence":[{{"path":"<existing path>","commit":"{commit}","locator":"<symbol or line>"}}],"outcome_ids":["<record id from input/outcomes.json>"],"finding_keys":["<local_key of a finding above>"]}}]}}. Every listed path must exist in source/. Together the decisions must cover every milestone outcome id: {milestones}. Use code_paths [] only with disposition missing.
+3. Report findings in the response `findings`: each cites real source (the path relative to the repository root, so `docs/x.md` and never `source/docs/x.md`; the assigned commit; and a locator such as a symbol or line), or, if nothing exists to cite, states missing_information. Blocking means the missing or contradictory information prevents reliable architecture; observations and risks are non_blocking. Give each finding a unique local_key.
+4. Write output/investigation.json exactly as {{"schema":"architecture_investigation_v1","summary":"<plain summary>","decisions":[{{"local_key":"<unique key>","subject":"<plain subject>","disposition":"reuse|update|replace|retire|missing","rationale":"<why>","code_paths":["<existing path under source/>"],"evidence":[{{"path":"<existing path>","commit":"{commit}","locator":"<symbol or line>"}}],"outcome_ids":["<record id from input/outcomes.json>"],"finding_keys":["<local_key of a finding above>"]}}]}}. Every listed path is relative to the repository root without a source/ prefix and must exist in source/. Together the decisions must cover every milestone outcome id: {milestones}. Use code_paths [] only with disposition missing.
 5. Write output/project-structure.json exactly as {{"schema":"architecture_structure_v1","summary":"<plain summary>","locations":[{{"current_path":"<existing path or null>","intended_path":"<path>","responsibility":"<what lives there>","owner":"<specialist local_key or shared>","shared_boundaries":["<boundary>"],"planned_move":false}}],"specialists":[{{"local_key":"<unique key>","subject":"<plain subject>","source_area":"<existing directory under source/>","role_title":"<Role Title>","owner":"<Role Title>"}}]}}. The structure is AI-friendly: it makes feature locations, shared code, responsibilities and boundaries clear, distinguishing current locations from intended changes (a proposed layout is not code already moved; planned_move is false only when current_path equals intended_path). Name 2 to 4 specialists, one per code area that needs expertise, each with a distinct source_area.
-6. For each specialist write, under output/specialists/<source_area>/.maestro/ : role-<role-title-lowercase-hyphenated>.md (first line "# <Role Title>", then headings Responsibility, Authority, Source area, Inputs and outputs) and context.md (headings Verified facts, Source references, Knowledge gaps; distinguish established facts from gaps; cite source paths). Optionally memory.md (heading Entries). Keep each file under 40 lines. Creating a specialist does not start any worker and gives it no knowledge it has not acquired.
-7. Ask the Owner only when missing information affects intended outcomes, scope or an Owner-reserved decision, or requirements conflict: return result clarification_required with specific questions (each with a plain question, the reason, options where alternatives exist) and no output files. Routine technical choices are yours: record them as decisions. Never fill a gap with an unsupported assumption.
+6. For each specialist write, under output/specialists/<source_area>/.maestro/ (where <source_area> is a real subdirectory of the repository holding the code the specialist covers, never the repository root and never .git): role-<role-title-lowercase-hyphenated>.md (first line "# <Role Title>", then headings Responsibility, Authority, Source area, Inputs and outputs) and context.md (headings Verified facts, Source references, Knowledge gaps; distinguish established facts from gaps; cite source paths). Optionally memory.md (heading Entries). Keep each file under 40 lines. Creating a specialist does not start any worker and gives it no knowledge it has not acquired.
+7. Ask the Owner only when missing information affects intended outcomes, scope or an Owner-reserved decision, or requirements conflict: return result clarification_required with specific questions (each with a plain question, the reason, options where alternatives exist) and no output files. Retiring or replacing working code that no confirmed outcome requires is not yours to decide: ask the Owner before choosing retire or replace for it, and offer keeping it as an option. Other routine technical choices are yours: record them as decisions. Never fill a gap with an unsupported assumption.
 8. When the files are written compute the SHA-256 of each with sha256sum and list every file you wrote in `outputs` as {{"path":"output/<file>","sha256":"<digest>","version":1}}, including the specialist files; write nothing else. result is completed; failure is null; input_manifest, reviewed_set and review_outcome are null; allocations is [].
 {continuation} Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. Return only the structured response."""
 
-_CONTINUATION = "This session continues your earlier work: your conversation history is restored. input/answers.json holds the Owner's answers to your earlier questions. Use your earlier investigation and the answers; do not repeat the investigation from scratch. Then produce the files."
+_CONTINUATION = "This session continues your earlier work: your conversation history is restored. Use your earlier investigation; do not repeat it from scratch. input/answers.json holds any Owner answers recorded since. Then produce the files."
 _REPLACEMENT = "Your earlier conversation was unavailable, so this is a replacement session. The verified records in input/ (decisions, answers) are authoritative; nothing of your earlier work is assumed."
 
 
@@ -276,7 +276,7 @@ class ArchitectureService:
             now = _now()
 
             def creator(tx: Transaction, snapshot) -> None:
-                version = int(tx.execute("SELECT COALESCE(MAX(architecture_version), 0) + 1 FROM service_architectures WHERE project_id = ?", (project_id,)).fetchone()[0])
+                version = int(tx.execute("SELECT COALESCE(MAX(architecture_version), 0) + 1 FROM service_architectures WHERE project_id = ? AND foundations_ref_json IS NOT NULL", (project_id,)).fetchone()[0])
                 self.records.create_activity(tx, ActivityRecord(
                     activity_id, project_id, "architecture", f"Architecture foundations for {details['project']['name']}", "investigating", 1,
                     "Preparing the persistent architect session", now, None, (ActivityAction(f"{activity_id}-cancel", "Cancel architecture", "action"),),
@@ -533,11 +533,17 @@ class ArchitectureService:
     def _remember_conversation(self, activity_id: str, run_id: str) -> None:
         """Record the tool's own conversation id so the next run resumes exactly that conversation."""
         assert self.runs is not None
+        session = self._session(activity_id)
         provider = self.runs.run_evidence(run_id).get("session_id")
+        if not provider and session["assigned_provider_id"]:
+            # A run that ended before reporting still started the conversation the service named if its history was saved.
+            history = self.state_dir / "sessions" / session["session_id"] / "history"
+            if history.is_dir() and any(history.rglob(f"{session['assigned_provider_id']}.jsonl")):
+                provider = session["assigned_provider_id"]
         if not provider:
             return
         with self.database.transaction() as tx:
-            tx.execute("UPDATE service_architecture_sessions SET provider_session_id = ? WHERE session_id = ? AND provider_session_id IS NULL", (provider, self._session(activity_id)["session_id"]))
+            tx.execute("UPDATE service_architecture_sessions SET provider_session_id = ? WHERE session_id = ? AND provider_session_id IS NULL", (provider, session["session_id"]))
 
     def _session_use(self, row: Mapping[str, Any]) -> tuple[SessionUse, dict[str, Any], str | None]:
         """The session for the next run, replacing an unavailable conversation with a linked one."""
@@ -979,8 +985,8 @@ class ArchitectureService:
     # ------------------------------------------------------------------ reads
 
     def project_view(self, project_id: str) -> dict[str, Any] | None:
-        """The project's current architecture activity as the CLI shows it; None when it has none. Reading starts nothing."""
-        row = self._read("SELECT activity_id FROM service_architectures WHERE project_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1", (project_id,))
+        """The project's current (not cancelled) architecture activity as the CLI shows it; None when it has none. Reading starts nothing."""
+        row = self._read("SELECT activity_id FROM service_architectures WHERE project_id = ? AND state != 'cancelled' ORDER BY created_at DESC, rowid DESC LIMIT 1", (project_id,))
         return None if row is None else self.view(str(row["activity_id"]))
 
     def view(self, activity_id: str) -> dict[str, Any] | None:
