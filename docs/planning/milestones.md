@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: reliable project questions and answers
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; tagged `passed/reliable-project-questions-and-answers`, merge revision `ced2ec2`.** The installed terminal answered real service-held questions: choice and information, explicit send, a lost acknowledgment with one saved answer, a cancelled question, follow-up, switch, exit and reopen. Fixes: wrapped status text, a plain closed-question message, cleared error on project switch. The [accepted exceptions](../outcomes/cli.md#acceptance-criteria-2) are listed in the Result column. Feature: [Close the gaps in answering project questions](features/reliable-answers-gaps.md).
+
 ## Closed checkpoint: connected multi-project CLI workspace
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; tagged `passed/connected-multi-project-cli-workspace` and installed at `1d85486`.** The installed terminal was driven on a real pty against three real service-held projects: startup, unreachable and retry, overview ordering, selection, notices and attention navigation, history, inline findings, disconnect and automatic reconnect, resize, keyboard, credential failures and help. The [accepted exceptions](../outcomes/cli.md#acceptance-criteria) list what waits for registration and agent runs. Feature: [Close the gaps in the connected CLI workspace](features/cli-workspace-gaps.md).
