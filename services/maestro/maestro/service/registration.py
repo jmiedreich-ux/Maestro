@@ -699,6 +699,13 @@ class RegistrationService:
         reason = f"{getattr(error, 'code', type(error).__name__)}: {error}"
         with self.database.transaction() as tx:
             row = self._row(tx, "SELECT state FROM service_registrations WHERE activity_id = ?", (activity_id,))
+            if row is not None and row["state"] == "confirming" and getattr(error, "code", None) == "publication_conflict":
+                # Definite refusal: no receipt was written, so the confirmation did not take effect and the Owner may cancel.
+                tx.execute("UPDATE service_registration_publications SET state = 'paused' WHERE operation_id = ?", (f"{activity_id}-confirm",))
+                tx.execute("UPDATE service_registrations SET state = 'paused', note = ? WHERE activity_id = ?", (reason[:500], activity_id))
+                self._activity(tx, activity_id, "paused", f"Confirmation refused, nothing was written: {reason[:300]}", (ActivityAction(f"{activity_id}-cancel", "Cancel registration", "action"),))
+                self._say(tx, self._project_of(tx, activity_id), activity_id, f"Confirmation refused; nothing was written to GitHub: {reason[:400]}")
+                return
             if row is None or row["state"] in {"cancelled", "confirmed", "cancelling", "confirming"}:
                 return
             tx.execute("UPDATE service_registrations SET state = 'paused', note = ? WHERE activity_id = ?", (reason[:500], activity_id))

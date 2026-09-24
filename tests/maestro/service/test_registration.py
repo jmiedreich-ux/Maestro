@@ -175,6 +175,8 @@ class ScriptedDestination:
     def head(self, repository, branch): return self.branches[branch]
 
     def publish(self, repository, branch, files, message):
+        if getattr(self, "refuse_receipts", False) and any("/confirmations/" in path for path in files):
+            raise DestinationError("publication_conflict", "a target path already holds different content", paths=list(files))
         commit = f"{len(self.published) + 3:040x}"
         self.trees[commit] = {**self.trees.get(self.branches[branch], {}), **files}
         self.branches[branch] = commit
@@ -457,6 +459,22 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(package, json.loads(self.destination.published[-1][receipt_path])["package_ref"])
         index = json.loads(self.destination.published[-1][".maestro/registrations/index.json"])
         self.assertEqual(index["current_confirmation_ref"]["path"], receipt_path)
+
+    def test_refused_confirmation_pauses_with_a_reason_and_can_be_cancelled(self) -> None:
+        receipt = self.drive_to_ready()
+        activity = receipt.activity_id
+        package = json.loads(self.row(activity)["package_json"])
+        self.destination.refuse_receipts = True
+        self.submit("registration.confirm", receipt.project_id, activity, None, self.version(activity), {"package_ref": package})
+        self.service.tick()
+        row = self.row(activity)
+        self.assertEqual("paused", row["state"])
+        self.assertIn("publication_conflict", row["note"])
+        self.service.tick()
+        self.assertEqual("paused", self.row(activity)["state"])
+        self.submit("registration.cancel", receipt.project_id, activity, None, self.version(activity))
+        self.service.tick()
+        self.assertEqual("cancelled", self.row(activity)["state"])
 
     def version(self, activity_id):
         with self.database.read_connection() as connection:
