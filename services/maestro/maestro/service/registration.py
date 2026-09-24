@@ -418,7 +418,7 @@ class RegistrationService:
             raise ValueError("no agent tools are configured for registration")
         try:
             self.runs.route_resolver("architect" if role == "architect" else "fidelity_reviewer", tool, model)
-        except AgentRouteError as error:
+        except Exception as error:  # noqa: BLE001 - any refusal to resolve the route means it cannot be launched
             raise ValueError(f"{role} selection {tool}/{model} cannot be used: {error}") from error
 
     def _next_intake_step(self, tx: Transaction, activity_id: str) -> None:
@@ -652,7 +652,7 @@ class RegistrationService:
         try:
             self.questions.deliver_pending()
         except RecipientDeliveryInterrupted:
-            log.warning("an answer delivery was interrupted and will be retried")
+            log.warning("an answer delivery was interrupted and will be retried", exc_info=True)
         with self.database.read_connection() as connection:
             ids = [str(r[0]) for r in connection.execute(
                 f"SELECT activity_id FROM service_registrations WHERE state IN ({','.join('?' for _ in _WORKING_STATES)}) ORDER BY created_at", _WORKING_STATES)]
@@ -1208,6 +1208,16 @@ class RegistrationService:
             finding_id = f"{marker}-{finding['local_key']}"
             if tx.execute("SELECT 1 FROM service_findings WHERE finding_id = ?", (finding_id,)).fetchone() is None:
                 self.records.create_finding(tx, FindingRecord(finding_id, row["project_id"], row["activity_id"], f"{'Architect' if source == 'architect' else 'Reviewer'}: {finding['subject']}", detail, finding["severity"], 1))
+        self._supersede(tx, row["activity_id"], source, marker)
+
+    def _supersede(self, tx: Transaction, activity_id: str, source: str, keep_marker: str) -> None:
+        """Findings from an earlier pass or round stay on record but are marked superseded once a newer one exists."""
+        prefix = f"{activity_id}-{source[:1]}"
+        for row in tx.execute("SELECT finding_id, project_id, subject, detail, status, version FROM service_findings WHERE activity_id = ? AND finding_id LIKE ? AND status IN ('blocking', 'non_blocking')",
+                              (activity_id, prefix + "%")).fetchall():
+            if str(row[0]).startswith(keep_marker + "-"):
+                continue
+            self.records.update_finding(tx, FindingRecord(row[0], row[1], activity_id, row[2], row[3], "superseded", int(row[5]) + 1), expected_record_version=int(row[5]))
 
     def _say(self, tx: Transaction, project_id: str, activity_id: str, text: str) -> None:
         self.records.append_conversation(tx, ConversationRecord(f"registration-{uuid.uuid4().hex}", project_id, "maestro", "status", text, _now(), activity_id))
