@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: connected multi-project CLI workspace
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; tagged `passed/connected-multi-project-cli-workspace` and installed at `1d85486`.** The installed terminal was driven on a real pty against three real service-held projects: startup, unreachable and retry, overview ordering, selection, notices and attention navigation, history, inline findings, disconnect and automatic reconnect, resize, keyboard, credential failures and help. The [accepted exceptions](../outcomes/cli.md#acceptance-criteria) list what waits for registration and agent runs. Feature: [Close the gaps in the connected CLI workspace](features/cli-workspace-gaps.md).
+
 ## Closed checkpoint: connect the CLI to recorded service activity
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; no code changed.** The installed terminal and its connection client were run against a disposable copy of the installed service: empty and unreachable states, real activity, event replay after disconnect and `kill -9` restart, heartbeats, credential errors and automatic reconnection. The [accepted exceptions](../outcomes/runtime-service.md#connect-the-cli-to-recorded-service-activity) list what waits for registration and agent dispatch.
