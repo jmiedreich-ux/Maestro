@@ -91,6 +91,14 @@ class GitTests(unittest.TestCase):
         self.assertEqual(execution_git.outside_scope(sealed["changed_paths"], ["pkg", "pkg/a.py"]), ["other.py"])
         self.assertEqual(execution_git.outside_scope(["pkgx/a.py"], ["pkg"]), ["pkgx/a.py"])
 
+    def test_bytecode_caches_from_running_tests_are_not_part_of_the_change(self) -> None:
+        (self.work / "pkg").mkdir(exist_ok=True)
+        (self.work / "pkg" / "__pycache__").mkdir()
+        (self.work / "pkg" / "__pycache__" / "a.cpython-312.pyc").write_bytes(b"x")
+        (self.work / "pkg" / "a.py").write_text("changed\n")
+        sealed = execution_git.seal(self.work, self.base, "branch-x", "message")
+        self.assertEqual(sealed["changed_paths"], ["pkg/a.py"])
+
     def test_a_wrong_branch_and_no_change_are_visible(self) -> None:
         with self.assertRaises(execution_git.GitError):
             execution_git.seal(self.work, self.base, "another", "message")
