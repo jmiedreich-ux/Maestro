@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import shutil
 import threading
 import uuid
@@ -38,10 +39,14 @@ from maestro.agents.transport import (
     RegistrationResponseValidator,
     TransportError,
 )
+from maestro.agents.architecture_contract import ArchitectureResponseValidator
+from maestro.agents.session_state import SessionUse, harvest, seed
 from maestro.agents.workspaces import PreparedWorkspace, ServiceProfileBinding, WorkspacePaths, WorkspaceManager
 from maestro.service.reservations import ReservationError, refuse_other_starts
 from maestro.foundation import Database, DomainMigration, Transaction, canonical_identifier, canonical_json
 
+
+log = logging.getLogger("maestro.agent_runs")
 
 AGENT_RUN_MIGRATION = DomainMigration(
     domain="service_agent_runs",
@@ -117,6 +122,20 @@ AGENT_RUN_MIGRATION = DomainMigration(
     ),
 )
 
+AGENT_RUN_SESSIONS_MIGRATION = DomainMigration(
+    domain="service_agent_runs",
+    version=2,
+    identity="service-agent-run-sessions-v2",
+    statements=(
+        """
+        CREATE TABLE service_agent_run_sessions(
+            run_id TEXT PRIMARY KEY REFERENCES service_agent_runs(run_id) ON DELETE RESTRICT,
+            session_json TEXT NOT NULL
+        )
+        """,
+    ),
+)
+
 _OPEN_RUN_STATES = ("reserved", "running", "stopping", "blocked")
 _KINDS = frozenset({"initial", "recovery", "manual"})
 # Failures that a fresh run can plausibly fix. Anything else needs intervention.
@@ -124,7 +143,7 @@ _RETRYABLE = frozenset(
     {
         "malformed_response", "malformed_output", "missing_output", "tool_failure",
         "conflicting_response", "artifact_mismatch", "artifact_missing", "protocol_error",
-        "stalled", "interrupted", "process_exited", "technical_failure",
+        "stalled", "interrupted", "process_exited", "technical_failure", "artifact_out_of_scope",
     }
 )
 _POST_RESULT_GRACE_SECONDS = 30.0
@@ -145,6 +164,7 @@ class RunBuild:
     assignment: AgentAssignment
     source_repository: Path
     inputs: Mapping[str, bytes]
+    session: SessionUse | None = None
 
 
 @dataclass(frozen=True)
@@ -183,10 +203,12 @@ class AgentRunService:
         self.clock = clock
         self.reconciler = RecoveryReconciler(supervisor.journal, supervisor.units)
         self.validator = RegistrationResponseValidator()
+        self.architecture_validator = ArchitectureResponseValidator()
         # In-memory only: an open tool conversation cannot survive a service restart.
         self._live: dict[str, _Live] = {}
         self._lock = threading.RLock()
         database.registry.register(AGENT_RUN_MIGRATION)
+        database.registry.register(AGENT_RUN_SESSIONS_MIGRATION)
         database.initialize()
 
     # -- assignments ---------------------------------------------------------
@@ -256,6 +278,8 @@ class AgentRunService:
             if spec.assignment.run_id != run_id or spec.assignment.assignment_id != assignment_id:
                 raise AgentRunError("assignment_mismatch", "assignment does not match the reserved run")
             self._check_baseline(assignment_id, spec.assignment)
+            if spec.session is not None:
+                self._save_session(run_id, spec.session)
             profile = self.profile_resolver(route)
             workspace = self.workspaces.prepare(
                 project_id=project_id,
@@ -266,15 +290,17 @@ class AgentRunService:
                 assignment_bytes=spec.assignment.to_bytes(),
                 inputs=spec.inputs,
             )
-            live = _Live(route, spec.assignment, workspace)
+            live = _Live(route, spec.assignment, workspace, session=spec.session)
             self._save_snapshot(run_id, spec)
             if tool == "codex":
-                live.conversation = CodexTransport().open(route, spec.assignment, workspace, profile)
+                live.conversation = CodexTransport().open(route, spec.assignment, workspace, profile, spec.session)
                 launch = live.conversation.launch
             elif tool == "claude_code":
-                launch = ClaudeTransport().launch(route, spec.assignment, workspace, profile)
+                launch = ClaudeTransport().launch(route, spec.assignment, workspace, profile, spec.session)
             else:
                 raise AgentRunError("unsupported_tool", "no adapter is installed for this tool")
+            if spec.session is not None:
+                seed(tool, spec.session, workspace.paths.scratch / "home", workspace.paths.root)
         except Exception as error:
             code = getattr(error, "code", "launch_setup_failed")
             self._finish(run_id, "failed", failure_code=code, reason=str(error)[:_DETAIL_LIMIT])
@@ -427,6 +453,10 @@ class AgentRunService:
             if live.conversation.state == "completed" and live.result_at is None:
                 live.result_at = self.clock()
                 self.supervisor.send(identity, b"", close=True)
+        thread = getattr(live.conversation, "thread_id", None)
+        if thread is not None and live.session is not None:
+            with self.database.transaction() as tx:
+                tx.execute("UPDATE service_agent_runs SET session_id = ? WHERE run_id = ? AND session_id IS NULL", (thread, run_id))
 
     def _finalize(self, identity: OperationIdentity, record, assignment: Mapping[str, object]) -> RunView:
         run_id = identity.run_id
@@ -435,6 +465,8 @@ class AgentRunService:
         live = self._live.pop(run_id, None)
         seconds = max(0.0, self.clock() - record.launched_monotonic)
         state = record.state
+        if state not in {"stop_unconfirmed", "recovery_required", "launch_uncertain"}:
+            self._harvest_session(run_id, assignment)
         if state in {"stop_unconfirmed", "recovery_required", "launch_uncertain"}:
             self._finish(run_id, "blocked", failure_code="stop_unconfirmed", reason=record.terminal_reason or state, seconds=seconds)
             self._pause(identity.assignment_id, "the run's stop or identity is unknown", run_id)
@@ -464,7 +496,8 @@ class AgentRunService:
                 raise
             with self.database.transaction() as tx:
                 current = tx.execute("SELECT current_run_id FROM service_agent_assignments WHERE assignment_id = ?", (identity.assignment_id,)).fetchone()[0]
-            response = self.validator.validate(
+            validator = self.architecture_validator if live.assignment.contract == "architecture" else self.validator
+            response = validator.validate(
                 decoded,
                 route=live.route,
                 assignment=live.assignment,
@@ -501,7 +534,9 @@ class AgentRunService:
         if live.conversation is not None:
             return live.conversation.result()
         raw = "\n".join(str(e["data"]).rstrip("\n") for e in record.events if e["kind"] == "stdout")
-        return ClaudeTransport().decode(raw, live.route)
+        session = live.session
+        expected = None if session is None else (session.provider_session_id or session.assigned_provider_id)
+        return ClaudeTransport().decode(raw, live.route, expected)
 
     def _rebuild(self, identity: OperationIdentity, assignment: Mapping[str, object], record) -> "_Live":
         """After a restart, rebuild the run from its saved snapshot and replay its saved output."""
@@ -514,9 +549,10 @@ class AgentRunService:
             raise TransportError("configuration_changed", "the route configuration changed since the run started")
         prepared = _workspace_from_json(str(run["workspace_json"]), self.workspaces)
         parsed = _assignment_from_json(saved)
-        live = _Live(route, parsed, prepared)
+        session = self._session_of(identity.run_id)
+        live = _Live(route, parsed, prepared, session=session)
         if assignment["tool"] == "codex":
-            live.conversation = CodexTransport().open(route, parsed, prepared, self.profile_resolver(route))
+            live.conversation = CodexTransport().open(route, parsed, prepared, self.profile_resolver(route), session)
             for event in record.events:
                 if event["kind"] == "stdout":
                     live.conversation.receive(str(event["data"]).encode("utf-8"))
@@ -536,7 +572,39 @@ class AgentRunService:
             if hashlib.sha256(destination.read_bytes()).hexdigest() != reference.sha256:
                 raise TransportError("artifact_mismatch", f"{field} changed while it was stored")
             stored[field] = (reference.path, reference.sha256, str(destination))
+        for number, reference in enumerate(response.outputs, 1):
+            source = live.workspace.resolve_artifact(reference.path)
+            target.mkdir(parents=True, exist_ok=True)
+            destination = target / f"output-{number}-{reference.sha256[:12]}"
+            shutil.copyfile(source, destination)
+            destination.chmod(0o440)
+            if hashlib.sha256(destination.read_bytes()).hexdigest() != reference.sha256:
+                raise TransportError("artifact_mismatch", f"{reference.path} changed while it was stored")
+            stored[f"output:{reference.path}"] = (reference.path, reference.sha256, str(destination))
         return stored
+
+    # -- persistent sessions -------------------------------------------------
+
+    def _save_session(self, run_id: str, session: SessionUse) -> None:
+        with self.database.transaction() as tx:
+            tx.execute("INSERT OR REPLACE INTO service_agent_run_sessions(run_id, session_json) VALUES (?, ?)", (run_id, canonical_json(session.as_dict())))
+
+    def _session_of(self, run_id: str) -> SessionUse | None:
+        with self.database.read_connection() as connection:
+            row = connection.execute("SELECT session_json FROM service_agent_run_sessions WHERE run_id = ?", (run_id,)).fetchone()
+        return None if row is None else SessionUse.from_dict(json.loads(row[0]))
+
+    def _harvest_session(self, run_id: str, assignment: Mapping[str, object]) -> None:
+        """Save the tool's conversation so the next run of the same session can resume it."""
+        session = self._session_of(run_id)
+        run = self._run(run_id)
+        if session is None or not run["workspace_json"]:
+            return
+        try:
+            paths = json.loads(str(run["workspace_json"]))["paths"]
+            harvest(str(assignment["tool"]), session, Path(paths["scratch"]) / "home")
+        except OSError:
+            log.exception("the saved conversation of run %s could not be kept", run_id)
 
     # -- stop, recovery ------------------------------------------------------
 
@@ -650,7 +718,7 @@ class AgentRunService:
             tx.execute(
                 """
                 UPDATE service_agent_runs SET state = ?, failure_code = ?, terminal_reason = ?, ended_at = ?,
-                    active_seconds = ?, session_id = ?, response_sha256 = ?, response_json = ?
+                    active_seconds = ?, session_id = COALESCE(?, session_id), response_sha256 = ?, response_json = ?
                 WHERE run_id = ?
                 """,
                 (
@@ -722,6 +790,7 @@ class _Live:
     fed: int = 0
     result_at: float | None = None
     failure: str | None = None
+    session: SessionUse | None = None
 
 
 def _now() -> str:
@@ -789,4 +858,5 @@ def _assignment_from_json(value: Mapping[str, object]) -> AgentAssignment:
         writable_locations=tuple(value["writable_locations"]), limits=value["limits"],
         clarification_conditions=tuple(value["clarification_conditions"]), response_schema=value["required_response"]["schema"],
         assigned_artifacts={k: ArtifactReference.from_mapping(v, k) for k, v in value["assigned_artifacts"].items()},
+        contract=str(value.get("contract", "registration")),
     )

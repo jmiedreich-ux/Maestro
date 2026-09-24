@@ -15,6 +15,7 @@ from maestro.agents.preflight import (
 from maestro.agents.routes import AgentRouteRegistry, RouteRequirements, ToolModelSelection
 from maestro.agents.claude_transport import ClaudeTransport
 from maestro.agents.codex_transport import CodexTransport
+from maestro.agents.session_state import SessionUse
 from maestro.agents.transport import (
     AgentAssignment,
     ArtifactReference,
@@ -393,6 +394,27 @@ class AgentTransportTests(unittest.TestCase):
             str(self.service_home / ".claude/.credentials.json"), launch.sandbox_arguments
         )
         self.assertNotIn(str(self.service_home / ".codex/auth.json"), launch.sandbox_arguments)
+
+    def test_claude_session_assigns_then_resumes_one_conversation(self) -> None:
+        transport = ClaudeTransport()
+        route = self.claude_architect_route
+        first = self._assignment("project_architect", "run-first")
+        launch = transport.launch(route, first, self._workspace(first), self._profile(route), SessionUse("s1", self.root / "s1", None, "11111111-1111-1111-1111-111111111111"))
+        self.assertEqual(("--session-id", "11111111-1111-1111-1111-111111111111"), launch.tool_arguments[launch.tool_arguments.index("--session-id"):][:2])
+        self.assertNotIn("--resume", launch.tool_arguments)
+        second = self._assignment("project_architect", "run-second")
+        launch = transport.launch(route, second, self._workspace(second), self._profile(route), SessionUse("s1", self.root / "s1", "22222222-2222-2222-2222-222222222222"))
+        self.assertEqual(("--resume", "22222222-2222-2222-2222-222222222222"), launch.tool_arguments[launch.tool_arguments.index("--resume"):][:2])
+        self.assertNotIn("--continue", launch.tool_arguments)
+        self.assertNotIn("--session-id", launch.tool_arguments)
+        third = self._assignment("project_architect", "run-third")
+        with self.assertRaises(TransportError):
+            transport.launch(route, third, self._workspace(third), self._profile(route), SessionUse("s1", self.root / "s1", None, None))
+
+    def test_codex_session_resumes_the_recorded_thread_only(self) -> None:
+        assignment = self._assignment("project_architect", "run-resume")
+        conversation = CodexTransport().open(self.codex_route, assignment, self._workspace(assignment), self._profile(self.codex_route), SessionUse("s1", self.root / "s1", "thread-recorded"))
+        self.assertEqual("thread-recorded", conversation.resume_id)
 
     def test_profile_binding_rejects_mismatch_missing_and_unsafe_files(self) -> None:
         assignment = self._assignment("project_architect", "run-profile-rejections")

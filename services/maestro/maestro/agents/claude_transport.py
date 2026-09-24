@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from maestro.foundation import canonical_json
 
 from .preflight import ResolvedAgentRoute, RunningToolIdentity
+from .session_state import SessionUse
 from .transport import (
     AgentAssignment,
     DecodedToolResult,
@@ -25,14 +26,24 @@ class ClaudeTransport:
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
         profile: ServiceProfileBinding,
+        session: SessionUse | None = None,
     ) -> TransportLaunch:
         validate_transport_context("claude_code", route, assignment, workspace, profile)
+        if session is None:
+            continuation: tuple[str, ...] = ()
+        elif session.provider_session_id is not None:
+            continuation = ("--resume", session.provider_session_id)
+        elif session.assigned_provider_id is not None:
+            continuation = ("--session-id", session.assigned_provider_id)
+        else:
+            raise TransportError("invalid_session", "a Claude session needs a conversation to resume or an assigned identity")
         arguments = (
             route.executable,
             "--print",
             "Read assignment.json and perform only that assignment.",
             "--model",
             route.requested_model_id,
+            *continuation,
             "--output-format",
             "stream-json",
             "--verbose",
@@ -56,6 +67,7 @@ class ClaudeTransport:
         self,
         raw: bytes | str,
         route: ResolvedAgentRoute,
+        expected_session: str | None = None,
     ) -> DecodedToolResult:
         if isinstance(raw, bytes):
             try:
@@ -79,6 +91,8 @@ class ClaudeTransport:
                 if identity is not None:
                     raise TransportError("protocol_error", "Claude initialized more than once")
                 session_id = _text(event.get("session_id"), "session_id")
+                if expected_session is not None and session_id != expected_session:
+                    raise TransportError("identity_unverified", "Claude resumed a different conversation")
                 model = _text(event.get("model"), "model")
                 if model != route.requested_model_id:
                     raise TransportError("identity_unverified", "Claude started a different model")

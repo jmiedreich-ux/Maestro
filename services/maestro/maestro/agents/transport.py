@@ -91,6 +91,7 @@ class AgentAssignment:
     response_schema: Mapping[str, Any]
     response_path: str = "output/response.json"
     assigned_artifacts: Mapping[str, ArtifactReference] = field(default_factory=dict)
+    contract: str = "registration"
 
     def __post_init__(self) -> None:
         for value, field in (
@@ -134,6 +135,12 @@ class AgentAssignment:
         object.__setattr__(self, "assigned_artifacts", dict(artifacts))
 
     def as_dict(self) -> dict[str, Any]:
+        value = self._registration_dict()
+        if self.contract != "registration":
+            value["contract"] = self.contract
+        return value
+
+    def _registration_dict(self) -> dict[str, Any]:
         return {
             "contract_version": 1,
             "project_id": self.project_id,
@@ -224,6 +231,7 @@ class ValidatedAgentResponse:
     review_outcome: str | None
     failure: Mapping[str, str] | None
     response_sha256: str
+    outputs: tuple[ArtifactReference, ...] = ()
 
 
 @dataclass(frozen=True)
