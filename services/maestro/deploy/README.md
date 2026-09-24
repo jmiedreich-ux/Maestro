@@ -102,6 +102,22 @@ persistence, and durable-request restart as `UNTESTED`: those observations
 require the approved disposable-host procedure below and cannot be replaced by
 a staged directory or a user unit running as the operator.
 
+## Development environment preflight
+
+One command applies the [environment contract](../../../docs/development-process/environment-contract.md) to a selected feature. It reports every category as pass, fail, excluded with a reason, or unverified, and lists all missing items together. It exits 0 only when every applicable check passes, and 1 otherwise.
+
+```text
+sudo -u maestro /opt/maestro/bin/python -m maestro.agents.preflight \
+  --feature NAME --repository PATH --revision REVISION \
+  --agents-config /etc/maestro/agents.toml --workspace-root /var/lib/maestro/workspaces \
+  --tool codex:gpt-5.6-sol --tool claude_code:claude-opus-4-6 --tool qwen:qwen3.6:27b \
+  --credential codex=/var/lib/maestro/.codex/auth.json \
+  --credential claude_code=/var/lib/maestro/.claude/.credentials.json \
+  --credential qwen=/var/lib/maestro/.qwen/settings.json
+```
+
+Run it as the service user to read the protected configuration and credentials; as another user those checks fail and are reported. Optional flags check GitHub (`--github-repository`, `--github-app APP_ID:INSTALLATION_ID:KEYFILE`, `--require-app-administration-read`, `--exercise-github-write`, which creates and deletes one scratch branch), the running service (`--needs-service`) and a Slack receipt log (`--progress-log`, `--require-progress-channel`). `--json` prints the report as JSON. Credential contents are never printed. The local Qwen route also needs the Ollama server reachable at its configured loopback address with the exact model installed.
+
 ## Safe isolated installation tests
 
 Automated tests must use `--staged-test` with a newly created absolute `--root`
