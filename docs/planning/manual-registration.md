@@ -16,4 +16,4 @@ Changed outcomes require the Owner's decision and an update to the roadmap. A fe
 
 The Owner reports implementation through initial registration, and source files and tests exist on master. This record does not certify installed operation, credentials, model routes, real GitHub effects or connected outcomes. The [prerequisite pass](prerequisite-pass.md) records the outstanding checks before feature dispatch. There is no claim that a product outcome has passed acceptance.
 
-This is the current manual development registration. It is not an installed Maestro service registration, SQL activation, CLI receipt, started architecture loop or Execution run. The Owner's instruction to re-register authorizes this manual planning boundary; runtime actions occur only through their implemented and verified paths.
+This is the current manual development registration. It is not an installed Maestro service registration, SQL activation, CLI receipt, started architecture loop or Execution run. This record sets the manual planning boundary. Runtime actions occur only through implemented and verified paths.

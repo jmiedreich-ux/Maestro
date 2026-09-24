@@ -10,7 +10,7 @@ Status: **not proved**. This is the planning coverage record, not a passing host
 | Claude OAuth | Check selected route authentication and expiry | Reported expired; verify, renew if needed, then rerun |
 | `agents.toml` and selected model route | Inspect actual config and observed identity | Reported route concern; verify before launch |
 | GitHub app Administration: read | Check whether selected operation requires it and current app permission | Reported missing; block only an operation that requires it |
-| Private QA repository branch protection | Test the intended authorized write path | Reported protection concern; choose authorized test path or stop affected check |
+| Protected-branch test case | Verify the private QA repository's plan and branch-protection availability; use an eligible isolated repository if that case is required | Reported unavailable on the private QA repository without GitHub Pro; cannot pass this case there. Do not weaken the test or infer that ordinary writes are blocked |
 | Mounts, permissions and egress | Check isolated workspace and route destination | Unverified; block launch |
 | Service installation, ports and store | Excluded for baseline agent run; required for a later service feature | Excluded for baseline with reason; later check unverified |
 | Install/upgrade and rollback | Baseline tools/install versions; service upgrade excluded until applicable | Unverified for baseline tools; service upgrade excluded |

@@ -30,7 +30,7 @@ For another project's registration sources, use the [overview](assets/templates/
 - Inspect existing code where a reuse or readiness claim matters. Recommend reuse, amendment, replacement, or retirement with source evidence and product-wide effects; do not implement it here.
 - Use external primary sources when needed to resolve uncertain or changing technical facts. Record the source, date, conclusion, and applicability. External patterns cannot override agreed product requirements.
 - Check boundaries, shared responsibilities, duplication, dependencies, and interactions across the whole product as topics develop. Do not wait until milestone writing to discover a missing service.
-- Separate fact, owner agreement, architect decision, proposal, and unresolved question. Keep architecture impersonal. Use plain concise wording, stable subject-based filenames, and full subjects with coded references.
+- Separate fact, owner agreement, architect decision, proposal, and unresolved question. Keep architecture impersonal. Use plain concise wording, stable subject-based filenames, and plain subjects; use machine identifiers only where an exact record reference requires them.
 
 ## Simplify active planning sources
 
