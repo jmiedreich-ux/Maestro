@@ -2,6 +2,10 @@
 
 Milestones here are checkpoints for building Maestro, distinct from milestones the product may create for registered projects. Only the next checkpoint is detailed.
 
+## Closed checkpoint: establish the project's architectural foundations
+
+**Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/establish-the-projects-architectural-foundations`.** From the terminal, `/architecture start` on a confirmed real project reserved it and started a persistent architect session. A real Codex architect investigated real code and saved and published findings, project structure, a decisions snapshot and specialist role and context files; killed agents and service restarts resumed the same conversation, and a Claude Code architect resumed its session after rejected output. The [accepted exceptions](../outcomes/architecture-loop.md#establish-the-projects-architectural-foundations) (context-limit handling, a live Owner answer and replacement session, findings not named in decisions) are in the Result column. Feature: [Start the architecture loop and save project foundations](features/architecture-foundations.md).
+
 ## Closed checkpoint: recover a registration without losing decisions or exceeding limits
 
 **Accepted 2026-09-24 under the autopilot's delegated authority; merged to master and tagged `passed/recover-registration-without-losing-decisions-or-exceeding-limits`.** With real agents on the installed service, three service restarts and a killed agent unit resumed or paused a registration with its decisions and review count kept; the two-attempt automatic limit, manual Retry activity, Retry publication after a refused branch, lost acknowledgments and the Owner's extra-review decision all worked. The [accepted exceptions](../outcomes/registration.md#recover-registration-without-losing-decisions-or-exceeding-limits) (context capacity, a registration-level timeout run, publication retries outside the attempt count, changed-path check) are in the Result column. Feature: [Recover a registration](features/recover-a-registration.md).
