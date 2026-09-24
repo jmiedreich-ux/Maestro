@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import signal
 import sqlite3
 import stat
 import sys
 import threading
+import time
 import tomllib
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -36,6 +38,7 @@ from .resources import InstalledSchemaResources, ProcessResourceError
 from .requests import RequestService
 
 
+log = logging.getLogger("maestro.service")
 DEFAULT_CONFIG_PATH = Path("/etc/maestro/agents.toml")
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -71,6 +74,7 @@ class ServiceSettings:
     workspace_root: Path = Path("/var/lib/maestro/workspaces")
     config_path: Path | None = None
     process_tables: Mapping[str, object] = field(default_factory=dict)
+    registration_tables: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.host not in _LOOPBACK_HOSTS:
@@ -157,8 +161,10 @@ def load_settings(path: Path = DEFAULT_CONFIG_PATH) -> ServiceSettings:
     if not isinstance(agent_user, str):
         raise ServiceConfigurationError("service.agent_user must be text")
     process_tables = {name: value[name] for name in PROCESS_TABLES if name in value}
+    registration_tables = {name: value[name] for name in ("tools", "repositories", "repository_bindings") if name in value}
     return ServiceSettings(
         process_tables=process_tables,
+        registration_tables=registration_tables,
         storage=storage,
         owner=owner,
         host=host,
@@ -178,10 +184,13 @@ class InstalledServiceApplication:
         self.activities = ActivityRepository(self.database)
         self.authenticator = OwnerAuthenticator(settings.owner)
         self.questions = QuestionService(self.database)
+        self.process_definitions = _process_definitions(self.database, settings.config_path)
+        self.registration = _registration(self.database, self.activities, self.questions, self.process_definitions, settings)
+        handlers = self.questions.operation_handlers + (() if self.registration is None else self.registration.operation_handlers)
         base_requests = RequestService(
             self.database,
             self.authenticator,
-            OperationRegistry(self.questions.operation_handlers),
+            OperationRegistry(handlers),
         )
         self.requests = QuestionRequestService(base_requests, self.questions)
         self.projections = ProjectionReader(self.database)
@@ -191,12 +200,31 @@ class InstalledServiceApplication:
         self.event_application = EventStreamHTTPApplication(
             EventStreamService(self.database, self.authenticator)
         )
-        self.process_definitions = _process_definitions(self.database, settings.config_path)
+        self._worker_stop = threading.Event()
+        self._worker: threading.Thread | None = None
 
     def start(self) -> None:
         self.event_application.start()
+        if self.registration is not None:
+            if self.registration.runs is not None:
+                try:
+                    self.registration.runs.recover()
+                except Exception:  # noqa: BLE001 - recovery of earlier runs must not keep the service from starting
+                    log.exception("recovering earlier agent runs failed")
+            self._worker = threading.Thread(target=self._work, name="registration-worker", daemon=True)
+            self._worker.start()
+
+    def _work(self) -> None:
+        while not self._worker_stop.wait(2.0):
+            try:
+                self.registration.tick()  # type: ignore[union-attr]
+            except Exception:  # noqa: BLE001 - the worker keeps running; each registration pauses itself on error
+                log.exception("registration worker tick failed")
 
     def stop(self) -> None:
+        self._worker_stop.set()
+        if self._worker is not None:
+            self._worker.join(timeout=10)
         self.event_application.stop()
 
     def handle(
@@ -361,6 +389,65 @@ def _process_definitions(database: Database, config_path: Path | None) -> Proces
             raise ValueError(str(error)) from error
 
     return ProcessDefinitions(policy, source)
+
+
+def _registration(database: Database, activities: ActivityRepository, questions: QuestionService, definitions: ProcessDefinitions | None, settings: ServiceSettings):
+    """Compose registration when the operator configured repositories, bindings and the registration process."""
+    tables = settings.registration_tables
+    if definitions is None or "repositories" not in tables or "repository_bindings" not in tables or "registration" not in settings.process_tables:
+        return None
+    from maestro.agents.inspectors import installed_resolvers
+    from maestro.agents.routes import AgentRouteError
+    from maestro.agents.supervisor import AgentSupervisor, FileSupervisorJournal, SystemdUserUnits
+    from maestro.agents.workspaces import WorkspaceManager
+
+    from .agent_runs import AgentRunService
+    from .registration import RegistrationService
+    from .registration_github import DestinationError, GitHubDestination, parse_repository_configuration
+    from .reservations import ProjectReservations
+
+    profiles, bindings = parse_repository_configuration(tables)
+    home = Path(os.environ.get("MAESTRO_HOME") or Path.home())
+    state_dir = Path(os.environ.get("MAESTRO_STATE_DIR") or settings.storage.path.parent / "registration")
+    state_dir.mkdir(parents=True, exist_ok=True)
+    credentials = Path(os.environ.get("MAESTRO_CREDENTIALS_DIR") or home / "credentials")
+    runs = None
+    role_choices: tuple[tuple[str, str], ...] = ()
+    tools = tables.get("tools")
+    if isinstance(tools, Mapping):
+        try:
+            route_resolver, profile_resolver = installed_resolvers(tools, home)
+            supervisor = AgentSupervisor(FileSupervisorJournal(state_dir / "journal" / "journal.json"), SystemdUserUnits())
+            runs = AgentRunService(
+                database, supervisor, WorkspaceManager(settings.workspace_root),
+                route_resolver=route_resolver, profile_resolver=profile_resolver,
+                artifact_root=state_dir / "artifacts", clock=time.monotonic,
+            )
+            role_choices = tuple(
+                (str(tool), str(model)) for tool, value in tools.items() if tool in {"codex", "claude_code"}
+                for model in (value.get("allowed_model_ids") or [])
+            )
+        except (AgentRouteError, ValueError, OSError):
+            log.exception("agent routes for registration could not be prepared")
+    cache: dict[str, GitHubDestination] = {}
+
+    def destination(profile) -> GitHubDestination:
+        if profile.name not in cache:
+            key = credentials / f"{profile.credential_profile}.pem"
+            try:
+                cache[profile.name] = GitHubDestination(profile, key.read_text(encoding="utf-8"))
+            except OSError as error:
+                raise DestinationError("credential_unavailable", "the repository credential for this profile cannot be read") from error
+        return cache[profile.name]
+
+    service = RegistrationService(
+        database, records=activities, questions=questions, reservations=ProjectReservations(database), definitions=definitions,
+        runs=runs, profiles=profiles, bindings=bindings, destination=destination, role_choices=role_choices,
+        state_dir=state_dir, owner_id=settings.owner.owner_id if hasattr(settings.owner, "owner_id") else "owner",
+    )
+    for identity, recipient in service.recipients.items():
+        questions.register_recipient(identity, recipient)
+    return service
 
 
 def build_application(settings: ServiceSettings) -> InstalledServiceApplication:
