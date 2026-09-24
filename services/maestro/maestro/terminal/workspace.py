@@ -192,13 +192,14 @@ class Workspace:
     focus: int = 0
     detail_open: bool = False
     open_finding: str | None = None
-    detail_reading_offset: int = 0
+    detail_anchor: str | None = None
     selected_attention_detail: Mapping[str, object] | None = None
     extension_view_name: str | None = None
     extension_view_content: object | None = None
 
     def refresh(self) -> None:
         """Load a cursor-consistent snapshot, preserving still-valid selection."""
+        previous_focus = self.focused_target
         try:
             response = self.client.workspace()
             data = _object(response.get("data"), "workspace data")
@@ -244,6 +245,11 @@ class Workspace:
             ) as error:
                 self.error = str(error)
                 self.stale = True
+        if previous_focus is not None and (
+            previous_focus.kind != "editor" or self.view == View.CONVERSATION
+        ):
+            # Records arriving above the focused control must not move focus.
+            self._focus_target(previous_focus.kind, previous_focus.identity)
 
     def select_project(self, project_id: str) -> None:
         self._require_online()
@@ -878,7 +884,7 @@ class Workspace:
             self._close_detail()
             return
         if not self.detail_open:
-            self.detail_reading_offset = self.conversation_offset
+            self.detail_anchor = self._reading_anchor()
         self.detail_open = True
         self.open_finding = finding_id
 
@@ -887,11 +893,11 @@ class Workspace:
             return
         self.detail_open = False
         self.open_finding = None
-        self.conversation_offset = self.detail_reading_offset
-        self.at_bottom = self.conversation_offset == 0
-        if self.at_bottom:
-            self.new_messages = False
-        self.detail_reading_offset = 0
+        if self.detail_anchor is None:
+            self.scroll_to_latest()
+        else:
+            self._restore_reading_anchor(self.detail_anchor)
+        self.detail_anchor = None
 
     def _choice_targets(self) -> tuple[FocusTarget, ...]:
         detail = self.selected_attention_detail

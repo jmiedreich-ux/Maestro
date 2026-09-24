@@ -234,14 +234,17 @@ def _runtime_lines(detail: object) -> list[str]:
             else f"context {item.get('context_used')}/{_reading(item.get('context_limit'))}"
             + ("" if percent is None else f" ({percent}%)")
         )
+        name = item.get("role") or item.get("run_id") or item.get("session_id") or ""
         lines.append(
-            f"Runtime {item.get('role') or item.get('run_id') or item.get('session_id') or ''}: "
-            f"active {_reading(item.get('active_seconds'))}s, "
+            f"Runtime {name} [{quality}; {item.get('observed_at') or 'time unknown'}]"
+        )
+        lines.append(
+            f"  active {_reading(item.get('active_seconds'))}s, "
             f"waiting {_reading(item.get('waiting_seconds'))}s, "
             f"tokens in {_reading(item.get('input_tokens'))} "
-            f"out {_reading(item.get('output_tokens'))}, {context} "
-            f"[{quality}; {item.get('observed_at') or 'time unknown'}]"
+            f"out {_reading(item.get('output_tokens'))}"
         )
+        lines.append(f"  {context}")
     return lines
 
 

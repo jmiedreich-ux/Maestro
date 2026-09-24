@@ -104,6 +104,7 @@ class TerminalApplication:
         self.renderer = TerminalRenderer()
         self._lock = threading.RLock()
         self._stopping = threading.Event()
+        self._resized = threading.Event()
         self._event_generation = 0
         self._explicit_connect = False
         self._exit_warning_text: str | None = None
@@ -143,8 +144,9 @@ class TerminalApplication:
             if bracketed_paste:
                 try:
                     previous_winch = signal.signal(
-                        signal.SIGWINCH, lambda *_: self._render()
+                        signal.SIGWINCH, lambda *_: self._resized.set()
                     )
+                    threading.Thread(target=self._redraw_on_resize, daemon=True).start()
                 except ValueError:
                     previous_winch = None
             try:
@@ -199,6 +201,13 @@ class TerminalApplication:
             self._stopping.set()
             self._event_generation += 1
             self.connection.close()
+
+    def _redraw_on_resize(self) -> None:
+        # The signal handler only sets the flag; drawing waits for the normal lock.
+        while not self._stopping.is_set():
+            if self._resized.wait(0.2):
+                self._resized.clear()
+                self._render()
 
     def _local_command(self, command: str) -> bool:
         command = command.strip()
@@ -362,7 +371,11 @@ class _Characters:
         self.pending = ""
         self.decoder = codecs.getincrementaldecoder("utf-8")("replace")
 
-    def _fill(self) -> bool:
+    def _fill(self, count: int) -> bool:
+        if not self.terminal:
+            text = self.stream.read(count)
+            self.pending += text
+            return bool(text)
         data = os.read(self.stream.fileno(), 4096)
         if not data:
             return False
@@ -370,21 +383,20 @@ class _Characters:
         return True
 
     def read(self, count: int = 1) -> str:
-        if not self.terminal:
-            return self.stream.read(count)
         while len(self.pending) < count:
-            if not self._fill():
+            if not self._fill(count - len(self.pending)):
                 break
         text, self.pending = self.pending[:count], self.pending[count:]
         return text
+
+    def unread(self, text: str) -> None:
+        self.pending = text + self.pending
 
     def ready(self) -> bool:
         """Whether more input is already waiting, or arrives at once."""
         if not self.terminal or self.pending:
             return True
-        if not select.select([self.stream], [], [], ESCAPE_WAIT_SECONDS)[0]:
-            return False
-        return True
+        return bool(select.select([self.stream], [], [], ESCAPE_WAIT_SECONDS)[0])
 
 
 def _keys(stream: TextIO):
@@ -403,7 +415,12 @@ def _keys(stream: TextIO):
             if not stream.ready():
                 yield "ESCAPE"
                 continue
-            suffix = stream.read(2)
+            opener = stream.read(1)
+            if opener != "[":
+                stream.unread(opener)
+                yield "ESCAPE"
+                continue
+            suffix = opener + stream.read(1)
             if suffix == "[2":
                 remainder = stream.read(3)
                 if remainder == "00~":

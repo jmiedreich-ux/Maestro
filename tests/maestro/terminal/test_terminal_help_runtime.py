@@ -38,7 +38,8 @@ class HelpAndRuntimeTests(unittest.TestCase):
                     ]
                 }
             }
-        )[0]
+        )
+        line = " ".join(line)
         self.assertIn("waiting unknown", line)
         self.assertIn("context unknown", line)
         self.assertIn("estimated, stale", line)
