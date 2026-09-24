@@ -23,6 +23,7 @@ from .connection import (
     TerminalConnectionError,
 )
 from .extensions import ExtensionRegistry
+from .architecture import ArchitectureExtension
 from .registration import RegistrationExtension
 from .questions import QuestionsExtension
 from .rendering import TerminalRenderer, TerminalSize
@@ -101,7 +102,9 @@ class TerminalApplication:
         self.output = output_stream
         extensions = ExtensionRegistry()
         QuestionsExtension().install(extensions)
-        RegistrationExtension().install(extensions)
+        architecture = ArchitectureExtension()
+        architecture.install(extensions)
+        RegistrationExtension(architecture=architecture).install(extensions)
         self.workspace = Workspace(self.connection.client, extensions=extensions)
         self.renderer = TerminalRenderer()
         self._lock = threading.RLock()

@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from maestro.foundation import canonical_json
 
 from .preflight import ResolvedAgentRoute, RunningToolIdentity
+from .session_state import SessionUse
 from .transport import (
     AgentAssignment,
     DecodedToolResult,
@@ -25,9 +26,10 @@ class CodexTransport:
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
         profile: ServiceProfileBinding,
+        session: SessionUse | None = None,
     ) -> "CodexConversation":
         validate_transport_context("codex", route, assignment, workspace, profile)
-        return CodexConversation(route, assignment, workspace, profile)
+        return CodexConversation(route, assignment, workspace, profile, session)
 
 
 class CodexConversation:
@@ -39,7 +41,9 @@ class CodexConversation:
         assignment: AgentAssignment,
         workspace: PreparedWorkspace,
         profile: ServiceProfileBinding,
+        session: SessionUse | None = None,
     ) -> None:
+        self.resume_id = None if session is None else session.provider_session_id
         self.route = route
         self.assignment = assignment
         self.workspace = workspace
@@ -103,20 +107,15 @@ class CodexConversation:
             if len(selected) != 1:
                 raise TransportError("model_mismatch", "Codex exact model is absent or an alias")
             self.state = "thread"
-            return (
-                _line(
-                    _request(
-                        3,
-                        "thread/start",
-                        {
-                            "model": self.route.requested_model_id,
-                            "cwd": str(self.workspace.paths.root),
-                            "approvalPolicy": "never",
-                            "sandbox": "workspace-write",
-                        },
-                    )
-                ),
-            )
+            settings = {
+                "model": self.route.requested_model_id,
+                "cwd": str(self.workspace.paths.root),
+                "approvalPolicy": "never",
+                "sandbox": "workspace-write",
+            }
+            if self.resume_id is None:
+                return (_line(_request(3, "thread/start", settings)),)
+            return (_line(_request(3, "thread/resume", {"threadId": self.resume_id, **settings})),)
         if self.state == "thread":
             result = self._expect_result(message, 3)
             thread = result.get("thread")
@@ -128,6 +127,8 @@ class CodexConversation:
             ):
                 raise TransportError("identity_unverified", "Codex started a different model route")
             self.thread_id = _identifier(thread.get("id"), "thread")
+            if self.resume_id is not None and self.thread_id != self.resume_id:
+                raise TransportError("identity_unverified", "Codex resumed a different conversation")
             assert self._server_version is not None
             self._identity = RunningToolIdentity(
                 "tool_metadata",

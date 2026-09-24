@@ -76,8 +76,14 @@ class ProjectReservations:
         project_id: str,
         purpose: str,
         holder_id: str,
+        *,
+        check_unresolved: bool = False,
     ) -> Reservation:
-        """Reserve an idle project inside the caller's write transaction."""
+        """Reserve an idle project inside the caller's write transaction.
+
+        Re-registration, and any start that asks for it, also refuses while an agent run or external write
+        is not confirmed ended.
+        """
         canonical_identifier(project_id, "project_id")
         canonical_identifier(holder_id, "holder_id")
         if purpose not in PURPOSES:
@@ -121,7 +127,7 @@ class ProjectReservations:
                 activity_id=busy[0],
                 activity_state=busy[1],
             )
-        if purpose == "re_registration":
+        if purpose == "re_registration" or check_unresolved:
             self._refuse_unresolved(transaction, project_id)
         transaction.execute(
             """
