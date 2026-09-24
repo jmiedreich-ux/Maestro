@@ -11,6 +11,7 @@ Configuration and credentials are never rewritten.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -206,6 +207,54 @@ def _restore(target: UpgradeTarget, effects: Effects, backup: Path) -> None:
             shutil.copy2(backup / path.name, path)
 
 
+SCHEMA_MANIFEST_NAME = ".bundles.sha256"
+
+
+def _write_schema_manifest(destination: Path) -> None:
+    lines = [
+        f"{hashlib.sha256(item.read_bytes()).hexdigest()}  {item.relative_to(destination).as_posix()}\n"
+        for item in sorted(destination.rglob("*"))
+        if item.is_file() and item.name != SCHEMA_MANIFEST_NAME
+    ]
+    (destination / SCHEMA_MANIFEST_NAME).write_text("".join(lines), encoding="ascii")
+
+
+def _sync_schemas(target: UpgradeTarget) -> list[Path]:
+    """Add newly shipped schema bundles to the installed set; published bundles never change."""
+    shipped = target.under(target.venv / "share/maestro/schemas")
+    installed = target.under(target.venv / "schemas")
+    added: list[Path] = []
+    if not shipped.is_dir():
+        return added
+    installed.mkdir(parents=True, exist_ok=True)
+    for source in sorted(shipped.glob("*/*")):
+        if not source.is_dir():
+            continue
+        destination = installed / source.parent.name / source.name
+        files = {item.relative_to(source).as_posix(): item.read_bytes() for item in source.rglob("*") if item.is_file()}
+        if destination.is_dir():
+            present = {item.relative_to(destination).as_posix(): item.read_bytes() for item in destination.rglob("*") if item.is_file()}
+            if present != files:
+                raise UpgradeError(f"installed schema bundle differs from the release: {source.parent.name}@{source.name}")
+            continue
+        shutil.copytree(source, destination, symlinks=False)
+        added.append(destination)
+        for item in destination.rglob("*"):
+            item.chmod(0o755 if item.is_dir() else 0o644)
+    if added:
+        _write_schema_manifest(installed)
+    return added
+
+
+def _unsync_schemas(target: UpgradeTarget, added: Sequence[Path]) -> None:
+    for path in added:
+        shutil.rmtree(path, ignore_errors=True)
+        if path.parent.is_dir() and not any(path.parent.iterdir()):
+            path.parent.rmdir()
+    if added:
+        _write_schema_manifest(target.under(target.venv / "schemas"))
+
+
 def _render_launchers(target: UpgradeTarget) -> None:
     """Re-render both egress helpers from the new template, keeping installed values."""
     template_path = target.deploy_dir / "maestro-agent-egress"
@@ -286,12 +335,14 @@ def upgrade(
     backup = target.backup_root / time.strftime("%Y%m%dT%H%M%S")
     receipt.backup = str(backup)
     workspace = Path(tempfile.mkdtemp(prefix="maestro-upgrade-"))
+    added: list[Path] = []
     try:
         exported = _export(repository, revision, workspace)
         _backup(target, effects, backup)
         effects.run(["systemctl", "stop", target.service_unit])
         try:
             effects.install_package(exported)
+            added = _sync_schemas(target)
             _render_launchers(target)
             code, output = effects.run(["systemctl", "start", target.service_unit])
             healthy = receipt.check("service_start", code == 0, output.strip()[:120] or "started")
@@ -306,6 +357,7 @@ def upgrade(
         else:
             effects.run(["systemctl", "stop", target.service_unit])
             _restore(target, effects, backup)
+            _unsync_schemas(target, added)
             effects.run(["systemctl", "start", target.service_unit])
             restored = _smoke(target, effects, Receipt(revision, None), ())
             receipt.outcome = "rolled_back" if restored else "rollback_failed"

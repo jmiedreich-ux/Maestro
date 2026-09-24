@@ -119,6 +119,15 @@ class ProcessDefinitions:
             raise ProcessPolicyError("missing_process", f"process definition is not configured: {process}")
         return self.policy.prepare(process, source[process])
 
+    def start_activity(self, transaction, process: str, activity_id: str, creator: Callable[..., object]) -> object:
+        """Save the current definition for a new activity, then run the process's creator in one transaction."""
+        return self.policy.create_activity(transaction, activity_id, self.evaluate(process), creator)
+
+    def assignment_terms(self, activity_id: str, role: str) -> AssignmentTerms:
+        """Limits for an agent assignment, from the activity's saved definition and verified bundle."""
+        status = self.policy.resume(activity_id)
+        return self.policy.registry.dispatch(status.snapshot, "agent_session", role)
+
     def report(self) -> list[dict[str, object]]:
         try:
             tables = self._source()

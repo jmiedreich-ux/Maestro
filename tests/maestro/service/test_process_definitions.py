@@ -72,6 +72,20 @@ class ProcessDefinitionTests(unittest.TestCase):
         self.assertEqual(self.policy.registry.dispatch(registration, "initiation"), "registration.start")
         self.assertEqual([row["state"] for row in self.definitions.report()], ["valid", "valid"])
 
+    def test_activity_keeps_its_snapshot_while_new_activities_see_the_edit(self) -> None:
+        for activity in ("first",):
+            with self.policy.database.transaction() as tx:
+                self.definitions.start_activity(tx, "architecture_loop", activity, lambda t, snap: None)
+        self.tables["architecture_loop"]["architect"]["run_timeout_seconds"] = 99
+        with self.policy.database.transaction() as tx:
+            self.definitions.start_activity(tx, "architecture_loop", "second", lambda t, snap: None)
+        self.assertEqual(self.definitions.assignment_terms("first", "architect").duration_seconds, 25)
+        self.assertEqual(self.definitions.assignment_terms("second", "architect").duration_seconds, 99)
+        (self.installation / "schemas/architecture-loop/1/schema.json").write_text("{}")
+        with self.assertRaises(ProcessPolicyError):
+            self.definitions.assignment_terms("first", "architect")
+        self.assertEqual(self.policy.status("first").snapshot.definition["architect"]["run_timeout_seconds"], 25)
+
     def test_invalid_definition_holds_only_its_process(self) -> None:
         self.tables["registration"]["architect_run_timeout_seconds"] = 5  # legacy key
         rows = {row["process"]: row for row in self.definitions.report()}
