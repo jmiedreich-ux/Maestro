@@ -225,8 +225,8 @@ class ProjectionReader:
                 _action(action) for action in actions[:MAX_PAGE_SIZE]
             ]
             data["action_next_cursor"] = _next_identity(actions)
-            # No agent run records exist yet; empty arrays, never invented zeros.
-            data["runtime"] = {"runs": [], "sessions": [], "assignment_totals": []}
+            # Only recorded readings appear; a reading the tool did not report stays absent, never zero.
+            data["runtime"] = {"runs": _agent_runs(connection, activity_id), "sessions": [], "assignment_totals": []}
         return ProjectionResult(data, event_cursor)
 
     def questions(
@@ -698,3 +698,29 @@ def _page_size(value: int) -> int:
             limit=value,
         )
     return value
+
+
+def _agent_runs(connection: sqlite3.Connection, activity_id: str) -> list[dict[str, object]]:
+    if connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'service_agent_runs'"
+    ).fetchone() is None:
+        return []
+    rows = connection.execute(
+        """
+        SELECT r.run_id, a.role, a.tool, r.model_id, r.state, r.active_seconds,
+               COALESCE(r.ended_at, r.reserved_at)
+        FROM service_agent_runs r JOIN service_agent_assignments a USING(assignment_id)
+        WHERE a.activity_id = ? ORDER BY r.rowid DESC LIMIT ?
+        """,
+        (activity_id, MAX_PAGE_SIZE),
+    ).fetchall()
+    return [
+        {
+            "run_id": row[0], "role": row[1], "tool": row[2], "model": row[3], "state": row[4],
+            "active_seconds": None if row[5] is None else round(row[5], 1),
+            "quality": "reported" if row[5] is not None else "unknown",
+            "observed_at": row[6],
+            "input_tokens": None, "output_tokens": None, "context_used": None, "context_limit": None,
+        }
+        for row in rows
+    ]

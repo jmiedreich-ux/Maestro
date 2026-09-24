@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from .supervisor import OperationIdentity, RunRecord, SupervisorJournal, UnitController
+from .supervisor import OperationIdentity, RunRecord, SupervisorJournal, UnitController, _boot_id
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,10 @@ class RecoveryReconciler:
             return RecoveryDecision(operation, "unknown", "operation_not_journaled")
         if record.state in {"completed", "failed", "cancelled", "timed_out", "stalled", "stopped"}:
             return RecoveryDecision(operation, "terminal", record.terminal_reason or record.state)
+        if record.boot_id is not None and record.boot_id != _boot_id():
+            # A different boot identity proves the old local processes ended.
+            self.journal.save(replace(record, state="stopped", terminal_reason="host_rebooted"))
+            return RecoveryDecision(operation, "terminal", "host_rebooted")
         observed = self.units.inspect(record.unit_name)
         if observed is not None and record.pid is not None and observed.matches(record):
             if observed.active:

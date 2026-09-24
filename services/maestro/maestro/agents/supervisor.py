@@ -221,7 +221,7 @@ class SystemdUserUnits:
         unit = request.identity.unit_name
         arguments = (
             self.systemd_run, "--user", "--unit", unit, "--quiet", "--pipe",
-            "--property=KillMode=control-group", "--property=TimeoutStopSec=30s",
+            "--property=KillMode=control-group", "--property=TimeoutStopSec=60s",
             "--property=SendSIGKILL=yes", "--property=RemainAfterExit=yes",
             f"--working-directory={request.cwd}", "--", *request.command,
         )
@@ -245,6 +245,7 @@ class SystemdUserUnits:
         raise SupervisionError("launch_unconfirmed", "systemd did not confirm the launched unit")
 
     def inspect(self, unit_name: str) -> UnitIdentity | None:
+        system_gone = self._system_unit_gone(unit_name)
         completed = subprocess.run(
             (
                 self.systemctl, "--user", "show", unit_name,
@@ -261,9 +262,22 @@ class SystemdUserUnits:
             return None
         active = pid > 0 and fields.get("ActiveState") in {"active", "activating", "deactivating"}
         invocation_id = fields.get("InvocationID", "")
+        # The agent itself runs in a root-supervised system unit of the same name; the run
+        # is stopped only when that unit is gone as well as this one's control group.
+        empty = self._cgroup_empty(fields.get("ControlGroup", "")) and system_gone
         if pid <= 0:
-            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
-        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, self._cgroup_empty(fields.get("ControlGroup", "")))
+            return UnitIdentity(unit_name, 0, _boot_id(), "", invocation_id, active, empty)
+        return UnitIdentity(unit_name, pid, _boot_id(), _proc_start_identity(pid), invocation_id, active, empty)
+
+    def _system_unit_gone(self, unit_name: str) -> bool:
+        completed = subprocess.run(
+            (self.systemctl, "show", unit_name, "--property=LoadState", "--property=ActiveState"),
+            capture_output=True, text=True, check=False,
+        )
+        if completed.returncode != 0:
+            return False
+        fields = dict(line.split("=", 1) for line in completed.stdout.splitlines() if "=" in line)
+        return fields.get("LoadState") == "not-found" or fields.get("ActiveState") in {"inactive", "failed"}
 
     def stop(self, unit_name: str) -> None:
         completed = subprocess.run(
@@ -288,6 +302,9 @@ class SystemdUserUnits:
             return True
         try:
             return not Path("/sys/fs/cgroup", control_group.lstrip("/"), "cgroup.procs").read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            # systemd removes a unit's control group only once it holds no processes.
+            return True
         except OSError:
             return False
 
@@ -465,6 +482,26 @@ class AgentSupervisor:
         stopped = self._terminal(self._required(identity), state, reason)
         self._close_managed(identity.key)
         return stopped
+
+    @_synchronized
+    def send(self, identity: OperationIdentity, data: bytes, *, close: bool = False) -> None:
+        """Write to the running tool's input; a conversation is not resumable across a service restart."""
+        self._required(identity)
+        managed = self._managed.get(identity.key)
+        stream = managed.process.stdin if managed is not None and managed.process is not None else None
+        if stream is None or stream.closed:
+            raise SupervisionError("input_unavailable", "the tool input is not attached")
+        try:
+            if data:
+                stream.write(data)
+                stream.flush()
+            if close:
+                stream.close()
+        except (BrokenPipeError, OSError) as error:
+            raise SupervisionError("input_unavailable", "the tool input is closed") from error
+
+    def attached(self, identity: OperationIdentity) -> bool:
+        return identity.key in self._managed
 
     def _drain(self, key: str, managed: ManagedUnit, stream_name: str) -> None:
         stream = getattr(managed, stream_name)
