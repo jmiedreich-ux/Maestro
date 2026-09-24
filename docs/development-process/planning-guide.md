@@ -15,6 +15,6 @@ Only the next milestone's features need detailed specifications. Keep later outc
 
 ## During feature delivery
 
-The feature owner builds on the assessed code, preserves useful paths and tests, and saves a small packet breakdown within the feature plan, and continues without a packet approval gate. Each packet states exact files, intended change and a quick check, especially when delegated to a smaller local model. The owner verifies the packets form the full working flow. Review and merge the feature as a whole, then record its results in the outcome document's Result column and Completion record.
+The feature owner builds on the assessed code, preserves useful paths and tests, and saves a small packet breakdown within the feature plan, and continues without a packet approval gate. Each packet states exact files, intended change and a quick check, especially when delegated to a smaller local model. The owner verifies the packets form the full working flow. Review and merge the feature as a whole, then record its results in a Result column on each table of the outcome document.
 
 New findings follow the [delivery boundaries](delivery-rules.md). A missing prerequisite blocks only affected work. A change to an outcome goes to the Owner; a useful extra goes into future work. Do not split or rename a feature to reset a review limit.
