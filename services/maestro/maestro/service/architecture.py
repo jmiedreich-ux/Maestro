@@ -377,13 +377,14 @@ class ArchitectureService:
         if project is None:
             raise RequestRejection(404, "project_not_found", "the project does not exist", fields={"project_id": project_id})
         entity_id = f"architecture-request-{request.request_id}"
-        existing = self._open_activity(project_id)
-        if existing is not None:
-            return self._duplicate(entity_id, project_id, existing)
         active = self._read(
             "SELECT a.package_json, r.* FROM service_registration_active a JOIN service_registrations r ON r.activity_id = a.activity_id WHERE a.project_id = ?",
             (project_id,),
         )
+        registration_id = None if active is None else str(active["activity_id"])
+        existing = self._open_activity(project_id, None, registration_id)
+        if existing is not None:
+            return self._duplicate(entity_id, project_id, existing)
         if active is None or project["registration_status"] != "registered":
             raise RequestRejection(409, "registration_not_confirmed", "this project has no confirmed registration; confirm one before starting the architecture loop")
         package = json.loads(active["package_json"])
@@ -408,7 +409,7 @@ class ArchitectureService:
         details = {"active": active, "package": package, "outcomes": outcomes, "selections": selections, "project": project}
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
-            found = self._open_activity(project_id, transaction)
+            found = self._open_activity(project_id, transaction, registration_id)
             if found is not None:
                 return OperationResult(data={"activity_id": found, "duplicate": True, "message": "an architecture activity is already unfinished for this project"}, project_id=project_id, activity_id=found)
             try:
@@ -468,9 +469,12 @@ class ArchitectureService:
         except Exception as error:  # noqa: BLE001 - any refusal to resolve the route means it cannot be launched
             raise ValueError(f"{role} selection {tool}/{model} cannot be used: {error}") from error
 
-    def _open_activity(self, project_id: str, tx: Transaction | None = None) -> str | None:
-        sql = "SELECT activity_id FROM service_architectures WHERE project_id = ? AND state != 'cancelled' ORDER BY created_at DESC LIMIT 1"
-        row = self._row(tx, sql, (project_id,)) if tx is not None else self._read(sql, (project_id,))
+    def _open_activity(self, project_id: str, tx: Transaction | None = None, registration_id: str | None = None) -> str | None:
+        """The project's unfinished activity, or its completed one while it still rests on the active registration; a completed breakdown of an earlier registration does not block a new start."""
+        sql = ("SELECT activity_id FROM service_architectures WHERE project_id = ? AND state != 'cancelled' "
+               "AND (state != 'completed' OR ? IS NULL OR registration_activity_id = ?) ORDER BY created_at DESC LIMIT 1")
+        params = (project_id, registration_id, registration_id)
+        row = self._row(tx, sql, params) if tx is not None else self._read(sql, params)
         return None if row is None else str(row["activity_id"])
 
     # --------------------------------------------------------- answers, cancel, retry

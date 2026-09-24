@@ -99,6 +99,7 @@ class ReviewTests(unittest.TestCase):
     def reach(self, review_script):
         """Foundations and a first breakdown are saved; the scripted reviewer outcomes follow."""
         project_id, package = self.registered()
+        self.package = package
         outcomes, milestones = self.milestone_ids(package)
         self.milestones = milestones
         self.runs.script = [base.architect_response(base.files_for(milestones)), self.breakdown_response(milestones), *review_script]
@@ -172,6 +173,14 @@ class ReviewTests(unittest.TestCase):
         self.assertIsNone(self.architecture._read("SELECT 1 AS n FROM service_project_reservations WHERE project_id = ?", (project_id,)))
         with self.assertRaises(RequestRejection):
             self.confirm(project_id, activity)
+        # the completed breakdown answers another start for the same registration, but does not block a start after a later registration
+        again = self.start_architecture(project_id, self.package)
+        self.assertEqual((activity, True), (again.activity_id, again.result["duplicate"]))
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_architectures SET registration_activity_id = 'an-earlier-registration' WHERE activity_id = ?", (activity,))
+        fresh = self.start_architecture(project_id, self.package)
+        self.assertNotEqual(activity, fresh.activity_id)
+        self.assertFalse(fresh.result["duplicate"])
 
     def test_requested_changes_are_amended_in_the_same_session_and_reviewed_again(self) -> None:
         blocking = review_finding("b1", "blocking", "packet-2")
