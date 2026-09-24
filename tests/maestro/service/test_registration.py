@@ -536,6 +536,21 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual("ready", self.row(receipt.activity_id)["state"])
         self.assertEqual(1, self.row(receipt.activity_id)["reviews_used"])
 
+    def test_blocking_assessment_is_never_offered_for_confirmation(self) -> None:
+        blocked = json.loads(candidate_text())
+        blocked["summary"]["assessment_outcome"] = "blocked"
+        arch = {"kind": "completed", "response": lambda a: {**architect_done(a), "findings": [FINDING]}, "files": {"candidate": json.dumps(blocked), "assessment": ASSESSMENT}}
+        self.runs.script = [arch, reviewer_done("APPROVE")]
+        receipt = self.start()
+        self.answer(receipt, "confirm-scope")
+        self.run_until(receipt.activity_id, "blocked")
+        self.assertEqual([], self.destination.published)
+        with self.database.read_connection() as connection:
+            labels = [r[0] for r in connection.execute("SELECT label FROM service_activity_actions WHERE activity_id = ?", (receipt.activity_id,))]
+        self.assertEqual(["Cancel registration"], labels)
+        with self.assertRaises(RequestRejection):
+            self.submit("registration.confirm", receipt.project_id, receipt.activity_id, None, self.version(receipt.activity_id), {"package_ref": {}})
+
     def test_scope_interpretation_never_expands_a_selection(self) -> None:
         model = validate_sources("docs/project-overview.md", lambda p: FILES[p].encode() if p in FILES else None)
         scope = interpret_scope(model, {"kind": "milestones", "milestones": ["NOTES-PM1"]})

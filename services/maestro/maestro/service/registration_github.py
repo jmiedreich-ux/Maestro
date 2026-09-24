@@ -291,8 +291,8 @@ class GitHubDestination:
         """Make the exact commit available in a local repository for isolated agent checkouts."""
         mirror.parent.mkdir(parents=True, exist_ok=True)
         environment = _git_environment(self.token())
-        if not (mirror / "HEAD").exists():
-            _git(["init", "--bare", "-q", str(mirror)], environment)
+        if not (mirror / ".git" / "HEAD").exists():
+            _git(["init", "-q", str(mirror)], environment)
         have = subprocess.run(["git", "-C", str(mirror), "cat-file", "-e", f"{commit}^{{commit}}"], capture_output=True, env=environment)
         if have.returncode != 0:
             _git(["-C", str(mirror), "fetch", "-q", "--no-tags", f"https://github.com/{repository}.git", commit], environment)

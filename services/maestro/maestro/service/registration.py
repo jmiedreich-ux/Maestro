@@ -168,7 +168,7 @@ REGISTRATION_MIGRATION = DomainMigration(
     ),
 )
 
-_OPEN_STATES = ("intake", "scope", "architect", "architect_waiting", "reviewer", "publishing", "ready", "source_changed", "confirming", "cancelling", "paused", "limit_paused")
+_OPEN_STATES = ("intake", "scope", "architect", "architect_waiting", "reviewer", "publishing", "ready", "source_changed", "confirming", "cancelling", "paused", "limit_paused", "blocked")
 _WORKING_STATES = ("architect", "reviewer", "publishing", "confirming", "cancelling", "ready")
 _STR = {"type": "string"}
 _ART = {
@@ -934,7 +934,16 @@ class RegistrationService:
                 tx.execute("UPDATE service_registrations SET reviews_used = ? WHERE activity_id = ?", (rounds, row["activity_id"]))
                 fresh = self._row(tx, "SELECT * FROM service_registrations WHERE activity_id = ?", (row["activity_id"],))
             self._save_findings(tx, fresh, findings, "reviewer")
-            if outcome == "APPROVE":
+            latest_candidate = json.loads(latest["candidate_json"])
+            latest_findings = json.loads(latest["findings_json"])["findings"]
+            architect_blockers = [f for f in latest_findings if f["severity"] == "blocking"]
+            if outcome == "APPROVE" and (latest_candidate["summary"]["assessment_outcome"] != "ready" or architect_blockers):
+                tx.execute("UPDATE service_registrations SET state = 'blocked', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
+                text = (f"The review agrees with the assessment, and the assessment finds the sources not ready to register ({len(architect_blockers)} blocking finding(s)). "
+                        "Blocking findings are returned to the project architect: correct the sources, cancel this attempt and register again. Nothing was published.")
+                self._activity(tx, row["activity_id"], "paused", text, (ActivityAction(f"{row['activity_id']}-cancel", "Cancel registration", "action"),))
+                self._say(tx, row["project_id"], row["activity_id"], text)
+            elif outcome == "APPROVE":
                 tx.execute("UPDATE service_registrations SET state = 'publishing', pending_json = ? WHERE activity_id = ?", (canonical_json(pending), row["activity_id"]))
                 self._activity(tx, row["activity_id"], "publishing", "Review passed; publishing the candidate package to GitHub")
                 self._say(tx, row["project_id"], row["activity_id"], f"Independent review round {fresh['reviews_used']} of {fresh['review_limit']}: approved with {len(findings)} non-blocking finding(s).")
@@ -1023,7 +1032,7 @@ class RegistrationService:
             destination.check_publication_branch(row["repository"], row["publication_branch"])
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_registration_publications SET state = 'writing' WHERE operation_id = ?", (operation_id,))
-            commit = destination.publish(row["repository"], row["publication_branch"], files, f"Publish registration candidate {row['candidate_id']} (version {row['registration_version']})")
+            commit = destination.publish(row["repository"], row["publication_branch"], files, f"Publish registration candidate {frozen['manifest_path'].split('/')[-2]} (version {row['registration_version']})")
             destination.verify_files(row["repository"], commit, files)
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_registration_publications SET state = 'verified', commit_sha = ? WHERE operation_id = ?", (commit, operation_id))
