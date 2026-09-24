@@ -14,7 +14,7 @@ The complete registration capability requires all three outcomes below. Initial 
 
 Only unresolved design decisions require clarification in their authoritative sources before affected development breakdown. Listed implementation work and installed verification are performed during development; they are not prerequisites to starting it or to completing this documentation review. Existing-code claims retain the evidence levels and limitations in the project overview. Undefined behavior must not be invented during implementation.
 
-Completion evidence for each milestone identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles, acceptance authority, isolated Quality Assurance, promotion and completion follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed. Registration's agent controls and fidelity reviews do not approve or replace those broader software Execution contracts.
+Completion evidence for each outcome identifies the implementation revision, reproducible setup, observed main journey, essential failures, and the required review records with material findings resolved. Delivery-review roles, acceptance authority, isolated Quality Assurance, promotion and completion follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed. Registration's agent controls and fidelity reviews do not approve or replace those broader software Execution contracts.
 
 ## Outcomes
 
@@ -76,7 +76,7 @@ Agent integration acceptance also follows [adapter behavior](../architecture.md#
 
 ### Definition of done
 
-The real CLI registration journey also supplies final connected workspace/answer acceptance evidence for the CLI declaration and supplies evidence for every criterion, including source reading, genuine architect/reviewer activity, a retained response, exact package publication, and deliberate confirmation. Basic essential-failure evidence establishes source rejection, review limits, stale-candidate protection, and uncertain-action handling; criteria can share one journey.
+The real CLI registration journey also supplies final connected workspace/answer acceptance evidence for the CLI outcomes and supplies evidence for every criterion, including source reading, genuine architect/reviewer activity, a retained response, exact package publication, and deliberate confirmation. Basic essential-failure evidence establishes source rejection, review limits, stale-candidate protection, and uncertain-action handling; criteria can share one journey.
 
 The confirmed JSON package is retrievable in GitHub and usable by the next process without relying on mutable latest files. Completion evidence and delivery reviews meet the common completion requirements above. Fake-data screens or fabricated approvals cannot demonstrate registration. No development breakdown or work start occurs.
 

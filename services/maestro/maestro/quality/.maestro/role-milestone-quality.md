@@ -10,7 +10,7 @@ Follow [the controlling architecture](../../../../../docs/architecture.md#milest
 
 ## Authority
 
-[Repository rules](../../../../../AGENTS.md), [common coding instructions](../../../../../docs/agents/coding-agent-sop.md), the [Developer role](../../../../../docs/agents/maestro-developer.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
+[Repository rules](../../../../../AGENTS.md), [development delivery rules](../../../../../docs/planning/manual-architecture/packet-rules.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
 
 ### Execution and verification
 
@@ -30,4 +30,4 @@ Receive the feature finish line, source baseline, required interfaces, permitted
 
 ### Dependencies and parallel work
 
-Coordinate explicit interfaces with operator-provided test catalog, foundation, service, agents and execution. Use the feature's dependency edges; shared files have a single assigned owner. Disjoint work may proceed only when its exact prerequisite interfaces are available. Integration and scheduling remain with their assigned process roles. Unavailable required proof remains unverified; it cannot be replaced by a mock result.
+Coordinate explicit interfaces with operator-provided test catalog, foundation, service, agents and execution. Use the feature's dependency edges; shared files have a single assigned owner. Disjoint work may proceed only when its exact prerequisite interfaces are available. The feature owner coordinates the connected result; milestone integration follows the development delivery rules. Unavailable required proof remains unverified; it cannot be replaced by a mock result.

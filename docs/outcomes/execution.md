@@ -193,7 +193,7 @@ Support and supplement validators, publication handlers and connected assignment
 
 ### Definition of done
 
-The full installed path delivers a real confirmed outcome through integration, isolated QA, independent milestone review, verified promotion and published completion. Findings have a working correction path. Completion evidence is retrievable, agrees with SQL and remote Git, and distinguishes unavailable verification from failure or success. Shared declaration evidence requirements apply.
+The full installed path delivers a real confirmed outcome through integration, isolated QA, independent milestone review, verified promotion and published completion. Findings have a working correction path. Completion evidence is retrievable, agrees with SQL and remote Git, and distinguishes unavailable verification from failure or success. Shared outcome evidence requirements apply.
 
 ### Unresolved details
 

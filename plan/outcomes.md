@@ -6,7 +6,7 @@ This is the ordered roadmap for building Maestro. The linked outcome specificati
 
 | Order | Outcome | Observable result |
 |---|---|---|
-| 1 | [Prepare a verified development environment](../docs/outcomes/development-environment.md#prepare-a-verified-development-environment) | A developer can start a real agent in a clean workspace, read its inputs, write an output and exit cleanly; one preflight reports all missing host, credential, route, repository, service and test-data prerequisites. |
+| 1 | [Prepare a verified development environment](../docs/outcomes/development-environment.md#prepare-a-verified-development-environment) | A developer can start a real agent in a clean workspace, read its inputs, write an output and exit cleanly; one preflight reports all prerequisites required for the selected feature, including host, credential, route, repository and test-data checks. |
 | 2 | [Operate the persistent Maestro service](../docs/outcomes/runtime-service.md#operate-the-persistent-maestro-service) | The installed Linux service starts, reports failed setup, and restarts independently of the terminal. |
 | 3 | [Preserve project activity and requests](../docs/outcomes/runtime-service.md#preserve-project-activity-and-requests) | Project activity, requests, questions, and identities survive restarts without duplicate effects or cross-project leakage. |
 | 4 | [Connect the CLI to recorded service activity](../docs/outcomes/runtime-service.md#connect-the-cli-to-recorded-service-activity) | The local API serves saved state, accepts supported requests, and replays events after reconnection. |
@@ -30,7 +30,7 @@ The order states dependencies, not a fixed worker schedule. Shared foundations c
 
 ## Prerequisite pass
 
-Before the next feature is detailed, verify the Linux host and installed tools, Owner identity and credentials, GitHub repository access, Codex/Claude/Qwen model routes, sandbox mounts, running service and ports, data reset, and observability. Record each assumption and its proving feature or explicit exclusion. Unknown operational condition stays unverified. Installation, agent route and real GitHub integration must use actual targets to claim readiness.
+Before the next feature is detailed, verify the prerequisites it actually needs: Linux host and installed tools, Owner identity and credentials, GitHub repository access, selected model routes, sandbox mounts, test-data reset, and observability. Check running service and ports when a feature depends on them; service installation is itself an outcome. Record each assumption and its proving feature or explicit exclusion. Unknown operational condition stays unverified. Installation, agent route and real GitHub integration must use actual targets to claim readiness.
 
 ## Development planning boundary
 

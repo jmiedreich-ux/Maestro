@@ -14,7 +14,7 @@ Runtime and CLI interfaces are implemented before architecture-loop integration.
 
 The [project overview](../project-overview.md) records existing-code evidence and its limits. No installed capability is assumed ready. Relevant source is inspected during development preparation. Each outcome needs the implementation revision, reproducible setup, actual observations, and required reviews. Apply `docs/planning-guide/README.md#verification-expectations`: main journeys and essential failures, real data where possible, and explained necessary simulation. Live verification is deferred to development.
 
-The ordered outcomes build the loop progressively. Foundation or breakdown completion alone does not mean the loop can be confirmed. Unresolved behavioral contracts must be resolved before affected development breakdown; writing executable validators and performing installed checks are implementation work. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when generated work is later executed; they are not part of this architecture-loop implementation declaration.
+The ordered outcomes build the loop progressively. Foundation or breakdown completion alone does not mean the loop can be confirmed. Unresolved behavioral contracts must be resolved before affected development breakdown; writing executable validators and performing installed checks are implementation work. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when generated work is later executed; they are not part of this architecture-loop outcome area.
 
 ## Outcomes
 

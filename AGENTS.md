@@ -14,7 +14,9 @@ Across all Maestro work, apply the [verification expectations](docs/planning-gui
 
 ## Git changes
 
-Outside separately started software Execution, commit approved repository changes directly to `master`; current documentation work creates no branches or pull requests. For separately started software Execution, the Owner-approved [milestone and work-packet branch model](docs/architecture.md#milestone-branches-and-product-integration) governs code delivery. Its [authorized merge rules](docs/architecture.md#authorized-integration-merges) permit reviewed packet-to-milestone and passing milestone-to-master merges without another Owner approval. This exception does not start Execution or bypass other prerequisites.
+Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/planning/manual-architecture/packet-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
+
+The [product Execution branch model](docs/architecture.md#milestone-branches-and-product-integration) specifies how Maestro will manage registered projects after that behavior is implemented. It does not direct the manual work of building Maestro.
 
 ## Architecture documentation
 
