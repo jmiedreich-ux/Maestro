@@ -345,7 +345,10 @@ class RegistrationService:
             if branch is not None:
                 destination.check_publication_branch(repository, branch)
             default_branch = destination.default_branch(repository)
-            source_ref, commit, provenance = destination.resolve_source(repository, payload.get("source_ref"))
+            requested_ref = payload.get("source_ref")
+            if requested_ref is None and previous is not None and str(previous["source_ref"]).startswith("refs/"):
+                requested_ref = previous["source_ref"]
+            source_ref, commit, provenance = destination.resolve_source(repository, requested_ref)
             model = validate_sources(overview_path, lambda path: destination.read_file(repository, commit, path))
             scope = interpret_scope(model, payload.get("scope"))
         except DestinationError as error:
