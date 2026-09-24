@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import json
+import os
+import platform
 import re
+import shutil
+import subprocess
+import sys
+import time
+import tomllib
 from dataclasses import dataclass
-from typing import Callable, Mapping, Protocol
+from pathlib import Path
+from typing import Callable, Mapping, Protocol, Sequence
 
 from maestro.foundation import canonical_json
 from maestro.service.processes import ProcessProvider, ProcessSnapshot
@@ -33,7 +43,7 @@ class InstalledAdapter:
     capabilities: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.tool, str) or self.tool not in {"codex", "claude_code"}:
+        if not isinstance(self.tool, str) or self.tool not in {"codex", "claude_code", "qwen"}:
             raise AgentRouteError("unsupported_tool", f"adapter tool is unsupported: {self.tool}")
         if (
             not isinstance(self.provider, str)
@@ -366,3 +376,552 @@ def _configuration_hash(
         }
     )
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+PASS, FAIL, EXCLUDED, UNVERIFIED = "pass", "fail", "excluded", "unverified"
+ENVIRONMENT_CATEGORIES = (
+    "host_and_tools",
+    "source_and_workspace",
+    "identity_and_credentials",
+    "agent_routes",
+    "github_and_test_targets",
+    "service_and_network",
+    "install_and_upgrade",
+    "data_and_migration",
+    "observability_and_smoke",
+)
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    category: str
+    check: str
+    status: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class FeatureProfile:
+    """One selected development feature and the real targets it needs."""
+
+    name: str
+    repository: Path
+    revision: str | None
+    agents_config: Path
+    workspace_root: Path
+    tools: tuple[tuple[str, str], ...] = ()
+    credential_files: Mapping[str, Path] | None = None
+    github_repository: str | None = None
+    require_app_administration_read: bool = False
+    exercise_github_write: bool = False
+    needs_service: bool = False
+    progress_log: Path | None = None
+    require_progress_channel: bool = False
+
+
+@dataclass(frozen=True)
+class EnvironmentProbes:
+    """Host observations; tests substitute fakes, the command uses real ones."""
+
+    run: Callable[[Sequence[str]], tuple[int, str]]
+    now_ms: Callable[[], int]
+    github_api: Callable[[str], Mapping[str, object] | None]
+    github_app_permissions: Callable[[], Mapping[str, str] | None]
+    http_json: Callable[[str], Mapping[str, object] | None] = lambda url: None
+    github_write: Callable[[str], tuple[bool, str]] = lambda repository: (
+        False,
+        "no write probe supplied",
+    )
+
+
+@dataclass(frozen=True)
+class PreflightReport:
+    feature: str
+    results: tuple[CheckResult, ...]
+
+    @property
+    def blocking(self) -> tuple[CheckResult, ...]:
+        return tuple(r for r in self.results if r.status in (FAIL, UNVERIFIED))
+
+    @property
+    def passed(self) -> bool:
+        return not self.blocking
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "feature": self.feature,
+            "passed": self.passed,
+            "categories": {
+                category: [
+                    {"check": r.check, "status": r.status, "detail": r.detail}
+                    for r in self.results
+                    if r.category == category
+                ]
+                for category in ENVIRONMENT_CATEGORIES
+            },
+            "missing": [
+                {"category": r.category, "check": r.check, "status": r.status, "detail": r.detail}
+                for r in self.blocking
+            ],
+        }
+
+    def render(self) -> str:
+        lines = [f"Environment preflight for: {self.feature}"]
+        for category in ENVIRONMENT_CATEGORIES:
+            lines.append(f"[{category}]")
+            for r in (r for r in self.results if r.category == category):
+                lines.append(f"  {r.status.upper():10} {r.check}: {r.detail}")
+        if self.blocking:
+            lines.append(f"BLOCKED: {len(self.blocking)} requirement(s) not met")
+            lines.extend(f"  - {r.category}/{r.check}: {r.detail}" for r in self.blocking)
+        else:
+            lines.append("PASSED: every applicable check passed")
+        return "\n".join(lines)
+
+
+def run_environment_preflight(
+    profile: FeatureProfile, probes: EnvironmentProbes
+) -> PreflightReport:
+    """Evaluate every contract category; one failing check never hides another."""
+    results: list[CheckResult] = []
+    for category, check in (
+        ("host_and_tools", _check_host),
+        ("source_and_workspace", _check_source),
+        ("identity_and_credentials", _check_credentials),
+        ("agent_routes", _check_routes),
+        ("github_and_test_targets", _check_github),
+        ("service_and_network", _check_service),
+        ("install_and_upgrade", _check_install),
+        ("data_and_migration", _check_data),
+        ("observability_and_smoke", _check_observability),
+    ):
+        try:
+            results.extend(check(profile, probes))
+        except Exception as error:  # a broken probe is a finding, never an omission
+            results.append(
+                CheckResult(category, "check_error", UNVERIFIED, f"{type(error).__name__}: {error}")
+            )
+    return PreflightReport(profile.name, tuple(results))
+
+
+def _ok(category: str, check: str, detail: str) -> CheckResult:
+    return CheckResult(category, check, PASS, detail)
+
+
+def _bad(category: str, check: str, detail: str) -> CheckResult:
+    return CheckResult(category, check, FAIL, detail)
+
+
+def _unknown(category: str, check: str, detail: str) -> CheckResult:
+    return CheckResult(category, check, UNVERIFIED, detail)
+
+
+def _version(probes: EnvironmentProbes, command: Sequence[str]) -> str | None:
+    code, output = probes.run(command)
+    return output.strip().splitlines()[0] if code == 0 and output.strip() else None
+
+
+def _check_host(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "host_and_tools"
+    out = [
+        _ok(c, "platform", f"{platform.system()} {platform.release()}")
+        if platform.system() == "Linux"
+        else _bad(c, "platform", f"not a Linux host: {platform.system()}")
+    ]
+    for label, command in (("git", ["git", "--version"]), ("python", [sys.executable, "--version"])):
+        version = _version(probes, command)
+        out.append(_ok(c, label, version) if version else _bad(c, label, "not runnable"))
+    baseline = _version(probes, [sys.executable, "-m", "unittest", "--help"])
+    out.append(
+        _ok(c, "baseline_runner", "python unittest available")
+        if baseline
+        else _bad(c, "baseline_runner", "python unittest is not runnable")
+    )
+    bwrap = shutil.which("bwrap") or "/usr/bin/bwrap"
+    out.append(
+        _ok(c, "isolation_tool", bwrap)
+        if os.access(bwrap, os.X_OK)
+        else _bad(c, "isolation_tool", "bwrap is not installed or not executable")
+    )
+    probe_dir = profile.workspace_root if profile.workspace_root.exists() else profile.workspace_root.parent
+    free = shutil.disk_usage(probe_dir).free if probe_dir.exists() else 0
+    out.append(
+        _ok(c, "disk_space", f"{free // 2**30} GiB free")
+        if free >= 2**30
+        else _bad(c, "disk_space", f"under 1 GiB free at {probe_dir}")
+    )
+    return out
+
+
+def _check_source(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "source_and_workspace"
+    repo = str(profile.repository)
+    out: list[CheckResult] = []
+    code, head = probes.run(["git", "-C", repo, "rev-parse", "HEAD"])
+    if code != 0:
+        out.append(_bad(c, "repository", f"not a readable git repository: {repo}"))
+    else:
+        if profile.revision:
+            code, pinned = probes.run(
+                ["git", "-C", repo, "rev-parse", "--verify", f"{profile.revision}^{{commit}}"]
+            )
+            out.append(
+                _ok(c, "pinned_revision", pinned.strip())
+                if code == 0
+                else _bad(c, "pinned_revision", f"revision does not resolve: {profile.revision}")
+            )
+        else:
+            out.append(
+                _unknown(c, "pinned_revision", f"no revision pinned; checkout is at {head.strip()}")
+            )
+        _, bare = probes.run(["git", "-C", repo, "rev-parse", "--is-bare-repository"])
+        code, status = probes.run(["git", "-C", repo, "status", "--porcelain"])
+        if bare.strip() == "true":
+            out.append(
+                CheckResult(
+                    c,
+                    "clean_checkout",
+                    EXCLUDED,
+                    "bare repository has no working tree; each run gets its own exact checkout",
+                )
+            )
+        else:
+            out.append(
+                _ok(c, "clean_checkout", "no uncommitted changes")
+                if code == 0 and not status.strip()
+                else _bad(
+                    c,
+                    "clean_checkout",
+                    "uncommitted changes present" if code == 0 else "status unreadable",
+                )
+            )
+    root = profile.workspace_root
+    writable = root.is_dir() and os.access(root, os.W_OK | os.X_OK)
+    out.append(
+        _ok(c, "workspace_root", f"{root} writable")
+        if writable
+        else _bad(c, "workspace_root", f"{root} missing or not writable by this user")
+    )
+    return out
+
+
+def _claude_expiry(path: Path) -> tuple[int | None, bool]:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    entry = document.get("claudeAiOauth") if isinstance(document, dict) else None
+    if not isinstance(entry, dict) or not isinstance(entry.get("expiresAt"), int):
+        return None, False
+    return entry["expiresAt"], bool(entry.get("refreshToken"))
+
+
+def _check_credentials(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "identity_and_credentials"
+    files = dict(profile.credential_files or {})
+    if not profile.tools:
+        return [_unknown(c, "selected_tools", "no agent tool selected for this feature")]
+    out: list[CheckResult] = []
+    for tool, _model in profile.tools:
+        path = files.get(tool)
+        if path is None:
+            out.append(_unknown(c, f"{tool}_credential", "no credential location supplied"))
+            continue
+        try:
+            if not path.is_file():
+                out.append(_bad(c, f"{tool}_credential", f"credential file missing: {path}"))
+                continue
+            if tool == "claude_code":
+                expires, refreshable = _claude_expiry(path)
+                if expires is None:
+                    out.append(_bad(c, "claude_oauth", "no OAuth expiry recorded"))
+                elif expires <= probes.now_ms():
+                    when = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(expires / 1000))
+                    out.append(
+                        _bad(
+                            c,
+                            "claude_oauth",
+                            f"expired {when}; refresh token {'present' if refreshable else 'absent'}; "
+                            "an interactive Owner login is needed if refresh fails",
+                        )
+                    )
+                else:
+                    when = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(expires / 1000))
+                    out.append(_ok(c, "claude_oauth", f"valid until {when}"))
+            elif tool == "qwen":
+                out.append(_ok(c, "qwen_profile", "local model profile present; no remote credential is used"))
+            else:
+                out.append(_ok(c, f"{tool}_credential", "credential file present (contents not inspected)"))
+        except PermissionError:
+            out.append(_bad(c, f"{tool}_credential", f"credential file unreadable by this user: {path}"))
+        except (OSError, ValueError) as error:
+            out.append(_bad(c, f"{tool}_credential", f"credential file invalid: {type(error).__name__}"))
+    return out
+
+
+def _check_routes(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "agent_routes"
+    try:
+        document = tomllib.loads(profile.agents_config.read_text(encoding="utf-8"))
+    except PermissionError:
+        return [_bad(c, "agents_toml", f"unreadable by this user: {profile.agents_config}")]
+    except (OSError, ValueError) as error:
+        return [_bad(c, "agents_toml", f"cannot read {profile.agents_config}: {type(error).__name__}")]
+    try:
+        registry = AgentRouteRegistry.from_mapping(document.get("tools", {}))
+    except AgentRouteError as error:
+        return [_bad(c, "agents_toml", f"{error.code}: {error}")]
+    out = [_ok(c, "agents_toml", f"parsed {profile.agents_config}")]
+    for tool, model in profile.tools:
+        try:
+            route = registry.resolve(ToolModelSelection(tool, model))
+        except AgentRouteError as error:
+            out.append(_bad(c, f"{tool}_route", f"{error.code}: {error}"))
+            continue
+        if not route.executable_available:
+            out.append(_bad(c, f"{tool}_executable", f"missing or not executable: {route.executable}"))
+            continue
+        version = _version(probes, [str(route.executable), "--version"])
+        if not version:
+            out.append(_bad(c, f"{tool}_executable", f"--version failed: {route.executable}"))
+            continue
+        out.append(_ok(c, f"{tool}_route", f"{model} via {route.executable} reports '{version}'"))
+        destinations = ", ".join(f"{d.hostname}:{d.port}" for d in route.permitted_destinations)
+        out.append(_ok(c, f"{tool}_egress", f"permitted destinations: {destinations}"))
+        if tool == "qwen":
+            out.extend(_check_local_model_backend(route, model, probes))
+    return out
+
+
+def _check_local_model_backend(
+    route: ToolRoute, model: str, probes: EnvironmentProbes
+) -> list[CheckResult]:
+    c = "agent_routes"
+    out: list[CheckResult] = []
+    for destination in route.permitted_destinations:
+        base = f"http://{destination.hostname}:{destination.port}"
+        version = probes.http_json(f"{base}/api/version")
+        tags = probes.http_json(f"{base}/api/tags")
+        if version is None or tags is None:
+            out.append(_bad(c, "qwen_backend", f"local model server not reachable at {base}"))
+            continue
+        names = {m.get("name") for m in tags.get("models", []) if isinstance(m, dict)}
+        if model in names:
+            out.append(_ok(c, "qwen_backend", f"local server {version.get('version')} at {base} serves {model}"))
+        else:
+            out.append(_bad(c, "qwen_backend", f"{model} is not installed on the local server at {base}"))
+    return out
+
+
+def _check_github(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "github_and_test_targets"
+    if not profile.github_repository:
+        return [CheckResult(c, "github", EXCLUDED, "selected feature names no GitHub target")]
+    repo = probes.github_api(f"repos/{profile.github_repository}")
+    if repo is None:
+        return [_unknown(c, "repository_access", f"cannot read {profile.github_repository}")]
+    permissions = repo.get("permissions") if isinstance(repo.get("permissions"), Mapping) else {}
+    out = [
+        _ok(c, "read_access", profile.github_repository)
+        if permissions.get("pull")
+        else _bad(c, "read_access", "no read access"),
+    ]
+    if not permissions.get("push"):
+        out.append(_bad(c, "write_access", "token lacks push permission"))
+    elif profile.exercise_github_write:
+        wrote, detail = probes.github_write(profile.github_repository)
+        out.append(_ok(c, "write_access", detail) if wrote else _bad(c, "write_access", detail))
+    else:
+        out.append(_unknown(c, "write_access", "token reports push permission; a write was not exercised"))
+    if profile.require_app_administration_read:
+        app = probes.github_app_permissions()
+        if app is None:
+            out.append(_unknown(c, "app_administration_read", "GitHub app permissions could not be read"))
+        elif app.get("administration") in ("read", "write"):
+            out.append(_ok(c, "app_administration_read", f"granted ({app['administration']})"))
+        else:
+            out.append(_bad(c, "app_administration_read", "GitHub app lacks Administration: read"))
+    return out
+
+
+def _check_service(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "service_and_network"
+    if not profile.needs_service:
+        return [CheckResult(c, "service", EXCLUDED, "selected feature does not require the running service")]
+    code, state = probes.run(["systemctl", "is-active", "maestro.service"])
+    return [
+        _ok(c, "service_state", "maestro.service active")
+        if code == 0 and state.strip() == "active"
+        else _bad(c, "service_state", f"maestro.service is {state.strip() or 'not reachable'}")
+    ]
+
+
+def _check_install(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "install_and_upgrade"
+    if profile.needs_service:
+        return [_unknown(c, "service_upgrade", "upgrade and rollback path not exercised by this preflight")]
+    return [CheckResult(c, "service_upgrade", EXCLUDED, "baseline agent run installs no service; tool versions are recorded under host_and_tools and agent_routes")]
+
+
+def _check_data(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "data_and_migration"
+    root = profile.workspace_root
+    out = [CheckResult(c, "schema_migration", EXCLUDED, "no service schema is involved in the baseline run")]
+    if not (root.is_dir() and os.access(root, os.W_OK | os.X_OK)):
+        return out + [_bad(c, "run_data_reset", f"cannot exercise reset; {root} is not writable")]
+    marker = root / f".preflight-reset-{os.getpid()}"
+    try:
+        marker.mkdir()
+        (marker / "output.txt").write_text("run-owned\n", encoding="utf-8")
+        shutil.rmtree(marker)
+    except OSError as error:
+        return out + [_bad(c, "run_data_reset", f"reset probe failed: {type(error).__name__}")]
+    return out + [
+        _ok(c, "run_data_reset", "created and removed a run-owned directory; no unrelated entry touched")
+        if not marker.exists()
+        else _bad(c, "run_data_reset", "run-owned directory survived reset")
+    ]
+
+
+def _check_observability(profile: FeatureProfile, probes: EnvironmentProbes) -> list[CheckResult]:
+    c = "observability_and_smoke"
+    if profile.progress_log is None:
+        if not profile.require_progress_channel:
+            return [CheckResult(c, "progress_channel", EXCLUDED, "selected feature does not require an external progress channel")]
+        return [_unknown(c, "progress_channel", "no Slack receipt log supplied; a LocalDurable row is not Slack delivery")]
+    try:
+        text = profile.progress_log.read_text(encoding="utf-8")
+    except OSError:
+        return [_unknown(c, "progress_channel", f"receipt log unreadable: {profile.progress_log}")]
+    receipts = [line for line in text.splitlines() if "sent heartbeat" in line]
+    if not receipts:
+        return [_unknown(c, "progress_channel", "no delivered receipt recorded")]
+    return [_ok(c, "progress_channel", f"{len(receipts)} delivered receipt(s); latest: {receipts[-1][:32]}")]
+
+
+def host_probes(app: tuple[str, str, Path] | None = None) -> EnvironmentProbes:
+    """Real observations: subprocesses, the gh CLI, and the coordinator app JWT."""
+
+    def run(command: Sequence[str]) -> tuple[int, str]:
+        try:
+            done = subprocess.run(
+                list(command), capture_output=True, text=True, timeout=30, check=False
+            )
+        except (OSError, subprocess.SubprocessError):
+            return 127, ""
+        return done.returncode, done.stdout or done.stderr
+
+    def github_api(path: str) -> Mapping[str, object] | None:
+        code, output = run(["gh", "api", path])
+        try:
+            value = json.loads(output) if code == 0 else None
+        except ValueError:
+            return None
+        return value if isinstance(value, dict) else None
+
+    def app_permissions() -> Mapping[str, str] | None:
+        if app is None:
+            return None
+        import urllib.error
+        import urllib.request
+
+        from maestro import github_client
+
+        app_id, installation_id, key_file = app
+        try:
+            credentials = github_client.GitHubAppCredentials(
+                app_id, installation_id, key_file.read_text(encoding="utf-8")
+            )
+            token = github_client._app_jwt(credentials, int(time.time()))
+            request = urllib.request.Request(
+                f"https://api.github.com/app/installations/{installation_id}",
+                headers=github_client._jwt_headers(token),
+            )
+            with urllib.request.urlopen(request, timeout=20) as response:
+                value = json.load(response)
+        except (OSError, ValueError, urllib.error.URLError, github_client.GitHubClientError):
+            return None
+        permissions = value.get("permissions") if isinstance(value, dict) else None
+        return permissions if isinstance(permissions, dict) else None
+
+    def http_json(url: str) -> Mapping[str, object] | None:
+        import urllib.error
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen(url, timeout=10) as response:
+                value = json.load(response)
+        except (OSError, ValueError, urllib.error.URLError):
+            return None
+        return value if isinstance(value, dict) else None
+
+    def github_write(repository: str) -> tuple[bool, str]:
+        """Create then delete one scratch branch; leaves no lasting change."""
+        info = github_api(f"repos/{repository}")
+        default = info.get("default_branch") if info else None
+        if not isinstance(default, str):
+            return False, f"cannot read the default branch of {repository}"
+        head = github_api(f"repos/{repository}/git/ref/heads/{default}")
+        sha = (head or {}).get("object", {}).get("sha") if isinstance(head, dict) else None
+        if not isinstance(sha, str):
+            return False, f"cannot read the {default} branch head"
+        name = f"maestro-preflight-{os.getpid()}-{int(time.time())}"
+        code, output = run(
+            ["gh", "api", "-X", "POST", f"repos/{repository}/git/refs",
+             "-f", f"ref=refs/heads/{name}", "-f", f"sha={sha}"]
+        )
+        if code != 0:
+            return False, "creating a scratch branch was refused"
+        code, _ = run(["gh", "api", "-X", "DELETE", f"repos/{repository}/git/refs/heads/{name}"])
+        if code != 0:
+            return False, f"created scratch branch {name} but could not delete it"
+        return True, "created and deleted a scratch branch"
+
+    return EnvironmentProbes(
+        run, lambda: int(time.time() * 1000), github_api, app_permissions, http_json, github_write
+    )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run the Maestro development environment preflight")
+    parser.add_argument("--feature", required=True)
+    parser.add_argument("--repository", type=Path, required=True)
+    parser.add_argument("--revision")
+    parser.add_argument("--agents-config", type=Path, required=True)
+    parser.add_argument("--workspace-root", type=Path, required=True)
+    parser.add_argument("--tool", action="append", default=[], metavar="TOOL:MODEL")
+    parser.add_argument("--credential", action="append", default=[], metavar="TOOL=PATH")
+    parser.add_argument("--github-repository")
+    parser.add_argument("--github-app", metavar="APP_ID:INSTALLATION_ID:KEYFILE")
+    parser.add_argument("--require-app-administration-read", action="store_true")
+    parser.add_argument("--exercise-github-write", action="store_true")
+    parser.add_argument("--needs-service", action="store_true")
+    parser.add_argument("--progress-log", type=Path)
+    parser.add_argument("--require-progress-channel", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    tools = tuple(tuple(value.split(":", 1)) for value in args.tool if ":" in value)
+    credentials = {k: Path(v) for k, _, v in (item.partition("=") for item in args.credential) if v}
+    profile = FeatureProfile(
+        name=args.feature,
+        repository=args.repository,
+        revision=args.revision,
+        agents_config=args.agents_config,
+        workspace_root=args.workspace_root,
+        tools=tools,  # type: ignore[arg-type]
+        credential_files=credentials,
+        github_repository=args.github_repository,
+        require_app_administration_read=args.require_app_administration_read,
+        exercise_github_write=args.exercise_github_write,
+        needs_service=args.needs_service,
+        progress_log=args.progress_log,
+        require_progress_channel=args.require_progress_channel,
+    )
+    app = None
+    if args.github_app:
+        app_id, installation_id, key_file = args.github_app.split(":", 2)
+        app = (app_id, installation_id, Path(key_file))
+    report = run_environment_preflight(profile, host_probes(app))
+    print(json.dumps(report.as_dict(), indent=2) if args.json else report.render())
+    return 0 if report.passed else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

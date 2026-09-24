@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import stat
 import subprocess
 from dataclasses import dataclass
@@ -52,7 +53,7 @@ class ServiceProfileBinding:
     service_home: Path
 
     def __post_init__(self) -> None:
-        if self.tool not in {"codex", "claude_code"}:
+        if self.tool not in {"codex", "claude_code", "qwen"}:
             raise WorkspaceError("invalid_profile", "profile tool is unsupported")
         canonical_identifier(self.credential_profile, "credential_profile")
         canonical_identifier(self.settings_profile, "settings_profile")
@@ -74,6 +75,7 @@ class ServiceProfileBinding:
     def mounts(self) -> tuple[tuple[Path, PurePosixPath], ...]:
         layouts = {
             "codex": ((".codex/auth.json", ".codex/auth.json"),),
+            "qwen": ((".qwen/settings.json", ".qwen/settings.json"),),
             "claude_code": (
                 (".claude.json", ".claude.json"),
                 (".claude/.credentials.json", ".claude/.credentials.json"),
@@ -247,7 +249,7 @@ class PreparedWorkspace:
         self, route_tool: str, isolated_arguments: Sequence[str]
     ) -> tuple[str, ...]:
         """Bind an isolated launch to the installed root-supervised egress guard."""
-        if route_tool not in {"codex", "claude_code"}:
+        if route_tool not in {"codex", "claude_code", "qwen"}:
             raise WorkspaceError("invalid_launch", "agent route tool is unsupported")
         try:
             canonical_identifier(self.run_id, "run_id")
@@ -410,6 +412,26 @@ class WorkspaceManager:
             # Preserve an interrupted/failed workspace for diagnosis; callers choose cleanup.
             raise
 
+    def reset(self, workspace: PreparedWorkspace) -> None:
+        """Remove one run's workspace, including read-only and agent-locked entries."""
+        run = workspace.paths.root
+        if (
+            run.is_symlink()
+            or not run.is_dir()
+            or self.root not in run.parents
+            or run.parent.name != "runs"
+        ):
+            raise WorkspaceError("reset_refused", "path is not a run workspace owned by this manager")
+        for base, directories, _ in os.walk(run):
+            for name in directories:
+                path = Path(base, name)
+                if not path.is_symlink():
+                    path.chmod(path.lstat().st_mode | 0o700)
+        run.chmod(run.lstat().st_mode | 0o700)
+        shutil.rmtree(run)
+        if run.exists() or run.is_symlink():
+            raise WorkspaceError("reset_failed", "run workspace could not be removed")
+
     @staticmethod
     def _checkout(repository: Path, commit: str, destination: Path) -> None:
         try:
@@ -521,6 +543,8 @@ def _runtime_paths(executable: Path) -> tuple[Path, ...]:
         companion = executable.with_name("codex-code-mode-host")
         if companion.is_file() and os.access(companion, os.X_OK):
             tool_companions = (companion,)
+    elif executable.name == "node" and executable.with_name("qwen-code").is_dir():
+        tool_companions = (executable.with_name("qwen-code"),)
     candidates = (
         Path("/usr"),
         Path("/bin"),

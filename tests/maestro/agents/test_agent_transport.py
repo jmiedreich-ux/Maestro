@@ -469,6 +469,30 @@ class AgentTransportTests(unittest.TestCase):
             0o404, workspace.paths.input.joinpath("brief.txt").stat().st_mode & 0o777
         )
 
+    def test_reset_removes_a_run_including_read_only_and_locked_entries(self) -> None:
+        assignment = self._assignment("project_architect", "run-reset")
+        workspace = self._workspace(assignment, {"brief.txt": b"assigned input\n"})
+        locked = workspace.paths.scratch / "home" / ".tool"
+        locked.mkdir(parents=True)
+        (locked / "session.json").write_text("{}")
+        locked.chmod(0o500)
+        (workspace.paths.output / "result.json").write_text("{}")
+        self.manager.reset(workspace)
+        self.assertFalse(workspace.paths.root.exists())
+        self.assertTrue((self.root / "workspaces").is_dir())
+
+    def test_reset_refuses_a_path_that_is_not_a_run_workspace(self) -> None:
+        assignment = self._assignment("project_architect", "run-reset-refused")
+        workspace = self._workspace(assignment, {"brief.txt": b"assigned input\n"})
+        from dataclasses import replace
+
+        outside = replace(
+            workspace, paths=replace(workspace.paths, root=self.root / "workspaces")
+        )
+        with self.assertRaises(WorkspaceError) as caught:
+            self.manager.reset(outside)
+        self.assertEqual(caught.exception.code, "reset_refused")
+
     def test_reviewer_has_separate_read_only_source_and_exact_assigned_artifacts(self) -> None:
         candidate = b'{"candidate":1}\n'
         assessment = b'{"assessment":1}\n'

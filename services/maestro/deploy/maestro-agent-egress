@@ -25,6 +25,7 @@ PROFILE_FILES = {
     Path(".codex/auth.json"),
     Path(".claude.json"),
     Path(".claude/.credentials.json"),
+    Path(".qwen/settings.json"),
 }
 CALLER_FD_OPTIONS = frozenset(
     {
@@ -86,6 +87,8 @@ def _tool_runtime_ro_sources(route: str, executable: Path) -> frozenset[Path]:
     sources = {executable}
     if route == "codex" and executable.name == "codex":
         sources.add(executable.with_name("codex-code-mode-host"))
+    if route == "qwen" and executable.name == "node":
+        sources.add(executable.with_name("qwen-code"))
     return frozenset(sources)
 
 
@@ -132,7 +135,7 @@ def load_destinations(configuration: dict[str, object], route: str) -> list[tupl
 
 def load_route_executable(configuration: dict[str, object], route: str) -> Path:
     """Load one installed tool executable from the protected route table."""
-    if route not in {"codex", "claude_code"}:
+    if route not in {"codex", "claude_code", "qwen"}:
         fail("configured route is invalid")
     try:
         value = configuration["tools"][route]["executable"]
@@ -207,7 +210,7 @@ def unit_name(run_id: str) -> str:
 
 
 def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[str]:
-    if route not in {"codex", "claude_code"} or not valid_run_id(run_id):
+    if route not in {"codex", "claude_code", "qwen"} or not valid_run_id(run_id):
         fail("route or run identifier is invalid")
     if not bwrap_arguments or bwrap_arguments[0] != BWRAP or "--" not in bwrap_arguments:
         fail("isolated command is invalid")
@@ -229,8 +232,31 @@ def outer_command(route: str, run_id: str, bwrap_arguments: list[str]) -> list[s
 def run_outer() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 5:
         fail("must run as root with route, run identifier, and isolated command")
-    process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+    try:
+        process = subprocess.run(outer_command(sys.argv[1], sys.argv[2], sys.argv[3:]), check=False)
+    finally:
+        reclaim_run(sys.argv[2])
     raise SystemExit(process.returncode)
+
+
+def reclaim_run(run_id: str) -> None:
+    """Hand the agent-written folders of a finished run back to the service for reset."""
+    if not valid_run_id(run_id):
+        return
+    try:
+        root = load_workspace_root(load_configuration())
+        service = pwd.getpwnam(SERVICE_USER)
+    except (KeyError, SystemExit):
+        return
+    for run in root.glob(f"*/*/runs/{run_id}"):
+        if run.is_symlink() or not run.is_dir():
+            continue
+        for name in ("output", "scratch"):
+            folder = run / name
+            if folder.is_symlink() or not folder.is_dir():
+                continue
+            subprocess.run(["/usr/bin/chown", "-R", "-h", f"{service.pw_uid}:{service.pw_gid}", str(folder)], check=False)
+            subprocess.run(["/usr/bin/chmod", "-R", "u+rwX", str(folder)], check=False)
 
 
 def rule_table(unit: str) -> str:
@@ -396,7 +422,7 @@ def profile_data_mounts(
                         )
                         index += 3
                         continue
-                    if relative.parts and relative.parts[0] in {".codex", ".claude"}:
+                    if relative.parts and relative.parts[0] in {".codex", ".claude", ".qwen"}:
                         fail("credential profile is unsupported")
                 if value == "--ro-bind" and source == hosts_path and target == Path("/etc/hosts"):
                     rewritten.extend((value, str(source), str(target)))
@@ -466,7 +492,7 @@ def run_inner() -> None:
     if os.geteuid() != 0 or len(sys.argv) < 7 or "--" not in sys.argv:
         fail("invalid root-supervised launch")
     route, unit, hosts = sys.argv[1], sys.argv[2], Path(sys.argv[3])
-    if route not in {"codex", "claude_code"} or not unit.startswith("maestro-agent-") or not hosts.is_file():
+    if route not in {"codex", "claude_code", "qwen"} or not unit.startswith("maestro-agent-") or not hosts.is_file():
         fail("invalid root-supervised launch")
     separator = sys.argv.index("--")
     try:
