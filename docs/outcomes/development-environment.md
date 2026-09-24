@@ -4,7 +4,7 @@ This outcome prepares the environment used to build Maestro itself. It does not 
 
 ## Prepare a verified development environment
 
-**Outcome:** A developer or assigned agent can start in a clean workspace, read the assigned source, write an output, run a baseline check and exit cleanly. A single preflight identifies every unmet requirement for the selected feature before dispatch or assembled QA. The baseline environment can pass before the service is built; service checks become required when later features depend on it.
+**Outcome:** A developer or assigned agent can start in a clean workspace, read the assigned source, write an output, run a baseline check and exit cleanly. One [environment contract](../development-process/environment-contract.md) and preflight report every category and every unmet applicable requirement for the selected feature before dispatch or assembled QA. The baseline environment can pass before the service is built; service checks become required when later features depend on it.
 
 **Included:** Linux host and tools, service revision when the service is available, repository access, owner and service credentials, selected model routes, sandbox mounts and permissions, ports and running dependencies, realistic test targets and data, a reusable known-good workspace, and a documented reset of run-owned data.
 
@@ -12,4 +12,4 @@ This outcome prepares the environment used to build Maestro itself. It does not 
 
 **Failure behavior:** Preflight blocks only affected work and reports all missing items together. Environment failures are fixed and rechecked outside the coder's review count. Unknown access or installed state remains unverified; the developer does not improvise a substitute.
 
-See [the development delivery rules](../planning/manual-architecture/packet-rules.md) and [the roadmap](../planning/outcomes.md).
+See [the development delivery rules](../development-process/delivery-rules.md) and [the roadmap](../planning/outcomes.md).

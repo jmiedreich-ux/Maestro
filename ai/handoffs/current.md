@@ -1,7 +1,7 @@
 # Current Maestro development state
 
-- Active scope: [manual development registration](../../docs/planning/manual-registration.md) of the [ordered outcomes](../../docs/planning/outcomes.md).
-- Source revision: `d4702dcfcec74f376160756eda0f3c8216e05acc` for the registered overview, architecture, outcome specifications and roadmap.
-- Development status: outcome roadmap registered; [verified development environment milestone](../../docs/planning/milestones.md) planned; no upfront packet inventory allocated. The Owner reports implementation through initial registration. Existing code is the reuse and adaptation baseline; installed and connected verification is required before an outcome is marked done.
-- Next step: assign the [environment verification feature](../../docs/planning/features/verify-development-environment.md), inspect existing host and agent tooling for reuse, and prove the first outcome on the actual Linux host. Then assess the persistent service as outcome 2; do not skip outcomes because source exists.
-- Open blockers: actual host, credential and model-route readiness have not been checked in this documentation session. They block environment acceptance; service-install and external integration readiness will be checked when applicable to later features.
+- Scope: [manual development registration](../../docs/planning/manual-registration.md) and [ordered outcomes](../../docs/planning/outcomes.md).
+- Status: [verified development environment milestone](../../docs/planning/milestones.md) planned; [prerequisite pass](../../docs/planning/prerequisite-pass.md) unverified. Existing service, terminal, agent and registration code is available for reuse assessment, not accepted as an installed outcome.
+- Next: assign the [environment feature](../../docs/planning/features/verify-development-environment.md), confirm its file allowlist, check the actual host and run the [environment contract](../../docs/development-process/environment-contract.md). Then assess the persistent service.
+- Reported blockers awaiting host verification: Claude OAuth token may be expired; GitHub app may lack Administration: read permission; private QA repository branches may be protected against the required test writes; `agents.toml` route configuration may be unavailable or incorrect. Check each on the actual target; do not assume it remains broken or has been fixed.
+- Other unverified conditions: installed tools, selected model identity, workspace permissions, credentials and realistic data/reset. No host check or outcome acceptance is recorded.

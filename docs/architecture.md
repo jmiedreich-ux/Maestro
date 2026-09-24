@@ -1173,7 +1173,7 @@ Questions affecting intended outcomes, scope, conflicting requirements, or Owner
 
 This follows registration's linked clarification pattern. Answers remain associated with their project, activity, and question; a clarification answer is not confirmation of the breakdown.
 
-### Work-packet-first breakdown
+### Development breakdown and dependencies
 
 The architect maps the confirmed outcomes to development milestones and identifies the next bounded feature contributions. A feature packet has one responsible implementer, a usable result, the connections needed to produce it, and observable completion criteria. The implementer may divide the code into small internal steps without creating separate delivery and review cycles for disconnected parts. An enabling provider packet is valid when it names its consumer, demonstrates its actual boundary with a minimal caller, and does not claim the future consumer works.
 

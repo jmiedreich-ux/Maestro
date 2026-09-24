@@ -80,7 +80,7 @@ A real confirmed project reaches saved, inspectable foundations through the CLI 
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Packet-first breakdown and parallelism | `docs/architecture.md#work-packet-first-breakdown` |
+| Development breakdown and parallelism | `docs/architecture.md#development-breakdown-and-dependencies` |
 | Questions and answers | `docs/architecture.md#information-sufficiency-and-clarification` |
 | Ongoing product coherence | `docs/architecture.md#whole-product-architectural-evaluation` |
 | Exact schemas and allocation | `docs/architecture.md#architecture-schema-and-process-definition-binding`; `docs/architecture.md#architecture-assignment-and-response-contract` |

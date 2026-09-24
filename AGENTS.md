@@ -4,7 +4,7 @@ These rules apply to every agent working in this repository.
 
 ## Plain language
 
-Never reference a milestone, decision, work packet, review, or other coded item by its identifier alone. Always include its plainly worded subject with the identifier.
+Use plainly worded subjects for milestones, decisions, work packets, reviews and other reader-facing items. Identifiers belong only in machine records or exact references that require them; do not use a code as a reader-facing name.
 
 Write all repository documentation and agent responses in plain language. Keep them concise, direct, and limited to information that helps the reader act.
 
@@ -14,7 +14,7 @@ Across all Maestro work, apply the [verification expectations](docs/planning-gui
 
 ## Git changes
 
-Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/planning/manual-architecture/packet-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
+Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/development-process/delivery-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
 
 The [product Execution branch model](docs/architecture.md#milestone-branches-and-product-integration) specifies how Maestro will manage registered projects after that behavior is implemented. It does not direct the manual work of building Maestro.
 
@@ -30,7 +30,11 @@ Use [the Maestro development roadmap](docs/planning/outcomes.md) for building Ma
 
 ## Documentation review results
 
-Apply corrections directly to authoritative documents. Do not present detailed results or create standalone review reports unless requested. Retain required coverage in existing workshop state, handoff, or runtime records under the [documentation review method](skills/project-architecture-workshop/references/reviews.md#coverage-and-findings). Incomplete coverage is not a completed review and consumes no round. This does not remove runtime review records.
+Apply corrections directly to authoritative documents. Do not present detailed results or create standalone review reports unless requested. Retain required coverage in existing workshop state or runtime records under the [documentation review method](skills/project-architecture-workshop/references/reviews.md#coverage-and-findings). Incomplete coverage is not a completed review and consumes no round. This does not remove runtime review records.
+
+## Handoff discipline
+
+Follow [handoff rules](docs/development-process/handoff-rules.md). Keep the handoff short and replace stale status instead of appending reviews, transcripts or history.
 
 ## Cross-document alignment
 
