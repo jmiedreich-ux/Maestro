@@ -166,7 +166,23 @@ def _export(repository: Path, revision: str, destination: Path) -> Path:
     )
     if unpacked.returncode != 0:
         raise UpgradeError("cannot unpack the exported revision")
-    return destination / "services/maestro"
+    package = destination / "services/maestro"
+    _stamp_version(repository, revision, package)
+    return package
+
+
+def _stamp_version(repository: Path, revision: str, package: Path) -> None:
+    """Give the installed package the version 0.1.<commits on the revision>, so each install is distinguishable."""
+    counted = subprocess.run(
+        ["git", "-C", str(repository), "rev-list", "--count", revision],
+        capture_output=True, text=True, check=False,
+    )
+    project = package / "pyproject.toml"
+    if counted.returncode != 0 or not counted.stdout.strip().isdigit() or not project.is_file():
+        return
+    text = project.read_text(encoding="utf-8")
+    stamped = re.sub(r'(?m)^version = "[^"]*"$', f'version = "0.1.{counted.stdout.strip()}"', text, count=1)
+    project.write_text(stamped, encoding="utf-8")
 
 
 def _backup(target: UpgradeTarget, effects: Effects, backup: Path) -> None:

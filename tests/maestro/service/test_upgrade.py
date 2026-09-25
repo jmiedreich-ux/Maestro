@@ -119,6 +119,17 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(upgrade_module.installed_revision(self.target), new)
         self.assertEqual(json.loads((Path(receipt.backup) / "receipt.json").read_text())["outcome"], "upgraded")
 
+    def test_installed_version_is_stamped_with_the_commit_count(self) -> None:
+        (self.repo / "services" / "maestro" / "pyproject.toml").write_text('[project]\nname = "maestro"\nversion = "0.1.0a1"\n')
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "add project file")
+        new = self.commit("2", tag="passed/two")
+        count = self.git("rev-list", "--count", new)
+        workspace = self.tmp / "export"
+        workspace.mkdir()
+        exported = upgrade_module._export(self.repo, new, workspace)
+        self.assertIn(f'version = "0.1.{count}"', (exported / "pyproject.toml").read_text())
+
     def test_shipped_schema_bundles_are_added_once_and_never_changed(self) -> None:
         shipped = self.target.under(self.target.venv / "share/maestro/schemas/demo-process/1")
         shipped.mkdir(parents=True)
