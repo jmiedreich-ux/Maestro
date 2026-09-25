@@ -624,6 +624,20 @@ class TerminalWorkspaceTest(unittest.TestCase):
         self.assertFalse(workspace.stale)
         self.assertIsNone(workspace.error)
 
+    def test_wrong_input_clears_the_prompt_and_shows_the_error_below_it(self) -> None:
+        workspace = Workspace(self.client)
+        workspace.refresh()
+        for character in "hello":
+            workspace.handle_key(character)
+        with self.assertRaises(WorkspaceError) as raised:
+            workspace.handle_key("ENTER")
+        self.assertEqual("", workspace.input.text)
+        workspace.error = str(raised.exception)
+        lines = TerminalRenderer().render(workspace, TerminalSize(100, 30)).splitlines()
+        prompt = max(i for i, line in enumerate(lines) if line.startswith("Maestro$"))
+        self.assertEqual("Maestro$ ", lines[prompt])
+        self.assertTrue(lines[prompt + 1].startswith("ERROR: input accepts commands"))
+
     def test_empty_failure_and_malformed_data_never_look_like_success(self) -> None:
         empty = Workspace(self.client)
         empty.refresh()
@@ -678,7 +692,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         self.assertEqual(self.client, seen[0][0])
         self.assertEqual("project-one", seen[0][1])
         self.assertFalse(hasattr(context, "database"))
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(WorkspaceError, "Unknown command /not-installed"):
             workspace.run_command("not-installed")
         recovery = next(item for item in workspace.attention if item.type == "recovery")
         workspace.open_attention(recovery.cursor)

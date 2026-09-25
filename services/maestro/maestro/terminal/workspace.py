@@ -531,6 +531,7 @@ class Workspace:
             return None
         if not text.startswith("/"):
             if self.input.question_id is None:
+                self.input.clear()
                 raise WorkspaceError(
                     "input accepts commands until a question is selected"
                 )
@@ -568,6 +569,8 @@ class Workspace:
             return None
         if name == "help":
             return ("projects", "attention", "findings") + self.extensions.command_names
+        if name not in self.extensions.command_names:
+            raise WorkspaceError(f"Unknown command /{command}. Type /help for all commands.")
         self._require_online()
         return self.extensions.invoke_command(
             name, ExtensionContext(self.client, self), arguments

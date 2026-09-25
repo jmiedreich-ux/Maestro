@@ -31,6 +31,8 @@ class TerminalRenderer:
 
     def __init__(self, *, color: bool = False) -> None:
         self.color = color
+        self.trailing_lines = 0
+        self.prompt_column = 0
 
     def render(self, workspace: Workspace, size: TerminalSize) -> str:
         if size.columns < MINIMUM_COLUMNS or size.rows < MINIMUM_ROWS:
@@ -38,9 +40,12 @@ class TerminalRenderer:
         lines = [self._header(workspace)]
         banner = self._banner(workspace, size)
         lines.extend(banner)
+        error_lines: list[str] = []
         if workspace.error:
-            prefix = "STALE" if workspace.stale else "ERROR"
-            lines.append(f"{prefix}: {workspace.error}")
+            if workspace.stale:
+                lines.append(f"STALE: {workspace.error}")
+            else:
+                error_lines.append(f"ERROR: {workspace.error}")
         if workspace.view == View.PROJECTS:
             lines.extend(self._projects(workspace))
         elif workspace.view == View.ATTENTION:
@@ -53,17 +58,21 @@ class TerminalRenderer:
             lines.extend(self._conversation(workspace, size.rows))
         input_lines = self._input(workspace)
         lines.extend(input_lines)
+        lines.extend(error_lines)
         fitted = _fit(lines, size.columns)
+        self.trailing_lines = len(_fit(error_lines, size.columns))
+        self.prompt_column = min(size.columns - 1, len(input_lines[-1]))
         if self.color:
             fitted[0] = f"{STATUS_BAR}{fitted[0].ljust(size.columns)}{RESET}"
             for index in range(1, 1 + len(banner)):
                 fitted[index] = f"{GREEN}{fitted[index]}{RESET}"
-            for index in range(len(fitted) - len(input_lines), len(fitted)):
+            last_input = len(fitted) - self.trailing_lines
+            for index in range(last_input - len(input_lines), last_input):
                 if fitted[index].startswith(PROMPT):
                     fitted[index] = f"{GREEN}{PROMPT.rstrip()}{RESET} " + fitted[index][len(PROMPT):]
         if len(fitted) > size.rows:
             # Keep the status bar (and any error line) on top; drop the oldest lines below.
-            pinned = 2 if workspace.error else 1
+            pinned = 2 if workspace.error and workspace.stale else 1
             fitted = fitted[:pinned] + fitted[-(size.rows - pinned):]
         return "\n".join(fitted)
 
@@ -265,7 +274,7 @@ def _fit(lines: list[str], columns: int) -> list[str]:
     for line in lines:
         parts = line.split("\n")
         for index, part in enumerate(parts):
-            if index or part.startswith("Question: "):
+            if index or part.startswith(("Question: ", "ERROR: ", "STALE: ")):
                 fitted.extend(
                     textwrap.wrap(part, columns, subsequent_indent="  ") or [""]
                 )

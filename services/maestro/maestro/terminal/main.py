@@ -120,6 +120,7 @@ class TerminalApplication:
         self._explicit_connect = False
         self._exit_warning_text: str | None = None
         self._cursor_at_prompt = False
+        self._lines_below_prompt = 0
         self.connection.subscribe(self._handle_status)
 
     def run(self) -> int:
@@ -352,13 +353,19 @@ class TerminalApplication:
         if getattr(self.output, "isatty", lambda: False)():
             # Leave the cursor right after the prompt text, where typing appears.
             self.output.write("\x1b[2J\x1b[H" + rendered)
+            up = self.renderer.trailing_lines
+            if up:
+                self.output.write(f"\x1b[{up}A\r\x1b[{self.renderer.prompt_column}C")
             self._cursor_at_prompt = True
+            self._lines_below_prompt = up
         else:
             self.output.write(rendered + "\n")
         self.output.flush()
 
     def _write(self, message: str) -> None:
         if self._cursor_at_prompt:
+            if self._lines_below_prompt:
+                self.output.write(f"\x1b[{self._lines_below_prompt}B")
             self.output.write("\n")
             self._cursor_at_prompt = False
         self.output.write(message + "\n")
