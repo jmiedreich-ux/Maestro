@@ -533,7 +533,7 @@ class Workspace:
             if self.input.question_id is None:
                 self.input.clear()
                 raise WorkspaceError(
-                    "input accepts commands until a question is selected"
+                    f"Unknown command {text.split()[0]}. Type /help for all commands."
                 )
             if self.input.extension_name in self.extensions.input_names:
                 self._require_online()

@@ -636,7 +636,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         lines = TerminalRenderer().render(workspace, TerminalSize(100, 30)).splitlines()
         prompt = max(i for i, line in enumerate(lines) if line.startswith("Maestro$"))
         self.assertEqual("Maestro$ ", lines[prompt])
-        self.assertTrue(lines[prompt + 1].startswith("ERROR: input accepts commands"))
+        self.assertTrue(lines[prompt + 1].startswith("ERROR: Unknown command hello."))
 
     def test_empty_failure_and_malformed_data_never_look_like_success(self) -> None:
         empty = Workspace(self.client)
@@ -728,7 +728,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         )
         workspace.input.text = "ordinary conversation"
         workspace.input.cursor = len(workspace.input.text)
-        with self.assertRaisesRegex(WorkspaceError, "accepts commands"):
+        with self.assertRaisesRegex(WorkspaceError, "Unknown command ordinary"):
             workspace.submit_input()
 
     def test_keyboard_focus_navigation_and_enter_activate_only_focused_target(self) -> None:
