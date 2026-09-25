@@ -17,6 +17,7 @@ BANNER_MINIMUM_ROWS = 30
 PROMPT = "Maestro$ "
 GREEN = "\x1b[32m"
 RESET = "\x1b[0m"
+STATUS_BAR = "\x1b[48;5;238m\x1b[38;5;75m"
 
 
 @dataclass(frozen=True)
@@ -54,11 +55,16 @@ class TerminalRenderer:
         lines.extend(input_lines)
         fitted = _fit(lines, size.columns)
         if self.color:
+            fitted[0] = f"{STATUS_BAR}{fitted[0].ljust(size.columns)}{RESET}"
             for index in range(1, 1 + len(banner)):
                 fitted[index] = f"{GREEN}{fitted[index]}{RESET}"
             for index in range(len(fitted) - len(input_lines), len(fitted)):
                 if fitted[index].startswith(PROMPT):
                     fitted[index] = f"{GREEN}{PROMPT.rstrip()}{RESET} " + fitted[index][len(PROMPT):]
+        if len(fitted) > size.rows:
+            # Keep the status bar (and any error line) on top; drop the oldest lines below.
+            pinned = 2 if workspace.error else 1
+            fitted = fitted[:pinned] + fitted[-(size.rows - pinned):]
         return "\n".join(fitted)
 
     @staticmethod
