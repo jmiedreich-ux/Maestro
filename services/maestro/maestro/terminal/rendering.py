@@ -98,7 +98,7 @@ class TerminalRenderer:
     @staticmethod
     def _projects(workspace: Workspace) -> list[str]:
         if not workspace.projects and workspace.error is None:
-            return ["Type /help for all commands."]
+            return ["Type /help for all commands.", ""]
         lines = ["Projects"]
         for project in workspace.projects:
             focus = _focus(workspace, "project", project.project_id)
