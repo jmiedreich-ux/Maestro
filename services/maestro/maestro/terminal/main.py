@@ -109,7 +109,10 @@ class TerminalApplication:
         execution.install(extensions)
         RegistrationExtension(architecture=architecture, execution=execution).install(extensions)
         self.workspace = Workspace(self.connection.client, extensions=extensions)
-        self.renderer = TerminalRenderer()
+        self.renderer = TerminalRenderer(
+            color=getattr(output_stream, "isatty", lambda: False)()
+            and "NO_COLOR" not in os.environ
+        )
         self._lock = threading.RLock()
         self._stopping = threading.Event()
         self._resized = threading.Event()

@@ -11,6 +11,9 @@ from .workspace import View, Workspace
 MINIMUM_COLUMNS = 80
 MINIMUM_ROWS = 24
 MAXIMUM_INPUT_LINES = 6
+PROMPT = "Maestro$ "
+GREEN = "\x1b[32m"
+RESET = "\x1b[0m"
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,9 @@ class TerminalSize:
 
 class TerminalRenderer:
     """Render actual workspace state without performing service operations."""
+
+    def __init__(self, *, color: bool = False) -> None:
+        self.color = color
 
     def render(self, workspace: Workspace, size: TerminalSize) -> str:
         if size.columns < MINIMUM_COLUMNS or size.rows < MINIMUM_ROWS:
@@ -39,8 +45,14 @@ class TerminalRenderer:
             lines.extend(self._extension(workspace))
         else:
             lines.extend(self._conversation(workspace, size.rows))
-        lines.extend(self._input(workspace))
-        return "\n".join(_fit(lines, size.columns))
+        input_lines = self._input(workspace)
+        lines.extend(input_lines)
+        fitted = _fit(lines, size.columns)
+        if self.color:
+            for index in range(len(fitted) - len(input_lines) + 1, len(fitted)):
+                if fitted[index].startswith(PROMPT):
+                    fitted[index] = f"{GREEN}{PROMPT.rstrip()}{RESET} " + fitted[index][len(PROMPT):]
+        return "\n".join(fitted)
 
     @staticmethod
     def _header(workspace: Workspace) -> str:
@@ -201,8 +213,9 @@ class TerminalRenderer:
         else:
             context = "No project selected — commands only"
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
-        prompt = _focus(workspace, "editor", "input")
-        return [f"  Input | {context}"] + [f"{prompt} {line}" for line in text_lines]
+        focused = _focus(workspace, "editor", "input") == ">"
+        prompt = PROMPT if focused else " " * len(PROMPT)
+        return [f"  Input | {context}"] + [f"{prompt}{line}" for line in text_lines]
 
 
 _REGISTRATION_LABELS = {
