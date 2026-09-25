@@ -56,7 +56,7 @@ class TerminalRenderer:
         if self.color:
             for index in range(1, 1 + len(banner)):
                 fitted[index] = f"{GREEN}{fitted[index]}{RESET}"
-            for index in range(len(fitted) - len(input_lines) + 1, len(fitted)):
+            for index in range(len(fitted) - len(input_lines), len(fitted)):
                 if fitted[index].startswith(PROMPT):
                     fitted[index] = f"{GREEN}{PROMPT.rstrip()}{RESET} " + fitted[index][len(PROMPT):]
         return "\n".join(fitted)
@@ -98,10 +98,7 @@ class TerminalRenderer:
     @staticmethod
     def _projects(workspace: Workspace) -> list[str]:
         if not workspace.projects and workspace.error is None:
-            return [
-                "No projects registered yet.",
-                "To start, type /register <owner/repository> <overview-path>. Type /help for all commands.",
-            ]
+            return ["Type /help for all commands."]
         lines = ["Projects"]
         for project in workspace.projects:
             focus = _focus(workspace, "project", project.project_id)
@@ -243,7 +240,8 @@ class TerminalRenderer:
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
         focused = _focus(workspace, "editor", "input") == ">"
         prompt = PROMPT if focused else " " * len(PROMPT)
-        return [f"  Input | {context}"] + [f"{prompt}{line}" for line in text_lines]
+        label = [] if context.startswith("No project selected") else [f"  Input | {context}"]
+        return label + [f"{prompt}{line}" for line in text_lines]
 
 
 _REGISTRATION_LABELS = {

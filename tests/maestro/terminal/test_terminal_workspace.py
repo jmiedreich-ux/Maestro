@@ -628,7 +628,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         empty = Workspace(self.client)
         empty.refresh()
         rendered = TerminalRenderer().render(empty, TerminalSize(100, 30))
-        self.assertIn("No projects registered", rendered)
+        self.assertIn("Type /help for all commands.", rendered)
         self.assertNotIn("ERROR:", rendered)
 
         class FailedClient:
@@ -639,7 +639,7 @@ class TerminalWorkspaceTest(unittest.TestCase):
         failed.refresh()
         rendered = TerminalRenderer().render(failed, TerminalSize(100, 30))
         self.assertIn("ERROR: database unavailable", rendered)
-        self.assertNotIn("No projects registered", rendered)
+        self.assertNotIn("Type /help for all commands.", rendered)
 
         class MalformedClient:
             def workspace(self, *, connect_timeout: bool = False):
