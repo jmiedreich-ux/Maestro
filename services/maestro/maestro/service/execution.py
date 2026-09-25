@@ -27,6 +27,7 @@ from maestro.foundation import Database, DomainMigration, Transaction, canonical
 from . import execution_config, execution_git
 from .execution_integration import INTEGRATION_MIGRATION, IntegrationMixin, is_delivered
 from .execution_determination import DeterminationMixin
+from .execution_gaps import GAP_MIGRATION, GapMixin
 from .execution_support import SUPPORT_MIGRATION, SupportMixin
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ConversationRecord, QuestionRecord
 from .agent_runs import AgentRunError, AgentRunService, RunBuild
@@ -240,7 +241,7 @@ def _paths_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
     return any(inside(x, y) or inside(y, x) for x in a for y in b)
 
 
-class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
+class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
     """Owns Execution state; the worker thread calls ``tick`` repeatedly."""
 
     def __init__(
@@ -274,11 +275,12 @@ class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
         database.registry.register(EXECUTION_MIGRATION)
         database.registry.register(INTEGRATION_MIGRATION)
         database.registry.register(SUPPORT_MIGRATION)
+        database.registry.register(GAP_MIGRATION)
         database.initialize()
 
     @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
-        return (OperationHandler("execution.start", self.prepare_start),)
+        return (OperationHandler("execution.start", self.prepare_start), OperationHandler("execution.record_finding", self.prepare_record_finding))
 
     def owns(self, activity_id: str) -> bool:
         return self._read("SELECT 1 AS n FROM service_executions WHERE activity_id = ?", (activity_id,)) is not None
@@ -501,6 +503,7 @@ class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
         self._advance_manager(row)
         self._advance_support(row)
         self._advance_determinations(row)
+        self._advance_gaps(row)
         self._verify_deliveries(row)
         self._plan_deliveries(row)
         self._enqueue_approved(row)
@@ -1322,8 +1325,8 @@ class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
         supports = self._architects(activity_id, "support")
         support_active = [a for a in supports if a["state"] in ("requested", "drafting", "reviewing", "correcting", "publishing", "recommending")]
         support_stuck = [a for a in supports if a["state"] in ("limit_paused", "blocked_route", "replanning_required")]
-        determinations = self._architects(activity_id, "determination")
-        support_active += [a for a in determinations if a["state"] in ("requested", "determining")]
+        determinations = [a for a in self._architects(activity_id) if a["kind"] != "support"]
+        support_active += [a for a in determinations if a["state"] in ("requested", "determining", "publishing")]
         support_stuck += [a for a in determinations if a["state"] in ("blocked_route", "awaiting_disposition")]
         if self._settled_for_replanning(row):
             self._end_for_replanning(row)
@@ -1434,7 +1437,7 @@ class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
             if a["state"] == "limit_paused" and limit:
                 decisions.append({"target": "execution_support_fidelity_review", "packet_key": a["packet_key"], "assignment_id": a["assignment_key"], "round": limit["round"],
                                   "recommendation": limit["recommendation"], "rationale": limit["rationale"]})
-        for d in self.determination_view(activity_id):
+        for d in [*self.determination_view(activity_id), *[{**g, "determination_id": g["gap_id"], "result": self._gap_result(activity_id, g["gap_id"])} for g in self.gap_view(activity_id)]]:
             if d["state"] == "awaiting_disposition" and d["result"]:
                 decisions.append({"target": "execution_work_disposition", "packet_key": ", ".join(d["result"]["affected_work"]), "assignment_id": d["determination_id"], "round": 0,
                                   "recommendation": d["result"]["disposition_recommendation"], "rationale": d["result"]["rationale"], "choices": list(DISPOSITION_CHOICES)})
@@ -1451,7 +1454,7 @@ class ExecutionService(DeterminationMixin, SupportMixin, IntegrationMixin):
                         "planning": pending.get("manager_run") is not None, "understanding": pending.get("understanding"), "priorities": pending.get("priorities", []),
                         "blockers": pending.get("blockers", []), "checkpoint": pending.get("checkpoint")},
             "integration": self.integration_view(activity_id),
-            "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "disposition": self.disposition_view(row),
+            "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "gaps": self.gap_view(activity_id), "disposition": self.disposition_view(row),
             "packets": packets, "plans": [{"pass": p["pass_number"], "accepted": json.loads(p["accepted_json"]), "rejected": json.loads(p["rejected_json"]), "at": p["created_at"]} for p in plans],
             "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions, "owner_decisions": decisions,
             "runs": [{"run_id": r["run_id"], "role": r["assignment_id"].rsplit("-", 2)[-2] if "-" in r["assignment_id"] else r["role"], "state": r["state"], "tool": r["tool"], "model": r["model_id"], "tool_version": r["tool_version"], "seconds": r["active_seconds"]} for r in runs],

@@ -112,7 +112,9 @@ class DeterminationMixin:
 
     def _held_by_determination(self, activity_id: str) -> dict[str, str]:
         held: dict[str, str] = {}
-        for arch in self._architects(activity_id, "determination"):
+        for arch in self._architects(activity_id):
+            if arch["kind"] == "support":
+                continue
             trigger = json.loads(arch["trigger_json"])
             if trigger.get("source") == "manager_question" and arch["state"] in (*_DET_OPEN, "blocked_route") and arch["packet_key"]:
                 held[str(arch["packet_key"])] = f"architectural determination {arch['assignment_key']} is {arch['state']}: {arch['note'] or 'the packet waits for the architect'}"
@@ -356,6 +358,10 @@ class DeterminationMixin:
             views.append({"determination_id": arch["assignment_key"], "source": trigger.get("source"), "packet_key": arch["packet_key"], "state": arch["state"], "note": arch["note"], "subject": arch["subject"],
                           "question": trigger.get("question"), "architect": pending.get("architect"), "result": result})
         return views
+
+    def _gap_result(self, activity_id: str, gap_id: str) -> dict[str, Any] | None:
+        arch = self._read("SELECT result_json FROM service_execution_architect WHERE activity_id = ? AND assignment_key = ?", (activity_id, gap_id))
+        return None if arch is None or not arch["result_json"] else json.loads(arch["result_json"])
 
     def disposition_view(self, row: Mapping[str, Any]) -> dict[str, Any] | None:
         return json.loads(row["pending_json"] or "{}").get("disposition")
