@@ -146,10 +146,15 @@ class QualityAssuranceTests(VerificationBase):
         self.assertEqual(setup[0]["exit_code"], 0)
         self.assertTrue(setup[0]["stdout"].strip().startswith("/"), "the real setup command ran and its output is recorded")
         self.assertEqual((qa["head_commit"], qa["plan_id"], qa["config_sha256"]), (self.head, "qa-plan-1", self.service.row_config_sha("exec-1")) if hasattr(self.service, "row_config_sha") else (self.head, "qa-plan-1", qa["config_sha256"]))
-        self.assertTrue((self.qa_root / "env" / qa["environment_id"] / "work" / "app" / "a.py").is_file(), "a clean checkout of the exact milestone head")
+        output = self.runs.runs[self.runs.last("qa_agent")]["output"]
+        self.assertTrue((output / "work" / "app" / "a.py").is_file(), "a clean checkout of the exact milestone head inside the agent's sandbox")
+        environment = json.loads((output / "environment.json").read_text())
+        self.assertTrue(Path(environment["setup"][0]["stdout"].strip()).is_dir(), "what setup created is inside the agent's scratch area")
+        self.assertTrue(environment["setup"][0]["stdout"].strip().startswith(environment["temporary_directory"]))
         assignment = self.runs.runs[self.runs.last("qa_agent")]["build"].assignment
         self.assertEqual(assignment.role, "qa_agent")
         self.assertIn("plan.json", self.runs.runs[self.runs.last("qa_agent")]["build"].inputs)
+        self.assertTrue(oct((output / "artifacts").stat().st_mode & 0o777).endswith("707"), "the agent's account can write its evidence directory")
 
     def test_a_pass_stores_evidence_with_hash_size_and_media_type_and_cleans_the_environment(self) -> None:
         self.to_reviewing()

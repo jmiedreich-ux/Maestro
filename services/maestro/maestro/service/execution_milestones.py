@@ -148,7 +148,7 @@ _QUEUE_OPEN = ("queued", "integrating", "publishing", "reviewing", "merging", "b
 
 _QA_TASK = """You are the Maestro Quality Assurance agent for one assembled milestone. You are not the implementer, an implementation reviewer or the outcome reviewer, and you do not fix code, change expectations or approve anything. Exercise the product the way its users do, in the isolated environment, and report each planned check honestly as PASS, FAIL or UNTESTED. Work only from this assignment, the files under input/ and the clone at output/work/ (the exact milestone commit {head}). source/ is a read-only copy of the same commit.
 
-1. Read input/plan.json (the confirmed Quality Assurance plan: checks with user journeys and failure cases, data requirements, setup, artifacts and cleanup), input/milestone.json (the outcome and completion criteria) and input/environment.json (what the service already set up for you: each setup step's real command and output, the environment identity, health results).
+1. Read input/plan.json (the confirmed Quality Assurance plan: checks with user journeys and failure cases, data requirements, setup, artifacts and cleanup), input/milestone.json (the outcome and completion criteria) and output/environment.json (written by the service before you started: each setup step's real command and output, the environment identity, health results, and the temporary directory setup used).
 2. Run every check in plan.json through the product's real entry path from output/work (set PYTHONDONTWRITEBYTECODE=1; use the setup results such as created temporary locations exactly as the plan describes). Cover each check's user journey and every listed failure case. Use only the plan's data; test data may be an input but must never directly create the result whose path you are verifying. If a required step can only be shown by bypassing the product (inserting the expected result, editing internals, a mock), do not count it: list it in bypassed_paths and give the check UNTESTED.
 3. Write each piece of evidence as a file under output/artifacts/ (for example the real command transcript with exit status, the test runner output, the resulting data file before cleanup). Never write credentials or tokens into evidence. PASS needs at least one artifact that shows the actual result.
 4. Return one entry in checks for EVERY check in plan.json, using its exact subject: result, journey_run (what you actually ran), data_source (what data and where it came from), input_path (how it entered the product), expected and actual results, limitations, bypassed_paths, artifacts (path relative to output/, media_type, description) and, for FAIL only, requested_correction (the smallest change needed). Do not add other checks. environment_notes states anything unusual about the environment, including the result of the plan's reset check: {reset}
@@ -360,46 +360,54 @@ class MilestoneMixin:
         mirror = self._mirror(row["project_id"])
         self._dest(row).fetch_source(row["repository"], head, mirror)
         env_dir.mkdir(parents=True, mode=0o750)
-        work = env_dir / "work"
-        setup: list[dict[str, Any]] = []
         processes: list[dict[str, Any]] = []
-        try:
-            execution_git.prepare_clone(mirror, head, work, "maestro-qa")
-            setup = execution_qa.run_setup(plan, work, env_dir, environment_id, selection.get("variables", {}), int(qa_config["setup_timeout_seconds"]))
-            processes = execution_qa.start_support(plan, work, env_dir, environment_id, selection.get("variables", {}))
-        except execution_qa.QaError as error:
-            setup = getattr(error, "results", setup)
-            execution_qa.stop_processes(processes)
-            clean = execution_qa.clean_environment(env_dir)
-            self._untested_run(row, v, plan["id"], plan_sha, plan, str(error) + ("" if clean else "; the environment could not be removed and is quarantined"), setup, environment_id)
-            return
-        except execution_git.GitError as error:
-            execution_qa.clean_environment(env_dir)
-            raise execution_qa.QaError(f"the environment checkout failed: {error}") from error
-        environment_record = {"environment_id": environment_id, "directory": str(env_dir), "head_commit": head, "plan_sha256": plan_sha, "config_sha256": row["config_sha256"],
-                              "binding_hash": selection.get("binding_hash"), "setup": setup, "processes": processes}
-        environment_sha = _sha(canonical_json({k: environment_record[k] for k in ("environment_id", "head_commit", "plan_sha256", "config_sha256", "binding_hash")}).encode())
+        variables = selection.get("variables", {})
+        if plan.get("support_processes"):
+            try:
+                execution_git.prepare_clone(mirror, head, env_dir / "work", "maestro-qa")
+                processes = execution_qa.start_support(plan, env_dir / "work", env_dir, environment_id, variables)
+            except (execution_qa.QaError, execution_git.GitError) as error:
+                execution_qa.stop_processes(processes)
+                clean = execution_qa.clean_environment(env_dir)
+                self._untested_run(row, v, plan["id"], plan_sha, plan, str(error) + ("" if clean else "; the environment could not be removed and is quarantined"), [], environment_id)
+                return
+        environment_sha = _sha(canonical_json({"environment_id": environment_id, "head_commit": head, "plan_sha256": plan_sha, "config_sha256": row["config_sha256"], "binding_hash": selection.get("binding_hash")}).encode())
         data = [{**d, "recorded_at": _now()} for d in plan.get("data_requirements", [])]
         now = _now()
         with self.database.transaction() as tx:
             tx.execute(
                 "INSERT OR REPLACE INTO service_execution_qa_runs(activity_id, qa_run_id, milestone_key, attempt, head_commit, plan_id, plan_version, plan_sha256, plan_json, binding_hash, binding_json, config_sha256, environment_id, environment_sha256, setup_json, processes_json, data_json, cleanup_state, started_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, 'active', ?)",
                 (activity_id, qa_run_id, key, v["attempt"], head, plan["id"], plan.get("version"), plan_sha, canonical_json(plan), selection.get("binding_hash"),
-                 canonical_json({k: selection.get(k) for k in ("environments", "secrets", "network")}), row["config_sha256"], environment_id, environment_sha, _dump(setup), _dump(processes), _dump(data), now))
+                 canonical_json({k: selection.get(k) for k in ("environments", "secrets", "network")}), row["config_sha256"], environment_id, environment_sha, _dump(processes), _dump(data), now))
         route = config["quality_assurance"]
         assignment_id = f"{qa_run_id}-agent"
-        inputs = {
-            "plan.json": _json(plan), "milestone.json": _json(milestone),
-            "environment.json": _json({**environment_record, "note": "Setup already ran in the environment directory; use its results (for example created temporary locations) as the plan describes. Product work happens in output/work."}),
-        }
+        inputs = {"plan.json": _json(plan), "milestone.json": _json(milestone)}
         pending = json.loads(v["pending_json"] or "{}")
         task = _QA_TASK.format(head=head, reset=plan.get("reset_check") or "none stated")
+        outcome: dict[str, Any] = {"setup": []}
 
         def prepare(workspace) -> None:
-            execution_git.prepare_clone(mirror, head, workspace.paths.output / "work", "maestro-qa-work")
+            # The agent sees only its own workspace, so the plan's setup runs here: in the clone at the exact head, with HOME and TMPDIR inside the sandbox's scratch area.
+            work = workspace.paths.output / "work"
+            execution_git.prepare_clone(mirror, head, work, "maestro-qa-work")
             execution_git.prepare_agent_home(workspace.paths.scratch / "home")
-            (workspace.paths.output / "artifacts").mkdir(exist_ok=True)
+            artifacts = workspace.paths.output / "artifacts"
+            artifacts.mkdir(mode=0o707, exist_ok=True)
+            artifacts.chmod(0o707)
+            try:
+                outcome["setup"] = execution_qa.run_setup(plan, work, workspace.paths.scratch, environment_id, variables, int(qa_config["setup_timeout_seconds"]))
+            except execution_qa.QaError as error:
+                outcome["setup"] = getattr(error, "results", [])
+                outcome["error"] = error
+                raise
+            finally:
+                execution_git.make_writable(workspace.paths.scratch / "tmp")
+            environment = {"environment_id": environment_id, "directory": str(env_dir), "head_commit": head, "plan_sha256": plan_sha, "config_sha256": row["config_sha256"], "binding_hash": selection.get("binding_hash"),
+                           "setup": outcome["setup"], "processes": processes, "work_directory": str(work), "temporary_directory": str(workspace.paths.scratch / "tmp"),
+                           "note": "Setup already ran inside your sandbox in output/work with HOME=scratch/home and TMPDIR=scratch/tmp; locations it created are readable and writable by you. Product work happens in output/work."}
+            (workspace.paths.output / "environment.json").write_bytes(_json(environment))
+            (workspace.paths.output / "environment.json").chmod(0o644)
 
         def build(run_id: str) -> RunBuild:
             assignment = AgentAssignment(
@@ -415,17 +423,24 @@ class MilestoneMixin:
         try:
             self._launch(row, pending, "qa_run", assignment_id, route["tool"], route["model"], route["run_timeout_seconds"], self._assignment_exists(assignment_id), build, "qa_agent",
                          save=lambda _a, p: self._set_v(activity_id, key, pending=p))
+        except execution_qa.QaError as error:
+            pending.pop("qa_run", None)
+            self._set_v(activity_id, key, pending=pending)
+            execution_qa.stop_processes(processes)
+            clean = execution_qa.clean_environment(env_dir)
+            self._untested_run(row, v, plan["id"], plan_sha, plan, str(error) + ("" if clean else "; the environment could not be removed and is quarantined"), outcome["setup"], environment_id)
+            return
         except Exception:
             self._teardown(self._qa_run(activity_id, qa_run_id))
             raise
         pending["qa_run_id"] = qa_run_id
         with self.database.transaction() as tx:
-            tx.execute("UPDATE service_execution_qa_runs SET assignment_id = ?, run_id = ?, agent_tool = ?, agent_model = ? WHERE activity_id = ? AND qa_run_id = ?",
-                       (assignment_id, pending["qa_run"]["run_id"], route["tool"], route["model"], activity_id, qa_run_id))
+            tx.execute("UPDATE service_execution_qa_runs SET assignment_id = ?, run_id = ?, agent_tool = ?, agent_model = ?, setup_json = ? WHERE activity_id = ? AND qa_run_id = ?",
+                       (assignment_id, pending["qa_run"]["run_id"], route["tool"], route["model"], _dump(outcome["setup"]), activity_id, qa_run_id))
             tx.execute("UPDATE service_execution_verifications SET state = 'qa_running', note = NULL, pending_json = ?, updated_at = ? WHERE activity_id = ? AND milestone_key = ?", (canonical_json(pending), _now(), activity_id, key))
             self._say(tx, row["project_id"], activity_id,
                       f"Quality Assurance for milestone {key} started (attempt {v['attempt']}): {route['tool']} {route['model']} runs plan {plan['id']} against {head[:12]} in isolated environment {environment_id}; "
-                      f"{len(setup)} setup step(s) ran, {len(processes)} support process(es) are healthy.")
+                      f"{len(outcome['setup'])} setup step(s) ran in its sandbox, {len(processes)} support process(es) are healthy.")
             self._activity(tx, activity_id, "running", f"Quality Assurance is exercising milestone {key}")
 
     def _teardown(self, qa: Mapping[str, Any]) -> None:
@@ -489,11 +504,15 @@ class MilestoneMixin:
         output = self._run_workspace(current["run_id"])
         qa_config = config["qa"]
         destination_dir = Path(qa_config["artifact_root"]) / activity_id / qa["qa_run_id"]
-        if response.get("result") != "completed" or output is None:
+        if output is None:
             self._teardown(qa)
             pending.pop("qa_run", None)
-            self._qa_untested_after(row, v, {**pending, "qa_run_id": qa["qa_run_id"]}, "the Quality Assurance agent did not complete its report")
+            self._qa_untested_after(row, v, {**pending, "qa_run_id": qa["qa_run_id"]}, "the Quality Assurance run's workspace is no longer available")
             return
+        unreported = "the Quality Assurance agent did not report this check"
+        if response.get("result") != "completed":
+            unreported = "the Quality Assurance agent could not complete: " + ("; ".join(f"{q.get('subject')}: {q.get('reason')}" for q in response.get("questions", [])) or str(response.get("summary", "no reason given")))[:400]
+            response = {**response, "checks": [], "environment_notes": response.get("environment_notes", "") or str(response.get("summary", ""))}
         reported = {c["subject"]: c for c in response["checks"]}
         checks: list[dict[str, Any]] = []
         stored: list[dict[str, Any]] = []
@@ -504,7 +523,7 @@ class MilestoneMixin:
             captured: list[dict[str, Any]] = []
             if agent is None:
                 result = "UNTESTED"
-                reasons.append("the Quality Assurance agent did not report this check")
+                reasons.append(unreported)
                 entry = {"subject": subject, "journey_run": "", "data_source": "", "input_path": "", "expected": "", "actual": "", "limitations": [], "bypassed_paths": [], "requested_correction": None}
             else:
                 entry = {k: agent[k] for k in ("subject", "journey_run", "data_source", "input_path", "expected", "actual", "limitations", "bypassed_paths", "requested_correction")}

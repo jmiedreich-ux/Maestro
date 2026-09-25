@@ -102,8 +102,9 @@ def _environment(env_dir: Path, name: str, variables: Mapping[str, str]) -> dict
 
 
 def run_setup(plan: Mapping[str, Any], work: Path, env_dir: Path, name: str, variables: Mapping[str, str], timeout: int) -> list[dict[str, Any]]:
-    """Run the plan's setup steps in order inside the clean directory. A step that cannot run or fails raises QaError with its result recorded."""
-    (env_dir / "tmp").mkdir(parents=True, exist_ok=True)
+    """Run the plan's setup steps in order in ``work``, keeping HOME and TMPDIR under ``env_dir`` (the agent sandbox's scratch area, so the agent can use what setup creates). A step that cannot run or fails raises QaError with its result recorded."""
+    (env_dir / "tmp").mkdir(mode=0o707, parents=True, exist_ok=True)
+    (env_dir / "tmp").chmod(0o707)
     results: list[dict[str, Any]] = []
     for step in plan.get("setup_steps") or []:
         command, script = step.get("command"), step.get("script_path")
