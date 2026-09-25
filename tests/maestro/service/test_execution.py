@@ -58,7 +58,7 @@ class ConfigTests(unittest.TestCase):
     def test_missing_or_invalid_settings_are_named(self) -> None:
         for change, text in (
             ({"coder_default_route_id": "nope"}, "coder_default_route_id"),
-            ({"saved_outputs": {"schema": "execution@2"}}, "saved_outputs"),
+            ({"saved_outputs": {"schema": "execution@3"}}, "saved_outputs"),
             ({"reviewers": {"packet": {"primary": {"tool": "codex", "model": "x", "run_timeout_seconds": 0}}}}, "run_timeout_seconds"),
             ({"reviewers": {"packet": {"primary": {"tool": "codex", "model": "x", "run_timeout_seconds": 5}, "backup": {"tool": "codex", "model": "x", "run_timeout_seconds": 5}}}}, "differ"),
         ):

@@ -32,6 +32,14 @@
       "files": [
         "schema.json"
       ]
+    },
+    "execution@2": {
+      "path": "schemas/execution/2",
+      "schema": "schema.json",
+      "definition": "executionConfiguration",
+      "files": [
+        "schema.json"
+      ]
     }
   }
 }
