@@ -1040,9 +1040,12 @@ class MilestoneMixin:
             if not destination.contains(row["repository"], m["promoted_commit"], commit):
                 raise DestinationError("verification_failed", f"the product branch does not contain the verified merge of milestone {m['milestone_key']}")
         with self.database.transaction() as tx:
-            current = self._row(tx, "SELECT state FROM service_executions WHERE activity_id = ?", (activity_id,))
-            if current is None or current["state"] not in ("running", "blocked"):
+            current = self._row(tx, "SELECT state, pending_json FROM service_executions WHERE activity_id = ?", (activity_id,))
+            if current is None or current["state"] not in ("running", "blocked", "finishing"):
                 return
+            saved = (json.loads(current["pending_json"] or "{}").get("settlement") or {}).get("kind")
+            if saved == "pause" or (current["state"] == "finishing" and saved != "stop"):
+                return  # a pause accepted during publication completes after resume; the publication is idempotent
             tx.execute("UPDATE service_execution_journal SET state = 'verified', remote_after = ? WHERE operation_id = ?", (commit, operation_id))
             tx.execute("UPDATE service_execution_completion SET state = 'published', commit_sha = ?, updated_at = ? WHERE activity_id = ?", (commit, _now(), activity_id))
             tx.execute("UPDATE service_executions SET state = 'completed', note = 'all milestones verified and promoted' WHERE activity_id = ?", (activity_id,))
