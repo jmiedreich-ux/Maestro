@@ -26,6 +26,7 @@ from maestro.foundation import Database, DomainMigration, Transaction, canonical
 
 from . import execution_config, execution_git
 from .execution_integration import INTEGRATION_MIGRATION, IntegrationMixin, is_delivered
+from .execution_milestones import MILESTONE_MIGRATION, MilestoneMixin
 from .execution_determination import DeterminationMixin
 from .execution_gaps import GAP_MIGRATION, GapMixin
 from .execution_support import SUPPORT_MIGRATION, SupportMixin
@@ -189,7 +190,8 @@ _MANAGER_TOOLS = ["Read"]
 _CODER_TOOLS = ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 _REVIEWER_TOOLS = ["Read", "Bash", "Glob", "Grep"]
 _ROLE_CLASS = {"development_manager": "architect", "packet_coder": "architect", "packet_reviewer": "fidelity_reviewer", "integration_manager": "architect", "integration_reviewer": "fidelity_reviewer",
-               "support_architect": "architect", "support_limit_architect": "architect", "determination_architect": "architect", "milestone_gap_architect": "architect", "support_reviewer": "fidelity_reviewer"}
+               "support_architect": "architect", "support_limit_architect": "architect", "determination_architect": "architect", "milestone_gap_architect": "architect", "support_reviewer": "fidelity_reviewer",
+               "qa_agent": "fidelity_reviewer", "milestone_reviewer": "fidelity_reviewer"}
 
 _COMMON_RULES = """Common rules: follow the exact packet and its permitted paths; change only what the packet needs; own the feature's required connections and real entry path; run real checks and report each honestly as passed, failed or untested (an unavailable check is untested, never passed); never expose credentials, never merge or deploy, never assume an Owner decision. A completion claim means ready for independent review, not accepted."""
 
@@ -241,7 +243,7 @@ def _paths_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
     return any(inside(x, y) or inside(y, x) for x in a for y in b)
 
 
-class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
+class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
     """Owns Execution state; the worker thread calls ``tick`` repeatedly."""
 
     def __init__(
@@ -276,6 +278,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         database.registry.register(INTEGRATION_MIGRATION)
         database.registry.register(SUPPORT_MIGRATION)
         database.registry.register(GAP_MIGRATION)
+        database.registry.register(MILESTONE_MIGRATION)
         database.initialize()
 
     @property
@@ -340,11 +343,11 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         except Exception as error:  # noqa: BLE001 - any refusal to resolve the route means it cannot be launched
             raise ValueError(f"the Development Manager route {route_id} cannot be used: {error}") from error
         if self.resources is None:
-            raise ValueError("the execution@2 schema bundle is unavailable")
+            raise ValueError("the execution@3 schema bundle is unavailable")
         try:
-            bundle = self.resources.resolve("execution@2").snapshot.as_dict()
+            bundle = self.resources.resolve("execution@3").snapshot.as_dict()
         except ProcessResourceError as error:
-            raise ValueError(f"the installed execution@2 bundle cannot be used: {error}") from error
+            raise ValueError(f"the installed execution@3 bundle cannot be used: {error}") from error
         profile = self.profiles[json.loads(active["profile_json"])["profile"]]
         try:
             destination = self._destination(profile)
@@ -508,6 +511,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         self._plan_deliveries(row)
         self._enqueue_approved(row)
         self._advance_integration(row)
+        self._advance_verification(row)
         for packet in self._packets(activity_id):
             row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
             if row is None or row["state"] not in {"running", "blocked"}:
@@ -1316,6 +1320,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             return
         packets = self._packets(activity_id)
         pending = json.loads(row["pending_json"] or "{}")
+        config_now = json.loads(row["config_json"])
         queue = self._queue(activity_id)
         active = [p for p in packets if p["state"] in {*_PACKET_ACTIVE, "publishing", "review_ready"}]
         queued = [e for e in queue if e["state"] in {"queued", "integrating", "publishing", "reviewing", "merging"}]
@@ -1324,6 +1329,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         stuck = [p for p in packets if p["state"] in {"failed", "limit_paused"}]
         stuck_entries = [e for e in queue if e["state"] in {"blocked", "limit_paused"}]
         held = [d for d in self._deliveries(activity_id) if d["state"] == "held"]
+        verifying, verification_parts = self._verification_status(activity_id)
         manager_active = pending.get("manager_run") is not None
         supports = self._architects(activity_id, "support")
         support_active = [a for a in supports if a["state"] in ("requested", "drafting", "reviewing", "correcting", "publishing", "recommending")]
@@ -1335,8 +1341,8 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             self._end_for_replanning(row)
             return
         unanswered = any(not q.get("answered") for q in pending.get("questions", {}).values())
-        if active or manager_active or queued or support_active:
-            state, text = "running", f"{len(active)} packet(s) in progress" + (f", {len(support_active)} architectural support assignment(s) in progress" if support_active else "") + (f", {len(queued)} integration queue entr{'y' if len(queued) == 1 else 'ies'} in progress" if queued else "") + (", Development Manager planning" if manager_active else "")
+        if active or manager_active or queued or support_active or verifying:
+            state, text = "running", f"{len(active)} packet(s) in progress" + (f", {len(support_active)} architectural support assignment(s) in progress" if support_active else "") + (f", {len(queued)} integration queue entr{'y' if len(queued) == 1 else 'ies'} in progress" if queued else "") + (f", {verifying} milestone verification step(s) in progress" if verifying else "") + (", Development Manager planning" if manager_active else "")
         elif unanswered:
             state, text = "running", "Waiting for your answer to the Development Manager"
         elif waiting and self._read("SELECT 1 AS n FROM service_execution_events WHERE activity_id = ? AND handled = 0", (activity_id,)) is not None:
@@ -1345,7 +1351,10 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             state = "blocked"
             parts = []
             if integrated:
-                parts.append(f"{len(integrated)} packet(s) are integrated into their milestone branches (milestone quality assurance and promotion are later stages)")
+                parts.append(f"{len(integrated)} packet(s) are integrated into their milestone branches")
+            parts.extend(verification_parts)
+            if integrated and not verification_parts and self._qa_config_problem(config_now):
+                parts.append(str(self._qa_config_problem(config_now)))
             if waiting:
                 parts.append(f"{len(waiting)} packet(s) wait for undelivered dependencies")
             if held:
@@ -1461,7 +1470,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             "manager": {"route_id": row["manager_route_id"], "tool": row["manager_tool"], "model": row["manager_model"], "passes": int(row["pass_number"]),
                         "planning": pending.get("manager_run") is not None, "understanding": pending.get("understanding"), "priorities": pending.get("priorities", []),
                         "blockers": pending.get("blockers", []), "checkpoint": pending.get("checkpoint")},
-            "integration": self.integration_view(activity_id),
+            "integration": self.integration_view(activity_id), "verification": self.verification_view(activity_id),
             "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "gaps": self.gap_view(activity_id), "disposition": self.disposition_view(row),
             "packets": packets, "plans": [{"pass": p["pass_number"], "accepted": json.loads(p["accepted_json"]), "rejected": json.loads(p["rejected_json"]), "at": p["created_at"]} for p in plans],
             "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions, "owner_decisions": decisions,

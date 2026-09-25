@@ -54,13 +54,55 @@ def _support(table: object) -> dict[str, Any] | None:
             "maximum_fidelity_reviews": _positive(reviews, "architectural_support.maximum_fidelity_reviews")}
 
 
+def _qa(table: object) -> dict[str, Any] | None:
+    """Isolated Quality Assurance settings: service-owned directories, retention, timeouts and the operator's test-only project bindings."""
+    if table is None:
+        return None
+    if not isinstance(table, Mapping):
+        raise ExecutionConfigError("execution.qa must be a table")
+    for name in ("environment_root", "artifact_root"):
+        if not isinstance(table.get(name), str) or not table[name].startswith("/"):
+            raise ExecutionConfigError(f"execution.qa.{name} must be an absolute path")
+    bindings: dict[str, Any] = {}
+    for project_id, binding in (table.get("project_bindings") or {}).items():
+        environments = binding.get("environments", {}) if isinstance(binding, Mapping) else None
+        if not isinstance(environments, Mapping):
+            raise ExecutionConfigError(f"execution.qa.project_bindings.{project_id} needs environments")
+        clean_environments = {}
+        for name, environment in environments.items():
+            if not isinstance(environment, Mapping) or environment.get("classification") != "test":
+                raise ExecutionConfigError(f"execution.qa.project_bindings.{project_id}.environments.{name} must be classified test; production bindings are rejected")
+            variables = environment.get("variables", {})
+            if not isinstance(variables, Mapping) or not all(isinstance(k, str) and isinstance(v, str) for k, v in variables.items()):
+                raise ExecutionConfigError(f"execution.qa.project_bindings.{project_id}.environments.{name}.variables must map names to text")
+            clean_environments[name] = {"classification": "test", "variables": dict(variables), "secret_names": sorted(environment.get("secret_names", [])), "network_dependency_names": sorted(environment.get("network_dependency_names", []))}
+        secrets = {}
+        for name, secret in (binding.get("secrets") or {}).items():
+            if not isinstance(secret, Mapping) or secret.get("classification") != "test" or not isinstance(secret.get("credential_ref"), str) or not isinstance(secret.get("environment_variable"), str):
+                raise ExecutionConfigError(f"execution.qa.project_bindings.{project_id}.secrets.{name} needs classification test, a credential_ref and an environment_variable")
+            secrets[name] = {"classification": "test", "credential_ref": secret["credential_ref"], "environment_variable": secret["environment_variable"]}
+        networks = {}
+        for name, dependency in (binding.get("network_dependencies") or {}).items():
+            if not isinstance(dependency, Mapping) or not all(isinstance(dependency.get(k), str) for k in ("host", "protocol")) or not isinstance(dependency.get("ports"), list):
+                raise ExecutionConfigError(f"execution.qa.project_bindings.{project_id}.network_dependencies.{name} needs a host, protocol and ports")
+            networks[name] = {"host": dependency["host"], "protocol": dependency["protocol"], "ports": sorted(dependency["ports"])}
+        bindings[project_id] = {"environments": clean_environments, "secrets": secrets, "network_dependencies": networks}
+    patterns = table.get("secret_patterns", [])
+    if not isinstance(patterns, list) or not all(isinstance(p, str) for p in patterns):
+        raise ExecutionConfigError("execution.qa.secret_patterns must be a list of regular expressions")
+    return {"environment_root": table["environment_root"], "artifact_root": table["artifact_root"], "project_bindings": bindings, "secret_patterns": patterns,
+            "artifact_retention_days_after_close": _positive(table.get("artifact_retention_days_after_close", 30), "qa.artifact_retention_days_after_close"),
+            "setup_timeout_seconds": _positive(table.get("setup_timeout_seconds", 300), "qa.setup_timeout_seconds"),
+            "maximum_artifact_bytes": _positive(table.get("maximum_artifact_bytes", 20_000_000), "qa.maximum_artifact_bytes")}
+
+
 def validate(table: object) -> dict[str, Any]:
     """The normalized configuration with defaults applied, or a plain error naming the missing or invalid setting."""
     if not isinstance(table, Mapping):
         raise ExecutionConfigError("the execution settings are not configured")
     outputs = table.get("saved_outputs")
-    if not isinstance(outputs, Mapping) or outputs.get("schema") not in {"execution@1", "execution@2"}:
-        raise ExecutionConfigError('execution.saved_outputs.schema must be "execution@1" or "execution@2"')
+    if not isinstance(outputs, Mapping) or outputs.get("schema") not in {"execution@1", "execution@2", "execution@3"}:
+        raise ExecutionConfigError('execution.saved_outputs.schema must be "execution@1", "execution@2" or "execution@3"')
     manager = table.get("development_manager")
     if not isinstance(manager, Mapping) or not isinstance(manager.get("routes"), Mapping) or not manager["routes"]:
         raise ExecutionConfigError("execution.development_manager.routes needs at least one named route")
@@ -106,6 +148,17 @@ def validate(table: object) -> dict[str, Any]:
         integration_reviewer = {"primary": _pair(integration.get("primary"), "reviewers.integration.primary")}
         if "backup" in integration:
             integration_reviewer["backup"] = _pair(integration["backup"], "reviewers.integration.backup")
+    milestone_reviewer = None
+    if isinstance(reviewers, Mapping) and isinstance(reviewers.get("milestone"), Mapping):
+        milestone = reviewers["milestone"]
+        milestone_reviewer = {"primary": _pair(milestone.get("primary"), "reviewers.milestone.primary")}
+        if "backup" in milestone:
+            milestone_reviewer["backup"] = _pair(milestone["backup"], "reviewers.milestone.backup")
+    quality_assurance = None
+    if isinstance(table.get("quality_assurance"), Mapping):
+        quality_assurance = _pair(table["quality_assurance"], "quality_assurance")
+        if quality_assurance["tool"] not in {"codex", "claude_code"}:
+            raise ExecutionConfigError("execution.quality_assurance needs tool codex or claude_code")
     manager_pair = None
     if isinstance(table.get("integration_manager"), Mapping):
         manager_pair = _pair(table["integration_manager"], "integration_manager")
@@ -115,23 +168,30 @@ def validate(table: object) -> dict[str, Any]:
     integration_rounds = 2
     if isinstance(reviews, Mapping) and isinstance(reviews.get("integration"), Mapping):
         integration_rounds = reviews["integration"].get("maximum_completed_rounds", 2)
+    milestone_rounds = reviews["milestone"].get("maximum_completed_rounds", 3) if isinstance(reviews, Mapping) and isinstance(reviews.get("milestone"), Mapping) else 3
     rounds = reviews.get("packet", {}).get("maximum_completed_rounds", 2) if isinstance(reviews, Mapping) and isinstance(reviews.get("packet", {}), Mapping) else 2
     recovery = table.get("recovery", {}) if isinstance(table.get("recovery", {}), Mapping) else {}
     support = _support(table.get("architectural_support"))
+    qa = _qa(table.get("qa"))
     gap = _routes(table["milestone_gap_architect"], "milestone_gap_architect") if table.get("milestone_gap_architect") is not None else None
     return {
-        "schema": "execution@2",
+        "schema": "execution@3",
         "development_manager": {"routes": routes, "run_timeout_seconds": _positive(manager.get("run_timeout_seconds"), "development_manager.run_timeout_seconds")},
         "reviewers": {"packet": reviewer},
         "coder_default_route_id": default,
         "coder_routes": coder_routes,
         "reviews": {"packet": {"maximum_completed_rounds": _positive(rounds, "reviews.packet.maximum_completed_rounds")},
-                    "integration": {"maximum_completed_rounds": _positive(integration_rounds, "reviews.integration.maximum_completed_rounds")}},
+                    "integration": {"maximum_completed_rounds": _positive(integration_rounds, "reviews.integration.maximum_completed_rounds")},
+                    "milestone": {"maximum_completed_rounds": _positive(milestone_rounds, "reviews.milestone.maximum_completed_rounds")}},
         # Optional: without them the Integration Manager uses the Development Manager's route and integration review uses the packet reviewers.
         **({"architectural_support": support} if support else {}),
         **({"milestone_gap_architect": gap} if gap else {}),
         **({"integration_manager": manager_pair} if manager_pair else {}),
         **({"integration_reviewers": integration_reviewer} if integration_reviewer else {}),
+        # Optional: without them a finished milestone waits, with a plain blocker, for Quality Assurance and outcome review to be configured.
+        **({"milestone_reviewers": milestone_reviewer} if milestone_reviewer else {}),
+        **({"quality_assurance": quality_assurance} if quality_assurance else {}),
+        **({"qa": qa} if qa else {}),
         "recovery": {"automatic_recovery_attempts": recovery.get("automatic_recovery_attempts", 2), "manual_retry_attempts": recovery.get("manual_retry_attempts", 1)},
     }
 

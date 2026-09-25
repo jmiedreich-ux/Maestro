@@ -95,6 +95,17 @@ REVIEWER_SCHEMA = _schema({
     "independence": _STR,
     "findings": {"type": "array", "items": _FINDING},
 })
+_QA_ARTIFACT = {"type": "object", "properties": {"path": _STR, "media_type": _STR, "description": _STR}, "required": ["path", "media_type", "description"], "additionalProperties": False}
+_QA_CHECK = {
+    "type": "object",
+    "properties": {
+        "subject": _STR, "result": {"type": "string", "enum": ["PASS", "FAIL", "UNTESTED"]}, "journey_run": _STR, "data_source": _STR, "input_path": _STR,
+        "expected": _STR, "actual": _STR, "limitations": _STRS, "bypassed_paths": _STRS, "requested_correction": _NULLABLE_STR,
+        "artifacts": {"type": "array", "items": _QA_ARTIFACT},
+    },
+    "required": ["subject", "result", "journey_run", "data_source", "input_path", "expected", "actual", "limitations", "bypassed_paths", "requested_correction", "artifacts"], "additionalProperties": False,
+}
+QA_SCHEMA = _schema({"checks": {"type": "array", "items": _QA_CHECK}, "environment_notes": _STR})
 SUPPORT_DISPOSITIONS = ("use_existing", "create_role", "replanning_required")
 SUPPORT_ARCHITECT_SCHEMA = _schema({
     "disposition": {"type": "string", "enum": list(SUPPORT_DISPOSITIONS)},
@@ -142,7 +153,8 @@ DETERMINATION_SCHEMA = _schema({
 SCHEMAS = {"development_manager": MANAGER_SCHEMA, "packet_coder": CODER_SCHEMA, "packet_reviewer": REVIEWER_SCHEMA,
            "integration_manager": CODER_SCHEMA, "integration_reviewer": REVIEWER_SCHEMA,
            "support_architect": SUPPORT_ARCHITECT_SCHEMA, "support_reviewer": REVIEWER_SCHEMA, "support_limit_architect": SUPPORT_LIMIT_SCHEMA,
-           "determination_architect": DETERMINATION_SCHEMA, "milestone_gap_architect": DETERMINATION_SCHEMA}
+           "determination_architect": DETERMINATION_SCHEMA, "milestone_gap_architect": DETERMINATION_SCHEMA,
+           "qa_agent": QA_SCHEMA, "milestone_reviewer": REVIEWER_SCHEMA}
 PLAN_KEYS = ("intended_changes", "existing_code", "connections", "verification", "blockers")
 
 
@@ -200,7 +212,7 @@ class ExecutionResponseValidator:
         outputs = self._outputs(assignment, workspace, result)
         return ValidatedAgentResponse(
             assignment.assignment_id, assignment.run_id, result, summary, (), questions, None, None, None,
-            value.get("review_outcome") if assignment.role in {"packet_reviewer", "integration_reviewer", "support_reviewer"} and result == "completed" else None,
+            value.get("review_outcome") if assignment.role in {"packet_reviewer", "integration_reviewer", "support_reviewer", "milestone_reviewer"} and result == "completed" else None,
             failure, hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest(), outputs,
         )
 
@@ -241,6 +253,15 @@ class ExecutionResponseValidator:
                 raise TransportError("conflicting_response", "an interpretation states it")
             if kind == "reregistration_required" and not value["disposition_recommendation"]:
                 raise TransportError("conflicting_response", "a re-registration result recommends a work disposition")
+        elif role == "qa_agent":
+            checks = value["checks"]
+            if not checks or not all(isinstance(c.get("subject"), str) and c["subject"].strip() for c in checks):
+                raise TransportError("conflicting_response", "a Quality Assurance result reports each planned check by its subject")
+            if len({c["subject"] for c in checks}) != len(checks):
+                raise TransportError("malformed_response", "a check is reported more than once")
+            for check in checks:
+                if check["result"] == "FAIL" and not (check["requested_correction"] or "").strip():
+                    raise TransportError("conflicting_response", "a failed check states the correction it needs")
         elif role in {"packet_coder", "integration_manager"}:
             if not isinstance(value["changed_paths"], list) or not all(isinstance(p, str) and p for p in value["changed_paths"]):
                 raise TransportError("malformed_response", "changed paths must be a list of paths")
