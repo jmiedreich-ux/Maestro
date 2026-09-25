@@ -501,6 +501,19 @@ class MilestoneMixin:
         self._set_v(row["activity_id"], v["milestone_key"], pending=pending)
         self._v_block(row, {**v, "pending_json": canonical_json(pending)}, f"Quality Assurance is UNTESTED: {reason}")
 
+    @staticmethod
+    def _qa_tampered(work: Path, head: str) -> str:
+        """A pass counts only for the assigned commit: the tested checkout must still be at that commit with no tracked file changed."""
+        import subprocess
+        try:
+            current = subprocess.run(["git", "-C", str(work), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=60, check=True).stdout.strip()
+            changed = subprocess.run(["git", "-C", str(work), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, timeout=120, check=True).stdout.strip()
+        except (subprocess.SubprocessError, OSError):
+            return "the tested checkout could not be verified against the assigned commit"
+        if current != head or changed:
+            return "the tested checkout no longer matches the assigned commit, so its results cannot be recorded against it"
+        return ""
+
     def _qa_finish(self, row: Mapping[str, Any], config: Mapping[str, Any], v: dict[str, Any], pending: dict[str, Any], current: Mapping[str, str]) -> None:
         assert self.runs is not None
         activity_id, key = row["activity_id"], v["milestone_key"]
@@ -519,6 +532,10 @@ class MilestoneMixin:
         if response.get("result") != "completed":
             unreported = "the Quality Assurance agent could not complete: " + ("; ".join(f"{q.get('subject')}: {q.get('reason')}" for q in response.get("questions", [])) or str(response.get("summary", "no reason given")))[:400]
             response = {**response, "checks": [], "environment_notes": response.get("environment_notes", "") or str(response.get("summary", ""))}
+        tampered = self._qa_tampered(output / "work", qa["head_commit"])
+        if tampered:
+            response = {**response, "checks": []}
+            unreported = tampered
         reported = {c["subject"]: c for c in response["checks"]}
         checks: list[dict[str, Any]] = []
         stored: list[dict[str, Any]] = []
@@ -548,6 +565,9 @@ class MilestoneMixin:
                 if result == "PASS" and (not captured or not agent["actual"].strip() or not agent["expected"].strip()):
                     result = "UNTESTED"
                     reasons.append("a pass needs captured evidence and stated expected and actual results")
+                if result == "PASS" and len(captured) < len(planned.get("required_artifacts", [])):
+                    result = "UNTESTED"
+                    reasons.append(f"the plan requires {len(planned['required_artifacts'])} artifact(s) for this check but {len(captured)} were captured")
                 if result == "PASS" and reasons:
                     result = "UNTESTED"
             stored.extend({**a, "check_subject": subject} for a in captured)
@@ -591,7 +611,7 @@ class MilestoneMixin:
         for arch in self._architects(activity_id, "milestone_gap"):
             if json.loads(arch["trigger_json"]).get("milestone_key") == key and json.loads(arch["pending_json"] or "{}").get("owner_decision", {}).get("choice") == "grant_one":
                 grants += 1
-        return int(config["reviews"].get("milestone", {}).get("maximum_completed_rounds", 3)) + grants
+        return int(config["reviews"].get("milestone", {}).get("maximum_completed_rounds", 2)) + grants
 
     def _cycle_findings(self, row: Mapping[str, Any], config: Mapping[str, Any], v: dict[str, Any], pending: dict[str, Any], source: str, items: list[dict[str, Any]]) -> None:
         """Record this cycle's blocking findings through the milestone-gap path; the cycle counts once against the milestone review allowance."""

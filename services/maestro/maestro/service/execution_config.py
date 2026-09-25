@@ -168,7 +168,7 @@ def validate(table: object) -> dict[str, Any]:
     integration_rounds = 2
     if isinstance(reviews, Mapping) and isinstance(reviews.get("integration"), Mapping):
         integration_rounds = reviews["integration"].get("maximum_completed_rounds", 2)
-    milestone_rounds = reviews["milestone"].get("maximum_completed_rounds", 3) if isinstance(reviews, Mapping) and isinstance(reviews.get("milestone"), Mapping) else 3
+    milestone_rounds = reviews["milestone"].get("maximum_completed_rounds", 2) if isinstance(reviews, Mapping) and isinstance(reviews.get("milestone"), Mapping) else 2
     rounds = reviews.get("packet", {}).get("maximum_completed_rounds", 2) if isinstance(reviews, Mapping) and isinstance(reviews.get("packet", {}), Mapping) else 2
     recovery = table.get("recovery", {}) if isinstance(table.get("recovery", {}), Mapping) else {}
     support = _support(table.get("architectural_support"))

@@ -194,6 +194,18 @@ class QualityAssuranceTests(VerificationBase):
         self.tick()
         self.assertEqual(self.service._qa_run("exec-1", "exec-1-m1-qa1")["result"], "UNTESTED")
 
+    def test_a_pass_after_the_agent_edited_the_tested_code_is_untested(self) -> None:
+        self.tick()
+        self.tick()
+        output = self.runs.runs[self.runs.last("qa_agent")]["output"]
+        tracked = next(p for p in (output / "work").rglob("*") if p.is_file() and ".git" not in p.parts)
+        tracked.write_text(tracked.read_text() + "\n# edited by the agent\n")
+        self.qa_finishes([("Capture a note", "PASS")])
+        self.tick()
+        run = self.service._qa_run("exec-1", "exec-1-m1-qa1")
+        self.assertEqual(run["result"], "UNTESTED")
+        self.assertIn("no longer matches", run["checks_json"])
+
     def test_an_unreported_check_and_a_secret_in_evidence_stay_untested(self) -> None:
         self.tick()
         self.tick()
