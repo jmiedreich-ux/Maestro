@@ -5,12 +5,15 @@ from __future__ import annotations
 import textwrap
 from dataclasses import dataclass
 
+from importlib.metadata import PackageNotFoundError, version
+
 from .workspace import View, Workspace
 
 
 MINIMUM_COLUMNS = 80
 MINIMUM_ROWS = 24
 MAXIMUM_INPUT_LINES = 6
+BANNER_MINIMUM_ROWS = 30
 PROMPT = "Maestro$ "
 GREEN = "\x1b[32m"
 RESET = "\x1b[0m"
@@ -32,6 +35,8 @@ class TerminalRenderer:
         if size.columns < MINIMUM_COLUMNS or size.rows < MINIMUM_ROWS:
             return "Enlarge the terminal to continue."
         lines = [self._header(workspace)]
+        banner = self._banner(workspace, size)
+        lines.extend(banner)
         if workspace.error:
             prefix = "STALE" if workspace.stale else "ERROR"
             lines.append(f"{prefix}: {workspace.error}")
@@ -49,10 +54,33 @@ class TerminalRenderer:
         lines.extend(input_lines)
         fitted = _fit(lines, size.columns)
         if self.color:
+            for index in range(1, 1 + len(banner)):
+                fitted[index] = f"{GREEN}{fitted[index]}{RESET}"
             for index in range(len(fitted) - len(input_lines) + 1, len(fitted)):
                 if fitted[index].startswith(PROMPT):
                     fitted[index] = f"{GREEN}{PROMPT.rstrip()}{RESET} " + fitted[index][len(PROMPT):]
         return "\n".join(fitted)
+
+    @staticmethod
+    def _banner(workspace: Workspace, size: TerminalSize) -> list[str]:
+        if (
+            workspace.selected_project_id is not None
+            or workspace.view != View.PROJECTS
+            or size.rows < BANNER_MINIMUM_ROWS
+        ):
+            return []
+        try:
+            release = f"v{version('maestro')}"
+        except PackageNotFoundError:
+            release = ""
+        return [
+            "",
+            "   \u266a   \u266b     \u266a   \u266b",
+            "      \\o__/      M A E S T R O",
+            "       |  \\      Your projects, in concert.",
+            f"      / \\       {release}".rstrip(),
+            "",
+        ]
 
     @staticmethod
     def _header(workspace: Workspace) -> str:
