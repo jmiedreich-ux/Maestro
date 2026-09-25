@@ -50,6 +50,31 @@ HELP_TOPICS = {
         "/attention",
         "No project context needed; needs a connected service.",
     ),
+    "register": (
+        "/register <owner/repository> <overview-path> [--ref <ref or commit>] [--branch <publication branch>] "
+        "[--scope <milestone,milestone>] [--architect <tool:model>] [--reviewer <tool:model>]",
+        "Register a GitHub project from its overview document, or re-register an existing one.",
+        "/register jmiedreich-ux/Foundry docs/project-overview.md --branch registration/foundry",
+        "No project context needed; needs a connected service.",
+    ),
+    "registration": (
+        "/registration [retry <what you changed>]",
+        "Open the selected project's registration, or retry it after you changed something. Never starts registration.",
+        "/registration",
+        "Needs a selected project.",
+    ),
+    "architecture": (
+        "/architecture [start [--architect <tool:model>] [--reviewer <tool:model>] | retry <what you changed> | full]",
+        "Open the selected project's architecture activity, start it, retry it, or show it in full.",
+        "/architecture start",
+        "Needs a selected project.",
+    ),
+    "execution": (
+        "/execution [start [--manager <route>] | pause | resume | stop | retry <packet> [--seconds <n>] <what changed> | full | artifact <artifact id>]",
+        "Open, start, pause, resume or stop the selected project's Execution, or inspect it.",
+        "/execution start",
+        "Needs a selected project.",
+    ),
     "findings": (
         "/findings",
         "List findings of the selected activity. Viewing changes nothing.",
@@ -71,7 +96,7 @@ HELP_TOPICS = {
 }
 OFFLINE_HELP = (
     "Available commands:\n"
-    + "".join(f"  /{name:<10}{topic[1]}\n" for name, topic in HELP_TOPICS.items())
+    + "".join(f"  /{name:<13}{topic[1]}\n" for name, topic in HELP_TOPICS.items())
     + "Keys: Tab and Shift+Tab move focus, Up and Down move in a list, Enter activates, "
     "Escape closes details. Type /help <command> for syntax.\n"
 )

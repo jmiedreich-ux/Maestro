@@ -11,13 +11,12 @@ from maestro.terminal.workspace import AttentionItem
 class HelpAndRuntimeTests(unittest.TestCase):
     def test_help_lists_only_implemented_commands_with_syntax(self) -> None:
         overview = help_text("")
-        for name in ("projects", "attention", "findings", "retry", "exit", "help"):
+        for name in ("projects", "attention", "register", "registration", "architecture", "execution", "findings", "retry", "exit", "help"):
             self.assertIn(f"/{name}", overview)
-        for missing in ("/register", "/architecture", "/execution"):
-            self.assertNotIn(missing, overview)
+            self.assertIn("Example:", help_text(name))
         self.assertIn("Context:", help_text("findings"))
         self.assertIn("No command named /nope", help_text("nope"))
-        self.assertEqual(set(HELP_TOPICS), {"help", "projects", "attention", "findings", "retry", "exit"})
+        self.assertEqual(set(HELP_TOPICS), {"help", "projects", "attention", "register", "registration", "architecture", "execution", "findings", "retry", "exit"})
 
     def test_runtime_readings_show_unknown_and_stale_plainly(self) -> None:
         self.assertEqual([], _runtime_lines({}))
