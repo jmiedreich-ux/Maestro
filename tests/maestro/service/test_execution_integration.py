@@ -79,7 +79,7 @@ class FakeRuns:
         self.rejected: list[str] = []
 
     def create_assignment(self, assignment_id, project_id, activity_id, role, tool, model, duration_seconds, automatic_limit):
-        self.assignments[assignment_id] = {"state": "running", "role": role, "tool": tool, "model": model}
+        self.assignments[assignment_id] = {"state": "running", "role": role, "tool": tool, "model": model, "automatic_limit": automatic_limit, "automatic_used": 0}
 
     def assignment_state(self, assignment_id):
         if assignment_id not in self.assignments:
@@ -91,6 +91,8 @@ class FakeRuns:
 
     def start_run(self, assignment_id, run_id, kind, build, intervention=""):
         run_build = build(run_id)
+        if kind == "recovery":
+            self.assignments[assignment_id]["automatic_used"] += 1
         output = self.root / run_id / "output"
         scratch = self.root / run_id / "scratch"
         output.mkdir(parents=True)
@@ -356,6 +358,12 @@ class MilestoneAndQueueTests(IntegrationBase):
         request = SimpleNamespace(request_id="r1", operation="owner.decision", project_id="proj", activity_id="exec-1", question_id=None,
                                   expected_version=self.service._read("SELECT version FROM entity_versions WHERE entity_id = 'exec-1'")["version"],
                                   payload={"target": "integration_review", "choice": "grant_one", "assignment_id": view["owner_decisions"][0]["assignment_id"]})
+        prepared = self.service.prepare_owner_decision(request)
+        with self.assertRaises(Exception) as caught, self.database.transaction() as tx:
+            prepared.apply(tx, request.expected_version + 1)  # the grant waits for the architect's saved recommendation
+        self.assertIn("recommendation", str(caught.exception))
+        from test_execution import save_recommendation
+        save_recommendation(self.database, view["owner_decisions"][0]["assignment_id"], "grant_one")
         prepared = self.service.prepare_owner_decision(request)
         with self.database.transaction() as tx:
             prepared.apply(tx, request.expected_version + 1)

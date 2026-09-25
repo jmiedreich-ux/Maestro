@@ -24,6 +24,7 @@ APPROVED_OPERATIONS = frozenset(
         "architecture.cancel",
         "architecture.retry",
         "execution.start",
+        "execution.record_finding",
         "execution.status",
         "execution.pause",
         "execution.resume",

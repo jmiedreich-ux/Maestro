@@ -109,13 +109,17 @@ class ExecutionExtension:
             raise ExecutionError("Select the Execution activity first.")
         if action_id.endswith("-grant") or action_id.endswith("-remain"):
             return self._decision(context, project_id, activity_id, "grant_one" if action_id.endswith("-grant") else "remain_paused")
+        marker = f"{activity_id}-disposition-"
+        if action_id.startswith(marker):
+            return self._decision(context, project_id, activity_id, action_id[len(marker):], disposition=True)
         raise ExecutionError("That action is not part of Execution.")
 
-    def _decision(self, context: ExtensionContext, project_id: str, activity_id: str, choice: str) -> object:
+    def _decision(self, context: ExtensionContext, project_id: str, activity_id: str, choice: str, disposition: bool = False) -> object:
         data = self._load(context, project_id).get("data")
         decisions = (data or {}).get("owner_decisions") if isinstance(data, Mapping) else None
+        decisions = [d for d in decisions or [] if (d.get("target") == "execution_work_disposition") == disposition]
         if not decisions:
-            raise ExecutionError("No review-limit decision is pending.")
+            raise ExecutionError("No work disposition is pending." if disposition else "No review-limit decision is pending.")
         target = decisions[0]
         key = ("decision", f"{activity_id}:{target['assignment_id']}:{choice}")
         request_id = self._unconfirmed.get(key) or self._request_id()
@@ -130,7 +134,11 @@ class ExecutionExtension:
             raise ExecutionError(f"Outcome not confirmed: {error}. Doing it again reuses the same request and cannot happen twice.") from error
         self._unconfirmed.pop(key, None)
         _receipt(response)
-        _status(context.state, f"One extra review attempt granted for {target['packet_key']}; approval is not forced." if choice == "grant_one" else f"{target['packet_key']} stays paused; nothing was approved.")
+        what = "fidelity review" if target.get("target") == "execution_support_fidelity_review" else "milestone review attempt" if target.get("target") == "milestone_review" else "review attempt"
+        if disposition:
+            _status(context.state, f"Work disposition recorded: {choice.replace('_', ' ')} for {target['packet_key']}. This does not start re-registration or replanning.")
+        else:
+            _status(context.state, f"One extra {what} granted for {target['packet_key']}; nothing is approved or activated by the grant." if choice == "grant_one" else f"{target['packet_key']} stays paused; nothing was approved.")
         _reload(context.state, activity_id)
         return response
 
@@ -172,6 +180,7 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
     integration = view.get("integration")
     if isinstance(integration, Mapping):
         lines.extend(_render_integration(integration, full=full))
+    lines.extend(_render_support(view, full=full))
     if view.get("open_questions"):
         lines.append("Waiting for your answer to: " + ", ".join(view["open_questions"]))  # type: ignore[arg-type]
     measured = view["measurements"]  # type: ignore[index]
@@ -182,6 +191,56 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
         if manager.get("blockers"):
             lines.append("blockers: " + "; ".join(f"{b['packet_key']}: {b['reason']}" for b in manager["blockers"]))
     return "\n".join(lines)
+
+
+_TARGETS = {"packet_review": "packet review", "integration_review": "integration review", "execution_support_fidelity_review": "support fidelity review", "milestone_review": "milestone review"}
+
+
+def _render_support(view: Mapping[str, object], *, full: bool) -> list[str]:
+    lines: list[str] = []
+    for a in view.get("support", []) or []:  # type: ignore[union-attr]
+        parts = [f"support {a['support_id']} [{a['state']}] for {a['packet_key']}"]
+        if a.get("disposition"):
+            parts.append(f"{a['disposition'].replace('_', ' ')}" + (f": {a['role_path']}" if a.get("role_path") else ""))
+        if a["reviews"]["completed"]:
+            parts.append(f"fidelity review {a['reviews']['completed']} of {a['reviews']['limit']}: " + ", ".join(f"round {r['round']} {r['outcome']} ({r['blocking']} blocking)" for r in a["review_results"]))
+        if a.get("note"):
+            parts.append(str(a["note"]))
+        lines.append("  " + " | ".join(parts))
+        if full:
+            lines.append(f"      why: {str(a.get('reason'))[:240]}")
+            routes = a.get("routes") or {}
+            for name in ("architect", "reviewer"):
+                if routes.get(name):
+                    lines.append(f"      {name}: {routes[name]['tool']} {routes[name]['model']}")
+            for switch in routes.get("switches", []):
+                lines.append(f"      route switch: {switch['role']} moved to {switch['switched_to']} because {switch['reason']}")
+    for d in view.get("determinations", []) or []:  # type: ignore[union-attr]
+        result = d.get("result") or {}
+        parts = [f"determination {d['determination_id']} [{d['state']}] {d['subject']}"]
+        if result:
+            parts.append(f"{result['determination'].replace('_', ' ')}: " + str(result.get("interpretation") or result.get("minimum_correction") or result.get("rationale"))[:240])
+        if d.get("note"):
+            parts.append(str(d["note"]))
+        lines.append("  " + " | ".join(parts))
+    for g in view.get("gaps", []) or []:  # type: ignore[union-attr]
+        parts = [f"milestone gap {g['gap_id']} [{g['state']}] milestone {g['milestone']}: {g['finding']['subject'] if g.get('finding') else g['finding_id']}"]
+        if g.get("determination"):
+            parts.append(g["determination"].replace("_", " "))
+        for s in g.get("supplements", []):
+            parts.append(f"supplement {s['supplement_id']} v{s['version']} [{s['state']}] {', '.join(s['packets'])} at {str(s['commit'])[:12]}")
+        if g.get("note"):
+            parts.append(str(g["note"]))
+        lines.append("  " + " | ".join(parts))
+    disposition = view.get("disposition")
+    if isinstance(disposition, Mapping):
+        lines.append(f"Work disposition: {str(disposition['choice']).replace('_', ' ')} (architect recommended {str(disposition['recommended']).replace('_', ' ')}); affected: {', '.join(disposition['affected'])}.")
+    for d in view.get("owner_decisions", []) or []:  # type: ignore[union-attr]
+        if d.get("target") == "execution_work_disposition":
+            lines.append(f"Decision pending, work disposition for {d['packet_key']}: the architect recommends {str(d['recommendation']).replace('_', ' ')} ({str(d['rationale'])[:300]}). Choose: " + ", ".join(c.replace("_", " ") for c in d["choices"]) + ".")
+        elif d.get("recommendation"):
+            lines.append(f"Decision pending, {_TARGETS.get(d['target'], d['target'])} for {d['packet_key']}: the architect recommends {d['recommendation']}" + (f" ({str(d['rationale'])[:300]})" if d.get("rationale") else "") + ". Grant one extra attempt or keep it paused.")
+    return lines
 
 
 def _render_integration(integration: Mapping[str, object], *, full: bool) -> list[str]:

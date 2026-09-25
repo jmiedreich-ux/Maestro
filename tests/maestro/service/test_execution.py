@@ -40,6 +40,14 @@ def config_table(**over):
     return table
 
 
+def save_recommendation(database, assignment_id, recommendation, determination="implementation_defect"):
+    """The architect's saved recommendation for a review limit, as the determination assignment leaves it."""
+    result = {"determination": determination, "rationale": "r", "interpretation": None, "minimum_correction": "fix", "affected_work": [], "owner_recommendation": recommendation, "disposition_recommendation": None}
+    with database.transaction() as tx:
+        tx.execute("INSERT INTO service_execution_architect(activity_id, assignment_key, kind, packet_key, subject, trigger_json, state, version, config_json, pending_json, result_json, review_limit, created_at, updated_at) "
+                   "VALUES ('exec-1', ?, 'determination', NULL, 's', '{}', 'decided', 1, '{}', '{}', ?, 0, 't', 't')", (f"det-{assignment_id}", json.dumps(result)))
+
+
 class ConfigTests(unittest.TestCase):
     def test_defaults_are_applied_and_the_snapshot_is_stable(self) -> None:
         config = execution_config.validate(config_table())
@@ -147,8 +155,8 @@ class ContractTests(unittest.TestCase):
             self.check("development_manager", {"launches": [], "blockers": [], "priorities": []})
 
 
-def packet_row(key, state="pending", deps=(), paths=("a",), capabilities=("code_edit",), locations=("local_ai_box", "cloud"), route=None, parallel=()):
-    record = {"subject": key, "permitted_paths": list(paths), "parallel_opportunities": [{"id": p} for p in parallel],
+def packet_row(key, state="pending", deps=(), paths=("a",), capabilities=("code_edit",), locations=("local_ai_box", "cloud"), route=None, parallel=(), role=True):
+    record = {"subject": key, "starting_context": {"specialist_role_ref": {"path": "r.md"}} if role else {}, "permitted_paths": list(paths), "parallel_opportunities": [{"id": p} for p in parallel],
               "execution_requirements": {"required_capabilities": list(capabilities), "allowed_locations": list(locations), "minimum_context_tokens": 8000}}
     return {"packet_key": key, "state": state, "record_json": json.dumps(record), "dependency_keys_json": json.dumps(list(deps)), "route_id": route}
 
@@ -182,6 +190,11 @@ class LaunchChecks(unittest.TestCase):
             found = self.problem(packets, launch)
             self.assertIsNotNone(found, text)
             self.assertIn(text, found)
+
+    def test_a_packet_without_a_confirmed_role_needs_an_active_support_binding(self) -> None:
+        table = {"p1": packet_row("p1", role=False)}
+        self.assertIn("no confirmed specialist role", ExecutionService._launch_problem(self.config, table, self.launch(), []))
+        self.assertIsNone(ExecutionService._launch_problem(self.config, table, self.launch(), [], (), {"p1"}))
 
     def test_a_declared_parallel_packet_may_share_paths_and_a_delivered_dependency_unblocks(self) -> None:
         self.assertIsNone(self.problem([packet_row("p1", parallel=("p2",)), packet_row("p2", "coding", route="cloud")], self.launch(route="cloud")))
@@ -295,6 +308,11 @@ class ReviewStateTests(unittest.TestCase):
                                   payload={"target": "packet_review", "choice": "grant_one", "assignment_id": "a-run-2"})
         version = self.service._read("SELECT version FROM entity_versions WHERE entity_id = 'exec-1'")["version"]
         request.expected_version = version
+        prepared = self.service.prepare_owner_decision(request)
+        with self.assertRaises(Exception) as caught, self.database.transaction() as tx:
+            prepared.apply(tx, version + 1)  # the grant waits for the architect's saved recommendation
+        self.assertIn("recommendation", str(caught.exception))
+        save_recommendation(self.database, "a-run-2", "grant_one")
         prepared = self.service.prepare_owner_decision(request)
         with self.database.transaction() as tx:
             prepared.apply(tx, version + 1)

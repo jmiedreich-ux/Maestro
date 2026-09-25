@@ -8,6 +8,7 @@ revision as delivered only after it reads the remote branch back.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import shutil
@@ -15,9 +16,9 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Collection, Iterable, Mapping
 
-from maestro.agents.execution_contract import CODER_SCHEMA, MANAGER_SCHEMA, PLAN_KEYS, REVIEWER_SCHEMA
+from maestro.agents.execution_contract import CODER_SCHEMA, DISPOSITION_CHOICES, MANAGER_SCHEMA, PLAN_KEYS, REVIEWER_SCHEMA
 from maestro.agents.session_state import SessionUse
 from maestro.agents.transport import AgentAssignment, _questions
 from maestro.agents.architecture_contract import _question_view
@@ -25,6 +26,9 @@ from maestro.foundation import Database, DomainMigration, Transaction, canonical
 
 from . import execution_config, execution_git
 from .execution_integration import INTEGRATION_MIGRATION, IntegrationMixin, is_delivered
+from .execution_determination import DeterminationMixin
+from .execution_gaps import GAP_MIGRATION, GapMixin
+from .execution_support import SUPPORT_MIGRATION, SupportMixin
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ConversationRecord, QuestionRecord
 from .agent_runs import AgentRunError, AgentRunService, RunBuild
 from .questions import DeliveredAnswer, QuestionService, RecipientDeliveryInterrupted
@@ -184,7 +188,8 @@ _PACKET_ACTIVE = ("reserved", "coding", "reviewing", "correcting")
 _MANAGER_TOOLS = ["Read"]
 _CODER_TOOLS = ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 _REVIEWER_TOOLS = ["Read", "Bash", "Glob", "Grep"]
-_ROLE_CLASS = {"development_manager": "architect", "packet_coder": "architect", "packet_reviewer": "fidelity_reviewer", "integration_manager": "architect", "integration_reviewer": "fidelity_reviewer"}
+_ROLE_CLASS = {"development_manager": "architect", "packet_coder": "architect", "packet_reviewer": "fidelity_reviewer", "integration_manager": "architect", "integration_reviewer": "fidelity_reviewer",
+               "support_architect": "architect", "support_limit_architect": "architect", "determination_architect": "architect", "milestone_gap_architect": "architect", "support_reviewer": "fidelity_reviewer"}
 
 _COMMON_RULES = """Common rules: follow the exact packet and its permitted paths; change only what the packet needs; own the feature's required connections and real entry path; run real checks and report each honestly as passed, failed or untested (an unavailable check is untested, never passed); never expose credentials, never merge or deploy, never assume an Owner decision. A completion claim means ready for independent review, not accepted."""
 
@@ -194,7 +199,8 @@ _MANAGER_TASK = """You are the Maestro Development Manager for one project's Exe
 2. {first_pass}Choose from the packets whose state is `pending` and whose dependencies are all delivered (see `startable` in packets.json). A dependency is delivered only when its providing packet is integrated into a milestone branch and, when that packet belongs to another milestone, imported into the consuming milestone by a dependency delivery (see waiting_for and integration.json); a packet that depends on undelivered work stays blocked and you say why. Approved packets and imports are integrated by the service's queue, not by you. Independent eligible packets may run in parallel within route capacity and shared-path limits. Reconsider on each event; do not interrupt or reassign running work.
 3. Qwen (the default route {default_route}) is the primary coder. Choose a configured Codex or Claude route only when the packet's complexity, capabilities or context justify it, and give a brief reason either way. A launch names packet_key, route_id, the route's exact model from routes.json, and the reason. Request only what you can justify now.
 4. Ask the Owner (result clarification_required, questions with recipient owner, and no launches) only when missing information affects intended outcomes or scope. Otherwise result completed.
-5. Return: understanding (a concise statement of the intended outcomes, existing progress and blockers), launches, priorities (short ordered plain sentences), blockers (packet_key and reason for each packet you are not starting), and a checkpoint (your decisions, reasons and unresolved issues in a few plain sentences, for your own continuity).
+5. Specialist guidance. A pending packet with `specialist_role` true already has its confirmed role and needs no support; request support for it only if you can name a concrete gap between that role and the packet. A pending packet with `specialist_role` false has no specialist guidance, and roles carry the source-local context a coder needs: do not launch it; list it in support_requests with the specific reason (packet_key and reason). The service then starts a bounded architectural-support assignment and notifies you when a validated role is bound; unrelated work continues. If a pending packet raises an architectural question the confirmed design does not answer, list it in architectural_questions (packet_key and the question); do not ask the Owner to interpret the architecture. Use empty lists when there is nothing to request.
+6. Return: understanding (a concise statement of the intended outcomes, existing progress and blockers), launches, priorities (short ordered plain sentences), blockers (packet_key and reason for each packet you are not starting), support_requests, architectural_questions, and a checkpoint (your decisions, reasons and unresolved issues in a few plain sentences, for your own continuity).
 {continuation}{rejections}
 Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. Return only the structured response."""
 
@@ -235,7 +241,7 @@ def _paths_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
     return any(inside(x, y) or inside(y, x) for x in a for y in b)
 
 
-class ExecutionService(IntegrationMixin):
+class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
     """Owns Execution state; the worker thread calls ``tick`` repeatedly."""
 
     def __init__(
@@ -268,11 +274,13 @@ class ExecutionService(IntegrationMixin):
         self._guard = threading.Lock()
         database.registry.register(EXECUTION_MIGRATION)
         database.registry.register(INTEGRATION_MIGRATION)
+        database.registry.register(SUPPORT_MIGRATION)
+        database.registry.register(GAP_MIGRATION)
         database.initialize()
 
     @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
-        return (OperationHandler("execution.start", self.prepare_start),)
+        return (OperationHandler("execution.start", self.prepare_start), OperationHandler("execution.record_finding", self.prepare_record_finding))
 
     def owns(self, activity_id: str) -> bool:
         return self._read("SELECT 1 AS n FROM service_executions WHERE activity_id = ?", (activity_id,)) is not None
@@ -493,6 +501,9 @@ class ExecutionService(IntegrationMixin):
         if row is None or row["state"] not in {"running", "blocked"}:
             return
         self._advance_manager(row)
+        self._advance_support(row)
+        self._advance_determinations(row)
+        self._advance_gaps(row)
         self._verify_deliveries(row)
         self._plan_deliveries(row)
         self._enqueue_approved(row)
@@ -682,6 +693,8 @@ class ExecutionService(IntegrationMixin):
         packets = self._packets(row["activity_id"])
         by_key = {p["packet_key"]: p for p in packets}
         deliveries = self._deliveries(row["activity_id"])
+        held = self._held_packets(row["activity_id"])
+        supports = self._architects(row["activity_id"], "support")
         listing = []
         for p in packets:
             record = json.loads(p["record_json"])
@@ -691,7 +704,9 @@ class ExecutionService(IntegrationMixin):
                 "key": p["packet_key"], "subject": p["subject"], "purpose": record.get("purpose"), "milestone": p["milestone_key"], "dependencies": dependencies,
                 "parallel_opportunities": [str(x.get("id", x)) if isinstance(x, Mapping) else str(x) for x in record.get("parallel_opportunities", [])],
                 "execution_requirements": record.get("execution_requirements"), "permitted_paths": record.get("permitted_paths"),
-                "state": p["state"], "startable": p["state"] == "pending" and not waiting,
+                "state": p["state"], "startable": p["state"] == "pending" and not waiting and p["packet_key"] not in held,
+                "specialist_role": bool((record.get("starting_context") or {}).get("specialist_role_ref")) or self._support_binding(row["activity_id"], p["packet_key"]) is not None,
+                "support": [{"support_id": a["assignment_key"], "state": a["state"], "note": a["note"]} for a in supports if a["packet_key"] == p["packet_key"]],
                 "waiting_for": waiting, "route": p["route_id"], "review_rounds": {"completed": p["rounds_used"], "limit": p["round_limit"]}, "note": p["note"],
             })
         use = {r: sum(1 for p in packets if p["route_id"] == r and p["state"] in _PACKET_ACTIVE) for r in config["coder_routes"]}
@@ -751,8 +766,10 @@ class ExecutionService(IntegrationMixin):
             pending = json.loads(fresh["pending_json"] or "{}")
             packets = {p["packet_key"]: p for p in (self._row_list(tx, "SELECT * FROM service_execution_packets WHERE activity_id = ?", (row["activity_id"],)))}
             deliveries = self._row_list(tx, "SELECT * FROM service_execution_deliveries WHERE activity_id = ?", (row["activity_id"],))
+            held = self._held_packets(row["activity_id"], tx)
+            bound = {b["packet_key"] for b in self._row_list(tx, "SELECT packet_key FROM service_execution_support_bindings WHERE activity_id = ? AND state = 'active'", (row["activity_id"],))}
             for launch in response.get("launches", []):
-                reason = self._launch_problem(config, packets, launch, accepted, deliveries)
+                reason = held.get(launch["packet_key"]) or self._launch_problem(config, packets, launch, accepted, deliveries, bound)
                 if reason is not None:
                     rejected.append({"packet_key": launch["packet_key"], "route_id": launch["route_id"], "reason": reason})
                     continue
@@ -765,6 +782,15 @@ class ExecutionService(IntegrationMixin):
                 )
                 packets[launch["packet_key"]] = {**packets[launch["packet_key"]], "state": "reserved", "route_id": launch["route_id"]}
                 accepted.append(launch)
+            for request in response.get("support_requests", []):
+                packet = packets.get(request.get("packet_key"))
+                problem = "no such packet in this Execution" if packet is None else self._request_support(tx, row, packet, str(request.get("reason", ""))) 
+                if problem is not None:
+                    rejected.append({"packet_key": request.get("packet_key"), "route_id": "support", "reason": problem})
+            for request in response.get("architectural_questions", []):
+                problem = self._request_manager_question(tx, row, packets.get(request.get("packet_key")), str(request.get("question", "")))
+                if problem is not None:
+                    rejected.append({"packet_key": request.get("packet_key"), "route_id": "architectural_question", "reason": problem})
             event_ids = pending.pop("planning_event_ids", [])
             for event_id in event_ids:
                 tx.execute("UPDATE service_execution_events SET handled = 1 WHERE activity_id = ? AND event_id = ?", (row["activity_id"], event_id))
@@ -796,7 +822,7 @@ class ExecutionService(IntegrationMixin):
             raise AgentRunError("planning_rejected", "the Development Manager's requests were rejected three passes in a row; see the rejection reasons")
 
     @staticmethod
-    def _launch_problem(config: Mapping[str, Any], packets: Mapping[str, Mapping[str, Any]], launch: Mapping[str, Any], accepted: list[dict[str, Any]], deliveries: list[Mapping[str, Any]] = ()) -> str | None:
+    def _launch_problem(config: Mapping[str, Any], packets: Mapping[str, Mapping[str, Any]], launch: Mapping[str, Any], accepted: list[dict[str, Any]], deliveries: list[Mapping[str, Any]] = (), bound: Collection[str] = ()) -> str | None:
         packet = packets.get(launch["packet_key"])
         if packet is None:
             return "no such packet in this Execution"
@@ -807,6 +833,8 @@ class ExecutionService(IntegrationMixin):
         undelivered = [d for d in deps if not is_delivered(packets, list(deliveries), packet, d)]
         if undelivered:
             return "its dependencies are not delivered yet: " + ", ".join(undelivered)
+        if not (record.get("starting_context") or {}).get("specialist_role_ref") and launch["packet_key"] not in bound:
+            return "the packet has no confirmed specialist role and no active support binding; it needs architectural support first"
         route = config["coder_routes"].get(launch["route_id"])
         if route is None:
             return "the route is not a configured coder route"
@@ -860,6 +888,22 @@ class ExecutionService(IntegrationMixin):
             tx.execute(f"UPDATE service_execution_packets SET pending_json = ?, updated_at = ?{', ' + sets if sets else ''} WHERE activity_id = ? AND packet_key = ?",
                        (canonical_json(pending), _now(), *columns.values(), activity_id, key))
 
+    def _recommendation_fields(self, activity_id: str, assignment_id: str) -> dict[str, Any]:
+        arch = self._read("SELECT * FROM service_execution_architect WHERE activity_id = ? AND assignment_key = ?", (activity_id, f"det-{assignment_id}"))
+        result = json.loads(arch["result_json"]) if arch is not None and arch["result_json"] else None
+        if result is None:
+            return {"recommendation": None, "rationale": None, "determination": None if arch is None else arch["state"]}
+        return {"recommendation": result["owner_recommendation"], "rationale": result["rationale"], "determination": result["determination"]}
+
+    def _held_packets(self, activity_id: str, tx: Transaction | None = None) -> dict[str, str]:
+        """Pending packets that must not launch, with the plain reason: an unresolved support assignment for the packet."""
+        held = dict(self._held_by_support(activity_id))
+        held.update(self._held_by_determination(activity_id))
+        row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
+        if row is not None:
+            held.update(self._held_by_disposition(row))
+        return held
+
     def _packet_paths(self, packet: Mapping[str, Any]) -> list[str]:
         return list(json.loads(packet["record_json"]).get("permitted_paths", []))
 
@@ -867,12 +911,24 @@ class ExecutionService(IntegrationMixin):
         record = json.loads(packet["record_json"])
         inputs = {"packet.json": _json(record)}
         ref = (record.get("starting_context") or {}).get("specialist_role_ref")
+        binding = self._support_binding(row["activity_id"], packet["packet_key"])
+        if binding is not None:
+            destination = self._destination(self.profiles[json.loads(row["profile_json"])["profile"]])
+            role = destination.read_file(row["repository"], binding["commit_sha"], binding["role_path"])
+            if role is None or hashlib.sha256(role).hexdigest() != binding["role_sha256"]:
+                raise AgentRunError("support_changed", f"the activated specialist role {binding['role_path']} no longer matches its verified hash")
+            inputs["specialist-role.md"] = role
+            if binding["context_path"]:
+                context = destination.read_file(row["repository"], binding["commit_sha"], binding["context_path"])
+                if context is None or hashlib.sha256(context).hexdigest() != binding["context_sha256"]:
+                    raise AgentRunError("support_changed", f"the activated starting context {binding['context_path']} no longer matches its verified hash")
+                inputs["specialist-context.md"] = context
+            inputs["support-binding.json"] = _json({"confirmed_specialist_role_ref": ref, "activated_support": json.loads(binding["activation_json"])})
+            return inputs
         if isinstance(ref, Mapping):
             destination = self._destination(self.profiles[json.loads(row["profile_json"])["profile"]])
             role = destination.read_file(row["repository"], ref["commit"], ref["path"])
             if role is not None:
-                import hashlib
-
                 if hashlib.sha256(role).hexdigest() != ref["sha256"]:
                     raise AgentRunError("specialist_changed", f"the specialist role {ref['path']} does not match the confirmed hash")
                 inputs["specialist-role.md"] = role
@@ -1269,9 +1325,18 @@ class ExecutionService(IntegrationMixin):
         stuck_entries = [e for e in queue if e["state"] in {"blocked", "limit_paused"}]
         held = [d for d in self._deliveries(activity_id) if d["state"] == "held"]
         manager_active = pending.get("manager_run") is not None
+        supports = self._architects(activity_id, "support")
+        support_active = [a for a in supports if a["state"] in ("requested", "drafting", "reviewing", "correcting", "publishing", "recommending")]
+        support_stuck = [a for a in supports if a["state"] in ("limit_paused", "blocked_route", "replanning_required")]
+        determinations = [a for a in self._architects(activity_id) if a["kind"] != "support"]
+        support_active += [a for a in determinations if a["state"] in ("requested", "determining", "publishing")]
+        support_stuck += [a for a in determinations if a["state"] in ("blocked_route", "awaiting_disposition")]
+        if self._settled_for_replanning(row):
+            self._end_for_replanning(row)
+            return
         unanswered = any(not q.get("answered") for q in pending.get("questions", {}).values())
-        if active or manager_active or queued:
-            state, text = "running", f"{len(active)} packet(s) in progress" + (f", {len(queued)} integration queue entr{'y' if len(queued) == 1 else 'ies'} in progress" if queued else "") + (", Development Manager planning" if manager_active else "")
+        if active or manager_active or queued or support_active:
+            state, text = "running", f"{len(active)} packet(s) in progress" + (f", {len(support_active)} architectural support assignment(s) in progress" if support_active else "") + (f", {len(queued)} integration queue entr{'y' if len(queued) == 1 else 'ies'} in progress" if queued else "") + (", Development Manager planning" if manager_active else "")
         elif unanswered:
             state, text = "running", "Waiting for your answer to the Development Manager"
         elif waiting and self._read("SELECT 1 AS n FROM service_execution_events WHERE activity_id = ? AND handled = 0", (activity_id,)) is not None:
@@ -1287,11 +1352,18 @@ class ExecutionService(IntegrationMixin):
                 parts.append(f"{len(held)} dependency delivery(ies) wait for a source milestone to complete")
             if stuck:
                 parts.append(f"{len(stuck)} packet(s) need attention: " + "; ".join(p["packet_key"] for p in stuck))
+            if support_stuck:
+                parts.append(f"{len(support_stuck)} architectural support assignment(s) need attention: " + "; ".join(f"{a['assignment_key']} ({a['state']})" for a in support_stuck))
             if stuck_entries:
                 parts.append("the integration queue is blocked at entry " + ", ".join(str(e["entry_id"]) for e in stuck_entries[:1]) + " (nothing behind it is skipped)")
             text = "No further packet can start: " + ("; ".join(parts) or "nothing left to run")
         actions: tuple[ActivityAction, ...] = ()
-        if any(p["state"] == "limit_paused" for p in packets) or any(e["state"] == "limit_paused" for e in queue):
+        if any(a["state"] == "awaiting_disposition" for a in determinations):
+            actions = tuple(ActivityAction(f"{activity_id}-disposition-{c}", label, "decision") for c, label in (
+                ("continue_unaffected", "Continue unaffected work"), ("finish_safe_work", "Stop new starts and finish safe running work"),
+                ("stop_affected_or_all", "Stop affected or all running work"), ("finish_current_for_replanning", "Finish current work and prioritize replanning")))
+            text += ". Re-registration is required for some work: choose what happens to current work"
+        if any(p["state"] == "limit_paused" for p in packets) or any(e["state"] == "limit_paused" for e in queue) or any(a["state"] == "limit_paused" for a in supports):
             actions = (ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"), ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"))
             text += ". Review limit reached: grant one extra attempt or keep it paused"
         if state != row["state"] or self._current_waiting(activity_id) != text:
@@ -1358,11 +1430,25 @@ class ExecutionService(IntegrationMixin):
         for p in self._packets(activity_id):
             limit = self._packet_pending(p).get("limit")
             if p["state"] == "limit_paused" and limit:
-                decisions.append({"target": "packet_review", "packet_key": p["packet_key"], "assignment_id": limit["assignment_id"], "round": limit["round"]})
+                decisions.append({"target": "packet_review", "packet_key": p["packet_key"], "assignment_id": limit["assignment_id"], "round": limit["round"], **self._recommendation_fields(activity_id, limit["assignment_id"])})
         for e in self._queue(activity_id):
             limit = json.loads(e["pending_json"] or "{}").get("limit")
             if e["state"] == "limit_paused" and limit:
-                decisions.append({"target": "integration_review", "packet_key": self._entry_subject(e), "assignment_id": limit["assignment_id"], "round": limit["round"]})
+                decisions.append({"target": "integration_review", "packet_key": self._entry_subject(e), "assignment_id": limit["assignment_id"], "round": limit["round"], **self._recommendation_fields(activity_id, limit["assignment_id"])})
+        for a in self._architects(activity_id, "support"):
+            limit = json.loads(a["pending_json"] or "{}").get("limit")
+            if a["state"] == "limit_paused" and limit:
+                decisions.append({"target": "execution_support_fidelity_review", "packet_key": a["packet_key"], "assignment_id": a["assignment_key"], "round": limit["round"],
+                                  "recommendation": limit["recommendation"], "rationale": limit["rationale"]})
+        for g in self._architects(activity_id, "milestone_gap"):
+            trigger, result = json.loads(g["trigger_json"]), json.loads(g["result_json"]) if g["result_json"] else None
+            if trigger.get("exhausted") and result and result["owner_recommendation"] in ("grant_one", "remain_paused") and "owner_decision" not in json.loads(g["pending_json"] or "{}"):
+                decisions.append({"target": "milestone_review", "packet_key": trigger["milestone_key"], "assignment_id": g["assignment_key"], "round": 0,
+                                  "recommendation": result["owner_recommendation"], "rationale": result["rationale"]})
+        for d in [*self.determination_view(activity_id), *[{**g, "determination_id": g["gap_id"], "result": self._gap_result(activity_id, g["gap_id"])} for g in self.gap_view(activity_id)]]:
+            if d["state"] == "awaiting_disposition" and d["result"]:
+                decisions.append({"target": "execution_work_disposition", "packet_key": ", ".join(d["result"]["affected_work"]), "assignment_id": d["determination_id"], "round": 0,
+                                  "recommendation": d["result"]["disposition_recommendation"], "rationale": d["result"]["rationale"], "choices": list(DISPOSITION_CHOICES)})
         if decisions:
             actions.append("respond_to_owner_decision")
         open_questions = [q for q, i in pending.get("questions", {}).items() if not i.get("answered")]
@@ -1376,6 +1462,7 @@ class ExecutionService(IntegrationMixin):
                         "planning": pending.get("manager_run") is not None, "understanding": pending.get("understanding"), "priorities": pending.get("priorities", []),
                         "blockers": pending.get("blockers", []), "checkpoint": pending.get("checkpoint")},
             "integration": self.integration_view(activity_id),
+            "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "gaps": self.gap_view(activity_id), "disposition": self.disposition_view(row),
             "packets": packets, "plans": [{"pass": p["pass_number"], "accepted": json.loads(p["accepted_json"]), "rejected": json.loads(p["rejected_json"]), "at": p["created_at"]} for p in plans],
             "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions, "owner_decisions": decisions,
             "runs": [{"run_id": r["run_id"], "role": r["assignment_id"].rsplit("-", 2)[-2] if "-" in r["assignment_id"] else r["role"], "state": r["state"], "tool": r["tool"], "model": r["model_id"], "tool_version": r["tool_version"], "seconds": r["active_seconds"]} for r in runs],
@@ -1389,8 +1476,11 @@ class ExecutionService(IntegrationMixin):
         payload = dict(request.payload)
         if set(payload) != {"target", "choice", "assignment_id"}:
             raise ValueError("owner.decision payload must be target, choice and assignment_id")
-        if payload["target"] not in {"packet_review", "integration_review"} or payload["choice"] not in {"grant_one", "remain_paused"}:
-            raise ValueError("Execution accepts target packet_review or integration_review with choice grant_one or remain_paused")
+        if payload["target"] == "execution_work_disposition":
+            if payload["choice"] not in DISPOSITION_CHOICES:
+                raise ValueError("execution_work_disposition takes choice " + ", ".join(DISPOSITION_CHOICES))
+        elif payload["target"] not in {"packet_review", "integration_review", "execution_support_fidelity_review", "milestone_review"} or payload["choice"] not in {"grant_one", "remain_paused"}:
+            raise ValueError("Execution accepts target packet_review, integration_review, execution_support_fidelity_review or milestone_review with choice grant_one or remain_paused, or execution_work_disposition")
         activity_id = request.activity_id
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
@@ -1401,8 +1491,16 @@ class ExecutionService(IntegrationMixin):
             if current is not None and int(current["version"]) != request.expected_version:
                 raise RequestRejection(409, "stale_version", "the activity changed since it was displayed", fields={"activity_version": int(current["version"])})
             found = None
+            if payload["target"] == "execution_work_disposition":
+                return self._disposition_decision(transaction, request, row, payload, next_version)
+            if payload["target"] in {"packet_review", "integration_review"}:
+                self._limit_determination(transaction, activity_id, payload["assignment_id"])
             if payload["target"] == "integration_review":
                 return self._integration_decision(transaction, request, row, payload, next_version)
+            if payload["target"] == "milestone_review":
+                return self._milestone_review_decision(transaction, request, row, payload, next_version)
+            if payload["target"] == "execution_support_fidelity_review":
+                return self._support_decision(transaction, request, row, payload, next_version)
             for candidate in self._row_list(transaction, "SELECT * FROM service_execution_packets WHERE activity_id = ? AND state = 'limit_paused'", (activity_id,)):
                 if json.loads(candidate["pending_json"]).get("limit", {}).get("assignment_id") == payload["assignment_id"]:
                     found = candidate
