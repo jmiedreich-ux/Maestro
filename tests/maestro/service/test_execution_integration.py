@@ -79,7 +79,7 @@ class FakeRuns:
         self.rejected: list[str] = []
 
     def create_assignment(self, assignment_id, project_id, activity_id, role, tool, model, duration_seconds, automatic_limit):
-        self.assignments[assignment_id] = {"state": "running", "role": role, "tool": tool, "model": model}
+        self.assignments[assignment_id] = {"state": "running", "role": role, "tool": tool, "model": model, "automatic_limit": automatic_limit, "automatic_used": 0}
 
     def assignment_state(self, assignment_id):
         if assignment_id not in self.assignments:
@@ -91,6 +91,8 @@ class FakeRuns:
 
     def start_run(self, assignment_id, run_id, kind, build, intervention=""):
         run_build = build(run_id)
+        if kind == "recovery":
+            self.assignments[assignment_id]["automatic_used"] += 1
         output = self.root / run_id / "output"
         scratch = self.root / run_id / "scratch"
         output.mkdir(parents=True)

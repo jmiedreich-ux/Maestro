@@ -87,7 +87,7 @@ _GAP_TASK = """You are the Maestro milestone-gap Project Architect. A finding fr
 
 1. Read input/finding.json (the exact finding and its evidence), input/milestone.json (the milestone outcome and its packets with their state and permitted paths), input/packets.json, input/supplements.json (correction supplements that already exist), input/limits.json (remaining review allowances) and input/execution.json. Verify the finding against source/ yourself.
 2. Choose exactly one determination. implementation_defect: the confirmed design and packets cover the behavior and the code is wrong; give the smallest correction for the Integration Manager in `minimum_correction`. in_scope_supplement: needed work is missing but is within the confirmed scope and direction; give the bounded correction in `supplement` (scope_explanation and packets). reregistration_required: the correction would change outcomes, dependencies, responsibilities or the architectural direction; list the affected packet keys in `affected_work` and recommend a work disposition in `disposition_recommendation` (continue_unaffected, finish_safe_work, stop_affected_or_all or finish_current_for_replanning).
-3. Supplement rules: each packet has a unique lowercase-hyphen key that does not collide with an existing packet, a subject, a purpose, permitted_paths that stay inside paths the milestone's confirmed packets already permit (no leading slash, no .., nothing broader than needed), dependencies naming existing or supplement packet keys (no cycles), completion_criteria that state the observable corrected behavior, and essential_failure_checks. Do not restate a confirmed packet or change an outcome.
+3. Supplement rules: each packet has a unique lowercase-hyphen key that does not collide with an existing packet, a subject, a purpose, implementation_ownership (the source area or component that owns the change), permitted_paths that stay inside paths the milestone's confirmed packets already permit (no leading slash, no .., nothing broader than needed), dependencies naming existing or supplement packet keys (no cycles), completion_criteria that state the observable corrected behavior, and essential_failure_checks. Do not restate a confirmed packet or change an outcome.
 4. {owner_line}
 5. Always give a plain rationale and the affected packet keys or milestone in `affected_work`. result is completed.
 Copy contract_version (1), assignment_id, run_id, session_id, project_id, activity_id, role, source_commit and decision_version exactly from assignment.json. Return only the structured response."""
@@ -242,7 +242,7 @@ class GapMixin:
                 raise ValueError(f"packet key {key} must be lowercase words joined by hyphens")
             if key in packets:
                 raise ValueError(f"packet key {key} collides with an existing packet; choose a new key")
-            for field in ("subject", "purpose"):
+            for field in ("subject", "purpose", "implementation_ownership"):
                 if not str(definition[field]).strip():
                     raise ValueError(f"packet {key} needs a {field}")
             for field in ("permitted_paths", "completion_criteria"):
@@ -257,7 +257,7 @@ class GapMixin:
             for dependency in definition["dependencies"]:
                 if dependency not in packets and dependency not in keys:
                     raise ValueError(f"packet {key} depends on {dependency}, which is neither an existing packet nor in this supplement")
-            normalized.append({k: definition[k] for k in ("key", "subject", "purpose", "permitted_paths", "dependencies", "completion_criteria", "essential_failure_checks")})
+            normalized.append({k: definition[k] for k in ("key", "subject", "purpose", "implementation_ownership", "permitted_paths", "dependencies", "completion_criteria", "essential_failure_checks")})
         graph = {d["key"]: [x for x in d["dependencies"] if x in keys] for d in normalized}
         seen: set[str] = set()
 
@@ -273,6 +273,48 @@ class GapMixin:
         for node in graph:
             visit(node, ())
         return normalized
+
+    def _defect_correction(self, tx: Transaction, row: Mapping[str, Any], trigger: Mapping[str, Any], result: Mapping[str, Any]) -> str:
+        """An implementation defect becomes one pending correction packet in the milestone; normal review and the integration queue carry it."""
+        activity_id = row["activity_id"]
+        siblings = [p for p in self._packets(activity_id) if p["milestone_key"] == trigger["milestone_key"]]
+        base = json.loads(siblings[0]["record_json"]) if siblings else {}
+        paths = sorted({path for p in siblings for path in json.loads(p["record_json"]).get("permitted_paths", [])})
+        finding = json.loads(self._finding(activity_id, trigger["finding_id"])["record_json"])
+        key = f"correct-{trigger['finding_id']}"
+        correction = str(result["minimum_correction"] or finding["requested_correction"])
+        record = {
+            "id": key, "subject": f"Correct: {finding['subject']}"[:200], "purpose": correction, "permitted_paths": paths, "dependencies": [],
+            "completion_criteria": [correction], "essential_failure_checks": [finding["requested_correction"]], "required_outputs": [], "parallel_opportunities": [],
+            "shared_code_constraints": base.get("shared_code_constraints", []), "execution_requirements": base.get("execution_requirements", {}),
+            "starting_context": {k: v for k, v in (base.get("starting_context") or {}).items() if k == "specialist_role_ref"},
+            "defect_ref": {"finding_id": trigger["finding_id"], "milestone_key": trigger["milestone_key"]},
+        }
+        limit = json.loads(row["config_json"])["reviews"]["packet"]["maximum_completed_rounds"]
+        added = tx.execute(
+            "INSERT OR IGNORE INTO service_execution_packets(activity_id, packet_key, subject, record_json, record_sha256, milestone_key, dependency_keys_json, state, round_limit, updated_at) VALUES (?, ?, ?, ?, ?, ?, '[]', 'pending', ?, ?)",
+            (activity_id, key, record["subject"], canonical_json(record), hashlib.sha256(canonical_json(record).encode()).hexdigest(), trigger["milestone_key"], limit, _now()),
+        ).rowcount
+        if added != 1:
+            raise AgentRunError("stale_finding", f"the correction packet {key} already exists")
+        return key
+
+    def _milestone_review_decision(self, tx: Transaction, request: RequestLike, row: Mapping[str, Any], payload: Mapping[str, Any], next_version: int) -> OperationResult:
+        """The Owner's typed choice when a milestone review allowance is exhausted; it is saved for milestone review, which owns the count, and approves nothing."""
+        activity_id = row["activity_id"]
+        arch = self._row(tx, "SELECT * FROM service_execution_architect WHERE activity_id = ? AND assignment_key = ? AND kind = 'milestone_gap' AND result_json IS NOT NULL", (activity_id, payload["assignment_id"]))
+        trigger = json.loads(arch["trigger_json"]) if arch is not None else {}
+        pending = json.loads(arch["pending_json"] or "{}") if arch is not None else {}
+        if arch is None or not trigger.get("exhausted") or json.loads(arch["result_json"])["owner_recommendation"] not in ("grant_one", "remain_paused") or "owner_decision" in pending:
+            raise RequestRejection(409, "no_decision_pending", "no milestone review-limit decision is pending for that gap assignment")
+        pending["owner_decision"] = {"choice": payload["choice"], "request_id": request.request_id, "decided_at": _now()}
+        tx.execute("UPDATE service_execution_architect SET pending_json = ?, updated_at = ? WHERE activity_id = ? AND assignment_key = ?", (canonical_json(pending), _now(), activity_id, arch["assignment_key"]))
+        text = (f"Owner granted one extra milestone review attempt for milestone {trigger['milestone_key']} (finding {trigger['finding_id']}); the grant approves nothing and does not reset the count." if payload["choice"] == "grant_one"
+                else f"Owner chose to keep milestone {trigger['milestone_key']} review paused for finding {trigger['finding_id']}; nothing was approved and no count changed.")
+        self._event(tx, activity_id, "milestone_review_decision", None, text[:400])
+        self._activity(tx, activity_id, "running", text, version=next_version)
+        self._say(tx, row["project_id"], activity_id, text)
+        return OperationResult(data={"activity_id": activity_id, "decision": payload["choice"], "milestone": trigger["milestone_key"], "message": text}, status="accepted", project_id=row["project_id"], activity_id=activity_id)
 
     def _gap_accept(self, row: Mapping[str, Any], arch: dict[str, Any], pending: dict[str, Any], current: Mapping[str, str]) -> None:
         assert self.runs is not None
@@ -316,11 +358,12 @@ class GapMixin:
             tx.execute("UPDATE service_execution_architect SET state = ?, result_json = ?, pending_json = ?, note = NULL, updated_at = ? WHERE activity_id = ? AND assignment_key = ?",
                        (state, canonical_json(result), canonical_json(pending), _now(), activity_id, key))
             if kind == "implementation_defect":
+                correction_key = self._defect_correction(tx, row, trigger, result)
                 tx.execute("UPDATE service_execution_findings SET state = 'defect_routed' WHERE activity_id = ? AND finding_id = ?", (activity_id, trigger["finding_id"]))
-                self._event(tx, activity_id, "gap_defect", None, f"{key}: implementation defect for milestone {trigger['milestone_key']}, minimum correction: {str(result['minimum_correction'])[:300]}")
+                self._event(tx, activity_id, "gap_defect", None, f"{key}: implementation defect for milestone {trigger['milestone_key']}, correction packet {correction_key} is pending; minimum correction: {str(result['minimum_correction'])[:300]}")
             if kind == "reregistration_required":
                 tx.execute("UPDATE service_execution_findings SET state = 'reregistration_required' WHERE activity_id = ? AND finding_id = ?", (activity_id, trigger["finding_id"]))
-            summary = (f"implementation defect; the Integration Manager corrects it: {result['minimum_correction']}" if kind == "implementation_defect"
+            summary = (f"implementation defect; correction packet {correction_key} is pending and follows normal review and integration: {result['minimum_correction']}" if kind == "implementation_defect"
                        else f"a bounded supplement of {len(normalized)} packet(s) is validated and published next" if kind == "in_scope_supplement"
                        else f"re-registration is required for {', '.join(result['affected_work'])}; recommended disposition {result['disposition_recommendation']}")
             self._say(tx, row["project_id"], activity_id, f"Milestone-gap determination {key} ({kind}) for {trigger['finding_id']}: {str(result['rationale'])[:300]}. {summary[:400]}"
@@ -382,24 +425,28 @@ class GapMixin:
             if current is None or current["state"] != "routed":
                 raise AgentRunError("stale_finding", f"the finding {trigger['finding_id']} changed before activation")
             tx.execute("UPDATE service_execution_journal SET state = 'verified', remote_after = ? WHERE operation_id = ?", (commit, operation_id))
-            tx.execute(
+            added = tx.execute(
                 "INSERT OR IGNORE INTO service_execution_supplements(activity_id, supplement_id, version, finding_id, milestone_key, state, record_json, record_sha256, path, commit_sha, packets_json, created_at) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
                 (activity_id, supplement_id, version, trigger["finding_id"], trigger["milestone_key"], canonical_json(record), digest, path, commit, _dump([p["key"] for p in record["packets"]]), now),
-            )
+            ).rowcount
+            if added != 1:
+                raise AgentRunError("stale_finding", f"the supplement {supplement_id} version {version} already exists")
             for definition in record["packets"]:
                 sibling = next((p for p in milestone_packets if any(a.strip("/") == b.strip("/") or a.strip("/").startswith(b.strip("/") + "/") for a in definition["permitted_paths"] for b in json.loads(p["record_json"]).get("permitted_paths", []))), None)
                 base = json.loads(sibling["record_json"]) if sibling is not None else {}
                 packet_record = {
-                    "id": definition["key"], "subject": definition["subject"], "purpose": definition["purpose"], "permitted_paths": definition["permitted_paths"], "dependencies": definition["dependencies"],
+                    "id": definition["key"], "subject": definition["subject"], "purpose": definition["purpose"], "implementation_ownership": definition["implementation_ownership"], "permitted_paths": definition["permitted_paths"], "dependencies": definition["dependencies"],
                     "completion_criteria": definition["completion_criteria"], "essential_failure_checks": definition["essential_failure_checks"], "required_outputs": [], "parallel_opportunities": [],
                     "shared_code_constraints": base.get("shared_code_constraints", []), "execution_requirements": base.get("execution_requirements", {}),
                     "starting_context": {k: v for k, v in (base.get("starting_context") or {}).items() if k == "specialist_role_ref"},
                     "supplement_ref": {"supplement_id": supplement_id, "version": version, "path": path, "sha256": digest, "commit": commit, "finding_id": trigger["finding_id"], "milestone_key": trigger["milestone_key"]},
                 }
-                tx.execute(
+                added = tx.execute(
                     "INSERT OR IGNORE INTO service_execution_packets(activity_id, packet_key, subject, record_json, record_sha256, milestone_key, dependency_keys_json, state, round_limit, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
                     (activity_id, definition["key"], definition["subject"], canonical_json(packet_record), hashlib.sha256(canonical_json(packet_record).encode()).hexdigest(), trigger["milestone_key"], _dump(definition["dependencies"]), limit, now),
-                )
+                ).rowcount
+                if added != 1:
+                    raise AgentRunError("stale_finding", f"the packet {definition['key']} was created by another supplement before this one activated")
             tx.execute("UPDATE service_execution_findings SET state = 'supplement_active' WHERE activity_id = ? AND finding_id = ?", (activity_id, trigger["finding_id"]))
             tx.execute("UPDATE service_execution_architect SET state = 'active', note = NULL, updated_at = ? WHERE activity_id = ? AND assignment_key = ? AND state = 'publishing'", (now, activity_id, key))
             self._event(tx, activity_id, "supplement_active", None, f"{supplement_id}: {len(record['packets'])} correction packet(s) for milestone {trigger['milestone_key']} ({', '.join(p['key'] for p in record['packets'])}) are pending; schedule them")

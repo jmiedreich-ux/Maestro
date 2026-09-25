@@ -16,7 +16,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Collection, Iterable, Mapping
 
 from maestro.agents.execution_contract import CODER_SCHEMA, DISPOSITION_CHOICES, MANAGER_SCHEMA, PLAN_KEYS, REVIEWER_SCHEMA
 from maestro.agents.session_state import SessionUse
@@ -767,8 +767,9 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             packets = {p["packet_key"]: p for p in (self._row_list(tx, "SELECT * FROM service_execution_packets WHERE activity_id = ?", (row["activity_id"],)))}
             deliveries = self._row_list(tx, "SELECT * FROM service_execution_deliveries WHERE activity_id = ?", (row["activity_id"],))
             held = self._held_packets(row["activity_id"], tx)
+            bound = {b["packet_key"] for b in self._row_list(tx, "SELECT packet_key FROM service_execution_support_bindings WHERE activity_id = ? AND state = 'active'", (row["activity_id"],))}
             for launch in response.get("launches", []):
-                reason = held.get(launch["packet_key"]) or self._launch_problem(config, packets, launch, accepted, deliveries)
+                reason = held.get(launch["packet_key"]) or self._launch_problem(config, packets, launch, accepted, deliveries, bound)
                 if reason is not None:
                     rejected.append({"packet_key": launch["packet_key"], "route_id": launch["route_id"], "reason": reason})
                     continue
@@ -821,7 +822,7 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             raise AgentRunError("planning_rejected", "the Development Manager's requests were rejected three passes in a row; see the rejection reasons")
 
     @staticmethod
-    def _launch_problem(config: Mapping[str, Any], packets: Mapping[str, Mapping[str, Any]], launch: Mapping[str, Any], accepted: list[dict[str, Any]], deliveries: list[Mapping[str, Any]] = ()) -> str | None:
+    def _launch_problem(config: Mapping[str, Any], packets: Mapping[str, Mapping[str, Any]], launch: Mapping[str, Any], accepted: list[dict[str, Any]], deliveries: list[Mapping[str, Any]] = (), bound: Collection[str] = ()) -> str | None:
         packet = packets.get(launch["packet_key"])
         if packet is None:
             return "no such packet in this Execution"
@@ -832,6 +833,8 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         undelivered = [d for d in deps if not is_delivered(packets, list(deliveries), packet, d)]
         if undelivered:
             return "its dependencies are not delivered yet: " + ", ".join(undelivered)
+        if not (record.get("starting_context") or {}).get("specialist_role_ref") and launch["packet_key"] not in bound:
+            return "the packet has no confirmed specialist role and no active support binding; it needs architectural support first"
         route = config["coder_routes"].get(launch["route_id"])
         if route is None:
             return "the route is not a configured coder route"
@@ -1437,6 +1440,11 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
             if a["state"] == "limit_paused" and limit:
                 decisions.append({"target": "execution_support_fidelity_review", "packet_key": a["packet_key"], "assignment_id": a["assignment_key"], "round": limit["round"],
                                   "recommendation": limit["recommendation"], "rationale": limit["rationale"]})
+        for g in self._architects(activity_id, "milestone_gap"):
+            trigger, result = json.loads(g["trigger_json"]), json.loads(g["result_json"]) if g["result_json"] else None
+            if trigger.get("exhausted") and result and result["owner_recommendation"] in ("grant_one", "remain_paused") and "owner_decision" not in json.loads(g["pending_json"] or "{}"):
+                decisions.append({"target": "milestone_review", "packet_key": trigger["milestone_key"], "assignment_id": g["assignment_key"], "round": 0,
+                                  "recommendation": result["owner_recommendation"], "rationale": result["rationale"]})
         for d in [*self.determination_view(activity_id), *[{**g, "determination_id": g["gap_id"], "result": self._gap_result(activity_id, g["gap_id"])} for g in self.gap_view(activity_id)]]:
             if d["state"] == "awaiting_disposition" and d["result"]:
                 decisions.append({"target": "execution_work_disposition", "packet_key": ", ".join(d["result"]["affected_work"]), "assignment_id": d["determination_id"], "round": 0,
@@ -1471,8 +1479,8 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         if payload["target"] == "execution_work_disposition":
             if payload["choice"] not in DISPOSITION_CHOICES:
                 raise ValueError("execution_work_disposition takes choice " + ", ".join(DISPOSITION_CHOICES))
-        elif payload["target"] not in {"packet_review", "integration_review", "execution_support_fidelity_review"} or payload["choice"] not in {"grant_one", "remain_paused"}:
-            raise ValueError("Execution accepts target packet_review, integration_review or execution_support_fidelity_review with choice grant_one or remain_paused, or execution_work_disposition")
+        elif payload["target"] not in {"packet_review", "integration_review", "execution_support_fidelity_review", "milestone_review"} or payload["choice"] not in {"grant_one", "remain_paused"}:
+            raise ValueError("Execution accepts target packet_review, integration_review, execution_support_fidelity_review or milestone_review with choice grant_one or remain_paused, or execution_work_disposition")
         activity_id = request.activity_id
 
         def apply(transaction: Transaction, next_version: int) -> OperationResult:
@@ -1489,6 +1497,8 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
                 self._limit_determination(transaction, activity_id, payload["assignment_id"])
             if payload["target"] == "integration_review":
                 return self._integration_decision(transaction, request, row, payload, next_version)
+            if payload["target"] == "milestone_review":
+                return self._milestone_review_decision(transaction, request, row, payload, next_version)
             if payload["target"] == "execution_support_fidelity_review":
                 return self._support_decision(transaction, request, row, payload, next_version)
             for candidate in self._row_list(transaction, "SELECT * FROM service_execution_packets WHERE activity_id = ? AND state = 'limit_paused'", (activity_id,)):

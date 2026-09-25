@@ -118,10 +118,10 @@ SUPPORT_LIMIT_SCHEMA = _schema({
 _SUPPLEMENT_PACKET = {
     "type": "object",
     "properties": {
-        "key": _STR, "subject": _STR, "purpose": _STR, "permitted_paths": _STRS, "dependencies": _STRS,
+        "key": _STR, "subject": _STR, "purpose": _STR, "implementation_ownership": _STR, "permitted_paths": _STRS, "dependencies": _STRS,
         "completion_criteria": _STRS, "essential_failure_checks": _STRS,
     },
-    "required": ["key", "subject", "purpose", "permitted_paths", "dependencies", "completion_criteria", "essential_failure_checks"], "additionalProperties": False,
+    "required": ["key", "subject", "purpose", "implementation_ownership", "permitted_paths", "dependencies", "completion_criteria", "essential_failure_checks"], "additionalProperties": False,
 }
 _SUPPLEMENT = {
     "type": ["object", "null"],

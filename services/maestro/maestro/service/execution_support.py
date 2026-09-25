@@ -228,7 +228,7 @@ class SupportMixin:
             self._say(tx, row["project_id"], row["activity_id"], f"Architectural support {arch['assignment_key']} for {arch['packet_key']} is blocked: {reason[:400]}. The packet stays unstarted and unrelated work continues.")
 
     def _support_step(self, row: Mapping[str, Any], arch: dict[str, Any], slot: str, start: Callable[..., None], accept: Callable[..., None]) -> None:
-        """Start the assignment's next run, or read the current one: complete, recover once per new cause, or block."""
+        """Start the assignment's next run, or read the current one: complete, recover within the configured allowance, or block."""
         assert self.runs is not None
         pending = json.loads(arch["pending_json"] or "{}")
         current = pending.get(slot)
@@ -244,8 +244,8 @@ class SupportMixin:
             return
         if assignment["state"] == "needs_recovery":
             detail = view.terminal_reason or view.failure_code or "technical_failure"
-            if pending.get("last_recovery_detail") == detail:
-                self._support_block(row, arch, f"the same error came back after a correction: {detail}")
+            if int(assignment["automatic_used"]) >= int(assignment["automatic_limit"]):
+                self._support_block(row, arch, f"the error came back after the configured {assignment['automatic_limit']} automatic recovery attempt(s): {detail}")
                 return
             pending["last_recovery_detail"] = detail
             pending.pop(slot, None)

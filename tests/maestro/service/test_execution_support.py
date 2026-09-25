@@ -183,6 +183,22 @@ class SupportFlowTests(SupportBase):
         self.architect_answers(role_markdown="no heading\n")
         self.assertIn("first heading", self.runs.rejected[-1])
 
+    def test_a_repeated_failure_recovers_until_the_configured_allowance_is_used(self) -> None:
+        self.request()
+        self.tick()
+        assignment = self.runs.runs[self.runs.last("support_architect")]["assignment"]
+        for expected_runs in (2, 3):
+            self.runs.runs[self.runs.last("support_architect")]["state"] = "failed"
+            self.runs.assignments[assignment]["state"] = "needs_recovery"
+            self.tick()
+            self.assertEqual(self.runs.run_count(assignment), expected_runs)
+            self.assertNotEqual(self.support()["state"], "blocked_route")
+        self.runs.runs[self.runs.last("support_architect")]["state"] = "failed"
+        self.runs.assignments[assignment]["state"] = "needs_recovery"
+        self.tick()
+        self.assertEqual(self.support()["state"], "blocked_route")
+        self.assertIn("automatic recovery", self.support()["note"])
+
     def test_a_scope_change_is_reported_as_replanning_and_the_packet_stays_blocked(self) -> None:
         self.request()
         self.tick()

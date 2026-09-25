@@ -155,8 +155,8 @@ class ContractTests(unittest.TestCase):
             self.check("development_manager", {"launches": [], "blockers": [], "priorities": []})
 
 
-def packet_row(key, state="pending", deps=(), paths=("a",), capabilities=("code_edit",), locations=("local_ai_box", "cloud"), route=None, parallel=()):
-    record = {"subject": key, "permitted_paths": list(paths), "parallel_opportunities": [{"id": p} for p in parallel],
+def packet_row(key, state="pending", deps=(), paths=("a",), capabilities=("code_edit",), locations=("local_ai_box", "cloud"), route=None, parallel=(), role=True):
+    record = {"subject": key, "starting_context": {"specialist_role_ref": {"path": "r.md"}} if role else {}, "permitted_paths": list(paths), "parallel_opportunities": [{"id": p} for p in parallel],
               "execution_requirements": {"required_capabilities": list(capabilities), "allowed_locations": list(locations), "minimum_context_tokens": 8000}}
     return {"packet_key": key, "state": state, "record_json": json.dumps(record), "dependency_keys_json": json.dumps(list(deps)), "route_id": route}
 
@@ -190,6 +190,11 @@ class LaunchChecks(unittest.TestCase):
             found = self.problem(packets, launch)
             self.assertIsNotNone(found, text)
             self.assertIn(text, found)
+
+    def test_a_packet_without_a_confirmed_role_needs_an_active_support_binding(self) -> None:
+        table = {"p1": packet_row("p1", role=False)}
+        self.assertIn("no confirmed specialist role", ExecutionService._launch_problem(self.config, table, self.launch(), []))
+        self.assertIsNone(ExecutionService._launch_problem(self.config, table, self.launch(), [], (), {"p1"}))
 
     def test_a_declared_parallel_packet_may_share_paths_and_a_delivered_dependency_unblocks(self) -> None:
         self.assertIsNone(self.problem([packet_row("p1", parallel=("p2",)), packet_row("p2", "coding", route="cloud")], self.launch(route="cloud")))

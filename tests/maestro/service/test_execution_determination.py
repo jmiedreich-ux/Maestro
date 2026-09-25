@@ -167,6 +167,15 @@ class DispositionTests(DeterminationBase):
         self.assertEqual(self.packet("pb")["state"], "pending", "unstarted work stays unfinished, never marked complete")
         self.assertIn("ready for re-registration", self.service._read("SELECT waiting_reason FROM service_activities WHERE activity_id = 'exec-1'")["waiting_reason"])
 
+    def test_unresolved_architectural_work_is_not_settled_for_replanning(self) -> None:
+        self.to_disposition()
+        self.decide("execution_work_disposition", "finish_current_for_replanning", "det-q1")
+        self.assertTrue(self.service._settled_for_replanning(self.row()))
+        for state in ("blocked_route", "limit_paused", "replanning_required", "awaiting_disposition"):
+            with self.database.transaction() as tx:
+                tx.execute("UPDATE service_execution_architect SET state = ? WHERE assignment_key = 'det-q1'", (state,))
+            self.assertFalse(self.service._settled_for_replanning(self.row()), state)
+
     def test_stopping_affected_running_work_stops_its_runs_then_the_execution_settles(self) -> None:
         self.runs.runs["r-coder"] = {"assignment": "a", "build": None, "output": None, "state": "running", "response": None}
         with self.database.transaction() as tx:

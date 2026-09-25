@@ -17,7 +17,7 @@ FINDING = {"milestone_key": "m1", "source": "outcome_review", "subject": "Refund
 
 def supplement(**over):
     body = {"scope_explanation": "refunds are inside the confirmed billing scope", "packets": [
-        {"key": "fix-refunds", "subject": "Apply refunds", "purpose": "Add the missing refund handling", "permitted_paths": ["app/billing"], "dependencies": [],
+        {"key": "fix-refunds", "subject": "Apply refunds", "purpose": "Add the missing refund handling", "implementation_ownership": "the billing module owns refund handling", "permitted_paths": ["app/billing"], "dependencies": [],
          "completion_criteria": ["a refund lowers the invoice total"], "essential_failure_checks": ["a refund above the total is refused"]}]}
     body.update(over)
     return body
@@ -106,6 +106,7 @@ class SupplementTests(GapBase):
             (dict(packets=[{**supplement()["packets"][0], "dependencies": ["ghost"]}]), "neither an existing packet"),
             (dict(packets=[{**supplement()["packets"][0], "key": "a", "dependencies": ["b"]}, {**supplement()["packets"][0], "key": "b", "dependencies": ["a"]}]), "cycle"),
             (dict(packets=[supplement()["packets"][0], supplement()["packets"][0]]), "repeated"),
+            (dict(packets=[{**supplement()["packets"][0], "implementation_ownership": " "}]), "implementation_ownership"),
             (dict(scope_explanation=" "), "scope_explanation"),
         )
         self.record()
@@ -128,6 +129,16 @@ class SupplementTests(GapBase):
         self.assertIsNone(self.packet("fix-refunds"))
         self.assertEqual([j["state"] for j in self.service._rows("SELECT state FROM service_execution_journal WHERE kind = 'supplement_publish'")], ["failed"])
 
+    def test_a_packet_key_created_before_activation_blocks_instead_of_activating(self) -> None:
+        self.gap_to_publishing()
+        with self.database.transaction() as tx:
+            tx.execute("INSERT INTO service_execution_packets(activity_id, packet_key, subject, record_json, record_sha256, milestone_key, dependency_keys_json, state, round_limit, updated_at) "
+                       "SELECT activity_id, 'fix-refunds', subject, record_json, record_sha256, milestone_key, dependency_keys_json, 'pending', round_limit, updated_at FROM service_execution_packets WHERE packet_key = 'pb'")
+        self.tick()
+        self.assertEqual(self.gap()["state"], "blocked_route")
+        self.assertEqual(self.service._read("SELECT state FROM service_execution_findings WHERE finding_id = 'finding-1'")["state"], "routed")
+        self.assertEqual(len(self.service._rows("SELECT 1 FROM service_execution_supplements")), 0)
+
     def test_a_stale_finding_pauses_activation(self) -> None:
         self.gap_to_publishing()
         with self.database.transaction() as tx:
@@ -147,6 +158,9 @@ class RoutingTests(GapBase):
         self.assertEqual(self.service._read("SELECT state FROM service_execution_findings WHERE finding_id = 'finding-1'")["state"], "defect_routed")
         self.assertEqual([e["kind"] for e in self.service._rows("SELECT kind FROM service_execution_events WHERE kind = 'gap_defect'")], ["gap_defect"])
         self.assertEqual(len(self.service._rows("SELECT 1 FROM service_execution_supplements")), 0)
+        correction = self.packet("correct-finding-1")
+        self.assertEqual((correction["state"], correction["milestone_key"]), ("pending", "m1"))
+        self.assertTrue(json.loads(correction["record_json"])["permitted_paths"])
 
     def test_a_scope_change_goes_to_the_owner_disposition_and_starts_nothing(self) -> None:
         self.record()
@@ -169,6 +183,11 @@ class RoutingTests(GapBase):
         self.tick()
         self.answer_gap(determination("implementation_defect", affected_work=["m1"], owner_recommendation="remain_paused"))
         self.assertEqual(self.service.view("exec-1")["gaps"][0]["recommendation"], "remain_paused")
+        decision = next(d for d in self.service.view("exec-1")["owner_decisions"] if d["target"] == "milestone_review")
+        self.assertEqual((decision["packet_key"], decision["recommendation"]), ("m1", "remain_paused"))
+        self.decide("milestone_review", "grant_one", decision["assignment_id"])
+        self.assertEqual([d for d in self.service.view("exec-1")["owner_decisions"] if d["target"] == "milestone_review"], [])
+        self.assertEqual(json.loads(self.gap()["pending_json"])["owner_decision"]["choice"], "grant_one")
 
 
 if __name__ == "__main__":

@@ -327,7 +327,7 @@ class DeterminationMixin:
             return False
         if any(e["state"] in ("queued", "integrating", "publishing", "reviewing", "merging") for e in self._queue(activity_id)):
             return False
-        if any(a["state"] in ("requested", "drafting", "reviewing", "correcting", "publishing", "recommending", "determining", "requested") for a in self._architects(activity_id)):
+        if any(a["state"] in ("requested", "drafting", "reviewing", "correcting", "publishing", "recommending", "determining", "blocked_route", "limit_paused", "replanning_required", "awaiting_disposition") for a in self._architects(activity_id)):
             return False
         return self._read("SELECT 1 AS n FROM service_execution_journal WHERE activity_id = ? AND state = 'prepared'", (activity_id,)) is None
 

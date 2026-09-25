@@ -134,7 +134,7 @@ class ExecutionExtension:
             raise ExecutionError(f"Outcome not confirmed: {error}. Doing it again reuses the same request and cannot happen twice.") from error
         self._unconfirmed.pop(key, None)
         _receipt(response)
-        what = "fidelity review" if target.get("target") == "execution_support_fidelity_review" else "review attempt"
+        what = "fidelity review" if target.get("target") == "execution_support_fidelity_review" else "milestone review attempt" if target.get("target") == "milestone_review" else "review attempt"
         if disposition:
             _status(context.state, f"Work disposition recorded: {choice.replace('_', ' ')} for {target['packet_key']}. This does not start re-registration or replanning.")
         else:
@@ -193,7 +193,7 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
     return "\n".join(lines)
 
 
-_TARGETS = {"packet_review": "packet review", "integration_review": "integration review", "execution_support_fidelity_review": "support fidelity review"}
+_TARGETS = {"packet_review": "packet review", "integration_review": "integration review", "execution_support_fidelity_review": "support fidelity review", "milestone_review": "milestone review"}
 
 
 def _render_support(view: Mapping[str, object], *, full: bool) -> list[str]:
