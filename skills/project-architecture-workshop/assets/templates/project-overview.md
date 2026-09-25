@@ -37,7 +37,7 @@
 | Architecture | [Plain subject] | [Path to architecture Markdown] |
 | Milestone declaration | [Designation and plain subject] | [Path to declaration Markdown] |
 
-[Add a row for every included declaration. Detailed milestone content stays in those declarations.]
+[Add a row for every included declaration. Detailed milestone content stays in those declarations. Registration accepts only the source types `Architecture` and `Milestone declaration`, with exactly one Architecture row and at least one Milestone declaration row. Do not add rows for product definitions, READMEs, decision logs, or other documents; cite them in Purpose, Project identity, or the Evidence column of Current state.]
 
 ## Unresolved information
 
