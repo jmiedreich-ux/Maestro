@@ -58,7 +58,10 @@ class TerminalRenderer:
     @staticmethod
     def _projects(workspace: Workspace) -> list[str]:
         if not workspace.projects and workspace.error is None:
-            return ["No projects registered", "[Register project]"]
+            return [
+                "No projects registered yet.",
+                "To start, type /register <owner/repository> <overview-path>. Type /help for all commands.",
+            ]
         lines = ["Projects"]
         for project in workspace.projects:
             focus = _focus(workspace, "project", project.project_id)
@@ -198,8 +201,8 @@ class TerminalRenderer:
         else:
             context = "No project selected — commands only"
         text_lines = workspace.input.text.split("\n")[-MAXIMUM_INPUT_LINES:]
-        focus = _focus(workspace, "editor", "input")
-        return [f"{focus} Input | {context}"] + [f"> {line}" for line in text_lines]
+        prompt = _focus(workspace, "editor", "input")
+        return [f"  Input | {context}"] + [f"{prompt} {line}" for line in text_lines]
 
 
 _REGISTRATION_LABELS = {

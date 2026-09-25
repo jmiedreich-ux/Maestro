@@ -116,17 +116,19 @@ class TerminalApplication:
         self._event_generation = 0
         self._explicit_connect = False
         self._exit_warning_text: str | None = None
+        self._cursor_at_prompt = False
         self.connection.subscribe(self._handle_status)
 
     def run(self) -> int:
         configuration = self.connection.configuration
-        self._write(f"Maestro service: {configuration.service_url}")
         if configuration.fallback_reason:
             self._write(
                 f"Configuration fallback: {configuration.fallback_reason}; "
                 f"using {configuration.service_url}"
             )
-        self._write(f"Authentication: {self.connection.credential_status()}")
+        credential_status = self.connection.credential_status()
+        if credential_status != "Owner credential ready":
+            self._write(f"Authentication: {credential_status}")
         try:
             self._explicit_connect = True
             self.connection.connect()
@@ -272,9 +274,10 @@ class TerminalApplication:
             if status.retry_in_seconds is None
             else f"; retrying in {status.retry_in_seconds} seconds"
         )
-        self._write(
-            f"Connection {status.state.value}: {status.service_url} — {status.message}{retry}"
-        )
+        if status.state not in (ConnectionState.CONNECTING, ConnectionState.CONNECTED):
+            self._write(
+                f"Connection {status.state.value}: {status.service_url} — {status.message}{retry}"
+            )
         if status.clear_service_context:
             self._write("Prior service view and input cleared.")
         with self._lock:
@@ -344,11 +347,17 @@ class TerminalApplication:
             self.workspace, TerminalSize(size.columns, size.lines)
         )
         if getattr(self.output, "isatty", lambda: False)():
-            self.output.write("\x1b[2J\x1b[H")
-        self.output.write(rendered + "\n")
+            # Leave the cursor right after the prompt text, where typing appears.
+            self.output.write("\x1b[2J\x1b[H" + rendered)
+            self._cursor_at_prompt = True
+        else:
+            self.output.write(rendered + "\n")
         self.output.flush()
 
     def _write(self, message: str) -> None:
+        if self._cursor_at_prompt:
+            self.output.write("\n")
+            self._cursor_at_prompt = False
         self.output.write(message + "\n")
         self.output.flush()
 

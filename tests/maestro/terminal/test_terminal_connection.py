@@ -480,8 +480,8 @@ class TerminalConnectionTest(unittest.TestCase):
 
         self.assertEqual(0, application.run())
         rendered = output.getvalue()
-        self.assertIn("Maestro service: http://localhost:8787", rendered)
-        self.assertIn("Authentication: Owner credential ready", rendered)
+        self.assertNotIn("Maestro service:", rendered)
+        self.assertNotIn("Authentication:", rendered)
         self.assertIn("/help", rendered)
         self.assertIn("Retry failed; no previous command or answer was replayed", rendered)
         self.assertIn("service work continues", rendered)
