@@ -340,11 +340,11 @@ class ExecutionService(GapMixin, DeterminationMixin, SupportMixin, IntegrationMi
         except Exception as error:  # noqa: BLE001 - any refusal to resolve the route means it cannot be launched
             raise ValueError(f"the Development Manager route {route_id} cannot be used: {error}") from error
         if self.resources is None:
-            raise ValueError("the execution@1 schema bundle is unavailable")
+            raise ValueError("the execution@2 schema bundle is unavailable")
         try:
-            bundle = self.resources.resolve("execution@1").snapshot.as_dict()
+            bundle = self.resources.resolve("execution@2").snapshot.as_dict()
         except ProcessResourceError as error:
-            raise ValueError(f"the installed execution@1 bundle cannot be used: {error}") from error
+            raise ValueError(f"the installed execution@2 bundle cannot be used: {error}") from error
         profile = self.profiles[json.loads(active["profile_json"])["profile"]]
         try:
             destination = self._destination(profile)

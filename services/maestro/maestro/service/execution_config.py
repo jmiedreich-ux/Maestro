@@ -59,8 +59,8 @@ def validate(table: object) -> dict[str, Any]:
     if not isinstance(table, Mapping):
         raise ExecutionConfigError("the execution settings are not configured")
     outputs = table.get("saved_outputs")
-    if not isinstance(outputs, Mapping) or outputs.get("schema") != "execution@1":
-        raise ExecutionConfigError('execution.saved_outputs.schema must be "execution@1"')
+    if not isinstance(outputs, Mapping) or outputs.get("schema") not in {"execution@1", "execution@2"}:
+        raise ExecutionConfigError('execution.saved_outputs.schema must be "execution@1" or "execution@2"')
     manager = table.get("development_manager")
     if not isinstance(manager, Mapping) or not isinstance(manager.get("routes"), Mapping) or not manager["routes"]:
         raise ExecutionConfigError("execution.development_manager.routes needs at least one named route")
@@ -120,7 +120,7 @@ def validate(table: object) -> dict[str, Any]:
     support = _support(table.get("architectural_support"))
     gap = _routes(table["milestone_gap_architect"], "milestone_gap_architect") if table.get("milestone_gap_architect") is not None else None
     return {
-        "schema": "execution@1",
+        "schema": "execution@2",
         "development_manager": {"routes": routes, "run_timeout_seconds": _positive(manager.get("run_timeout_seconds"), "development_manager.run_timeout_seconds")},
         "reviewers": {"packet": reviewer},
         "coder_default_route_id": default,
