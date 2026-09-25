@@ -1428,7 +1428,7 @@ The service derives the product code baseline from the exact confirmed breakdown
 
 ### Execution process definition and configuration
 
-Execution uses the installed `execution@1` schema bundle. Installation resolves it as `schemas/execution/1/schema.json` relative to the Maestro installation folder; its repository source is `schemas/execution.schema.json`. The source schema and executable validators are implementation work. A missing, unsupported or changed installed bundle blocks new Execution work and continuation that cannot verify its recorded bundle hash; read-only status remains available. The service saves the exact bundle reference, dependency hashes and effective Execution configuration hash with each activity.
+Execution uses the installed `execution@1` schema bundle, currently published as bundle version 3. Installation resolves it as `schemas/execution/3/schema.json` relative to the Maestro installation folder; its repository source is `schemas/execution.schema.json`. The source schema and executable validators are implementation work. A missing, unsupported or changed installed bundle blocks new Execution work and continuation that cannot verify its recorded bundle hash; read-only status remains available. The service saves the exact bundle reference, dependency hashes and effective Execution configuration hash with each activity.
 
 The shared `/etc/maestro/agents.toml` file contains the following Execution settings. Exact model values are installation choices, not architecture defaults.
 
