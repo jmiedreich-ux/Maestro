@@ -454,7 +454,7 @@ def _project_page(
                       AND aa.kind IN ('decision', 'recovery')) AS attention_count,
                    (SELECT COUNT(*) FROM service_activities AS a
                     WHERE a.project_id = service_projects.project_id
-                      AND a.state NOT IN ('cancelled', 'completed', 'failed'))
+                      AND a.state NOT IN ('cancelled', 'completed', 'failed', 'stopped'))
                        AS current_activity_count
             FROM service_projects
         ), ranked AS (
@@ -493,7 +493,7 @@ def _project_summary(
     current = connection.execute(
         """
         SELECT rowid, activity_id, state FROM service_activities
-        WHERE project_id = ? AND state NOT IN ('cancelled', 'completed', 'failed')
+        WHERE project_id = ? AND state NOT IN ('cancelled', 'completed', 'failed', 'stopped')
         ORDER BY rowid DESC LIMIT 1
         """,
         (project_id,),

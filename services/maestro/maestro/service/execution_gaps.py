@@ -165,6 +165,8 @@ class GapMixin:
 
     def _advance_gaps(self, row: Mapping[str, Any]) -> None:
         for arch in self._architects(row["activity_id"], "milestone_gap"):
+            if self._architect_outside_set(row, arch):
+                continue
             try:
                 if arch["state"] in ("requested", "determining"):
                     self._support_step(row, arch, "gap_run", self._gap_start, self._gap_accept)

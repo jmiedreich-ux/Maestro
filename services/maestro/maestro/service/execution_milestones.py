@@ -246,6 +246,8 @@ class MilestoneMixin:
         packets, queue, deliveries = self._packets(activity_id), self._queue(activity_id), self._deliveries(activity_id)
         for key in sorted(milestones):
             known = self._verifications(activity_id).get(key)
+            if self._outside_set(row, "milestones", key) and (known is None or known["state"] == "qa"):
+                continue  # a pause or stop is in effect and this milestone was not fully in the saved set
             if known is None:
                 if self._milestone_ready(activity_id, key, packets, queue, deliveries) and self._settled_of(activity_id, key):
                     head = self._current_milestone_head(row, key)
@@ -262,8 +264,9 @@ class MilestoneMixin:
                 self._v_block(row, known, f"{error.code}: {error}")
             except (execution_git.GitError, AgentRunError, execution_qa.QaError, ValueError, OSError) as error:
                 self._v_block(row, known, f"{getattr(error, 'code', type(error).__name__)}: {error}")
-        self._release_held_deliveries(row)
-        self._advance_completion(row)
+        if self._settlement_of(row) is None:
+            self._release_held_deliveries(row)
+            self._advance_completion(row)
 
     def _settled_of(self, activity_id: str, key: str) -> bool:
         """No unresolved finding or gap assignment still concerns this milestone."""

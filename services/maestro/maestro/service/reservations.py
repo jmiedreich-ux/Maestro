@@ -37,7 +37,7 @@ RESERVATION_MIGRATION = DomainMigration(
 PURPOSES = frozenset({"start", "re_registration"})
 # Only these activity states are known to be finished. Any other state,
 # including an unknown one, means the project is not idle.
-_ENDED_STATES = ("cancelled", "completed", "failed")
+_ENDED_STATES = ("cancelled", "completed", "failed", "stopped")
 
 
 class ReservationError(ValueError):

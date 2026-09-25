@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from .connection import ServiceError, TerminalConnectionError
 from .extensions import ExtensionContext, ExtensionRegistry
 
-_USAGE = "usage: /execution [start [--manager <route>] | full | artifact <artifact id>]"
+_USAGE = "usage: /execution [start [--manager <route>] | pause | resume | stop | retry <packet> [--seconds <n>] <what changed> | full | artifact <artifact id>]"
 
 
 class ExecutionError(ValueError):
@@ -41,6 +41,10 @@ class ExecutionExtension:
             return self._open(context, full=False)
         if words[0] == "start":
             return self._start(context, words[1:])
+        if words[0] in ("pause", "resume", "stop") and len(words) == 1:
+            return self._lifecycle(context, words[0])
+        if words[0] == "retry" and len(words) >= 3:
+            return self._retry(context, words[1:])
         if words[0] == "full":
             return self._open(context, full=True)
         if words[0] == "artifact" and len(words) == 2:
@@ -112,6 +116,68 @@ class ExecutionExtension:
         _reload(state, str(receipt.get("activity_id")))
         _status(state, "An Execution activity is already unfinished for this project; opened it." if result.get("duplicate")
                 else f"Execution started with Development Manager route {route}: {result.get('packets')} packets, code baseline {str(result.get('source_commit'))[:12]}, product master observed at {str(result.get('product_master_start_commit'))[:12]}.")
+        return receipt
+
+    def _submit(self, context: ExtensionContext, key: tuple[str, str], build: Callable[[str], dict[str, object]], failed: str) -> Mapping[str, object]:
+        request_id = self._unconfirmed.get(key) or self._request_id()
+        try:
+            response = context.client.submit(build(request_id))
+        except ServiceError as error:
+            self._unconfirmed.pop(key, None)
+            raise ExecutionError(f"{failed}: {error}") from error
+        except TerminalConnectionError as error:
+            self._unconfirmed[key] = request_id
+            raise ExecutionError(f"Outcome not confirmed: {error}. Doing it again reuses the same request and cannot happen twice.") from error
+        self._unconfirmed.pop(key, None)
+        return _receipt(response)
+
+    def _current(self, context: ExtensionContext, what: str) -> tuple[str, Mapping[str, object]]:
+        project_id = self._project(context, what)
+        data = self._load(context, project_id).get("data")
+        if not isinstance(data, Mapping):
+            raise ExecutionError("This project has no Execution activity.")
+        return project_id, data
+
+    def _lifecycle(self, context: ExtensionContext, action: str) -> object:
+        project_id, data = self._current(context, f"/execution {action} acts on the selected project's Execution.")
+        activity_id, version = str(data["activity_id"]), data["version"]
+        receipt = self._submit(context, (action, f"{activity_id}:{version}"), lambda request_id: {"request_id": request_id, "operation": f"execution.{action}", "project_id": project_id, "activity_id": activity_id,
+                                                                                                     "question_id": None, "expected_version": version, "payload": {}}, f"Execution was not {action}d" if action != "stop" else "Execution was not stopped")
+        result = receipt.get("result") if isinstance(receipt.get("result"), Mapping) else {}
+        _reload(context.state, activity_id)
+        _status(context.state, str(result.get("message") or f"{action} accepted."))
+        return receipt
+
+    def _retry(self, context: ExtensionContext, words: list[str]) -> object:
+        packet, rest, seconds = words[0], words[1:], None
+        if rest[:1] == ["--seconds"]:
+            if len(rest) < 3 or not rest[1].isdigit() or int(rest[1]) <= 0:
+                raise ExecutionError(f"Give a positive number of seconds after --seconds. {_USAGE}")
+            seconds, rest = int(rest[1]), rest[2:]
+        intervention = " ".join(rest).strip()
+        if not intervention:
+            raise ExecutionError(f"Say what changed before retrying. {_USAGE}")
+        project_id, data = self._current(context, "/execution retry retries one failed assignment of the selected project's Execution.")
+        activity_id = str(data["activity_id"])
+        lifecycle = data.get("lifecycle") if isinstance(data.get("lifecycle"), Mapping) else {}
+        found = next((r for r in lifecycle.get("manual_retries", []) if r["packet_key"] == packet), None)
+        grant = next((g for g in (found or {}).get("grants", []) if g["state"] == "unconsumed"), None)
+        if grant is None:
+            payload: dict[str, object] = {"target": "execution_manual_retry", "choice": "grant_one", "assignment_id": packet}
+            if seconds is not None:
+                payload["duration_seconds"] = seconds
+            receipt = self._submit(context, ("retry-grant", f"{activity_id}:{packet}:{data['version']}"), lambda request_id: {"request_id": request_id, "operation": "owner.decision", "project_id": project_id, "activity_id": activity_id,
+                                                                                                                          "question_id": None, "expected_version": data["version"], "payload": payload}, "The manual retry was not granted")
+            result = receipt.get("result") if isinstance(receipt.get("result"), Mapping) else {}
+            grant_id = str(result.get("grant_id"))
+            data = self._current(context, "/execution retry")[1]
+        else:
+            grant_id = str(grant["grant_id"])
+        receipt = self._submit(context, ("retry", f"{activity_id}:{grant_id}"), lambda request_id: {"request_id": request_id, "operation": "execution.retry", "project_id": project_id, "activity_id": activity_id, "question_id": None,
+                                                                                                    "expected_version": data["version"], "payload": {"packet_key": packet, "grant_id": grant_id, "intervention": intervention}}, "The retry was not started")
+        result = receipt.get("result") if isinstance(receipt.get("result"), Mapping) else {}
+        _reload(context.state, activity_id)
+        _status(context.state, str(result.get("message") or "retry accepted."))
         return receipt
 
     def action(self, context: ExtensionContext, action_id: str) -> object:
@@ -189,6 +255,7 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
                 for finding in review["findings"]:
                     lines.append(f"        {finding['severity']}: {finding['subject']} — {finding['requested_correction'][:200]}")
             lines.append(f"      active time: coder {packet['active_seconds']['coder']}s, reviewer {packet['active_seconds']['reviewer']}s")
+    lines.extend(_render_lifecycle(view.get("lifecycle")))
     integration = view.get("integration")
     if isinstance(integration, Mapping):
         lines.extend(_render_integration(integration, full=full))
@@ -209,6 +276,26 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
 
 
 _TARGETS = {"packet_review": "packet review", "integration_review": "integration review", "execution_support_fidelity_review": "support fidelity review", "milestone_review": "milestone review"}
+
+
+def _render_lifecycle(lifecycle: object) -> list[str]:
+    if not isinstance(lifecycle, Mapping):
+        return []
+    lines: list[str] = []
+    settlement = lifecycle.get("settlement")
+    if isinstance(settlement, Mapping):
+        members = settlement["members"]
+        what = "Stop" if settlement["kind"] == "stop" else "Pause"
+        lines.append(f"{what} requested {settlement['requested_at']}: work in progress when it was accepted: packets {', '.join(members['packets']) or 'none'}; queue entries {', '.join(str(e) for e in members['queue']) or 'none'}; "
+                     f"milestones that can finish {', '.join(members['milestones']) or 'none'}. No new packet starts." + (f" Settled {settlement['settled']}." if settlement.get("settled") else " Waiting for: " + ("; ".join(settlement["waiting_on"]) or "nothing") + "."))
+    for r in lifecycle.get("manual_retries", []) or []:  # type: ignore[union-attr]
+        used = ", ".join(f"{g['grant_id']} {g['state']}" + (f" (run {g['run_id']})" if g.get("run_id") else "") for g in r["grants"]) or "none yet"
+        lines.append(f"  manual retry {r['packet_key']}: {r.get('reason') or 'in progress'} | grants (at most {r['maximum']}): {used}" + (f" | /execution retry {r['packet_key']} <what changed>" if r.get("reason") else ""))
+    closure = lifecycle.get("stopped_closure")
+    if isinstance(closure, Mapping):
+        lines.append(f"STOPPED, NOT COMPLETED. Stopped-closure record [{closure['state']}] {closure['path']} (sha256 {str(closure['sha256'])[:12]})" + (f" in {str(closure['commit'])[:12]}" if closure.get("commit") else "")
+                     + f". Completed milestones: {', '.join(closure['completed_milestones']) or 'none'}. Unfinished milestones: {', '.join(closure['unfinished_milestones']) or 'none'}; unfinished packets: {', '.join(closure['unfinished_packets']) or 'none'}. {closure['delivery']}.")
+    return lines
 
 
 def _render_support(view: Mapping[str, object], *, full: bool) -> list[str]:

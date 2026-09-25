@@ -206,6 +206,8 @@ class SupportMixin:
     def _advance_support(self, row: Mapping[str, Any]) -> None:
         for arch in self._architects(row["activity_id"], "support"):
             state = arch["state"]
+            if self._architect_outside_set(row, arch):
+                continue
             try:
                 if state in ("requested", "drafting", "correcting"):
                     self._support_step(row, arch, "architect_run", self._support_start_architect, self._support_accept_architect)

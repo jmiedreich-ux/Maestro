@@ -148,7 +148,7 @@ class DeterminationMixin:
     def _advance_determinations(self, row: Mapping[str, Any]) -> None:
         self._detect_limits(row)
         for arch in self._architects(row["activity_id"], "determination"):
-            if arch["state"] in _DET_OPEN:
+            if arch["state"] in _DET_OPEN and not self._architect_outside_set(row, arch):
                 try:
                     self._support_step(row, arch, "determination_run", self._determination_start, self._determination_accept)
                 except AgentRunError as error:
