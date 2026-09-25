@@ -287,8 +287,6 @@ def _render_integration(integration: Mapping[str, object], *, full: bool) -> lis
 
 def _render_verification(verification: Mapping[str, object], *, full: bool) -> list[str]:
     lines: list[str] = []
-    if not verification.get("configured") and verification.get("problem"):
-        lines.append(f"Milestone verification: {verification['problem']}")
     for m in verification.get("milestones", []):  # type: ignore[union-attr]
         head = f"Milestone {m['key']} verification [{m['state']}] attempt {m['attempt']} at {str(m['head_commit'])[:12]}"
         if m["cycles"]["used"]:

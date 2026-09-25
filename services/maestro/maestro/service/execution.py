@@ -1320,7 +1320,6 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             return
         packets = self._packets(activity_id)
         pending = json.loads(row["pending_json"] or "{}")
-        config_now = json.loads(row["config_json"])
         queue = self._queue(activity_id)
         active = [p for p in packets if p["state"] in {*_PACKET_ACTIVE, "publishing", "review_ready"}]
         queued = [e for e in queue if e["state"] in {"queued", "integrating", "publishing", "reviewing", "merging"}]
@@ -1353,8 +1352,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             if integrated:
                 parts.append(f"{len(integrated)} packet(s) are integrated into their milestone branches")
             parts.extend(verification_parts)
-            if integrated and not verification_parts and self._qa_config_problem(config_now):
-                parts.append(str(self._qa_config_problem(config_now)))
+
             if waiting:
                 parts.append(f"{len(waiting)} packet(s) wait for undelivered dependencies")
             if held:

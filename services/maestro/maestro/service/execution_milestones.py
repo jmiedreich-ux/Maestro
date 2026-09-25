@@ -214,10 +214,18 @@ class MilestoneMixin:
             self._event(tx, row["activity_id"], "milestone_blocked", None, f"milestone {v['milestone_key']}: {reason[:300]}")
             self._say(tx, row["project_id"], row["activity_id"], f"Milestone {v['milestone_key']} cannot be verified or promoted yet: {reason[:400]}. Unrelated eligible work continues; nothing was merged.")
 
-    def _qa_config_problem(self, config: Mapping[str, Any]) -> str | None:
-        if not config.get("quality_assurance") or not config.get("qa"):
-            return "milestone Quality Assurance is not configured for this Execution (execution.quality_assurance and execution.qa are needed before it was started)"
-        return None
+    def _qa_settings(self, config: Mapping[str, Any]) -> Mapping[str, Any]:
+        """The operator's ``execution.qa`` settings, or service-owned defaults under the state directory (the effective paths are recorded with every run)."""
+        configured = config.get("qa")
+        if configured:
+            return configured
+        root = self.state_dir / "qa"
+        return {"environment_root": str(root / "env"), "artifact_root": str(root / "artifacts"), "project_bindings": {}, "secret_patterns": [], "artifact_retention_days_after_close": 30,
+                "setup_timeout_seconds": 300, "maximum_artifact_bytes": 20_000_000}
+
+    def _qa_route(self, row: Mapping[str, Any], config: Mapping[str, Any]) -> Mapping[str, Any]:
+        """The configured Quality Assurance route, or the Development Manager's route (a Codex or Claude route that can run commands) when none is configured."""
+        return config.get("quality_assurance") or {"tool": row["manager_tool"], "model": row["manager_model"], "run_timeout_seconds": config["development_manager"]["run_timeout_seconds"]}
 
     def _milestone_ready(self, activity_id: str, key: str, packets: list[dict[str, Any]], queue: list[dict[str, Any]], deliveries: list[dict[str, Any]]) -> bool:
         mine = [p for p in packets if p["milestone_key"] == key]
@@ -234,8 +242,6 @@ class MilestoneMixin:
     def _advance_verification(self, row: Mapping[str, Any]) -> None:
         activity_id = row["activity_id"]
         config = json.loads(row["config_json"])
-        if self._qa_config_problem(config):
-            return
         milestones = self._load_milestones(row)
         packets, queue, deliveries = self._packets(activity_id), self._queue(activity_id), self._deliveries(activity_id)
         for key in sorted(milestones):
@@ -330,7 +336,7 @@ class MilestoneMixin:
     def _qa_start(self, row: Mapping[str, Any], config: Mapping[str, Any], v: dict[str, Any]) -> None:
         assert self.runs is not None
         activity_id, key = row["activity_id"], v["milestone_key"]
-        qa_config = config["qa"]
+        qa_config = self._qa_settings(config)
         head = self._current_milestone_head(row, key)
         if head != v["head_commit"]:
             self._set_v(activity_id, key, head_commit=head)
@@ -380,7 +386,7 @@ class MilestoneMixin:
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, 'active', ?)",
                 (activity_id, qa_run_id, key, v["attempt"], head, plan["id"], plan.get("version"), plan_sha, canonical_json(plan), selection.get("binding_hash"),
                  canonical_json({k: selection.get(k) for k in ("environments", "secrets", "network")}), row["config_sha256"], environment_id, environment_sha, _dump(processes), _dump(data), now))
-        route = config["quality_assurance"]
+        route = self._qa_route(row, config)
         assignment_id = f"{qa_run_id}-agent"
         inputs = {"plan.json": _json(plan), "milestone.json": _json(milestone)}
         pending = json.loads(v["pending_json"] or "{}")
@@ -449,7 +455,7 @@ class MilestoneMixin:
         clean = True
         if qa["environment_id"]:
             config = json.loads(self._read("SELECT config_json FROM service_executions WHERE activity_id = ?", (qa["activity_id"],))["config_json"])
-            clean = execution_qa.clean_environment(Path(config["qa"]["environment_root"]) / qa["environment_id"])
+            clean = execution_qa.clean_environment(Path(self._qa_settings(config)["environment_root"]) / qa["environment_id"])
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_execution_qa_runs SET cleanup_state = ? WHERE activity_id = ? AND qa_run_id = ?", ("cleaned" if clean else "quarantined", qa["activity_id"], qa["qa_run_id"]))
 
@@ -502,7 +508,7 @@ class MilestoneMixin:
         plan = json.loads(qa["plan_json"])
         response = self.runs.response(current["run_id"]) or {}
         output = self._run_workspace(current["run_id"])
-        qa_config = config["qa"]
+        qa_config = self._qa_settings(config)
         destination_dir = Path(qa_config["artifact_root"]) / activity_id / qa["qa_run_id"]
         if output is None:
             self._teardown(qa)
@@ -585,7 +591,7 @@ class MilestoneMixin:
         for arch in self._architects(activity_id, "milestone_gap"):
             if json.loads(arch["trigger_json"]).get("milestone_key") == key and json.loads(arch["pending_json"] or "{}").get("owner_decision", {}).get("choice") == "grant_one":
                 grants += 1
-        return int(config["reviews"]["milestone"]["maximum_completed_rounds"]) + grants
+        return int(config["reviews"].get("milestone", {}).get("maximum_completed_rounds", 3)) + grants
 
     def _cycle_findings(self, row: Mapping[str, Any], config: Mapping[str, Any], v: dict[str, Any], pending: dict[str, Any], source: str, items: list[dict[str, Any]]) -> None:
         """Record this cycle's blocking findings through the milestone-gap path; the cycle counts once against the milestone review allowance."""
@@ -1073,7 +1079,7 @@ class MilestoneMixin:
             reviews = self._rows("SELECT * FROM service_execution_milestone_reviews WHERE activity_id = ? AND milestone_key = ? ORDER BY attempt", (activity_id, key))
             artifacts = self._rows("SELECT artifact_id, qa_run_id, check_subject, sha256, size, media_type, description, retention_state FROM service_execution_qa_artifacts WHERE activity_id = ? AND milestone_key = ? ORDER BY qa_run_id, artifact_id", (activity_id, key))
             milestones.append({
-                "key": key, "state": v["state"], "attempt": v["attempt"], "head_commit": v["head_commit"], "note": v["note"], "cycles": {"used": v["rounds_used"], "limit": self._limit(config, activity_id, key) if config.get("reviews", {}).get("milestone") else None},
+                "key": key, "state": v["state"], "attempt": v["attempt"], "head_commit": v["head_commit"], "note": v["note"], "cycles": {"used": v["rounds_used"], "limit": self._limit(config, activity_id, key)},
                 "qa": [{"run": r["qa_run_id"], "attempt": r["attempt"], "head": r["head_commit"], "result": r["result"], "reason": r["reason"], "plan": {"id": r["plan_id"], "sha256": r["plan_sha256"]}, "binding_hash": r["binding_hash"],
                         "environment": r["environment_id"], "environment_sha256": r["environment_sha256"], "cleanup": r["cleanup_state"], "agent": f"{r['agent_tool']} {r['agent_model']}" if r["agent_tool"] else None,
                         "setup": [{"subject": s["subject"], "exit_code": s["exit_code"]} for s in json.loads(r["setup_json"])], "processes": [{"subject": p["subject"], "health": p["health"]} for p in json.loads(r["processes_json"])],
@@ -1086,8 +1092,7 @@ class MilestoneMixin:
                 "completion": {"path": v["completion_path"], "sha256": v["completion_sha256"], "commit": v["completion_commit"]} if v["completion_commit"] else None,
             })
         completion = self._read("SELECT state, path, sha256, commit_sha, final_master FROM service_execution_completion WHERE activity_id = ?", (activity_id,))
-        problem = self._qa_config_problem(config)
-        return {"configured": problem is None, "problem": problem, "milestones": milestones,
+        return {"milestones": milestones,
                 "completion": None if completion is None else {"state": completion["state"], "path": completion["path"], "sha256": completion["sha256"], "commit": completion["commit_sha"], "final_master": completion["final_master"]}}
 
     def artifact_content(self, project_id: str, artifact_id: str) -> dict[str, Any] | None:

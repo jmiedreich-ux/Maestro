@@ -391,16 +391,39 @@ class ReviewPromotionCompletionTests(VerificationBase):
 
 
 class ConfigurationTests(VerificationBase):
-    def test_without_quality_assurance_configuration_a_finished_milestone_waits_with_a_plain_blocker(self) -> None:
+    def test_without_explicit_settings_the_manager_route_and_service_owned_directories_are_used(self) -> None:
         plain = execution_config.validate(config_table())
         with self.database.transaction() as tx:
             tx.execute("DELETE FROM service_execution_verifications")
             tx.execute("UPDATE service_executions SET config_json = ?", (json.dumps(plain),))
         self.tick()
-        self.assertIsNone(self.service._read("SELECT 1 AS n FROM service_execution_verifications"))
-        view = self.service.view("exec-1")
-        self.assertFalse(view["verification"]["configured"])
-        self.assertIn("not configured", view["waiting"])
+        self.tick()
+        run = self.runs.last("qa_agent")
+        self.assertEqual((self.runs.assignments[self.runs.runs[run]["build"].assignment.assignment_id]["tool"]), "claude_code")
+        qa = self.service._qa_run("exec-1", "exec-1-m1-qa1")
+        self.assertEqual(self.verification()["state"], "qa_running")
+        self.service._teardown(qa)
+        self.assertEqual(self.service._qa_run("exec-1", "exec-1-m1-qa1")["cleanup_state"], "cleaned")
+
+    def test_a_failed_cleanup_quarantines_the_environment_and_never_reuses_it(self) -> None:
+        self.tick()
+        self.tick()
+        qa = self.service._qa_run("exec-1", "exec-1-m1-qa1")
+        environment = self.qa_root / "env" / qa["environment_id"]
+        self.assertTrue(environment.is_dir())
+        real = execution_qa.clean_environment
+        execution_qa.clean_environment = lambda path: False
+        try:
+            self.service._teardown(qa)
+        finally:
+            execution_qa.clean_environment = real
+        self.assertEqual(self.service._qa_run("exec-1", "exec-1-m1-qa1")["cleanup_state"], "quarantined")
+        # the same identity is never prepared again over a leftover directory
+        with self.database.transaction() as tx:
+            tx.execute("UPDATE service_execution_verifications SET state = 'qa', pending_json = '{}'")
+            tx.execute("DELETE FROM service_execution_qa_runs")
+        self.tick()
+        self.assertIn("quarantined", self.verification()["note"])
 
     def test_the_milestone_reviewer_must_differ_from_every_author(self) -> None:
         self.to_reviewing()
