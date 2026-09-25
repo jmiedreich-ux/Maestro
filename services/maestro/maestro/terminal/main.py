@@ -231,6 +231,12 @@ class TerminalApplication:
         ):
             return False
         self._remove_local_command(command)
+        with self._lock:
+            if (
+                self.workspace.connection_state == ConnectionState.CONNECTED
+                and not self.workspace.stale
+            ):
+                self.workspace.error = None
         if command == "/exit":
             unsent = self.workspace.input.text
             if unsent and self._exit_warning_text != unsent:
