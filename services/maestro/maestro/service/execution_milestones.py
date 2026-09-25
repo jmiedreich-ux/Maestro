@@ -246,6 +246,8 @@ class MilestoneMixin:
         packets, queue, deliveries = self._packets(activity_id), self._queue(activity_id), self._deliveries(activity_id)
         for key in sorted(milestones):
             known = self._verifications(activity_id).get(key)
+            if self._outside_set(row, "milestones", key) and (known is None or known["state"] == "qa"):
+                continue  # a pause or stop is in effect and this milestone was not fully in the saved set
             if known is None:
                 if self._milestone_ready(activity_id, key, packets, queue, deliveries) and self._settled_of(activity_id, key):
                     head = self._current_milestone_head(row, key)
@@ -262,8 +264,9 @@ class MilestoneMixin:
                 self._v_block(row, known, f"{error.code}: {error}")
             except (execution_git.GitError, AgentRunError, execution_qa.QaError, ValueError, OSError) as error:
                 self._v_block(row, known, f"{getattr(error, 'code', type(error).__name__)}: {error}")
-        self._release_held_deliveries(row)
-        self._advance_completion(row)
+        if self._settlement_of(row) is None:
+            self._release_held_deliveries(row)
+            self._advance_completion(row)
 
     def _settled_of(self, activity_id: str, key: str) -> bool:
         """No unresolved finding or gap assignment still concerns this milestone."""
@@ -1037,9 +1040,12 @@ class MilestoneMixin:
             if not destination.contains(row["repository"], m["promoted_commit"], commit):
                 raise DestinationError("verification_failed", f"the product branch does not contain the verified merge of milestone {m['milestone_key']}")
         with self.database.transaction() as tx:
-            current = self._row(tx, "SELECT state FROM service_executions WHERE activity_id = ?", (activity_id,))
-            if current is None or current["state"] not in ("running", "blocked"):
+            current = self._row(tx, "SELECT state, pending_json FROM service_executions WHERE activity_id = ?", (activity_id,))
+            if current is None or current["state"] not in ("running", "blocked", "finishing"):
                 return
+            saved = (json.loads(current["pending_json"] or "{}").get("settlement") or {}).get("kind")
+            if saved == "pause" or (current["state"] == "finishing" and saved != "stop"):
+                return  # a pause accepted during publication completes after resume; the publication is idempotent
             tx.execute("UPDATE service_execution_journal SET state = 'verified', remote_after = ? WHERE operation_id = ?", (commit, operation_id))
             tx.execute("UPDATE service_execution_completion SET state = 'published', commit_sha = ?, updated_at = ? WHERE activity_id = ?", (commit, _now(), activity_id))
             tx.execute("UPDATE service_executions SET state = 'completed', note = 'all milestones verified and promoted' WHERE activity_id = ?", (activity_id,))

@@ -28,6 +28,7 @@ from . import execution_config, execution_git
 from .execution_integration import INTEGRATION_MIGRATION, IntegrationMixin, is_delivered
 from .execution_milestones import MILESTONE_MIGRATION, MilestoneMixin
 from .execution_determination import DeterminationMixin
+from .execution_lifecycle import LifecycleMixin
 from .execution_gaps import GAP_MIGRATION, GapMixin
 from .execution_support import SUPPORT_MIGRATION, SupportMixin
 from .activities import ActivityAction, ActivityRecord, ActivityRepository, ConversationRecord, QuestionRecord
@@ -184,7 +185,8 @@ EXECUTION_MIGRATION = DomainMigration(
     ),
 )
 
-_OPEN_STATES = ("running", "blocked", "paused")
+_OPEN_STATES = ("running", "blocked", "paused", "finishing")
+_ADVANCING = ("running", "blocked", "finishing")
 _PACKET_ACTIVE = ("reserved", "coding", "reviewing", "correcting")
 _MANAGER_TOOLS = ["Read"]
 _CODER_TOOLS = ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
@@ -243,7 +245,7 @@ def _paths_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
     return any(inside(x, y) or inside(y, x) for x in a for y in b)
 
 
-class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
+class ExecutionService(LifecycleMixin, MilestoneMixin, GapMixin, DeterminationMixin, SupportMixin, IntegrationMixin):
     """Owns Execution state; the worker thread calls ``tick`` repeatedly."""
 
     def __init__(
@@ -283,7 +285,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
 
     @property
     def operation_handlers(self) -> tuple[OperationHandler, ...]:
-        return (OperationHandler("execution.start", self.prepare_start), OperationHandler("execution.record_finding", self.prepare_record_finding))
+        return (OperationHandler("execution.start", self.prepare_start), OperationHandler("execution.record_finding", self.prepare_record_finding), *self.lifecycle_handlers)
 
     def owns(self, activity_id: str) -> bool:
         return self._read("SELECT 1 AS n FROM service_executions WHERE activity_id = ?", (activity_id,)) is not None
@@ -482,7 +484,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         except RecipientDeliveryInterrupted:
             log.warning("an answer delivery was interrupted and will be retried", exc_info=True)
         with self.database.read_connection() as connection:
-            ids = [str(r[0]) for r in connection.execute(f"SELECT activity_id FROM service_executions WHERE state IN ('running', 'blocked') ORDER BY created_at")]
+            ids = [str(r[0]) for r in connection.execute(f"SELECT activity_id FROM service_executions WHERE state IN ('running', 'blocked', 'finishing') ORDER BY created_at")]
         for activity_id in ids:
             lock = self._lock(activity_id)
             if not lock.acquire(blocking=False):
@@ -501,7 +503,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
 
     def advance(self, activity_id: str) -> None:
         row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
-        if row is None or row["state"] not in {"running", "blocked"}:
+        if row is None or row["state"] not in _ADVANCING:
             return
         self._advance_manager(row)
         self._advance_support(row)
@@ -514,7 +516,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         self._advance_verification(row)
         for packet in self._packets(activity_id):
             row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
-            if row is None or row["state"] not in {"running", "blocked"}:
+            if row is None or row["state"] not in _ADVANCING:
                 return
             try:
                 self._advance_packet(row, packet)
@@ -575,6 +577,8 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         raise AgentRunError("manager_run_failed", f"Development Manager run {view.state}" + (f" ({view.failure_code})" if view.failure_code else "") + (f": {view.terminal_reason}" if view.terminal_reason else ""))
 
     def _needs_planning(self, row: Mapping[str, Any], pending: Mapping[str, Any]) -> bool:
+        if pending.get("settlement") is not None:
+            return False  # a pause or stop refuses new reservations, so no planning pass can start work
         if any(not q.get("answered") for q in pending.get("questions", {}).values()):
             return False
         packets = self._packets(row["activity_id"])
@@ -660,7 +664,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             self._say(tx, project_id, activity_id, f"Development Manager planning pass {pass_number} started: {tool} {model}, assignment {assignment_id}, session {session.session_id}, handling {len(events)} saved event(s).")
 
     def _launch(self, row: Mapping[str, Any], pending: dict[str, Any], slot: str, assignment_id: str, tool: str, model: str, duration: int, recovery: bool,
-                build: Callable[[str], RunBuild], role: str, intervention: str = "", save: Callable[[str, dict[str, Any]], None] | None = None) -> str:
+                build: Callable[[str], RunBuild], role: str, intervention: str = "", save: Callable[[str, dict[str, Any]], None] | None = None, manual: bool = False) -> str:
         """Create the assignment when needed and start the next run; the run is saved in ``pending[slot]`` so a restart finds it."""
         assert self.runs is not None
         config = json.loads(row["config_json"])
@@ -669,7 +673,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
                                         duration_seconds=duration, automatic_limit=int(config["recovery"]["automatic_recovery_attempts"]))
         before = self.runs.run_count(assignment_id)
         run_id = f"{assignment_id}-run{before + 1}"
-        kind = "recovery" if recovery else "initial"
+        kind = "manual" if manual else "recovery" if recovery else "initial"
         try:
             self.runs.start_run(assignment_id, run_id, kind, build, intervention=intervention)
         except Exception:
@@ -872,14 +876,16 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         state = packet["state"]
         if self._packet_pending(packet).get("quarantined"):
             return  # its dependency evidence changed: the running result may only preserve work until reconciled
+        if self._outside_set(row, "packets", packet["packet_key"]):
+            return  # not in the work in progress when the pause or stop was accepted
         if state == "reserved":
-            self._start_coder(row, packet)
+            self._start_coder(row, packet, recovery_note="manual retry" if self._packet_pending(packet).get("manual_retry") else None)
         elif state in {"coding", "correcting"}:
             self._advance_coder(row, packet)
         elif state == "publishing":
             self._advance_publish(row, packet)
         elif state == "review_ready":
-            self._start_reviewer(row, packet)
+            self._start_reviewer(row, packet, recovery_note="manual retry" if self._packet_pending(packet).get("manual_retry") else None)
         elif state == "reviewing":
             self._advance_reviewer(row, packet)
 
@@ -906,6 +912,9 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
         if row is not None:
             held.update(self._held_by_disposition(row))
+            settlement = self._settlement_of(row)
+            if settlement is not None:
+                held.update({p["packet_key"]: f"the Owner asked to {settlement['kind']} Execution, so no new packet starts" for p in self._packets(activity_id) if p["state"] == "pending"})
         return held
 
     def _packet_paths(self, packet: Mapping[str, Any]) -> list[str]:
@@ -970,7 +979,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         if correction:
             inputs["review-findings.json"] = _json({"findings": correction})
         paths = self._packet_paths(packet)
-        note = "" if not recovery_note else f"\nThe previous run's output was rejected: {recovery_note}. Fix exactly that."
+        note = "" if not recovery_note else (f"\nThe Owner authorised one more attempt after recording what changed: {pending['manual_retry']['intervention']}" if recovery_note == "manual retry" else f"\nThe previous run's output was rejected: {recovery_note}. Fix exactly that.")
         task = _CODER_TASK.format(base=base, branch=branch, paths=", ".join(paths), common=_COMMON_RULES, correction=(_CORRECTION if correction else "") + note)
         decision_version = f"a{attempt}"
 
@@ -989,7 +998,11 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             )
             return RunBuild(assignment, mirror, inputs, None, prepare)
 
-        self._launch(row, pending, "coder_run", assignment_id, route["tool"], route["model"], route["run_timeout_seconds"], recovery_note is not None, build, "packet_coder")
+        manual = pending.get("manual_retry") if pending.get("manual_retry", {}).get("stage") == "coder" else None
+        if manual:
+            self._manual_launch(row, packet, pending, "coder_run", assignment_id, lambda note: self._launch(row, pending, "coder_run", assignment_id, route["tool"], route["model"], route["run_timeout_seconds"], True, build, "packet_coder", intervention=note, manual=True))
+        else:
+            self._launch(row, pending, "coder_run", assignment_id, route["tool"], route["model"], route["run_timeout_seconds"], recovery_note is not None, build, "packet_coder")
         pending["coder_attempt"] = attempt
         pending.pop("plan_seen", None)
         with self.database.transaction() as tx:
@@ -1203,7 +1216,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         if prior:
             inputs["prior-findings.json"] = _json({"findings": json.loads(prior[-1]["findings_json"])})
         paths = self._packet_paths(packet)
-        note = "" if not recovery_note else f"\nThe previous run's output was rejected: {recovery_note}. Fix exactly that."
+        note = "" if not recovery_note else (f"\nThe Owner authorised one more attempt after recording what changed: {pending['manual_retry']['intervention']}" if recovery_note == "manual retry" else f"\nThe previous run's output was rejected: {recovery_note}. Fix exactly that.")
         task = _REVIEW_TASK.format(head=head, later=_REVIEW_LATER if prior else "", paths=", ".join(paths)) + note
 
         def build(run_id: str) -> RunBuild:
@@ -1217,7 +1230,11 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             )
             return RunBuild(assignment, mirror, inputs, None)
 
-        self._launch(row, pending, "reviewer_run", assignment_id, reviewer["tool"], reviewer["model"], reviewer["run_timeout_seconds"], recovery_note is not None, build, "packet_reviewer")
+        manual = pending.get("manual_retry") if pending.get("manual_retry", {}).get("stage") == "reviewer" else None
+        if manual:
+            self._manual_launch(row, packet, pending, "reviewer_run", assignment_id, lambda note: self._launch(row, pending, "reviewer_run", assignment_id, reviewer["tool"], reviewer["model"], reviewer["run_timeout_seconds"], True, build, "packet_reviewer", intervention=note, manual=True))
+        else:
+            self._launch(row, pending, "reviewer_run", assignment_id, reviewer["tool"], reviewer["model"], reviewer["run_timeout_seconds"], recovery_note is not None, build, "packet_reviewer")
         pending["reviewer"] = {"tool": reviewer["tool"], "model": reviewer["model"]}
         with self.database.transaction() as tx:
             tx.execute("UPDATE service_execution_packets SET state = 'reviewing', pending_json = ?, updated_at = ? WHERE activity_id = ? AND packet_key = ?", (canonical_json(pending), _now(), activity_id, key))
@@ -1316,7 +1333,9 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
 
     def _settle(self, activity_id: str) -> None:
         row = self._read("SELECT * FROM service_executions WHERE activity_id = ?", (activity_id,))
-        if row is None or row["state"] not in {"running", "blocked"}:
+        if row is None or row["state"] not in _ADVANCING:
+            return
+        if self._settlement_step(row):
             return
         packets = self._packets(activity_id)
         pending = json.loads(row["pending_json"] or "{}")
@@ -1373,10 +1392,14 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         if any(p["state"] == "limit_paused" for p in packets) or any(e["state"] == "limit_paused" for e in queue) or any(a["state"] == "limit_paused" for a in supports):
             actions = (ActivityAction(f"{activity_id}-grant", "Grant one extra review attempt", "decision"), ActivityAction(f"{activity_id}-remain", "Remain paused", "decision"))
             text += ". Review limit reached: grant one extra attempt or keep it paused"
+        settlement = self._settlement_of(row)
+        if settlement is not None:
+            waiting_on = self._unsettled(row, settlement)
+            text = f"{'Stopping' if settlement['kind'] == 'stop' else 'Pausing'}: " + ("waiting for " + "; ".join(waiting_on[:4]) if waiting_on else "the saved set has settled") + ". No new packet starts."
         if state != row["state"] or self._current_waiting(activity_id) != text:
             with self.database.transaction() as tx:
                 tx.execute("UPDATE service_executions SET state = ? WHERE activity_id = ? AND state IN ('running', 'blocked')", (state, activity_id))
-                self._activity(tx, activity_id, state, text, actions)
+                self._activity(tx, activity_id, "finishing" if row["state"] == "finishing" else state, text, actions)
 
     def _current_waiting(self, activity_id: str) -> str | None:
         found = self._read("SELECT waiting_reason FROM service_activities WHERE activity_id = ?", (activity_id,))
@@ -1469,7 +1492,7 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
                         "planning": pending.get("manager_run") is not None, "understanding": pending.get("understanding"), "priorities": pending.get("priorities", []),
                         "blockers": pending.get("blockers", []), "checkpoint": pending.get("checkpoint")},
             "integration": self.integration_view(activity_id), "verification": self.verification_view(activity_id),
-            "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "gaps": self.gap_view(activity_id), "disposition": self.disposition_view(row),
+            "support": self.support_view(activity_id), "determinations": self.determination_view(activity_id), "gaps": self.gap_view(activity_id), "disposition": self.disposition_view(row), "lifecycle": self.lifecycle_view(row),
             "packets": packets, "plans": [{"pass": p["pass_number"], "accepted": json.loads(p["accepted_json"]), "rejected": json.loads(p["rejected_json"]), "at": p["created_at"]} for p in plans],
             "events": events, "open_questions": open_questions, "measurements": measured, "actions": actions, "owner_decisions": decisions,
             "runs": [{"run_id": r["run_id"], "role": r["assignment_id"].rsplit("-", 2)[-2] if "-" in r["assignment_id"] else r["role"], "state": r["state"], "tool": r["tool"], "model": r["model_id"], "tool_version": r["tool_version"], "seconds": r["active_seconds"]} for r in runs],
@@ -1481,9 +1504,12 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
         if request.project_id is None or request.activity_id is None or request.expected_version is None:
             raise ValueError("owner.decision needs project, activity and the displayed activity version")
         payload = dict(request.payload)
-        if set(payload) != {"target", "choice", "assignment_id"}:
+        if set(payload) - {"duration_seconds"} != {"target", "choice", "assignment_id"} or ("duration_seconds" in payload and payload["target"] != "execution_manual_retry"):
             raise ValueError("owner.decision payload must be target, choice and assignment_id")
-        if payload["target"] == "execution_work_disposition":
+        if payload["target"] == "execution_manual_retry":
+            if payload["choice"] not in {"grant_one", "remain_paused"}:
+                raise ValueError("execution_manual_retry takes choice grant_one or remain_paused")
+        elif payload["target"] == "execution_work_disposition":
             if payload["choice"] not in DISPOSITION_CHOICES:
                 raise ValueError("execution_work_disposition takes choice " + ", ".join(DISPOSITION_CHOICES))
         elif payload["target"] not in {"packet_review", "integration_review", "execution_support_fidelity_review", "milestone_review"} or payload["choice"] not in {"grant_one", "remain_paused"}:
@@ -1498,6 +1524,8 @@ class ExecutionService(MilestoneMixin, GapMixin, DeterminationMixin, SupportMixi
             if current is not None and int(current["version"]) != request.expected_version:
                 raise RequestRejection(409, "stale_version", "the activity changed since it was displayed", fields={"activity_version": int(current["version"])})
             found = None
+            if payload["target"] == "execution_manual_retry":
+                return self._retry_decision(transaction, request, row, payload, next_version)
             if payload["target"] == "execution_work_disposition":
                 return self._disposition_decision(transaction, request, row, payload, next_version)
             if payload["target"] in {"packet_review", "integration_review"}:

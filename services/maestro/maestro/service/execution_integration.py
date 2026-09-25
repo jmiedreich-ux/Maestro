@@ -371,6 +371,8 @@ class IntegrationMixin:
             return
         head = entries[0]
         state = head["state"]
+        if state == "queued" and self._restricts_queue(row, head):
+            return  # a pause or stop is in effect and this entry was not in the saved set: it holds its place and nothing behind it starts
         try:
             if state == "queued":
                 self._integration_start(row, head)
