@@ -132,24 +132,29 @@ class GapMixin:
             duplicate = self._row(transaction, "SELECT finding_id FROM service_execution_findings WHERE activity_id = ? AND record_sha256 = ? AND state != 'closed'", (activity_id, digest))
             if duplicate is not None:
                 return OperationResult(data={"activity_id": activity_id, "finding_id": duplicate["finding_id"], "duplicate": True}, status="accepted", project_id=project_id, activity_id=activity_id)
-            number = 1 + int(self._row(transaction, "SELECT COUNT(*) AS n FROM service_execution_findings WHERE activity_id = ?", (activity_id,))["n"])
-            finding_id = f"finding-{number}"
-            gap_key = f"gap-{finding_id}"
-            config, note = self._gap_config(row)
-            state = "requested" if config else "blocked_route"
-            now = _now()
-            transaction.execute("INSERT INTO service_execution_findings(activity_id, finding_id, milestone_key, source, subject, record_json, record_sha256, state, gap_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'routed', ?, ?)",
-                                (activity_id, finding_id, record["milestone_key"], record["source"], record["subject"][:200], canonical_json(record), digest, gap_key, now))
-            transaction.execute(
-                "INSERT INTO service_execution_architect(activity_id, assignment_key, kind, packet_key, subject, trigger_json, state, version, config_json, pending_json, review_limit, note, created_at, updated_at) "
-                "VALUES (?, ?, 'milestone_gap', NULL, ?, ?, ?, 1, ?, '{}', 0, ?, ?, ?)",
-                (activity_id, gap_key, f"Milestone gap for {finding_id}: {record['subject'][:160]}", canonical_json({"finding_id": finding_id, "milestone_key": record["milestone_key"], "exhausted": record["review_limit_exhausted"]}),
-                 state, canonical_json(config or {}), note, now, now))
-            self._say(transaction, project_id, activity_id, f"Milestone finding {finding_id} ({record['source'].replace('_', ' ')}) recorded for milestone {record['milestone_key']}: {record['subject'][:300]}. "
-                      + (f"Milestone-gap assignment {gap_key} is queued for the Project Architect." if config else f"{note}."))
+            finding_id, gap_key = self._route_finding(transaction, row, project_id, activity_id, record, digest)
             return OperationResult(data={"activity_id": activity_id, "finding_id": finding_id, "gap_assignment": gap_key, "duplicate": False}, status="accepted", project_id=project_id, activity_id=activity_id)
 
         return PreparedOperation(f"execution-finding-{request.request_id}", "execution.finding_recorded", {"activity_id": activity_id}, apply)
+
+    def _route_finding(self, transaction: Transaction, row: Mapping[str, Any], project_id: str, activity_id: str, record: Mapping[str, Any], digest: str) -> tuple[str, str]:
+        """Save a finding and its milestone-gap assignment in the caller's transaction (the recording operation and milestone verification share it)."""
+        number = 1 + int(self._row(transaction, "SELECT COUNT(*) AS n FROM service_execution_findings WHERE activity_id = ?", (activity_id,))["n"])
+        finding_id = f"finding-{number}"
+        gap_key = f"gap-{finding_id}"
+        config, note = self._gap_config(row)
+        state = "requested" if config else "blocked_route"
+        now = _now()
+        transaction.execute("INSERT INTO service_execution_findings(activity_id, finding_id, milestone_key, source, subject, record_json, record_sha256, state, gap_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'routed', ?, ?)",
+                            (activity_id, finding_id, record["milestone_key"], record["source"], record["subject"][:200], canonical_json(record), digest, gap_key, now))
+        transaction.execute(
+            "INSERT INTO service_execution_architect(activity_id, assignment_key, kind, packet_key, subject, trigger_json, state, version, config_json, pending_json, review_limit, note, created_at, updated_at) "
+            "VALUES (?, ?, 'milestone_gap', NULL, ?, ?, ?, 1, ?, '{}', 0, ?, ?, ?)",
+            (activity_id, gap_key, f"Milestone gap for {finding_id}: {record['subject'][:160]}", canonical_json({"finding_id": finding_id, "milestone_key": record["milestone_key"], "exhausted": record["review_limit_exhausted"]}),
+             state, canonical_json(config or {}), note, now, now))
+        self._say(transaction, project_id, activity_id, f"Milestone finding {finding_id} ({record['source'].replace('_', ' ')}) recorded for milestone {record['milestone_key']}: {record['subject'][:300]}. "
+                  + (f"Milestone-gap assignment {gap_key} is queued for the Project Architect." if config else f"{note}."))
+        return finding_id, gap_key
 
     def _finding(self, activity_id: str, finding_id: str) -> dict[str, Any]:
         found = self._read("SELECT * FROM service_execution_findings WHERE activity_id = ? AND finding_id = ?", (activity_id, finding_id))

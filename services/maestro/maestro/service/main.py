@@ -262,6 +262,8 @@ class InstalledServiceApplication:
             return self._architecture_response(unquote(parts[4]), headers)
         if method == "GET" and len(parts) == 6 and parts[:4] == ["", "api", "v1", "projects"] and parts[5] == "execution" and self.execution is not None:
             return self._execution_response(unquote(parts[4]), headers)
+        if method == "GET" and len(parts) == 8 and parts[:4] == ["", "api", "v1", "projects"] and parts[5:7] == ["execution", "artifacts"] and self.execution is not None:
+            return self._artifact_response(unquote(parts[4]), unquote(parts[7]), headers)
         if parsed.path == "/api/v1/events":
             return self.event_application.handle(method, path, headers)
         return self.request_application.handle(method, path, headers, body)
@@ -289,6 +291,18 @@ class InstalledServiceApplication:
         if known is None:
             return HTTPResponse(404, {"error": {"code": "project_not_found", "message": "the project was not found"}}, content)
         return HTTPResponse(200, {"data": self.architecture.project_view(project_id), "event_cursor": str(cursor)}, content)  # type: ignore[union-attr]
+
+    def _artifact_response(self, project_id: str, artifact_id: str, headers: Mapping[str, str]) -> HTTPResponse:
+        """Authorized retrieval of one Quality Assurance artifact; the service re-checks its size and hash before returning it."""
+        content = {"Content-Type": "application/json; charset=utf-8"}
+        try:
+            self.authenticator.authenticate_read(headers.get("Authorization"))
+        except HTTPRejection as error:
+            return HTTPResponse(error.status_code, error.as_body(), {**content, **error.headers})
+        found = self.execution.artifact_content(project_id, artifact_id)  # type: ignore[union-attr]
+        if found is None:
+            return HTTPResponse(404, {"error": {"code": "artifact_not_found", "message": "the artifact was not found for this project"}}, content)
+        return HTTPResponse(200 if found.get("verified") else 409, {"data": found}, content)
 
     def _execution_response(self, project_id: str, headers: Mapping[str, str]) -> HTTPResponse:
         content = {"Content-Type": "application/json; charset=utf-8"}

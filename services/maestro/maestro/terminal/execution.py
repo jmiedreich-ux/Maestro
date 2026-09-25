@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from .connection import ServiceError, TerminalConnectionError
 from .extensions import ExtensionContext, ExtensionRegistry
 
-_USAGE = "usage: /execution [start [--manager <route>] | full]"
+_USAGE = "usage: /execution [start [--manager <route>] | full | artifact <artifact id>]"
 
 
 class ExecutionError(ValueError):
@@ -43,6 +43,8 @@ class ExecutionExtension:
             return self._start(context, words[1:])
         if words[0] == "full":
             return self._open(context, full=True)
+        if words[0] == "artifact" and len(words) == 2:
+            return self._artifact(context, words[1])
         raise ExecutionError(_USAGE)
 
     def _project(self, context: ExtensionContext, what: str) -> str:
@@ -63,6 +65,16 @@ class ExecutionExtension:
         _reload(context.state, str(data["activity_id"]))
         _status(context.state, render(data, full=full))
         return data["activity_id"]
+
+    def _artifact(self, context: ExtensionContext, artifact_id: str) -> object:
+        project_id = self._project(context, "/execution artifact reads one saved Quality Assurance artifact.")
+        data = context.client.get_json(f"/projects/{urllib.parse.quote(project_id, safe='')}/execution/artifacts/{urllib.parse.quote(artifact_id, safe='')}").get("data")
+        if not isinstance(data, Mapping):
+            raise ExecutionError("The service returned no artifact.")
+        head = f"{data['artifact_id']}: {data['check_subject']} ({data['media_type']}, {data['size']} bytes, sha256 {data['sha256']})"
+        body = data.get("text") if data.get("verified") else f"not shown: {data.get('problem')}"
+        _status(context.state, head + "\n" + (str(body) if body is not None else "binary content; retrieve it through the service API"))
+        return artifact_id
 
     def _start(self, context: ExtensionContext, words: list[str]) -> object:
         state = context.state
@@ -180,6 +192,9 @@ def render(view: Mapping[str, object], *, full: bool) -> str:
     integration = view.get("integration")
     if isinstance(integration, Mapping):
         lines.extend(_render_integration(integration, full=full))
+    verification = view.get("verification")
+    if isinstance(verification, Mapping):
+        lines.extend(_render_verification(verification, full=full))
     lines.extend(_render_support(view, full=full))
     if view.get("open_questions"):
         lines.append("Waiting for your answer to: " + ", ".join(view["open_questions"]))  # type: ignore[arg-type]
@@ -267,6 +282,35 @@ def _render_integration(integration: Mapping[str, object], *, full: bool) -> lis
     for d in integration.get("deliveries", []):  # type: ignore[union-attr]
         lines.append(f"  dependency {d['delivery_id']} [{d['state']}] {', '.join(d['packets'])} from {d['provider']} to {d['consumer']} at {str(d['source_commit'])[:12]}"
                      + (f", imported as {str(d['import_commit'])[:12]}" if d.get("import_commit") else "") + (f" | {d['note']}" if d.get("note") else ""))
+    return lines
+
+
+def _render_verification(verification: Mapping[str, object], *, full: bool) -> list[str]:
+    lines: list[str] = []
+    for m in verification.get("milestones", []):  # type: ignore[union-attr]
+        head = f"Milestone {m['key']} verification [{m['state']}] attempt {m['attempt']} at {str(m['head_commit'])[:12]}"
+        if m["cycles"]["used"]:
+            head += f" | review cycles {m['cycles']['used']} of {m['cycles']['limit']}"
+        if m.get("note"):
+            head += f" | {m['note']}"
+        lines.append(head)
+        for run in m["qa"]:
+            lines.append(f"  quality assurance {run['run']}: {run['result'] or 'running'} ({run['agent'] or 'no agent run'}), environment {run['cleanup']}" + (f" | {run['reason']}" if run.get("reason") and run["result"] != "PASS" else ""))
+            for check in run["checks"]:
+                lines.append(f"    {check['result']}: {check['subject']}" + (f" ({'; '.join(check['reasons'])})" if check["reasons"] else ""))
+                if full:
+                    lines.append(f"      expected: {str(check['expected'])[:200]} | actual: {str(check['actual'])[:200]}")
+        if m["artifacts"]:
+            lines.append("  evidence: " + ", ".join(f"{a['artifact_id']} ({a['check_subject']}, {a['media_type']}, {a['size']} bytes, sha256 {a['sha256'][:12]})" for a in m["artifacts"]))
+        for review in m["reviews"]:
+            lines.append(f"  outcome review attempt {review['attempt']}: {review['outcome']} by {review['reviewer']} ({review['blocking']} blocking): {review['summary'][:240]}")
+        if m.get("promotion"):
+            lines.append(f"  promoted to the product branch at {str(m['promotion']['commit'])[:12]}")
+        if m.get("completion"):
+            lines.append(f"  completion record {m['completion']['path']} (sha256 {str(m['completion']['sha256'])[:12]}) in {str(m['completion']['commit'])[:12]}")
+    completion = verification.get("completion")
+    if isinstance(completion, Mapping):
+        lines.append(f"Execution completion record [{completion['state']}] {completion['path']} (sha256 {str(completion['sha256'])[:12]})" + (f" in {str(completion['commit'])[:12]}" if completion.get("commit") else ""))
     return lines
 
 

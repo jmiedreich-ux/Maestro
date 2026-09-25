@@ -40,6 +40,14 @@
       "files": [
         "schema.json"
       ]
+    },
+    "execution@3": {
+      "path": "schemas/execution/3",
+      "schema": "schema.json",
+      "definition": "executionConfiguration",
+      "files": [
+        "schema.json"
+      ]
     }
   }
 }
