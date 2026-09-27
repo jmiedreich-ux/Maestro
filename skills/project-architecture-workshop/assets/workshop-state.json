@@ -8,7 +8,6 @@
     "architecture": "docs/architecture.md",
     "roadmap": "docs/planning/outcomes.md",
     "outcomes": "docs/outcomes",
-    "guide": "docs/planning-guide/README.md",
     "state": "docs/planning/workshop-state.json"
   },
   "publication": {
