@@ -27,6 +27,7 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - For a new kind of feature, run one pilot packet first to test the brief, the packet size and the verification.
   - Skipped (Owner, 2026-09-27).
 - A review verdict belongs to one exact version of the change. If the change moves, the verdict is void.
+  - Already the practice (Owner, 2026-09-27).
 - A milestone is complete only when its features form an unbroken run of verified work.
 - Bound the one correction: only findings that must be acted on go to the coder. "I would have done it differently" is not a finding.
 - Label what is known about existing code as Direct, Supported, Inferred, Speculative or Unknown.
