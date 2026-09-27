@@ -35,6 +35,7 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - Label what is known about existing code as Direct, Supported, Inferred, Speculative or Unknown.
   - Adopted (Owner agreed 2026-09-27).
 - To discuss with the Owner: pstack's self-continuing goals (a loop that keeps going through the work) and self-merging (the agent merges what it has verified). Both are close to the builder and to Execution's automatic continuation. The limits to decide are that nothing starts the next phase without the Owner, and that a merge needs an independent check.
+  - Adopted (Owner agreed 2026-09-27), with two facts from pstack's own playbooks folded in: the agent that builds a change never grants itself the merge verdict — merging happens only on a verdict from separate, independent verifiers, and a new head after trunk moves voids that verdict. A self-continuing loop stops only when its stated, checkable exit condition is met, never on a plateau, and the Owner's stop reaches every running piece immediately as a full halt, not a polite wind-down.
 - Keep out: unbounded reviewer swarms.
 
 ## The combined build phase (Owner observation 2026-09-27)
