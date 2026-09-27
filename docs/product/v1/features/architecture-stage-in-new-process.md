@@ -46,6 +46,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - A feature plan lists its checks as exact commands. Each check ends PASS, FAIL or INCONCLUSIVE, and INCONCLUSIVE is never a pass.
   - Adopted (Owner agreed 2026-09-27).
 - Every proof starts with a health check (right build, own ports, the right model loaded), never drives something it did not start, and keeps its evidence through cleanup. Anything that saved something is read back from a second place.
+  - Adopted (Owner agreed 2026-09-27).
 - The reviewer of a feature reads the diff and the receipts, not the coder's summary, and is told not to question the finish line. Only findings that must be acted on go into the one correction. Findings touching security, permissions, data, migrations, repeat-safety or concurrency are never dismissed without the Owner.
 - The coder never verifies or reviews its own work.
 - A feature merges only when its verdict still matches its exact change. Landing stops at the first unverified feature.
