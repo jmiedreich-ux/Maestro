@@ -32,7 +32,7 @@ Require correction only for a concrete in-scope issue that prevents the required
 
 Record non-blocking limitations and optional improvements in the existing review/result or handoff record, with their location, practical impact and why the required outcome is still satisfied. They do not prevent approval, integration or promotion, trigger another review round, or become implementation work automatically. A desired scope expansion follows the existing change authority. Required failed or unverified behavior cannot be relabeled as a limitation to obtain a pass.
 
-Reviews do not add requirements, demand perfection, reopen unchanged work over preference or expand tests to cover every conceivable edge case. Apply the [verification expectations](../../planning-guide/README.md#verification-expectations). Stop once the assigned requirements, necessary connections and proportionate evidence are covered. Necessary correction checks cover the correction and affected dependencies, retaining valid unaffected coverage. Existing independence, evidence, authority and process-specific review/recovery limits remain unchanged; logging a limitation grants no extra attempt or waiver.
+Reviews do not add requirements, demand perfection, reopen unchanged work over preference or expand tests to cover every conceivable edge case. Apply the [verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations). Stop once the assigned requirements, necessary connections and proportionate evidence are covered. Necessary correction checks cover the correction and affected dependencies, retaining valid unaffected coverage. Existing independence, evidence, authority and process-specific review/recovery limits remain unchanged; logging a limitation grants no extra attempt or waiver.
 
 ## Components and responsibilities
 
@@ -476,7 +476,7 @@ Read-only lookups do not require a new durable record before handling. SQL recor
 
 Registration records declaration identity, milestone identity, delivery position, dependencies, and versions separately. Ordering changes do not change references. Reviews bind to exact record versions, and work-packet relationships use explicit references rather than encoded hierarchies.
 
-The [Maestro Planning Guide](../../planning-guide/README.md#naming-ordering-and-versions) defines naming, numbering, ordering, and version conventions.
+The [Maestro Planning Guide](../../../skills/project-architecture-workshop/references/planning-guide.md#naming-ordering-and-versions) defines naming, numbering, ordering, and version conventions.
 
 ## CLI workspace
 
@@ -651,7 +651,7 @@ Registration does not approve the project's architecture, start development, or 
 
 ### Source format and inputs
 
-The [Maestro Planning Guide](../../planning-guide/README.md) specifies three Markdown source types: a project overview, architecture, and milestone declarations. Registration receives the repository-relative overview path. The overview identifies the authoritative architecture and declarations through explicit source references; repository scanning is not used to guess the entry document.
+The [Maestro Planning Guide](../../../skills/project-architecture-workshop/references/planning-guide.md) specifies three Markdown source types: a project overview, architecture, and milestone declarations. Registration receives the repository-relative overview path. The overview identifies the authoritative architecture and declarations through explicit source references; repository scanning is not used to guess the entry document.
 
 | Input | Required information |
 |---|---|
@@ -1181,7 +1181,7 @@ Development milestones may differ from project milestones. Their relationships m
 
 Parallel work is a first-class design concern. The architect identifies independent contributions, shared-code boundaries, integration points, and explicit dependencies so execution can use parallelism effectively. The breakdown describes what may run independently and what must precede other work; it does not assign start times, reserve execution slots, or schedule workers.
 
-Packet requirements include necessary setup, access, integration, and basic verification. The packet owns the code connections needed for its stated result within its approved paths and shared-code boundaries; routine wiring is not left for the Integration Manager after packet review. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](../../planning-guide/README.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
+Packet requirements include necessary setup, access, integration, and basic verification. The packet owns the code connections needed for its stated result within its approved paths and shared-code boundaries; routine wiring is not left for the Integration Manager after packet review. Completion criteria describe the usable result and its essential failure behavior, using the [Planning Guide's verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations). Disconnected components or passing fake-data checks do not establish the promised capability.
 
 ### Staged planning and implementation walkthrough
 

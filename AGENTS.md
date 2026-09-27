@@ -10,7 +10,7 @@ Write all repository documentation and agent responses in plain language. Keep t
 
 ## Proportionate testing and scoped reviews
 
-Across all Maestro work, apply the [verification expectations](docs/planning-guide/README.md#verification-expectations) and [project-wide review boundary](docs/product/v1/architecture.md#project-wide-review-boundary). These rules cover every agent, process and review kind; process-specific authority and review limits still apply.
+Across all Maestro work, apply the [verification expectations](skills/project-architecture-workshop/references/planning-guide.md#verification-expectations) and [project-wide review boundary](docs/product/v1/architecture.md#project-wide-review-boundary). These rules cover every agent, process and review kind; process-specific authority and review limits still apply.
 
 ## Git changes
 
@@ -26,7 +26,7 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Development outcomes
 
-Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](docs/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
+Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](docs/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](skills/project-architecture-workshop/references/planning-guide.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 

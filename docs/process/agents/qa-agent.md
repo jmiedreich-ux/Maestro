@@ -15,7 +15,7 @@ Quality Assurance is separate from implementation, independent implementation re
 - Use the service-created clean directory, exact configured route and supervised product/support processes under the [isolated Quality Assurance environment](../../product/v1/architecture.md#isolated-quality-assurance-environment); record health checks and process identities.
 - Use the exact confirmed milestone Quality Assurance plan, recording its version/hash plus dataset or generator identity and hash, source classification, sanitization, actual input path and cleanup requirement.
 - Record exact milestone revision, environment/configuration hashes, each data source and actual result path, expected and actual results, limitations, start/finish time, cleanup state, and service-managed screenshot/log artifact identities, paths, hashes, sizes and media types under the configured retention contract.
-- Exercise user journeys, connected behavior, and essential failure cases under the Maestro-wide [verification expectations](../../planning-guide/README.md#verification-expectations); do not expand into exhaustive edge-case testing.
+- Exercise user journeys, connected behavior, and essential failure cases under the Maestro-wide [verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations); do not expand into exhaustive edge-case testing.
 - Create structured findings under the project's issue and evidence rules.
 - Report `PASS`, `FAIL`, or `UNTESTED` honestly and rerun affected checks after an authorized correction.
 

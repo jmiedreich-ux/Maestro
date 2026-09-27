@@ -15,7 +15,7 @@ Return the [implementation plan](../../product/v1/architecture.md#returned-imple
 - Change only the assigned scope; preserve architecture, conventions and required behavior.
 - Own the feature's required provider-to-consumer connections and real entry path within the assigned scope. Small internal coding steps need no separate review; submit the connected result for the existing independent review. If a needed file or shared interface is outside permitted scope, use the established architectural amendment before changing it.
 - Follow the assigned quality boundary without strengthening requirements or adding adjacent work.
-- Apply the Maestro-wide [verification expectations](../../planning-guide/README.md#verification-expectations): focus checks on the required output and spend most effort implementing the packet. Apply the [scoped review boundary](../../product/v1/architecture.md#project-wide-review-boundary) when addressing findings.
+- Apply the Maestro-wide [verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations): focus checks on the required output and spend most effort implementing the packet. Apply the [scoped review boundary](../../product/v1/architecture.md#project-wide-review-boundary) when addressing findings.
 - Do not merge, deploy, expose credentials, bypass controls or assume an Owner decision.
 
 ## Result and handoff

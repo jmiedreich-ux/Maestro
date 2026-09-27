@@ -48,7 +48,7 @@ The service selects the configured primary or backup tool and exact model under 
 
 Read the controlling sources independently before judging the architect's conclusions. Follow the main usage journey through its essential components and dependencies, including agreed failure behavior. Check both directions: supplied requirements must be retained, and candidate requirements must have a source or authorized decision. Source inspection is not operational proof.
 
-Give attention to consequences for the actual outcome and credible failure conditions. Do not demand exhaustive tests or unrelated resilience features. Apply the [Planning Guide's verification expectations](../../planning-guide/README.md#verification-expectations). A review of an unbuilt capability checks the proposed completion evidence; it does not require implementation to exist before registration.
+Give attention to consequences for the actual outcome and credible failure conditions. Do not demand exhaustive tests or unrelated resilience features. Apply the [Planning Guide's verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations). A review of an unbuilt capability checks the proposed completion evidence; it does not require implementation to exist before registration.
 
 [NASA's independent verification guidance](https://swehb.nasa.gov/spaces/SWEHBVC/pages/50888971/SWE-141+-+Software+Independent+Verification+and+Validation) emphasizes independent technical judgment and intended behavior, including adverse conditions. Maestro applies independent authorship and read-only judgment within its own authority model; a separate agent is not a claim of NASA-level organizational or financial independence.
 

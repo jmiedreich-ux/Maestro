@@ -37,7 +37,7 @@ The Maestro Project Architect both assesses the supplied sources and prepares th
 
 ### Inputs
 
-Use the repository, exact source commit, overview path, selected scope, and the overview's architecture and declaration references. Include applicable Owner decisions, prior registration when relevant, current findings, independent review feedback, and the remaining review budget. Follow the [Planning Guide](../../planning-guide/README.md).
+Use the repository, exact source commit, overview path, selected scope, and the overview's architecture and declaration references. Include applicable Owner decisions, prior registration when relevant, current findings, independent review feedback, and the remaining review budget. Follow the [Planning Guide](../../../skills/project-architecture-workshop/references/planning-guide.md).
 
 ### Assessment
 
