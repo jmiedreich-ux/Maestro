@@ -6,9 +6,9 @@
   "paths": {
     "overview": "docs/product/v1/project-overview.md",
     "architecture": "docs/product/v1/architecture.md",
-    "roadmap": "docs/product/v1/planning/outcomes.md",
+    "roadmap": "docs/product/v1/outcomes.md",
     "outcomes": "docs/product/v1/outcomes",
-    "state": "docs/product/v1/planning/workshop-state.json"
+    "state": "docs/product/v1/workshop-state.json"
   },
   "publication": {
     "route": null,
