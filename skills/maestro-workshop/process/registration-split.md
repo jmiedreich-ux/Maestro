@@ -1,6 +1,6 @@
 # Registration: what moves to the workshop and what stays in the service
 
-Working analysis for the Owner's decision. Nothing here is built or agreed as a requirement yet. It compares each part of registration in [the architecture](../../../docs/product/v1/architecture.md#registration) with the direction the Owner set: the workshop does the thinking, and the service only checks, records and asks for confirmation.
+Working analysis. The three decisions at the bottom are agreed. The registration rules file exists; the registration code does not read it yet. The architecture's Registration section still describes the old process. It compares each part of registration in [the architecture](../../../docs/product/v1/architecture.md#registration) with the direction the Owner set: the workshop does the thinking, and the service only checks, records and asks for confirmation.
 
 ## The idea in plain words
 
@@ -40,8 +40,8 @@ Under the new direction, the planning work happens earlier, inside the [maestro-
 - A small, fixed registration record instead of a package of many files.
 - A check in the service that the workshop's review record matches the exact revision being registered.
 
-## Decisions for the Owner
+## Decisions (all three agreed by the Owner on 2026-09-26)
 
 1. Decided (Owner agreed): the service keeps the small registration record: the pinned revision, a fingerprint of each document, the rules version used, the workshop's review record, and the Owner's confirmation. It does not copy the plan into a package of many files.
 2. Decided (Owner agreed): the workshop's independent review is the independent check. Registration does not launch its own reviewer. The service checks that a review record exists, covers exactly the version being registered, that no document changed afterwards, and that its coverage is complete.
-3. How should a rejected registration go back to the workshop: an error listing the failed rules, with the workshop rerun by the Owner?
+3. Decided (Owner agreed): a rejection stops registration with a plain report of which rule failed, in which document and where. The service saves that report with the exact version it checked. The next workshop session reads the saved report first, opens with those items and helps fix them. The changed parts are reviewed again before registering a second time.
