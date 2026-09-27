@@ -174,5 +174,5 @@ A real registration-to-architecture journey reaches independently reviewed and e
 
 ## Partial-registration boundary
 
-No narrower portion is selected. Registering a subset requires explicit selected outcomes, outside dependencies and evidence, exclusions, and acceptance coverage. Documentation sufficiency permits registration assessment; only the separate registration process can produce and confirm its actual registration package.
+No narrower portion is selected. Registering a subset requires explicit selected outcomes, outside dependencies and evidence, exclusions, and acceptance coverage. Documentation sufficiency permits registration checking; only the separate registration process can produce and confirm its actual registration record.
 

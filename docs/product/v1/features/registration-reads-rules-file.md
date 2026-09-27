@@ -11,7 +11,7 @@ Registration checks the documents with rules written into the code: the accepted
 - The service takes the rules file from a tested release, using only versions marked passed. The CLI downloads the newer approved version when it starts, validates it, makes it available to the service, and says which version it used.
 - Each registration keeps the rules version it started with, so the rules cannot change halfway through.
 - When a document fails a rule, registration stops with a plain report of which rule failed, in which document and where. The service saves the report with the exact version it checked, and the next workshop session reads it first.
-- The service records the rules version used with the registration, in a small registration record: the pinned revision, a fingerprint of each document, the rules version, the workshop's review record, and the Owner's confirmation.
+- The service records the rules version used with the registration, in a small registration record: the repository, pinned revision, overview path and publication branch, the scope, the version and previous-registration link, a fingerprint of each document, the rules version, and a reference to the workshop's review record. The Owner's confirmation is a separate receipt.
 - Registration launches no reviewer of its own. It checks that the workshop's review record exists, covers exactly the version being registered, that no document changed afterwards, and that coverage is complete.
 
 ## Verification

@@ -23,13 +23,14 @@ Registration does not approve the architecture, start development, or break the 
 
 The service keeps a small record, not a copy of the plan:
 
-- the pinned revision
+- the repository, the pinned revision, the overview path and the publication branch
+- the scope: the whole plan, or the chosen portion
+- the version number and the link to the previous registration
 - a fingerprint of each document
 - the rules version used
-- the workshop's review record
-- the Owner's confirmation and when it was given
+- a reference to the workshop's review record
 
-If someone edits a document after confirmation, the fingerprints show it. The exact file layout of the record is settled when this is built.
+The Owner's confirmation and when it was given are kept in a separate receipt. If someone edits a document after confirmation, the fingerprints show it. The exact file layout of the record is settled when this is built.
 
 ## The rules file
 
