@@ -7,7 +7,7 @@ Maestro's outcome documents, and the workshop templates that produce them, carry
 The outcome template has acceptance criteria with a Result column and a definition of done. It has no list of entry points, no standard checks for repeated or interrupted runs, and no scale for how strong evidence is.
 
 ## Ideas to consider
-- List every way in for an outcome (a command, a key, an API call). Each criterion says which entry point it proves. A skipped entry point is never reported as verified through another path; an unreachable one is reported with the attempted command and the missing precondition.
+- List every way in for an outcome (a command, a key, an API call). Each criterion says which entry point it proves. A skipped entry point is never reported as verified through another path; an unreachable one is reported with the attempted command and the missing precondition. **Adopted 2026-09-27.**
 - Write each criterion as a named starting state, an action, and an exact visible result.
 - Any criterion that saves something needs a read-back from a second place.
 - For anything that changes state or loops, add two standard rows: run it twice, and stop it mid-run then restart. Both must end in the same state.
