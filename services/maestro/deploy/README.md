@@ -83,7 +83,7 @@ receive it or the installation tokens the service creates from it. Registration 
 an existing branch that matches the allowlist, has no branch protection and no active rules; the
 App needs contents write and administration read permission. The service keeps its source
 mirrors, frozen candidates and run journal under `<database folder>/registration`. The Owner
-starts a registration from the terminal with `/register OWNER/REPOSITORY docs/project-overview.md`
+starts a registration from the terminal with `/register OWNER/REPOSITORY docs/product/v1/project-overview.md`
 and answers the questions that follow; confirmation and cancellation are actions in the
 registration view.
 

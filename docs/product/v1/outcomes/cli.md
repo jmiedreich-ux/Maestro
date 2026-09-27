@@ -26,13 +26,13 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Open and use the workspace | `docs/architecture.md#open-and-use-the-workspace` |
-| Component and runtime boundaries | `docs/architecture.md#components-and-responsibilities` |
-| Actual deployment and connection | `docs/architecture.md#runtime-and-prerequisites` |
-| Record ownership and live delivery | `docs/architecture.md#connections-and-data` |
-| Activity selection and labels | `docs/architecture.md#project-activities-and-registration-labels` |
-| Request and event formats | `docs/architecture.md#cli-request-and-event-contract` |
-| Detailed CLI behavior | `docs/architecture.md#cli-workspace` |
+| Open and use the workspace | `docs/product/v1/architecture.md#open-and-use-the-workspace` |
+| Component and runtime boundaries | `docs/product/v1/architecture.md#components-and-responsibilities` |
+| Actual deployment and connection | `docs/product/v1/architecture.md#runtime-and-prerequisites` |
+| Record ownership and live delivery | `docs/product/v1/architecture.md#connections-and-data` |
+| Activity selection and labels | `docs/product/v1/architecture.md#project-activities-and-registration-labels` |
+| Request and event formats | `docs/product/v1/architecture.md#cli-request-and-event-contract` |
+| Detailed CLI behavior | `docs/product/v1/architecture.md#cli-workspace` |
 
 ### Dependencies
 
@@ -40,7 +40,7 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 |---|---|---|
 | Running service and readable project/event records | Operate the persistent Maestro service; Preserve project activity and requests; Connect the CLI to recorded service activity | Runtime Service owns server installation, API, SQL, and event delivery. Implemented interfaces support CLI development; final connected evidence is shared, not a prerequisite loop. |
 | Real project and question records | Register and confirm a project through the CLI | Registration supplies records for final connected acceptance; foundation development supports an empty service. |
-| Existing component evidence | `docs/project-overview.md#current-condition` | Current source must be checked; file presence does not prove integrated operation. |
+| Existing component evidence | `docs/product/v1/project-overview.md#current-condition` | Current source must be checked; file presence does not prove integrated operation. |
 
 ### Acceptance criteria
 
@@ -57,8 +57,8 @@ Runtime foundation, storage, and API implementation support CLI development; CLI
 | Keyboard or terminal size changes | Visible focus, Tab/Shift+Tab, arrows, Enter activation, and Escape behave as specified. Below the chosen minimum size, the enlargement message appears while service work continues. | Recorded terminal dimensions and keyboard-only walkthrough. | None | Done 2026-09-24, revision `1d85486`. At 70x20 the screen said "Enlarge the terminal to continue." while a project was created; enlarging to 110x32 redrew it by itself with that project. Tab, Shift+Tab, Up, Down, Enter and Escape were driven on a real pty; a lone Escape and Escape followed at once by `/help` both worked. Minimum size is 80x24. Evidence: `p1-evidence.json`, `p2-evidence.json`. |
 | Commands are invoked | Help, projects, attention, findings, retry, and exit work within this outcome's read-only scope. Help documents actual syntax and context requirements, excludes unimplemented commands, and works offline. | Each command exercised against its real path; exit leaves service work and saved records available. | None | Done 2026-09-24, revision `1d85486`. `/help`, `/help findings`, `/projects`, `/attention`, `/findings`, `/retry` and `/exit` each ran on the installed terminal. Help lists only these commands with syntax, example and context, and works with no service and with a bad credential. `/exit` left the terminal at once with the service still running and all records saved (about 0 s; it took 11 s before). Evidence: all three evidence files. |
 | Project activities and registration states are displayed | Opening a project selects its single current activity, offers selection when several are underway, or shows the latest ended activity with Idle. Waiting remains current. Registration labels and attention targeting follow the architecture; unapproved attempts remain accessible. | Real initial registration attempts demonstrate current, waiting, ended, and historical views, with correct input context. The Updating registration label is verified with Update a registration without losing approved history and is outside this outcome's initial-registration acceptance. Multiple concurrent activity selection may use a necessary isolated check until another activity type exists; it does not prove execution. | Recorded in Result | Done in part 2026-09-24, revision `1d85486`. A project with one current activity opened it; a project with two running activities showed "Select an activity" and guessed none; an ended activity showed as idle, and a failed one showed its reason. Accepted exceptions: real initial registration attempts and the Updating registration label wait for the registration outcomes; the two-activity check used activities written straight through the service repository, allowed until another activity type exists. Evidence: `p3-evidence.json`. |
-| The CLI accesses the local service | Read the protected configured Owner credential and send it only to the validated loopback address, without credential redirects. Show setup or authorization failures clearly; offline help and exit remain available. | Connected access and essential credential failure evidence against `docs/architecture.md#local-owner-identity-and-credentials`, without recording the secret. | Recorded in Result | Done 2026-09-24, revision `1d85486`. A valid credential connected. A wrong one showed "a valid Owner credential is required"; a missing file said it was not found and how to fix it; mode 0644 was refused. Help and exit worked in each case. The secret was never printed. Evidence: `p3-evidence.json`. Accepted exception: redirect refusal is unit-tested only. |
-| Runtime performance or context state changes | Existing activity details display active/waiting time, input/output tokens, context used/limit/percentage and capacity status from SQL-backed service data. Show unknown, estimated and stale readings plainly. | Real service observations and one unavailable-reading case follow `docs/architecture.md#visibility-and-delivery-boundary`; no new dashboard or completion percentage. | Recorded in Result | Done in part 2026-09-24, revision `1d85486`. The service now returns a `runtime` object with empty arrays for an activity with no runs, and the terminal showed "Runtime: no measurements recorded" (the unavailable case; `p3-evidence.json`). Accepted exception: no agent run records exist yet, so populated times, tokens and context readings could be shown only by unit test (`tests/maestro/terminal/test_terminal_help_runtime.py`: unknown, estimated and stale). Real readings are added by Run and recover assigned agents. |
+| The CLI accesses the local service | Read the protected configured Owner credential and send it only to the validated loopback address, without credential redirects. Show setup or authorization failures clearly; offline help and exit remain available. | Connected access and essential credential failure evidence against `docs/product/v1/architecture.md#local-owner-identity-and-credentials`, without recording the secret. | Recorded in Result | Done 2026-09-24, revision `1d85486`. A valid credential connected. A wrong one showed "a valid Owner credential is required"; a missing file said it was not found and how to fix it; mode 0644 was refused. Help and exit worked in each case. The secret was never printed. Evidence: `p3-evidence.json`. Accepted exception: redirect refusal is unit-tested only. |
+| Runtime performance or context state changes | Existing activity details display active/waiting time, input/output tokens, context used/limit/percentage and capacity status from SQL-backed service data. Show unknown, estimated and stale readings plainly. | Real service observations and one unavailable-reading case follow `docs/product/v1/architecture.md#visibility-and-delivery-boundary`; no new dashboard or completion percentage. | Recorded in Result | Done in part 2026-09-24, revision `1d85486`. The service now returns a `runtime` object with empty arrays for an activity with no runs, and the terminal showed "Runtime: no measurements recorded" (the unavailable case; `p3-evidence.json`). Accepted exception: no agent run records exist yet, so populated times, tokens and context readings could be shown only by unit test (`tests/maestro/terminal/test_terminal_help_runtime.py`: unknown, estimated and stale). Real readings are added by Run and recover assigned agents. |
 
 ### Definition of done
 
@@ -82,12 +82,12 @@ No additional CLI behavior decision is required for these criteria. Registration
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Answer a project question | `docs/architecture.md#answer-a-project-question` |
-| Input and receipt rules | `docs/architecture.md#questions-and-answers` |
-| Project targeting | `docs/architecture.md#projects-and-targeting` |
-| Save before acknowledgment | `docs/architecture.md#save-and-delivery-sequence` |
-| Answer identity and reconciliation | `docs/architecture.md#answer-identity-and-uncertain-delivery` |
-| Keyboard and paste | `docs/architecture.md#keyboard-and-terminal-behavior` |
+| Answer a project question | `docs/product/v1/architecture.md#answer-a-project-question` |
+| Input and receipt rules | `docs/product/v1/architecture.md#questions-and-answers` |
+| Project targeting | `docs/product/v1/architecture.md#projects-and-targeting` |
+| Save before acknowledgment | `docs/product/v1/architecture.md#save-and-delivery-sequence` |
+| Answer identity and reconciliation | `docs/product/v1/architecture.md#answer-identity-and-uncertain-delivery` |
+| Keyboard and paste | `docs/product/v1/architecture.md#keyboard-and-terminal-behavior` |
 
 ### Dependencies
 

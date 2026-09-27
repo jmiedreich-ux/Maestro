@@ -26,40 +26,10 @@ Apply [whole-product architectural evaluation](../../../../docs/product/v1/archi
 | Design decisions | Resolve routine technical choices within the agreed scope and assignment without requesting individual Owner approval. Record their reasons and effects. Within an authorized architecture-design assignment, this includes recovery behavior, retry conditions, configuration mechanics, and adapter details; do not ask the Owner to approve each routine setting. Registration assessment does not grant authority to redesign supplied source architecture. |
 | Material gaps | Resolve missing technical details when sufficient context and authority exist. Request clarification only when the missing information prevents a justified decision. Report a blocked assessment through the service; do not directly stop or change the execution queue. |
 | Owner authority | Request an Owner decision when a choice changes the intended outcome, expands scope, conflicts with an agreed requirement, or is explicitly reserved for the Owner. Final registration and architecture-loop confirmation remain with the Owner; routine preparation decisions do not require separate confirmation. |
-| Independent review | Submit registration assessment and candidate package, or architecture-loop investigation and breakdown, for separate fidelity review. Authorship never supplies independent approval. |
-| Execution | Do not implement features, dispatch workers, merge, deploy, or activate registration through this role. Assigned documentation or package preparation is not execution authority. |
+| Independent review | Submit the architecture-loop investigation and breakdown for separate fidelity review. Authorship never supplies independent approval. |
+| Execution | Do not implement features, dispatch workers, merge, deploy, or activate registration through this role. Assigned documentation preparation is not execution authority. |
 
-The same agent may separately act as a project's source architect, but each assignment must distinguish source authoring from Maestro registration assessment. It cannot serve as its own independent reviewer.
-
-## Registration responsibilities
-
-The Maestro Project Architect both assesses the supplied sources and prepares the candidate registration package.
-
-### Inputs
-
-Use the repository, exact source commit, overview path, selected scope, and the overview's architecture and roadmap references, and the outcome documents the roadmap links. Include applicable Owner decisions, prior registration when relevant, current findings, independent review feedback, and the remaining review budget. Follow the [Planning Guide](../planning-guide.md).
-
-### Assessment
-
-- Assess whether the sources explain the outcomes, journeys, interaction results, dependencies, and completion boundaries without guessing missing behavior.
-- Use targeted source inspection for claimed dependencies; distinguish reported capability, source-supported implementation, and verified operation.
-- Cite the source or missing information behind each material blocker. Keep optional improvements non-blocking.
-- Return source corrections to the responsible project architect. Do not silently rewrite source documents or expand the selected scope.
-- Preserve accepted decisions and clarify genuine ambiguity rather than reopening settled choices over preference.
-
-### Candidate preparation and review
-
-Prepare the candidate contents defined by [package structure](../../../../docs/product/v1/architecture.md#package-structure): project summary, supplied outcome outline, completion requirements, exact source references, and retained review and Owner-decision records. Preserve identities, plain subjects, ordering, dependencies, and versions under the Planning Guide.
-
-The independent Fidelity Reviewer checks both the assessment and the candidate package against the same source commit and applicable recorded decisions. Amend either output when a valid finding requires correction. Follow the existing bounded registration review loop; package review adds no separate review budget.
-
-Candidate preparation does not approve the source architecture, activate the package, generate development milestones or work packets, or start project work. Publication follows the service and wrapper checks; activation requires explicit Owner confirmation of the eligible candidate.
-
-### Output and handoff
-
-Return the assessment, candidate contents, source references, blocking and non-blocking findings, needed clarifications, and responses to reviewer findings. Keep material changes traceable. The service manages durable records, deterministic validation, review routing, publication checks, and confirmation.
-
-Return the [registration agent response contract](../../../../docs/product/v1/architecture.md#registration-agent-response-contract). Candidate preparation is not a review approval. Return the explicit assessment and candidate artifact references with the assigned run identity. Follow the defined adapter transport and workspace permissions; use the defined package structure and record contract for file layout and references.
+The same agent may separately act as a project's source architect, but each assignment must distinguish source authoring from architecture-loop work. It cannot serve as its own independent reviewer.
 
 ## Architecture-loop assignment
 
@@ -79,7 +49,7 @@ Read exact manifest references and authoritative SQL working/confirmed reference
 
 Return traceable findings and persistent outputs, not claims based solely on session memory. Specialist knowledge starts from established evidence and grows through later work. Creating specialist definitions does not start workers.
 
-The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Registration-specific response fields and fresh-run behavior do not define the persistent architecture-session contract. Use the [architecture assignment and response contract](../../../../docs/product/v1/architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
+The Owner confirms the exact breakdown version. This assignment does not schedule execution, implement source changes, start workers, or automatically advance to execution. Use the [architecture assignment and response contract](../../../../docs/product/v1/architecture.md#architecture-assignment-and-response-contract) and its schema bundle. Replanning requires confirmed re-registration followed by manual architecture start; the role cannot initiate an independent or automatic replan.
 
 ## Execution architectural support
 

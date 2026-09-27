@@ -16,7 +16,7 @@ The order below organizes usable outcomes, not development tasks or a fixed seri
 
 Resolve architectural gaps within authorized scope uses findings produced by Verify milestones and publish completed Execution. Their interfaces can be built independently; final finding-to-correction acceptance is shared. Pause, stop and recover Execution verifies lifecycle behavior across every earlier outcome. Its required stopping and recovery controls must accompany the affected implementation before actual work depends on them; its position does not authorize an unsafe interim engine.
 
-Apply `skills/maestro-workshop/process/planning-guide.md#verification-expectations` and `docs/architecture.md#milestone-quality-assurance-and-test-data`: use actual connected paths and proportionate main-journey and essential-failure evidence. Necessary controlled inputs or fault simulation are identified, with origin and limitations. They cannot replace the service, agent, Git, review, setup or result-producing path being verified. Required missing or bypassed paths remain `UNTESTED`. Each definition of done also requires implementation revision, reproducible setup, actual observations and applicable independent implementation review, milestone Quality Assurance, outcome review and promotion evidence under the existing Execution rules. Documentation review alone satisfies none of these implementation gates.
+Apply `skills/maestro-workshop/process/planning-guide.md#verification-expectations` and `docs/product/v1/architecture.md#milestone-quality-assurance-and-test-data`: use actual connected paths and proportionate main-journey and essential-failure evidence. Necessary controlled inputs or fault simulation are identified, with origin and limitations. They cannot replace the service, agent, Git, review, setup or result-producing path being verified. Required missing or bypassed paths remain `UNTESTED`. Each definition of done also requires implementation revision, reproducible setup, actual observations and applicable independent implementation review, milestone Quality Assurance, outcome review and promotion evidence under the existing Execution rules. Documentation review alone satisfies none of these implementation gates.
 
 ## Outcomes
 
@@ -32,11 +32,11 @@ Apply `skills/maestro-workshop/process/planning-guide.md#verification-expectatio
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Explicit start, exact configuration and durable activity | `docs/architecture.md#execution-initiation`; `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#execution-api-state-and-record-contract` |
-| Persistent coordination, route choice and linked questions | `docs/architecture.md#development-manager-preparation-and-continuity`; `docs/architecture.md#work-planning-and-coder-selection`; `docs/architecture.md#planning-results-and-questions` |
-| Plan, implementation, branch publication and independent review | `docs/architecture.md#coder-preparation-and-submitted-results`; `docs/architecture.md#execution-workspaces-and-repository-writes`; `docs/architecture.md#independent-implementation-review`; `docs/architecture.md#packet-and-integration-change-review-limits` |
-| Credentials, supervision and monitoring | `docs/architecture.md#local-owner-identity-and-credentials`; `docs/architecture.md#adapter-configuration`; `docs/architecture.md#agent-performance-and-context-management`; `docs/architecture.md#cli-workspace` |
-| Saved authority and branch identity | `docs/architecture.md#sqlite-storage`; `docs/architecture.md#milestone-branches-and-product-integration`; `docs/architecture.md#owner-decisions-at-a-process-limit` |
+| Explicit start, exact configuration and durable activity | `docs/product/v1/architecture.md#execution-initiation`; `docs/product/v1/architecture.md#execution-process-definition-and-configuration`; `docs/product/v1/architecture.md#execution-api-state-and-record-contract` |
+| Persistent coordination, route choice and linked questions | `docs/product/v1/architecture.md#development-manager-preparation-and-continuity`; `docs/product/v1/architecture.md#work-planning-and-coder-selection`; `docs/product/v1/architecture.md#planning-results-and-questions` |
+| Plan, implementation, branch publication and independent review | `docs/product/v1/architecture.md#coder-preparation-and-submitted-results`; `docs/product/v1/architecture.md#execution-workspaces-and-repository-writes`; `docs/product/v1/architecture.md#independent-implementation-review`; `docs/product/v1/architecture.md#packet-and-integration-change-review-limits` |
+| Credentials, supervision and monitoring | `docs/product/v1/architecture.md#local-owner-identity-and-credentials`; `docs/product/v1/architecture.md#adapter-configuration`; `docs/product/v1/architecture.md#agent-performance-and-context-management`; `docs/product/v1/architecture.md#cli-workspace` |
+| Saved authority and branch identity | `docs/product/v1/architecture.md#sqlite-storage`; `docs/product/v1/architecture.md#milestone-branches-and-product-integration`; `docs/product/v1/architecture.md#owner-decisions-at-a-process-limit` |
 
 ### Dependencies
 
@@ -45,7 +45,7 @@ Apply `skills/maestro-workshop/process/planning-guide.md#verification-expectatio
 | Installed runtime, storage, transport and agent supervision | Operate the persistent Maestro service; Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents; Apply shared process definitions | Planned foundations; this outcome adds Execution-specific schemas, handlers and persistent manager/coder integration. Generic launch alone is insufficient. |
 | Terminal and linked responses | Connected multi-project CLI workspace; Reliable project questions and answers | Implemented foundations required; Execution actions and views are owned here. |
 | Confirmed project, exact breakdown and source-local specialist inputs | Register and confirm a project through the CLI; Review and confirm the development breakdown | Actual published/confirmed inputs required, including packet execution requirements and source/repository bindings. Produce a bounded and parallel-ready work breakdown owns the missing producer-schema extensions; confirmation and Execution consumption require the delivered validation. |
-| Working installed coder and reviewer routes and repository access | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#execution-workspaces-and-repository-writes` | This outcome supplies Execution setup and verification, including local Qwen CLI/Ollama, configured Codex/Claude routes, exact model evidence, constrained worktrees and service-only Git credentials. |
+| Working installed coder and reviewer routes and repository access | `docs/product/v1/architecture.md#execution-process-definition-and-configuration`; `docs/product/v1/architecture.md#execution-workspaces-and-repository-writes` | This outcome supplies Execution setup and verification, including local Qwen CLI/Ollama, configured Codex/Claude routes, exact model evidence, constrained worktrees and service-only Git credentials. |
 
 ### Acceptance criteria
 
@@ -78,10 +78,10 @@ Executable schemas, physical SQL tables, route installation and installed capabi
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Integration queue and independent change review | `docs/architecture.md#integration-management-and-queue`; `docs/architecture.md#packet-and-integration-change-review-limits` |
-| Branches, exact revisions and service-owned merges | `docs/architecture.md#milestone-branches-and-product-integration`; `docs/architecture.md#execution-workspaces-and-repository-writes`; `docs/architecture.md#authorized-integration-merges` |
-| Dependency delivery and invalidation | `docs/architecture.md#dependency-readiness-and-automatic-continuation` |
-| Durable Git effects and state | `docs/architecture.md#execution-api-state-and-record-contract`; `docs/architecture.md#execution-completion-and-recovery` |
+| Integration queue and independent change review | `docs/product/v1/architecture.md#integration-management-and-queue`; `docs/product/v1/architecture.md#packet-and-integration-change-review-limits` |
+| Branches, exact revisions and service-owned merges | `docs/product/v1/architecture.md#milestone-branches-and-product-integration`; `docs/product/v1/architecture.md#execution-workspaces-and-repository-writes`; `docs/product/v1/architecture.md#authorized-integration-merges` |
+| Dependency delivery and invalidation | `docs/product/v1/architecture.md#dependency-readiness-and-automatic-continuation` |
+| Durable Git effects and state | `docs/product/v1/architecture.md#execution-api-state-and-record-contract`; `docs/product/v1/architecture.md#execution-completion-and-recovery` |
 
 ### Dependencies
 
@@ -122,10 +122,10 @@ Git handlers, persistent Integration Manager integration and dependency state ar
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Missing specialist and bounded support | `docs/architecture.md#specialist-assignment-and-architectural-support`; `docs/architecture.md#architectural-support-configuration-and-fallback`; `docs/architecture.md#support-validation-and-publication` |
-| Milestone finding determination and supplement activation | `docs/architecture.md#milestone-gap-architectural-assignment`; `docs/architecture.md#correction-supplement-activation`; `docs/architecture.md#milestone-outcome-review` |
-| Packet/integration architectural questions and review-limit recommendations | `docs/architecture.md#execution-architectural-determinations` |
-| Owner authority and re-registration transition | `docs/architecture.md#owner-decisions-at-a-process-limit`; `docs/architecture.md#work-disposition-before-re-registration`; `docs/architecture.md#replanning-after-re-registration` |
+| Missing specialist and bounded support | `docs/product/v1/architecture.md#specialist-assignment-and-architectural-support`; `docs/product/v1/architecture.md#architectural-support-configuration-and-fallback`; `docs/product/v1/architecture.md#support-validation-and-publication` |
+| Milestone finding determination and supplement activation | `docs/product/v1/architecture.md#milestone-gap-architectural-assignment`; `docs/product/v1/architecture.md#correction-supplement-activation`; `docs/product/v1/architecture.md#milestone-outcome-review` |
+| Packet/integration architectural questions and review-limit recommendations | `docs/product/v1/architecture.md#execution-architectural-determinations` |
+| Owner authority and re-registration transition | `docs/product/v1/architecture.md#owner-decisions-at-a-process-limit`; `docs/product/v1/architecture.md#work-disposition-before-re-registration`; `docs/product/v1/architecture.md#replanning-after-re-registration` |
 
 ### Dependencies
 
@@ -166,10 +166,10 @@ Support and supplement validators, publication handlers and connected assignment
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Confirmed QA inputs and test-data limits | `docs/architecture.md#architecture-output-locations-and-records`; `docs/architecture.md#milestone-quality-assurance-and-test-data` |
-| Project test bindings, environment, evidence and cleanup | `docs/architecture.md#project-quality-assurance-bindings`; `docs/architecture.md#isolated-quality-assurance-environment` |
-| Independent outcome review and corrections | `docs/architecture.md#milestone-outcome-review`; `docs/architecture.md#milestone-gap-architectural-assignment`; `docs/architecture.md#correction-supplement-activation` |
-| Promotion, continuation and completion records | `docs/architecture.md#milestone-branches-and-product-integration`; `docs/architecture.md#authorized-integration-merges`; `docs/architecture.md#dependency-readiness-and-automatic-continuation`; `docs/architecture.md#execution-completion-and-recovery` |
+| Confirmed QA inputs and test-data limits | `docs/product/v1/architecture.md#architecture-output-locations-and-records`; `docs/product/v1/architecture.md#milestone-quality-assurance-and-test-data` |
+| Project test bindings, environment, evidence and cleanup | `docs/product/v1/architecture.md#project-quality-assurance-bindings`; `docs/product/v1/architecture.md#isolated-quality-assurance-environment` |
+| Independent outcome review and corrections | `docs/product/v1/architecture.md#milestone-outcome-review`; `docs/product/v1/architecture.md#milestone-gap-architectural-assignment`; `docs/product/v1/architecture.md#correction-supplement-activation` |
+| Promotion, continuation and completion records | `docs/product/v1/architecture.md#milestone-branches-and-product-integration`; `docs/product/v1/architecture.md#authorized-integration-merges`; `docs/product/v1/architecture.md#dependency-readiness-and-automatic-continuation`; `docs/product/v1/architecture.md#execution-completion-and-recovery` |
 
 ### Dependencies
 
@@ -178,7 +178,7 @@ Support and supplement validators, publication handlers and connected assignment
 | Integrated exact milestone branch and dependencies | Integrate work and deliver declared dependencies | Must be verified and current; target changes or invalidated imports invalidate affected evidence. |
 | In-scope correction and scope-change handling | Resolve architectural gaps within authorized scope | Required for real finding disposition and corrected acceptance; implementation can share the connected journey. |
 | Versioned QA plan, data/setup requirements and completion criteria | Review and confirm the development breakdown | Supplies the exact confirmed plan after Produce a bounded and parallel-ready work breakdown delivers its QA-plan/packet schema and inventory extensions. Missing product setup tooling is declared packet/dependency work, not improvised QA. |
-| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/architecture.md#execution-process-definition-and-configuration`; `docs/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation, including operator provisioning, the service QA binding catalog and exact snapshot/credential resolution. Produce a bounded and parallel-ready work breakdown owns plan selection/validation against that catalog; neither side assumes pre-existing references. |
+| Installed environment supervisor, artifact store and QA/reviewer routes | `docs/product/v1/architecture.md#execution-process-definition-and-configuration`; `docs/product/v1/architecture.md#isolated-quality-assurance-environment` | This outcome installs and verifies Execution-specific facilities over the runtime foundation, including operator provisioning, the service QA binding catalog and exact snapshot/credential resolution. Produce a bounded and parallel-ready work breakdown owns plan selection/validation against that catalog; neither side assumes pre-existing references. |
 
 ### Acceptance criteria
 
@@ -211,10 +211,10 @@ QA supervision, artifact capture/retention, executable completion validators and
 
 | Required behavior or journey | Architecture section |
 |---|---|
-| Versioned actions and settlement | `docs/architecture.md#execution-api-state-and-record-contract`; `docs/architecture.md#pause-and-graceful-stop-settlement` |
-| Owner disposition, manual grants and timing | `docs/architecture.md#work-disposition-before-re-registration`; `docs/architecture.md#owner-decisions-at-a-process-limit`; `docs/architecture.md#run-deadlines-and-duration-exceptions` |
-| Restart, external effects and stopped closure | `docs/architecture.md#execution-completion-and-recovery`; `docs/architecture.md#execution-workspaces-and-repository-writes`; `docs/architecture.md#process-supervision-and-interruption-recovery` |
-| Capacity continuation and UI recovery | `docs/architecture.md#checkpoints-and-safe-continuation`; `docs/architecture.md#visibility-and-delivery-boundary`; `docs/architecture.md#startup-and-connection-states` |
+| Versioned actions and settlement | `docs/product/v1/architecture.md#execution-api-state-and-record-contract`; `docs/product/v1/architecture.md#pause-and-graceful-stop-settlement` |
+| Owner disposition, manual grants and timing | `docs/product/v1/architecture.md#work-disposition-before-re-registration`; `docs/product/v1/architecture.md#owner-decisions-at-a-process-limit`; `docs/product/v1/architecture.md#run-deadlines-and-duration-exceptions` |
+| Restart, external effects and stopped closure | `docs/product/v1/architecture.md#execution-completion-and-recovery`; `docs/product/v1/architecture.md#execution-workspaces-and-repository-writes`; `docs/product/v1/architecture.md#process-supervision-and-interruption-recovery` |
+| Capacity continuation and UI recovery | `docs/product/v1/architecture.md#checkpoints-and-safe-continuation`; `docs/product/v1/architecture.md#visibility-and-delivery-boundary`; `docs/product/v1/architecture.md#startup-and-connection-states` |
 
 ### Dependencies
 

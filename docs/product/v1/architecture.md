@@ -42,7 +42,7 @@ Reviews do not add requirements, demand perfection, reopen unchanged work over p
 | Maestro CLI | Display service information and collect explicit commands, linked answers, and registration actions. |
 | SQL database | Store current state and conversation/action records that survive restarts. |
 | Agent processes | Perform assigned assessment or review work; return results through the service. |
-| Project repository | Supply versioned project sources and hold the authoritative registration package. |
+| Project repository | Supply versioned project sources and hold the planning documents and the registration record. |
 
 ### Internal responsibilities
 
@@ -93,11 +93,11 @@ A wrapper script launches an assigned agent and performs deterministic checks ar
 
 Read-only assignments do not require commits solely to satisfy the wrapper. These checks establish observable facts; independent review assesses meaning and fidelity.
 
-### Registration agent-work boundary
+### Agent-work boundary
 
-Registration runs agents to assess sources, prepare and amend candidates, and independently review their fidelity. Its assignment, supervision, permission, output-validation, publication, and recovery controls apply to that work. They do not establish the general software Execution policy.
+Registration launches no agents. The assignment, supervision, permission, output-validation, publication and recovery controls in this section apply to the architecture loop and Execution.
 
-Execution review, correction, integration, Quality Assurance, merge and completion boundaries are defined under [Execution](#execution). Registration's review limits do not transfer to implementation reviews. Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
+Execution review, correction, integration, Quality Assurance, merge and completion boundaries are defined under [Execution](#execution). Explicit Owner confirmation of registration and the existing role-authority boundaries remain unchanged.
 
 ### Installed validation schemas
 
@@ -128,7 +128,7 @@ The runtime implements common initiation, agent-session handling, output validat
 | `confirmation` | The versioned result being confirmed, required authority, eligibility checks, and completion action. | Verify the exact result and record confirmation without unauthorized advancement. |
 | `recovery` | Supported recovery policy, retry limits, and stopping conditions. | Reconcile saved state and apply only the allowed recovery action. |
 
-Sections sit under `registration` and `architecture_loop`, for example `registration.saved_outputs` and `architecture_loop.saved_outputs`. Shared tool paths, credential references, and workspace settings retain the fields under [adapter configuration](#adapter-configuration). The registration review limit remains `registration.maximum_fidelity_reviews`; the registration review section uses that value rather than maintaining a second copy. The architecture-loop limit is `architecture_loop.maximum_fidelity_reviews`.
+Sections sit under `registration` and `architecture_loop`, for example `registration.saved_outputs` and `architecture_loop.saved_outputs`. Shared tool paths, credential references, and workspace settings retain the fields under [adapter configuration](#adapter-configuration). The architecture-loop limit is `architecture_loop.maximum_fidelity_reviews`.
 
 Each definition identifies its schema version and uses [installed validation schemas](#installed-validation-schemas). Section fields select supported policies, schemas, and destination handlers; they do not contain shell commands or arbitrary executable instructions. Required sections depend on the process contract. Unknown fields, unsupported policies, invalid types, conflicting settings, or missing required sections produce a plain configuration error before that process starts. Read-only views remain available. Omitted optional values use only documented defaults; registration-specific defaults do not automatically apply to other processes.
 
@@ -140,7 +140,7 @@ A saved-output definition identifies the required record type, schema and format
 
 The common handler verifies project/activity identity, allowed destination, required outputs, schema validity, and version references before reporting the output set saved. SQL records the operation and its result; repository writes use verified publication and recovery handling. A partial external write cannot be presented as a completed output set. Existing accepted versions remain available.
 
-For registration, the output set is the [registration package](#package-structure), with its existing publication, hashing, review, confirmation, and activation rules. Configuration references that contract; it does not replace its schemas, relocate records arbitrarily, or bypass eligibility. The same handlers apply the architecture-loop output definitions and publication rules below.
+For registration, the output is the [registration record](#registration-record), with its publication, hashing, confirmation, and activation rules. Configuration references that contract; it does not replace its schemas, relocate records arbitrarily, or bypass eligibility. The same handlers apply the architecture-loop output definitions and publication rules below.
 
 Architecture-loop outputs include the investigation, code-direction decisions, project structure, specialist definitions and starting context, development milestones, work packets, and their review and confirmation references. Specialist roles and any maintained memory remain close to the relevant source. A location rule such as source-local placement requires a resolved permitted path; a descriptive label alone is not a valid destination. Their record fields, paths, and publication rules are defined under [architecture output locations and records](#architecture-output-locations-and-records) and [publication, recovery, and cancellation](#publication-recovery-and-cancellation).
 
@@ -185,7 +185,7 @@ The service retains control of content validation, durable state, review and ret
 
 #### Tool and model selection
 
-Registration intake collects separate, explicit tool and exact model/version choices for the architect and fidelity reviewer before the architect starts. Each role selects Claude Code or Codex independently; the reviewer does not inherit the architect's choice. Saved intake questions collect either missing selection, and SQL records both against the activity before launch. The service checks that the selected model/version is supported by the selected tool before that role begins. An unavailable or unverifiable selection is reported before launch; no silent substitution is permitted. Records retain the requested model, tool-reported model, provider, installed tool version, and capability-check result. A full provider model identifier is required; moving aliases are not accepted as exact-version selections. Provider identifiers establish the observable model version, not an undisclosed internal snapshot.
+Each process that launches an architect and a fidelity reviewer collects separate, explicit tool and exact model/version choices for both before the architect starts; the architecture loop does so at initiation. Each role selects Claude Code or Codex independently; the reviewer does not inherit the architect's choice. Saved questions collect either missing selection, and SQL records both against the activity before launch. The service checks that the selected model/version is supported by the selected tool before that role begins. An unavailable or unverifiable selection is reported before launch; no silent substitution is permitted. Records retain the requested model, tool-reported model, provider, installed tool version, and capability-check result. A full provider model identifier is required; moving aliases are not accepted as exact-version selections. Provider identifiers establish the observable model version, not an undisclosed internal snapshot.
 
 Before launch, the service checks model selection, authentication, and structured-output support using the credentials and configuration assigned to the run. This check does not read project sources. Its result records the tool version, account/provider, model, and configuration hash. A change to credentials, configuration, or tool version invalidates the check. The service also checks the model identity reported by the running tool. Missing or different identity prevents result acceptance and produces a specific integration failure. Agent-written text is not evidence of model identity.
 
@@ -210,11 +210,11 @@ Each adapter targets an explicitly recorded, capability-checked tool release. Co
 
 Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<activity-id>/` beneath it. The registration attempt ID is the registration activity ID, not a second identity. Existing references to `<registration-attempt-id>` mean this same value; the registration version and individual run IDs remain separate. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
 
-The fidelity reviewer has a separate workspace containing the exact source, architect assessment, and candidate under review. These files are read-only; the reviewer writes to its own output directory and cannot amend the architect's files. Both roles use a Linux mount namespace that makes source, assignment, and prior-artifact paths read-only. Only assigned output and scratch paths are writable. The agent runs without privileges to change mounts, escape its process group, or access another run's workspace. Folder names and instructions alone do not enforce these boundaries.
+The fidelity reviewer has a separate workspace containing the exact source, architect output under review. These files are read-only; the reviewer writes to its own output directory and cannot amend the architect's files. Both roles use a Linux mount namespace that makes source, assignment, and prior-artifact paths read-only. Only assigned output and scratch paths are writable. The agent runs without privileges to change mounts, escape its process group, or access another run's workspace. Folder names and instructions alone do not enforce these boundaries.
 
 The service places the exact assessment and candidate in the reviewer's input area and checks their hashes. It records each artifact's original identity and assigned relative path. The reviewer returns these assigned references. Permission to write output through the agent tool does not make the source or input mounts writable.
 
-Service-managed tool settings pre-authorize only assigned operations. An unexpected permission request is denied and reported as a missing-permission failure; it cannot hang waiting for a terminal answer. Required credentials are provisioned for the service account before use, with no secrets in assignment files or logs. **Temporary Owner-approved exception, 2026-09-18:** the subscription login files required by an approved Codex or Claude CLI route may be mounted read-only only into that route’s isolated runtime. The service records only the named profile and approval, never a secret value; the exception grants no GitHub or Owner authority and applies only until a credential-broker transport replaces it. Registration agents have no GitHub write credentials; package publication is a separate service-owned operation subject to wrapper checks. Repository instructions are assessment inputs and cannot expand the assigned role's permissions.
+Service-managed tool settings pre-authorize only assigned operations. An unexpected permission request is denied and reported as a missing-permission failure; it cannot hang waiting for a terminal answer. Required credentials are provisioned for the service account before use, with no secrets in assignment files or logs. **Temporary Owner-approved exception, 2026-09-18:** the subscription login files required by an approved Codex or Claude CLI route may be mounted read-only only into that route’s isolated runtime. The service records only the named profile and approval, never a secret value; the exception grants no GitHub or Owner authority and applies only until a credential-broker transport replaces it. Agents have no GitHub write credentials; registration record publication is a separate service-owned operation subject to wrapper checks. Repository instructions are assessment inputs and cannot expand the assigned role's permissions.
 
 Completed, cancelled, and interrupted workspaces remain until explicitly removed; automatic cleanup is outside the initial behavior. Removal is permitted only when no agent uses the workspace and no pending review or recovery depends on it. Removing a workspace does not remove SQL registration history or published GitHub documents. Those durable records remain authoritative; workspace files support inspection and recovery.
 
@@ -263,7 +263,7 @@ The service saves these updates in SQL before display. Progress messages establi
 
 #### Completion handling
 
-The service checks that the returned response matches the assigned project, activity, source revision, and [registration response contract](#registration-agent-response-contract). Referenced files must exist in permitted locations and match their recorded hashes. Required publication must pass the [GitHub wrapper checks](#agent-delegation).
+The service checks that the returned response matches the assigned project, activity, source revision, and the response contract of the assigned process. Referenced files must exist in permitted locations and match their recorded hashes. Required publication must pass the [GitHub wrapper checks](#agent-delegation).
 
 The service saves the validated response, findings, questions, and artifact references before advancing the activity. A successful tool exit alone is insufficient. Missing or invalid output enters [technical recovery](#technical-recovery).
 
@@ -279,7 +279,7 @@ If termination cannot be confirmed, the CLI displays **Stop unconfirmed** and th
 
 Silence alone does not trigger a restart. When the adapter confirms a quiet run is active, the service continues waiting within its run-duration limit. When status cannot be established, it reports uncertainty and blocks a replacement.
 
-The registration architect and registration fidelity reviewer each default to **30 minutes per run**, configurable separately. Other planning and Execution assignments use their process-specific duration settings. They do not inherit this registration default. Timing starts at launch. Progress does not reset it. A clarification response ends the run, so waiting for answers consumes no run time. Each follow-up or failure-recovery run has its own timer. Capacity-only continuation instead preserves remaining active time under [context management](#checkpoints-and-safe-continuation).
+The architect and fidelity reviewer each default to **30 minutes per run**, configurable separately under [run deadlines and duration exceptions](#run-deadlines-and-duration-exceptions). Other planning and Execution assignments use their process-specific duration settings. Timing starts at launch. Progress does not reset it. A clarification response ends the run, so waiting for answers consumes no run time. Each follow-up or failure-recovery run has its own timer. Capacity-only continuation instead preserves remaining active time under [context management](#checkpoints-and-safe-continuation).
 
 Reaching the limit requests termination, preserves available output, and pauses the activity once stopping is confirmed. Timeout alone does not trigger automatic retry: an identical run may reach the same limit. The CLI shows elapsed time, last reported progress, and whether termination was confirmed. Investigation or an explicitly recorded next-run duration exception precedes manual retry; editing configuration alone cannot change the current activity's snapshotted duration. Unknown termination status continues to block replacement.
 
@@ -289,7 +289,7 @@ For an assigned execution work packet, the agent reads and understands the packe
 
 The service records and displays the plan as an assignment-linked intermediate output. It is distinct from the final result. Returning it introduces no additional review, approval, or pause before execution. A future plan-checking gate is outside the current behavior. Existing scope and authority limits still apply to actual blockers.
 
-This behavior concerns execution work packets. A registration architect returns its assessment and candidate under the registration response contract; registration does not acquire an implementation-plan or development-work stage.
+This behavior concerns execution work packets. Registration launches no agents and has no implementation-plan or development-work stage.
 
 ## Agent performance and context management
 
@@ -314,7 +314,7 @@ Every service-managed packet, integration, Quality Assurance run, correction and
 
 Usage events identify their provider request or tool event, counter scope, and whether values are deltas or cumulative snapshots. Deduplicate by run and source event identity; cumulative readings replace the previous reading for that scope rather than being summed. Session totals spanning several runs contribute only verified increments. Counter resets start a new recorded scope. Missing intervals make totals partial; estimates and partial coverage remain labeled.
 
-Every blocking packet, integration, Quality Assurance or outcome-review finding records one cause: `architecture_requirement`, `packet_specification`, `dependency_or_setup`, `implementation`, `integration`, `verification_or_qa`, `provider_or_external`, or `unknown`. `architecture_requirement` means the pinned architecture or declaration was absent or contradictory; `packet_specification` means the assigned packet lacked a necessary bounded requirement. The record links the controlling source or evidence. It records `unknown` rather than guessing.
+Every blocking packet, integration, Quality Assurance or outcome-review finding records one cause: `architecture_requirement`, `packet_specification`, `dependency_or_setup`, `implementation`, `integration`, `verification_or_qa`, `provider_or_external`, or `unknown`. `architecture_requirement` means the pinned architecture or outcome document was absent or contradictory; `packet_specification` means the assigned packet lacked a necessary bounded requirement. The record links the controlling source or evidence. It records `unknown` rather than guessing.
 
 Reports show three separate measures: first-pass approval rate (packets approved in their first independent review without a blocking correction), specification-sufficiency rate (packets whose review/correction history contains no `architecture_requirement` or `packet_specification` finding), and the cause distribution for all blocking findings. A report with unknown classifications labels the affected measure partial; it never treats unknown as implementation failure or specification success.
 
@@ -380,7 +380,7 @@ Runtime implementation owns persistence, adapter measurement normalization, thre
 | Service to CLI | Server-Sent Events over a persistent connection | Deliver recorded messages, progress, findings, and input requests. |
 | Service to agents | Agent command-line tools or APIs | Supply assignments and receive results. |
 | Service to SQL database | Database access | Store project state and durable conversation records. |
-| Registration process to project repository | GitHub | Read a specific source commit and publish versioned registration packages. |
+| Registration process to project repository | GitHub | Read a specific source commit and publish versioned registration records. |
 
 Requests and events associated with a project carry its identity. Commands can be submitted while updates arrive. A separate agent is not required to maintain the CLI connection.
 
@@ -452,7 +452,7 @@ Project eligibility checks and start reservations share one write transaction, a
 | Current project state | SQL; describes current activity and waiting conditions. |
 | Conversation history | SQL; stores messages, events, questions, answers, and recorded actions. |
 | Project source | An exact Git commit in the supplied repository. |
-| Registration package | Versioned JSON records in the registered project's GitHub repository. |
+| Registration record | Versioned JSON records in the registered project's GitHub repository. |
 | Live CLI updates | Notifications of recorded information, not an independent source of truth. |
 
 SQL is not merely a queue of screen output. Read-only requests display existing records without creating another status record or conversation entry.
@@ -472,9 +472,9 @@ Service-wide requests remain service-wide. Saved records remain available after 
 
 Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; [publication and SQL consistency](#publication-and-sql-consistency) defines the separate durable operations.
 
-### Identity, declarations, and ordering
+### Identity and ordering
 
-Registration records declaration identity, milestone identity, delivery position, dependencies, and versions separately. Ordering changes do not change references. Reviews bind to exact record versions, and work-packet relationships use explicit references rather than encoded hierarchies.
+Registration records outcome identity (the plain subject), delivery position, dependencies, and versions separately. Ordering changes do not change references. Reviews bind to exact document versions, and work-packet relationships use explicit references rather than encoded hierarchies.
 
 The [Maestro Planning Guide](../../../skills/maestro-workshop/process/planning-guide.md#naming-ordering-and-versions) defines naming, numbering, ordering, and version conventions.
 
@@ -581,7 +581,7 @@ Slash commands perform defined operations. Ordinary text follows the answer rule
 
 The command set does not include separate `/select`, `/status`, `/respond`, `/compare`, `/confirm`, or `/cancel` shortcuts. Project selection uses the overview; status remains visible; answers use linked input. Registration comparison, confirmation, and cancellation are process-view actions. Architecture confirmation and cancellation likewise use explicit actions in its activity view.
 
-Architecture start and view commands are defined above. The later Execution entry is `/execution start`, with its request contract defined under [execution initiation](#execution-initiation) and the [Execution API](#execution-api-state-and-record-contract). It remains outside the existing CLI milestone declaration and is not claimed as implemented.
+Architecture start and view commands are defined above. The later Execution entry is `/execution start`, with its request contract defined under [execution initiation](#execution-initiation) and the [Execution API](#execution-api-state-and-record-contract). It remains outside the existing CLI outcome and is not claimed as implemented.
 
 ### Questions and answers
 
@@ -643,64 +643,50 @@ A minimum terminal width and height protects readable project, question, and inp
 
 ### Purpose and authority
 
-Registration checks whether Maestro can understand and operate on supplied project information. It identifies the project, verifies repository access, locates source material, checks its format and meaning, and produces a versioned package for confirmation.
+Registration confirms exactly which planning documents Maestro will build from. The [workshop](../../../skills/maestro-workshop/SKILL.md) does the interpretation and the independent review beforehand. The service checks the documents against a rules file, checks the workshop's review record, pins the exact revision, keeps a small registration record, and asks the Owner to confirm. [The registration process](../../../skills/maestro-workshop/process/registration-process.md) describes the whole flow; this section defines what the service does and stores.
 
-The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The [Maestro Project Architect](../../../skills/maestro-workshop/process/agents/architecture-agent.md) performs software architecture assessment of the source and prepares the candidate registration package. A separate Fidelity Reviewer checks both the assessment and the package against that source and recorded decisions. The Owner role supplies decisions and final confirmation through the CLI.
+The project architect, who may be a person, an agent or both, supplies the planning documents through the workshop. The Owner supplies decisions and final confirmation through the CLI.
 
-Registration does not approve the project's architecture, start development, or perform development-milestone and work-packet breakdown. Change boundaries, repository rules, coding conventions, and execution authority belong to Execution. Project-specific overrides of those rules are not part of registration.
+Registration launches no agents. It does not approve the project's architecture, start development, or break the work into features. Change boundaries, repository rules, coding conventions and execution authority belong to Execution.
 
 ### Source format and inputs
 
-The [Maestro Planning Guide](../../../skills/maestro-workshop/process/planning-guide.md) specifies three Markdown source types: a project overview, architecture, and milestone declarations. Registration receives the repository-relative overview path. The overview identifies the authoritative architecture and declarations through explicit source references; repository scanning is not used to guess the entry document.
+The workshop's [planning guide](../../../skills/maestro-workshop/process/planning-guide.md) and [rules file](../../../skills/maestro-workshop/process/registration-rules.json) define the planning documents: a project overview, an architecture, and a Roadmap of Product Outcomes with one document per outcome, all under `docs/product/v<major>/`. Registration receives the repository and the repository-relative path to the overview. The overview identifies the architecture and the roadmap through explicit source references; repository scanning is not used to guess the entry document.
 
-| Input | Required information |
-|---|---|
-| Identity | Plain project name, repository location, and responsible project architect. |
-| Purpose and scope | Intended result, included work, and explicit exclusions. |
-| Architecture | Main components, responsibilities, interactions and journeys with expected results, technical choices, constraints, and unresolved details. |
-| Current state | New or existing development, reported completed capability, unfinished or broken areas, supporting evidence, and conflicting claims. |
-| Work outline | Desired features or outcomes, priorities, dependencies, ordering, and supplied project milestones. |
-| Completion requirements | Project-level acceptance criteria and definitions of done. |
-| Source locations | Authoritative documents and their guide-compatible formats. |
-
-Inputs must be clear enough to organize work without inventing requirements. They need not specify every implementation detail or include a complete code audit.
-
-Project milestones describe meaningful outcomes, releases, or component boundaries. The [architecture loop](#architecture-loop) produces development milestones linked to those outcomes, without assuming a one-to-one relationship or redefining the project scope. Registration retains the supplied outcome structure.
+Registration keeps the supplied outcome structure. The [architecture loop](#architecture-loop) later groups the outcomes' features into development milestones without redefining the project scope.
 
 ### Intake and scope
 
-Registration initiation includes [architect and reviewer tool and model selection](#tool-and-model-selection) before architect launch. The intake request provides an explicit repository and repository-relative project overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity and applies [source and publication selection](#source-and-publication-selection) before reading project sources.
+Registration initiation provides an explicit repository and repository-relative overview path, and selects the whole supplied plan or a defined portion. An already registered repository is explicitly identified as re-registration before that process proceeds. The service records project identity and applies [source and publication selection](#source-and-publication-selection) before reading project sources.
 
-Only one registration process can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
+Only one registration can be active per project. A duplicate request opens that process instead of creating a competing process or another version. This restriction does not prevent registration or work on unrelated projects.
 
-To register a portion, the service reads guide-compatible source and displays milestone identifiers with their plain subjects. Selection can cover milestones or a narrower written boundary. The service presents the included work, exclusions, and outside dependencies for confirmation. A narrower boundary must be recorded explicitly; the service cannot expand it by inference.
-
-The Maestro architect checks whether outside dependencies exist or need work. Missing essentials become findings for a decision. For example, a publishing outcome dependent on authentication must identify authentication as existing, included, or missing essential work. Partial registration covers only its recorded boundary.
+To register a portion, the service reads the roadmap and shows the outcome subjects. Selection can cover outcomes or a narrower written boundary. The service presents the included work, exclusions and outside dependencies for confirmation. A narrower boundary is recorded explicitly; the service cannot expand it by inference. An essential outside dependency must appear in the workshop's review record as existing, included or decided. A missing essential dependency stops registration with a report.
 
 ### Source and publication selection
 
-Registration records which repository revision is assessed and where its outputs may be published. These are separate choices; the source branch need not be the publication branch.
+Registration records which repository revision is checked and where its record may be published. These are separate choices; the source branch need not be the publication branch.
 
 | Intake field | Selection and default |
 |---|---|
 | `source_ref` | Optional string: a full `refs/heads/...` branch, `refs/tags/...` tag, or full 40-character commit SHA. Short or ambiguous refs are rejected. On initial registration, omission selects the repository's current default branch. On re-registration, omission reuses the active registration's saved selector and resolves it again. |
-| `publication_branch` | An existing branch name without the `refs/heads/` prefix. Use an explicit authorized caller selection or the active registration's retained authorization. If neither exists, a saved intake question collects the Owner's choice before assessment; the repository default branch may be suggested but is not authorization. Maestro's own repository remains fixed to `master`. |
+| `publication_branch` | An existing branch name without the `refs/heads/` prefix. Use an explicit authorized caller selection or the active registration's retained authorization. If neither exists, a saved intake question collects the Owner's choice before checking; the repository default branch may be suggested but is not authorization. Maestro's own repository remains fixed to `master`. |
 
 The verified caller supplies these fields in `registration.start.payload` or answers the linked intake question. The service rejects a destination that conflicts with an applicable project publication rule; changing that rule follows existing authority. A writable branch or an agent's recommendation is not Owner authorization. Existing authorization is reused without asking for it again.
 
-Before reading the overview or launching an agent, the service validates the repository and selector, resolves the selected branch/tag to its commit, and verifies that commit and the overview are readable. A commit selector is verified directly. It checks that the publication branch exists and that service access and repository protections permit the required direct writes. Missing access, an empty repository, an unresolved ref or an incompatible branch rule prevents assessment with a specific intake error. No branch is created, protection bypassed or alternate target silently selected.
+Before reading the overview, the service validates the repository and selector, resolves the selected branch/tag to its commit, and verifies that commit and the overview are readable. A commit selector is verified directly. It checks that the publication branch exists and that service access and repository protections permit the required direct writes. Missing access, an empty repository, an unresolved ref or an incompatible branch rule prevents checking with a specific intake error. No branch is created, protection bypassed or alternate target silently selected.
 
 The service saves the normalized `source_ref`, resolved `source_commit`, `publication_branch`, resolution time and selection provenance in SQL before source use. Provenance identifies the verified caller request/answer or inherited authorization, and distinguishes an applied default from an explicit Owner choice. The CLI shows the repository, selector, exact commit, destination and whether each choice was supplied, inherited or defaulted. These appear in existing intake/scope and final confirmation views; they add no separate approval gate.
 
-A service-built Decision record preserves this selection and its authority in the candidate. The manifest carries `source_ref`, `publication_branch` and `selection_decision_ref` alongside its existing `source_commit`; the decision reference uses the package-local record reference format. The service checks that manifest values match that decision and SQL. Because the decision is included in reviewed content, changing a selection cannot silently reuse approval of different inputs.
+The registration record carries `source_ref`, `publication_branch`, the resolved `source_commit` and the selection provenance. The service checks that these values match SQL. Because the record is part of what the Owner confirms, changing a selection cannot silently reuse confirmation of different inputs.
 
-Assignments read source at the saved commit, never a moving branch or the commit that later publishes the package. Each publication operation copies the saved repository and branch into its journal and checks current access and expected branch head before writing. Recovery uses those saved selections; it does not resolve the source again or change the destination after a lost acknowledgment.
+Every check reads source at the saved commit, never a moving branch or the commit that later publishes the record. Each publication operation copies the saved repository and branch into its journal and checks current access and expected branch head before writing. Recovery uses those saved selections; it does not resolve the source again or change the destination after a lost acknowledgment.
 
-For a symbolic source ref, the service checks for relevant input changes before confirmation under [source consistency](#source-consistency); a deleted or unreadable ref makes that check unresolved. A commit selector remains intentionally pinned. Including updated source resolves and saves a new explicit selector/commit choice; changing the destination records new authorization. Either change creates a new candidate with affected review coverage and the same remaining budgets. Pending external writes must be reconciled before changing their target. Completed historical packages are never redirected or rewritten.
+For a symbolic source ref, the service checks for relevant input changes before confirmation under [source consistency](#source-consistency); a deleted or unreadable ref makes that check unresolved. A commit selector remains intentionally pinned. Including updated source resolves and saves a new explicit selector/commit choice; changing the destination records new authorization. Either change creates a new candidate; the workshop's review record must cover the new revision, and the changed parts are reviewed again in the workshop. Pending external writes must be reconciled before changing their target. Completed historical records are never redirected or rewritten.
 
 Re-registration displays inherited choices and permits authorized amendments during intake. It resolves the chosen selector for the new attempt; a missing inherited branch/ref is an error, not permission to fall back. The previous active registration keeps its selections until replacement confirmation succeeds.
 
-The architecture loop obtains its source baseline from the SQL-confirmed registration manifest's `source_commit` and its publication destination from that manifest's `source_repository` and `publication_branch`. It verifies the referenced manifest and decision before binding the activity and assignments. Registration package commits and later specialist/output commits do not advance the code baseline; separately published inputs retain their own exact references. A different baseline or destination requires confirmed re-registration and a manual architecture start. Unavailable or unverifiable saved inputs pause affected work without substitution.
+The architecture loop obtains its source baseline from the SQL-confirmed registration record's `source_commit` and its publication destination from that record's `source_repository` and `publication_branch`. It verifies the referenced record before binding the activity and assignments. Registration record commits and later specialist/output commits do not advance the code baseline; separately published inputs retain their own exact references. A different baseline or destination requires confirmed re-registration and a manual architecture start. Unavailable or unverifiable saved inputs pause affected work without substitution.
 
 The repository credential profile comes from the operator-provisioned `repository_bindings` configuration under [adapter configuration](#adapter-configuration), not an agent or Execution request. Before the first repository read, registration matches the normalized repository identity to exactly one configured binding, resolves its named `repositories.<profile>` entry, and validates its credential reference and repository allowlist. After destination collection it also checks the branch allowlist and actual required access. Missing, duplicate, unknown or incompatible bindings stop intake with a setup error; the service does not choose among profiles or fall back to an agent credential.
 
@@ -710,177 +696,100 @@ A GitHub repository binding uses one service-owned GitHub destination-authorizat
 
 Before the first source read and immediately before every publication write, the provider verifies the configured App and installation identity, the exact repository, the existing destination branch, repository contents-write permission and Administration-read permission. It retrieves the rules applying to that exact branch and stores only non-secret evidence: the effective-profile snapshot identity, App and installation identity, repository and branch, API result identities/hashes, policy decision and observation time. The initial direct-write policy supports only an unprotected branch with no active repository or organization ruleset. Any branch protection, matching ruleset, missing permission, inaccessible API result, expired evidence or unrecognized provider response is `blocked` or `unverifiable`; the service does not infer App bypass authority. The Owner may select another authorized direct-write branch. No branch is created, policy changed or protection bypassed.
 
-The service passes the provider result to intake. Only `allowed` permits source resolution; `blocked` and `unverifiable` create a specific setup/intake error before source access or agent launch. The registration confirmation path invokes the provider again immediately before it invokes the publication journal remote write; the journal accepts only that fresh, matching `allowed` result and the service-derived installation token. A changed binding, actor, repository, branch or policy invalidates the result and requires a new intake decision/candidate. The Registration Quality Assurance plan verifies this provider against the real QA App and repository; local fixtures test parsing and failure handling only.
+The service passes the provider result to intake. Only `allowed` permits source resolution; `blocked` and `unverifiable` create a specific setup/intake error before source access. The registration confirmation path invokes the provider again immediately before it invokes the publication journal remote write; the journal accepts only that fresh, matching `allowed` result and the service-derived installation token. A changed binding, actor, repository, branch or policy invalidates the result and requires a new intake decision/candidate. The Registration Quality Assurance plan verifies this provider against the real QA App and repository; local fixtures test parsing and failure handling only.
 
-Intake saves an immutable, non-secret effective-profile snapshot with the attempt and each publication operation: profile and binding identities; `api_base_url`, App, installation and slug identities; exact repository/branch allowlists selected for the operation; credential-profile identity; configuration hash and operator-configuration provenance. The service-built selection Decision records the snapshot reference alongside the source/destination selections. Package confirmation activates that exact snapshot in the project binding after normal publication verification. Initial publication uses the saved attempt snapshot; architecture and Execution use the confirmed project binding. Re-registration resolves and saves a new configured snapshot for its new attempt and shows any change with the existing source/destination comparison; the prior confirmed binding remains active until replacement confirmation. Recovery must use and recheck the original saved snapshot. If that snapshot or its credential-profile identity cannot be resolved, recovery pauses with a specific setup error; it never silently adopts an edited current profile.
+Intake saves an immutable, non-secret effective-profile snapshot with the attempt and each publication operation: profile and binding identities; `api_base_url`, App, installation and slug identities; exact repository/branch allowlists selected for the operation; credential-profile identity; configuration hash and operator-configuration provenance. The registration record holds the snapshot reference alongside the source/destination selections. Package confirmation activates that exact snapshot in the project binding after normal publication verification. Initial publication uses the saved attempt snapshot; architecture and Execution use the confirmed project binding. Re-registration resolves and saves a new configured snapshot for its new attempt and shows any change with the existing source/destination comparison; the prior confirmed binding remains active until replacement confirmation. Recovery must use and recheck the original saved snapshot. If that snapshot or its credential-profile identity cannot be resolved, recovery pauses with a specific setup error; it never silently adopts an edited current profile.
 
 ### Source consistency
 
-Review uses the exact Git commit fixed by [source and publication selection](#source-and-publication-selection), shared by the Maestro architect and Fidelity Reviewer. Relevant input changes are shown before confirmation.
+Checking uses the exact Git commit fixed by [source and publication selection](#source-and-publication-selection). Relevant input changes are shown before confirmation.
 
 | Explicit source choice | Effect |
 |---|---|
-| Retain the reviewed source | The package covers the original requirements and excludes newer changes. |
-| Include updated source | The candidate changes and affected findings are rechecked within the existing review budget. |
+| Retain the checked source | The record covers the original revision and excludes newer changes. |
+| Include updated source | A new revision is pinned and the documents are checked again. The workshop's review record must cover it, and the changed parts are reviewed again in the workshop. |
 
 Unrelated commits and changes to review reports are not treated as changed planning inputs. Source versions are never silently mixed.
 
-### Assessment and independent review
+### Checking the documents
 
-The registration loop separates format checks, architectural judgment, and independent review:
+The service separates mechanical checks from judgment. Judgment, meaning what the plan means, whether its scope can deliver the outcome, its dependencies and its evidence, happens in the workshop before registration, with the Owner and an independent reviewer. The result is saved in the workshop's review record.
 
-1. Python validates required fields, file locations, document structure, and references.
-2. The Maestro architect assesses meaning, scope, dependencies, and evidence, then produces findings and prepares the candidate package.
-3. The Fidelity Reviewer independently compares the findings and candidate package with the same source and recorded decisions, checking fidelity and whether blockers are justified.
-4. The Maestro architect amends its findings or candidate package where needed. Package review stays within the same review budget.
-5. Any further review covers affected findings only.
+The service then:
 
-The resulting report identifies what was found, readiness, and required attention, with file and passage references where available. Source-plan contradictions and missing source answers are returned to the project architect; the Maestro architect does not resolve them by inventing requirements.
+1. Applies the rules file version pinned for this registration to every document at the pinned revision: the required documents and sections, the allowed values, the link rules and the cross-document rules.
+2. Checks the workshop's review record: it exists, it covers exactly the pinned revision by document fingerprint, no document changed afterwards, its coverage is complete, and it records a reviewer other than the author.
+3. Reports the result.
 
-| Finding | Treatment |
+The service does not review the plan and does not judge whether it is good. A pass is not approval of the architecture. Source inspection is not operational proof; evidence levels are defined in the [planning guide](../../../skills/maestro-workshop/process/planning-guide.md).
+
+A failed check produces a plain report of which rule failed, in which document and where. The service saves the report with the pinned revision, and registration stops. The next workshop session reads the saved report first and helps fix it, and the changed parts are reviewed again before registering a second time.
+
+### The rules file
+
+The rules are in [registration-rules.json](../../../skills/maestro-workshop/process/registration-rules.json). The file arrives with a tested release. When the CLI starts it checks for a newer approved version, meaning one marked passed and never an arbitrary change on master, tells the Owner that one exists and says which version it used. Each registration keeps the rules version it started with, so the rules cannot change halfway through, and the service records the version used. A missing or invalid rules file blocks new registrations with a plain error; read-only views stay available.
+
+### Registration record
+
+The project's own GitHub repository holds registration records under `.maestro/registrations/`. UTF-8 JSON is authoritative. The CLI renders these records instead of maintaining a separate account of their contents. The record describes what was checked and confirmed; it is not a copy of the plan, and it contains no generated development breakdown.
+
+| Location | Purpose |
 |---|---|
-| Blocker | Missing or contradictory information prevents reliable interpretation or operation under the applicable rules. The finding identifies what cannot proceed and cites evidence or a missing required input. |
-| Non-blocking finding | Wording preferences, optional improvements, or gaps that do not prevent registration remain recorded without requiring correction. |
-| Review disagreement | The assessment may be amended. Unresolved disagreement at the review limit requires an Owner decision. |
+| `index.json` | Discovery index with project identity, the current confirmed registration reference, and references to previous confirmations. It is not a substitute for an exact registration reference. |
+| `versions/<registration-version>/candidates/<candidate-id>/manifest.json` | The registration record for one candidate. |
+| `confirmations/<confirmation-id>.json` beneath the registration root | Immutable record of the Owner's explicit confirmation of an exact published candidate. |
 
-Review does not introduce new requirements. Readiness requires no remaining blockers or unresolved disagreements; minor improvements do not prevent readiness.
+Each attempt receives one positive-integer registration version, so cancelled attempts can leave gaps. Candidate identifiers are unique within the project. Any change to the record's bytes requires a new candidate identifier. Confirmed candidates are never edited.
 
-### Purpose and dependency checks
+The manifest declares `schema_version: 1` and contains: `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_ref`, `source_commit`, `publication_branch`, the effective-profile snapshot reference, the selection provenance, `overview_path`, the scope (the whole plan, or the chosen boundary with its exclusions and outside dependencies), `rules_version`, `documents`, `review_record_ref`, and `content_hash`. Each entry in `documents` gives a repository-relative path and its SHA-256. `review_record_ref` gives the path, SHA-256 and commit of the workshop's review record. `content_hash` is the SHA-256 of the document entries sorted by path, each as its path, a tab, its hash and a newline.
 
-The assessment examines whether scope can deliver the stated outcome, rather than only whether the description is clear.
+References contain the repository, exact commit, path and SHA-256. Absolute paths and parent traversal are rejected. Python checks required fields and types, hashes, references, the match between the manifest, SQL and the pinned revision, and that the review record covers exactly the recorded documents, before publication. Agent-written or workshop-written readiness claims are never accepted without these checks.
 
-A usage walkthrough explains how to start using the capability, what it depends on, how its parts connect, and how to observe the result. Each essential dependency must already exist or be included in the supplied work and dependency structure. Excluding an essential operation requires an explicit scope decision: include the missing work or narrow the claimed outcome.
-
-Targeted source inspection checks claimed dependencies. For authentication, relevant evidence includes route protection, application or API connections, required configuration or credentials, unfinished components, and operational results.
-
-| Evidence level | Meaning |
-|---|---|
-| Reported to exist | A source claim without verification. |
-| Supported by source inspection | Code appears present and connected. |
-| Verified in operation | Operational evidence supports the capability. |
-
-Source inspection is not operational proof. Unverified behavior remains identified, and the assessment is not a full code audit.
-
-Registration records the usage walkthrough, prerequisites, and completion evidence in the supplied outcome's acceptance criteria and definition of done. Each criterion states the expected behavior, applicable conditions, required evidence, what counts as passing, and accepted exceptions. The definition of done also states required reviews and other completion obligations.
-
-A declared usable capability requires evidence of the same journey through the actual connected system. Completed components or sample-data screens alone do not establish it. Component outcomes remain valid when identified and assessed as components. Registration assesses this expected completion path without requiring unbuilt functionality to exist already.
-
-Detailed development criteria belong to the subsequent breakdown process and remain traceable to project criteria without weakening them. Material ambiguity encountered there requires clarification.
+A change to any recorded document creates a new candidate; the workshop's review record must cover the new document versions before the service accepts it.
 
 ### Registration process-definition binding
 
 The service validates the effective `registration` table in `/etc/maestro/agents.toml` using `processDefinition` in [Registration process configuration](../../schemas/registration-process.schema.json). Installation supplies this configuration-only bundle as `registration-process@1` at `schemas/registration-process/1/schema.json` inside the Maestro installation folder. The registration handler selects this fixed validator before creating an activity; its reference and hashes follow [installed validation schemas](#installed-validation-schemas).
 
-All sections and fixed fields below are required. Only the four numeric settings may be omitted: the review limit, both role durations, and automatic recovery limit. Apply their documented defaults before validation; do not create an omitted section. Reject unknown fields, wrong types, unsupported policy values and legacy keys before starting registration. Booleans are not integers. Shared tool, workspace and storage settings remain outside this table.
+The table is required. Only `recovery.automatic_recovery_attempts` may be omitted; its documented default applies before validation. Reject unknown fields, wrong types, unsupported policy values and legacy keys before starting registration. Booleans are not integers. Registration launches no agents, so it has no review limit, role selection or run duration. Shared tool, workspace and storage settings remain outside this table.
 
 | Field within `registration` | Accepted value and behavior |
 |---|---|
 | `schema_version` | `1`; version of this configuration contract. |
-| `maximum_fidelity_reviews` | Positive integer; default and accounting under [review limits and decisions](#review-limits-and-decisions). |
-| `architect.run_timeout_seconds`, `fidelity_reviewer.run_timeout_seconds` | Positive integers; defaults under [adapter configuration](#adapter-configuration). |
-| `initiation.policy` | `registration_intake_or_idle_update`; apply [intake and scope](#intake-and-scope), including source and both role selections, and the idle reservation rules for [re-registration](#re-registration). Duplicate requests return the existing activity. |
+| `initiation.policy` | `registration_intake_or_idle_update`; apply [intake and scope](#intake-and-scope), including source selection, and the idle reservation rules for [re-registration](#re-registration). Duplicate requests return the existing activity. |
 | `initiation.start_operation` | `registration.start`; the existing CLI request operation. |
-| `agent_session.policy` | `fixed_assignment_followups`; apply [assignment delivery and clarification](#assignment-delivery-and-clarification). Each run reads a fixed assignment; follow-ups receive saved context, not an assumed persistent session. |
-| `agent_session.architect_role`, `agent_session.reviewer_role` | `project_architect` and `fidelity_reviewer`; existing role responsibilities and independent workspaces apply. These are roles, not tool/model defaults. |
-| `saved_outputs.policy` | `versioned_registration_package`; validate and publish under [package structure](#package-structure) and [publication and SQL consistency](#publication-and-sql-consistency). |
-| `saved_outputs.contract` | `registration_package_v1`; binds the handler to [package record contract](#package-record-contract) and [registration agent response contract](#registration-agent-response-contract). |
+| `saved_outputs.policy` | `registration_record`; build and publish under [registration record](#registration-record) and [publication and SQL consistency](#publication-and-sql-consistency). |
+| `saved_outputs.contract` | `registration_record_v1`; binds the handler to the [registration record](#registration-record) contract. |
 | `saved_outputs.root` | `.maestro/registrations`; in the registered project's repository, using its saved authorized destination. |
-| `review.policy` | `bounded_independent_fidelity`; apply [assessment and independent review](#assessment-and-independent-review), using this table's single review limit. No mandatory second review after a pass. |
-| `confirmation.policy` | `explicit_exact_candidate_activation`; apply [confirmation and activation](#confirmation-and-activation), preserving exact candidate, Owner authority and publication-before-activation checks. |
+| `confirmation.policy` | `explicit_exact_candidate_activation`; apply [confirmation and activation](#confirmation-and-activation), preserving the exact candidate, Owner authority and publication-before-activation checks. |
 | `confirmation.on_complete` | `stop`; confirmation starts neither the architecture loop nor execution. |
-| `recovery.policy` | `reconcile_preserved_registration`; apply [technical recovery](#technical-recovery), [publication recovery](#publication-recovery) and the existing manual retry actions. |
-| `recovery.automatic_recovery_attempts` | Nonnegative integer; default under [adapter configuration](#adapter-configuration). Agent assignments and publication operations use the same configured maximum with separate counters; neither consumes the other's allowance. |
+| `recovery.policy` | `reconcile_preserved_registration`; apply [publication recovery](#publication-recovery) and the existing manual retry action. |
+| `recovery.automatic_recovery_attempts` | Nonnegative integer; default under [adapter configuration](#adapter-configuration). It bounds automatic recovery of registration publication operations. |
 
-These names select implemented registration handlers; configuration cannot replace their semantic checks or grant additional authority. The `registration_package_v1` output contract is a handler contract, not a claim that a complete output JSON Schema bundle exists. The supplied registration-process schema validates configuration only. Required record and response validation remains mandatory in the handler; a missing validator blocks the affected process rather than accepting unchecked output.
+These names select implemented registration handlers; configuration cannot replace their semantic checks or grant additional authority. The `registration_record_v1` output contract is a handler contract, not a claim that a complete output JSON Schema bundle exists. The supplied registration-process schema validates configuration only. Required record validation remains mandatory in the handler; a missing validator blocks registration rather than accepting an unchecked record.
 
-Save the effective table, its hash and validator reference with the activity under [shared process definitions](#shared-process-definitions). Clarifications, candidate amendments, manual retries and restarts retain that snapshot and consumed counts. Registration has no separate automatic output-correction allowance: response-format failures use technical recovery, while substantive amendments follow the existing fidelity-review rules. Architecture-loop correction settings cannot be copied into registration.
-
-### Review limits and decisions
-
-The service reads `registration.maximum_fidelity_reviews` from `/etc/maestro/agents.toml`. The setting is a positive integer and defaults to **2** when omitted. An invalid value prevents a new registration with a plain configuration error.
-
-At initiation, the service copies the effective limit into the registration activity in SQL. That saved value governs the whole attempt. Configuration changes affect future attempts, not one already running. This budget is separate from technical retries and run durations.
-
-| Event | Review-count effect |
-|---|---|
-| Architect prepares or amends an assessment | None. |
-| Independent reviewer returns a valid completed review of assessment and candidate | Consume one round for both together. |
-| Reviewer requests clarification without completing its review | None. |
-| Agent crashes or returns invalid output | Technical recovery; no round consumed. |
-| Answers or relevant source updates arrive | Preserve the existing count and limit. |
-| Accepted review output is delivered again | Return the saved receipt; do not count again. |
-
-Readiness after the first passing review does not require another review. At the saved limit, unresolved material blockers or disagreement pause registration for an Owner decision. The service neither forces approval nor resets the count. Another review requires an explicit one-attempt Owner grant under [Owner decisions at a process limit](#owner-decisions-at-a-process-limit), recorded separately from the original limit.
-
-The registration view displays the current step, working agent, round and limit, findings, failures, progress or waiting state, and required decisions.
-
-A question identifies the relevant findings and registration version. Its recorded response is routed to the paused step; the architect can amend the report and affected findings can be rechecked within the remaining budget. Clarifications, scope decisions, and accepted limitations remain linked to their requests and affected outcomes or criteria in the package.
-
-### Package structure
-
-The project's own GitHub repository holds registration records under `.maestro/registrations/`. UTF-8 JSON is authoritative. The CLI renders these records instead of maintaining a separate account of their contents. Registration packages describe supplied project outcomes; they contain no generated development breakdown.
-
-| Location | Purpose |
-|---|---|
-| `index.json` | Discovery index with project identity, current confirmed package reference, and references to previous confirmations. It is not a substitute for an exact package reference. |
-| `versions/<registration-version>/candidates/<candidate-id>/manifest.json` | Immutable candidate identity, source and decision versions, and inventory of its record files and hashes. |
-| `summary.json` within the candidate | Project purpose, selected scope, exclusions, priorities, and overall assessment. |
-| `declarations/<record-key>.json` within the candidate | Declaration designation, plain subject, version, and ordered milestone references. |
-| `conventions.json` within the candidate | The project's Owner-authorized declaration designations, record types, and naming prefixes with their decision references. |
-| `milestones/<record-key>.json` within the candidate | One supplied project milestone per file, preserving qualified identity, plain subject, version, purpose, scope, dependencies, and completion references. Delivery order belongs to its declaration. |
-| `requirements/<record-key>.json` within the candidate | Project or milestone completion requirements, expected journeys, interaction results, evidence, and accepted exceptions. |
-| `assessments/<record-key>.json` within the candidate | Architect assessment, findings, affected records, source evidence, and corrections. |
-| `reviews/<record-key>.json` within the candidate | Independent review outcome, exact reviewed content reference, findings, and review-round accounting. |
-| `decisions/<record-key>.json` within the candidate | Relevant clarifications and answers, scope/source choices, amendments, accepted limitations, and their authority. |
-| `confirmations/<confirmation-id>.json` beneath the registration root | Immutable record of the Owner's explicit confirmation of an exact published candidate. |
-
-Record keys identify files and must be safe for filenames; they do not determine delivery order. Records pair every displayed coded identifier with its plain subject. Each attempt receives one positive-integer registration version, so cancelled attempts can leave gaps. Candidate identifiers are unique within the project. Any change to package bytes requires a new candidate identifier. Confirmed candidates are never edited.
-
-#### Package record contract
-
-All package files declare `schema_version: 1`. Each record file contains `record_type`, `record_id`, `subject`, positive integer `record_version`, and `data`. Required text is nonempty. Unknown record types or schema versions are rejected; optional values use explicit null and optional collections use empty arrays.
-
-| Record type | Required data |
-|---|---|
-| Summary | `project_id`, `purpose`, `scope` with included and excluded outcomes, `priorities`, `assessment_outcome` (ready, clarification_required, or blocked), and references to project requirements. This outcome is not activation. |
-| Declaration | `designation`, `milestone_refs` in delivery order, and `source_refs`. Its `record_version` is the declaration version. |
-| Naming conventions | `declaration_designations`, `record_types`, `prefixes`, and `decision_refs`. Each entry pairs its code with a plain subject and preserves the Owner-authorized convention; registration does not invent additional prefixes. |
-| Milestone | `declaration_id`, `milestone_id`, `purpose`, `included`, `excluded`, `dependencies`, `requirement_refs`, and `source_refs`. Each dependency identifies its subject, required outcome, and existing/included/missing state with supporting evidence. |
-| Requirement | `applies_to`, `expected_result`, `conditions`, `pass_boundary`, `verification`, `accepted_exception`, `source_refs`, and `journey`. Journey entries identify the interaction, expected result, and essential failure behavior; noninteractive requirements use an empty journey. |
-| Assessment | `assignment_id`, `run_id`, `source_commit`, `decision_version`, `summary`, and `findings`, using the registration response contract's finding structure. |
-| Review | `assignment_id`, `run_id`, `reviewer_identity`, `review_round`, `review_limit`, `reviewed_content_hash`, `reviewed_assessment_ref`, `outcome`, and `findings`. The service records identity and accounting; the reviewer cannot assign its own limits. |
-| Decision | `question`, ordered `answers`, `resolution`, `authority`, `affected_refs`, and `supersedes_ref`. Answers include their saved identity, author, text, and time. A decision without a question uses null; superseded decisions remain available. |
-
-References contain `record_id`, `subject`, `record_version`, and a package-relative `path`. External references also name the repository, exact commit, and source locator. Milestone dependencies preserve qualified declaration and milestone identities. A milestone's `declaration_id` identifies membership only; the package manifest fixes the declaration record version. Declaration records own delivery order; an ordering-only change increments the declaration version without changing the versions of unchanged milestones. The convention record preserves the naming list used by this package. Reviews identify the exact declaration and milestone versions through these records. Facts are defined in their owning record and linked elsewhere.
-
-The manifest contains `project_id`, `registration_version`, `candidate_id`, `previous_registration_ref` or null, `source_repository`, `source_commit`, `overview_path`, `decision_version`, `content_hash`, and `files`, plus the selection fields defined under [source and publication selection](#source-and-publication-selection). Each file entry contains its relative path, record identity/type/version/subject, and SHA-256 of its exact UTF-8 bytes. The manifest does not list or hash itself.
-
-To calculate `content_hash`, the service sorts summary, declaration, naming-convention, milestone, requirement, assessment, and decision files by path. Each inventory entry contains `path`, a tab, the file hash, and a newline. Review files are excluded so the reviewed content's hash does not depend on the review itself. The manifest's SHA-256 identifies the complete candidate, including its reviews. Hashes identify exact saved bytes, so formatting changes also create a different candidate.
-
-Python checks required fields and types, unique identities and paths, hashes, references, source/decision consistency, and review coverage before publication. Absolute paths, parent traversal, duplicate record identities, and references to nonexistent records are rejected. Agent-written hashes and readiness claims are checked independently.
-
-Changing reviewed content creates a new candidate. The affected content must be reviewed within the existing budget. Unchanged records keep their versions; changed records increment theirs. A focused recheck identifies the previously reviewed content, the review coverage that still applies, and the corrected findings. The service must verify review coverage for the entire new candidate; an old approval alone cannot approve a new hash. Rejected candidates remain retrievable and are never overwritten.
+Save the effective table, its hash and validator reference with the activity under [shared process definitions](#shared-process-definitions). Retries and restarts retain that snapshot and consumed counts.
 
 ### Publication and SQL consistency
 
-SQL stores live activity, requests, budgets, and the reference to the active version. GitHub stores published packages and confirmation records. A single transaction cannot be assumed to update both systems. The runtime therefore saves each publication operation and verifies its GitHub result before reporting success.
+SQL stores live activity, requests, budgets, and the reference to the active version. GitHub stores published registration records and confirmation records. A single transaction cannot be assumed to update both systems. The runtime therefore saves each publication operation and verifies its GitHub result before reporting success.
 
 #### Candidate publication
 
-1. Validate and freeze the candidate in service-owned storage. Save its manifest hash, file inventory, intended repository/branch/path, and a unique publication operation in SQL before network writes.
-2. Publish the complete candidate in one Git commit on the branch recorded under [source and publication selection](#source-and-publication-selection). Never publish a partial folder as a usable package.
+1. Validate and freeze the candidate record in service-owned storage. Save its manifest hash, document fingerprints, intended repository/branch/path, and a unique publication operation in SQL before network writes.
+2. Publish the complete candidate in one Git commit on the branch recorded under [source and publication selection](#source-and-publication-selection). Never publish a partial record.
 3. Verify the remote commit, all expected file bytes and hashes, permitted paths, and unchanged frozen content using wrapper checks.
-4. Save the verified commit and package reference in SQL, then emit the recorded publication result.
+4. Save the verified commit and registration reference in SQL, then emit the recorded publication result.
 
-A registration package reference uses the shared `registrationRef` definition in [the schema bundle](../../schemas/architecture-loop.schema.json): `repository`, `commit`, `registration_version`, `candidate_id`, `manifest_path`, and `manifest_sha256`. Registration emits this exact object; the architecture loop consumes it unchanged. The commit identifies the published candidate, not the assessed code baseline. The service verifies the manifest bytes and candidate/version identity in that repository, and compares all fields with the SQL-confirmed reference before architecture entry. The same shape applies to previous-registration references when present and to `registration_ref` and `validated_registration_ref` throughout architecture records. All later review, confirmation, and downstream use bind to this reference rather than branch HEAD or a mutable latest path. Publication does not activate registration.
+A registration reference uses the shared `registrationRef` definition in [the schema bundle](../../schemas/architecture-loop.schema.json): `repository`, `commit`, `registration_version`, `candidate_id`, `manifest_path`, and `manifest_sha256`. Registration emits this exact object; the architecture loop consumes it unchanged. The commit identifies the published candidate, not the assessed code baseline. The service verifies the manifest bytes and candidate/version identity in that repository, and compares all fields with the SQL-confirmed reference before architecture entry. The same shape applies to previous-registration references when present and to `registration_ref` and `validated_registration_ref` throughout architecture records. All later review, confirmation, and downstream use bind to this reference rather than branch HEAD or a mutable latest path. Publication does not activate registration.
 
 Git updates check the expected branch head and never force-push over other changes. If the branch moves, publication preserves unrelated changes. It can retry only if the target paths are absent or contain exactly the intended bytes; different content pauses publication. Relevant source changes follow the explicit source-choice rules. Publication cannot silently change the assessed source.
 
 #### Confirmation and activation
 
-The CLI confirmation request identifies the displayed package reference and expected activity version. In a SQL transaction, the service verifies review coverage, current eligibility, unchanged candidate, and the Owner's explicit action, then records a pending confirmation and publication operation. The previous registration remains active while this operation is pending.
+The CLI confirmation request identifies the displayed registration reference and expected activity version. In a SQL transaction, the service verifies the rules check, the review record, current eligibility, unchanged candidate, and the Owner's explicit action, then records a pending confirmation and publication operation. The previous registration remains active while this operation is pending.
 
-The service publishes an immutable confirmation receipt and updates the discovery index together in one Git commit. The receipt contains schema version, confirmation/request/project identities, the exact package reference, Owner identity, confirmation time, and the previous confirmation reference or null. The index contains `schema_version`, `project_id`, `current_confirmation_ref`, and ordered `confirmation_refs`. Receipt references identify path and SHA-256; the receipt itself pins the candidate's commit. The index points to that receipt and retains previous references. The receipt records the accepted Owner action; it does not claim SQL activation has already completed.
+The service publishes an immutable confirmation receipt and updates the discovery index together in one Git commit. The receipt contains schema version, confirmation/request/project identities, the exact registration reference, Owner identity, confirmation time, and the previous confirmation reference or null. The index contains `schema_version`, `project_id`, `current_confirmation_ref`, and ordered `confirmation_refs`. Receipt references identify path and SHA-256; the receipt itself pins the candidate's commit. The index points to that receipt and retains previous references. The receipt records the accepted Owner action; it does not claim SQL activation has already completed.
 
 After verifying the receipt and index on GitHub, one SQL transaction updates the active pointer, completes the request and registration activity, and records the event for CLI delivery. Only then does the CLI report **Registered**. Initial registration stays pending until then; re-registration keeps its previous active version and Updating registration label.
 
@@ -900,7 +809,7 @@ The SQL publication record retains operation type, exact target bytes/hashes, ex
 
 One request cannot create multiple confirmations or activation events. The service resolves pending operations before accepting another write for that project. Publication recovery uses `registration.recovery.automatic_recovery_attempts` under [registration process-definition binding](#registration-process-definition-binding), with a separate counter for each operation. The initial write is not an automatic recovery attempt; reserve and count each automatic replacement write once before dispatch. Queries, matching-content reuse and SQL-only replay do not consume another write attempt. An uncertain GitHub outcome must be reconciled before another write; exhausting the write allowance does not prevent read-only reconciliation. It does not consume agent-launch retries or fidelity reviews, and a failed push does not rerun the architect. Reaching the limit pauses publication and preserves its evidence. Investigation and retry continue that operation without starting a new registration.
 
-The discovery index is for navigation. Runtime work and downstream assignments use the SQL-confirmed exact package reference. A GitHub receipt awaiting SQL recovery cannot independently start work. Repository history alone cannot reconstruct unknown SQL conversation, budget, or pending-action state; database recovery must preserve those records.
+The discovery index is for navigation. Runtime work and downstream assignments use the SQL-confirmed exact registration reference. A GitHub receipt awaiting SQL recovery cannot independently start work. Repository history alone cannot reconstruct unknown SQL conversation, budget, or pending-action state; database recovery must preserve those records.
 
 ### Re-registration
 
@@ -920,65 +829,29 @@ One SQL transaction holds the project's start lock, checks that the project is i
 
 The reservation remains until registration has ended and its runs and external operations are resolved. Ending registration releases it without automatically restarting stopped work. The previous approved registration remains active unless its replacement was successfully confirmed. This shared start-check contract defines the interface registration requires; it does not define Execution scheduling or stopping commands.
 
-Each rerun creates the next registration version while preserving prior versions. The Maestro architect may add or amend project milestones within the candidate package. These changes use the same source, scope, review, and decision rules; they do not authorize general source-plan rewriting or development breakdown.
+Each rerun creates the next registration version while preserving prior versions. It checks the documents at a newly pinned revision under the same rules.
 
 ### Comparison, activation, and cancellation
 
-Comparison is an action in the registration view. It shows candidate additions, changes, and removals against the active version, including affected scope and completion requirements and reasons linked to findings or decisions.
+Comparison is an action in the registration view. It shows the differences from the active version: the pinned revision, the documents whose fingerprints changed, the scope, and the rules version, with the reason for each change where the workshop's review record gives one.
 
 Confirmation is a separate explicit action displaying the project and exact candidate version. The service verifies that this candidate is unchanged and eligible. A changed or ineligible candidate is rejected with an explanation; the current candidate must be opened and reviewed before another confirmation.
 
 Successful confirmation makes the candidate the active registration version. Previously approved versions remain retrievable. Confirmed content cannot change silently, and activation does not start development.
 
-Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Cancellation follows [agent stopping rules](#cancellation) when a run is active; only confirmed termination ends the attempt. When no run or external operation is pending, cancellation ends the attempt directly. A pending confirmation rejects cancellation under [confirmation and activation](#confirmation-and-activation). Cancellation accepted during candidate publication prevents further registration advancement; the service reconciles any in-flight write and retains published artifacts before ending the attempt and releasing its reservation. Saved history is preserved. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
+Cancel registration displays the project, registration attempt, effects, and retained information, with Cancel registration and Go back controls. Registration launches no agents, so cancellation ends the attempt directly when no external operation is pending. A pending confirmation rejects cancellation under [confirmation and activation](#confirmation-and-activation). Cancellation accepted during candidate publication prevents further registration advancement; the service reconciles any in-flight write and retains published artifacts before ending the attempt and releasing its reservation. Saved history is preserved. Failure or cancellation of re-registration leaves the previously approved version active; project work does not restart automatically.
 
 Neither confirmation nor cancellation is preselected for submission. Deliberate focus on the relevant action is required before Enter activates it.
 
 A lost action acknowledgment displays “Outcome not confirmed.” Reconnection checks the recorded outcome rather than automatically repeating the action. Explicit retries identify the original request and cannot duplicate effects.
 
-### Registration agent response contract
+## Shared recovery and configuration
 
-Each assigned architect or fidelity-reviewer run returns one UTF-8 JSON object using contract version 1. Progress messages are separate from the final response. The service validates the object before recording findings, routing questions, or accepting a result. Free text is never interpreted as an approval or command.
-
-| Field | Type and meaning |
-|---|---|
-| `contract_version` | Integer; 1. |
-| `assignment_id`, `run_id`, `project_id`, `activity_id` | Nonempty strings copied from the service assignment. |
-| `role` | `project_architect` or `fidelity_reviewer`; must match the assigned role. |
-| `source_commit` | Exact source commit supplied in the assignment. |
-| `decision_version` | Nonempty string identifying the assigned snapshot of recorded Owner decisions. |
-| `result` | `completed`, `clarification_required`, or `technical_failure`. Completion describes the assignment, not registration activation. |
-| `summary` | Nonempty plain description of the result. |
-| `findings` | Array of finding objects; empty when none. |
-| `questions` | Array of clarification objects; empty when none. |
-| `candidate` | Immutable artifact reference for the architect's candidate or the reviewer's exact reviewed candidate; null when unavailable. |
-| `assessment` | Immutable reference to the architect's assessment; required for a completed architect result, null for reviewer results, optional for partial architect output. |
-| `reviewed_assessment` | Immutable assessment reference for the reviewer; null for the architect or when review could not be performed. |
-| `review_outcome` | `APPROVE` or `REQUEST_CHANGES` for a completed reviewer assignment; null otherwise. Always null for the architect. |
-| `failure` | Object with nonempty `code` and plain `message` for technical failure; null otherwise. |
-
-All listed fields are required; no other top-level fields are accepted. An artifact reference contains `path` (relative to the assigned artifact root), `sha256` (64 hexadecimal characters), and `version` (nonempty string). Absolute paths and parent traversal are invalid. The wrapper verifies artifact existence, content hash, and permitted location. For repository publication it also performs the GitHub checks under [agent delegation](#agent-delegation); an artifact hash alone is not publication evidence. The adapter defines how artifacts are transported without changing these checks.
-
-Each finding contains `local_key`, `subject`, `severity` (`blocking` or `non_blocking`), `explanation`, `impact`, `requested_correction`, `source_refs`, and `affected_items`. Text fields are nonempty. Source references contain a repository-relative `path`, `commit`, and a heading or line locator. Missing-source findings instead include a nonempty `missing_information` explanation and may have an empty source-reference list. Affected-item references include the existing identifier, plain subject, and version. Empty affected-item lists are permitted for project-wide findings.
-
-Each question contains `local_key`, plain `subject`, `question`, `reason`, `recipient` (`project_architect` or `owner`), linked finding keys, and `options`. Options contain a local key, plain label, tradeoff, and recommendation reason or null. An empty options array requests written information; all questions allow written clarification. Questions follow existing authority boundaries and do not solicit approval for routine technical choices.
-
-Local keys are unique within the response and only link its entries. They are not milestone, finding, or review numbers. The service assigns persistent record identities under the naming conventions and resolves local links when saving. References to existing records preserve their identities and subjects.
-
-| Validation condition | Required result |
-|---|---|
-| Completed architect assignment | Assessment and candidate references present; findings may still block registration. |
-| Completed reviewer assignment | Exact assigned assessment and candidate references present. APPROVE has no blocking findings or unanswered questions. REQUEST_CHANGES has at least one blocking finding. |
-| Clarification required | At least one specific question; available partial candidate may be referenced. No review approval. |
-| Technical failure | Failure details present; no review approval. Partial findings or artifacts are not accepted as completed work. |
-| Wrong context, unknown version, malformed fields, conflicting result, or unverifiable artifact | Preserve diagnostic evidence and apply technical recovery; do not infer success or turn it into a substantive planning rejection. |
-| Duplicate or late response | A matching replay of an already accepted assignment/run result returns its recorded receipt. Conflicting content, a superseded assignment, or a non-current run cannot overwrite the result or current candidate. |
-
-The service checks the response against the assignment's source, saved decisions, and artifact versions. It saves the accepted response and resulting findings and questions together in one SQL transaction before acknowledging or displaying them. Technical response corrections use the technical retry budget; completed substantive reviews use the planning-review budget. The response cannot set review counts, grant extra rounds, activate registration, or issue execution commands.
+The recovery rules, the retry request and the adapter configuration below serve every process that launches agents or writes to a repository, not registration alone.
 
 ### Technical recovery
 
-Completed reports, reviews, decisions, and source/version references survive agent failure, failed GitHub publication, or service restart. Registration resumes from the last verified step; unverified results do not count as completed work.
+Completed reports, reviews, decisions, and source/version references survive agent failure, failed GitHub publication, or service restart. An activity resumes from its last verified step; unverified results do not count as completed work.
 
 Before restarting interrupted agent work, the service checks whether the original run remains active. Unknown status pauses recovery immediately and blocks a replacement. Once the run is confirmed ended, recovery supplies the saved assignment, answers, findings, and candidate files. Unfinished output remains draft until a complete response passes deterministic checks.
 
@@ -1000,7 +873,9 @@ A tool or API may retry internally within the same run, but these retries do not
 
 #### Activity retry request
 
-The paused registration activity displays **Retry activity** alongside the failure reason and any known correction. It requests a short description of the intervention, then submits `registration.retry` through `POST /api/v1/requests`. This is an explicit activity action, not a slash command or ordinary answer.
+A paused activity displays **Retry activity** alongside the failure reason and any known correction. It requests a short description of the intervention, then submits its process's retry operation (`registration.retry`, `architecture.retry` or `execution.retry`) through `POST /api/v1/requests`. This is an explicit activity action, not a slash command or ordinary answer.
+
+Registration launches no agents, so `registration.retry` accepts only the publication form described below. The agent form serves the architecture loop and Execution.
 
 The existing request envelope supplies `request_id`, `project_id`, `activity_id`, `expected_version`, and null `question_id`. For an agent retry, its `payload` contains `assignment_id`, `failed_run_id`, and nonempty `intervention`. The text records what changed; it is not proof that access, model availability, or configuration is now valid.
 
@@ -1017,9 +892,7 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file. A
 | Setting | Meaning |
 |---|---|
 | `workspace_root` | Absolute workspace root; default `/var/lib/maestro/workspaces`. |
-| `registration.recovery.automatic_recovery_attempts` | Nonnegative integer; default 2; preserves the existing registration assignment recovery accounting. |
-| `registration.architect.run_timeout_seconds` | Positive integer; default 1800. |
-| `registration.fidelity_reviewer.run_timeout_seconds` | Positive integer; default 1800. |
+| `registration.recovery.automatic_recovery_attempts` | Nonnegative integer; default 2; the recovery limit for registration publication operations. |
 | `tools.codex.executable`, `tools.claude_code.executable`, `tools.qwen.executable` | Absolute installed tool paths. |
 | `tools.<tool>.credential_profile` | Reference to provisioned service credentials, never the secret itself. |
 | `tools.<tool>.settings_profile` | Reference to service-managed tool settings and permitted operations. |
@@ -1030,8 +903,7 @@ The runtime reads `/etc/maestro/agents.toml`. Installation supplies this file. A
 | `repositories.<profile>.github.app_id`, `.installation_id`, `.app_slug` | Required positive App/installation identifiers and nonempty App slug for a GitHub destination profile. They must agree with the service-authenticated App and installation before any read or write. |
 | `repository_bindings.<binding_id>.repository`, `.profile` | Operator-provisioned normalized repository identity and named `repositories.<profile>` entry. Exactly one binding may match a repository. Registration collects and saves the immutable effective-profile snapshot under [source and publication selection](#source-and-publication-selection); it contains no secret. |
 
-Effective tool and repository configuration is validated and hashed before use; the registration snapshot retains the exact non-secret repository-profile fields and credential-profile identity needed for later recovery. Configuration changes affect only new attempts after validation, never a running agent or a saved attempt. Process behavior is fixed by the activity snapshot under [shared process definitions](#shared-process-definitions). Changing configuration does not reset an assignment recovery count. No duration default is assigned to other planning or execution roles. The registration fidelity-review setting in [review limits and decisions](#review-limits-and-decisions) is stored in the same file but has separate accounting and is fixed for each registration attempt.
-
+Effective tool and repository configuration is validated and hashed before use; the registration snapshot retains the exact non-secret repository-profile fields and credential-profile identity needed for later recovery. Configuration changes affect only new attempts after validation, never a running agent or a saved attempt. Process behavior is fixed by the activity snapshot under [shared process definitions](#shared-process-definitions). Changing configuration does not reset an assignment recovery count. No duration default is assigned to other planning or execution roles.
 
 ## Architecture loop
 
@@ -1177,7 +1049,7 @@ This follows registration's linked clarification pattern. Answers remain associa
 
 The architect maps the confirmed outcomes to development milestones and identifies the next bounded feature contributions. A feature packet has one responsible implementer, a usable result, the connections needed to produce it, and observable completion criteria. The implementer may divide the code into small internal steps without creating separate delivery and review cycles for disconnected parts. An enabling provider packet is valid when it names its consumer, demonstrates its actual boundary with a minimal caller, and does not claim the future consumer works.
 
-Development milestones may differ from project milestones. Their relationships must still show how all confirmed project outcomes will be delivered. Grouping work differently does not change the approved scope.
+Development milestones are the architect's groupings of related features and need not match the roadmap's outcomes one to one. Their relationships must still show how all confirmed project outcomes will be delivered. Grouping work differently does not change the approved scope.
 
 Parallel work is a first-class design concern. The architect identifies independent contributions, shared-code boundaries, integration points, and explicit dependencies so execution can use parallelism effectively. The breakdown describes what may run independently and what must precede other work; it does not assign start times, reserve execution slots, or schedule workers.
 
@@ -1302,7 +1174,7 @@ In one SQL transaction, the service validates the pending decision, context, exp
 
 Effective review allowance is the snapshotted base limit plus recorded grants minus completed rounds. A consumed decision cannot grant another attempt under a different request ID. For manual retry, another decision exists only while the snapshotted manual-attempt maximum remains. For review or output correction, a new decision may be created only after the previously granted allowance was consumed and the same exact work remains blocked; every extra round still requires a new explicit Owner action. Conflicting or stale submissions return 409 with current state. Work-disposition decisions change restrictions, not review or retry counts.
 
-Registration uses this handler for fidelity-review grants; the architecture loop uses it for fidelity-review and output-correction grants; Execution uses it for packet, integration-change, milestone and architectural-support review limits, manual retry, and re-registration disposition. The Execution-specific targets and response validation belong to `execution@1`; they do not extend the architecture-loop schema's process-local target enum. Registration response corrections retain their existing technical-recovery budget and `registration.retry` action. Cancellation, pause, stop and restart preserve every grant, reservation and consumption record.
+The architecture loop uses this handler for fidelity-review and output-correction grants; Execution uses it for packet, integration-change, milestone and architectural-support review limits, manual retry, and re-registration disposition. The Execution-specific targets and response validation belong to `execution@1`; they do not extend the architecture-loop schema's process-local target enum. Cancellation, pause, stop and restart preserve every grant, reservation and consumption record.
 
 After the saved receipt, the CLI refreshes the authoritative activity view to obtain base limits, grants, consumption, remaining allowance, and `owner_decisions`. Linked free-text answers cannot create a grant or disposition.
 
@@ -1892,19 +1764,19 @@ The following journeys connect the behavior defined in the sections above. Each 
 
 ### Register a project or selected portion
 
-**Starting condition:** The service and CLI are connected; repository and overview path are available. Actual assessment requires configured agents, source access, and package publication access.
+**Starting condition:** The service and CLI are connected. The planning documents exist in the repository, the workshop's independent review of them is saved, and the overview path is known. Checking requires source access and publication access.
 
 **Entry:** `/register <repository>` or Register project, with the required overview path and scope supplied during intake.
 
-**Expected journey result:** A ready package becomes active only after explicit confirmation of the exact candidate. Development does not start.
+**Expected journey result:** A checked record becomes active only after the Owner explicitly confirms the exact candidate. Development does not start.
 
 | Sequence and interaction | Trigger | System behavior | Expected result | Essential failure behavior |
 |---|---|---|---|---|
-| Supply entry, scope, and both role selections | Registration request | Read overview references, apply [intake and scope](#intake-and-scope), and record the explicit [tool and model selection](#tool-and-model-selection). | Intended project, confirmed whole/partial boundary, and supported architect and reviewer selections before architect launch; an existing process is reused. | Missing access, source, or required clarity is reported; unsupported or unverifiable model selection prevents launch. No guessed documents or silent scope expansion. |
-| Assess source | Validated intake | Use [assessment and review](#assessment-and-independent-review), [dependency checks](#purpose-and-dependency-checks), and [review limits](#review-limits-and-decisions). | Source-backed findings, non-blocking observations, and readiness or a specific needed decision. | Material blockers or unresolved disagreement pause at the configured limit; technical failure follows recovery rules. |
-| Inspect or answer | `/registration`, findings, or a linked question | Render the process and [package records](#package-structure); use the answer journey. | Exact findings, versions, limits, and retained decision records are visible. | Missing records and retrieval failures remain distinct; receipt is not package approval. |
-| Handle changed source | Relevant source commit changes | Apply [source consistency](#source-consistency). | Explicit choice to retain reviewed source or recheck updated source within the existing budget. | No mixed source versions or silent budget reset. |
-| Confirm | Deliberately focused Confirm registration | Apply [activation rules](#comparison-activation-and-cancellation). | Exact eligible candidate active and retrievable from GitHub. | Changed/ineligible candidate is rejected; uncertain delivery shows Outcome not confirmed. |
+| Supply entry and scope | Registration request | Read overview references and apply [intake and scope](#intake-and-scope). | Intended project, confirmed whole or partial boundary; an existing process is reused. | Missing access or source is reported. No guessed documents or silent scope expansion. |
+| Check the documents | Validated intake | Apply [checking the documents](#checking-the-documents) with the pinned [rules file](#the-rules-file). | Every rule passes and the workshop's review record covers exactly the pinned revision. | A failed rule stops registration with a plain report saved with the pinned revision; the next workshop session reads it first. |
+| Inspect | `/registration` | Render the process and the [registration record](#registration-record). | The pinned revision, rules version, scope and check result are visible. | Missing records and retrieval failures remain distinct. |
+| Handle changed source | Relevant source commit changes | Apply [source consistency](#source-consistency). | Explicit choice to retain the checked source or check the updated source. | No mixed source versions. |
+| Confirm | Deliberately focused Confirm registration | Apply [activation rules](#comparison-activation-and-cancellation). | Exact eligible candidate active and retrievable from GitHub. | Changed or ineligible candidate is rejected; uncertain delivery shows Outcome not confirmed. |
 | Cancel or go back | Explicit cancellation or Go back | Apply the same action rules. | Confirmed cancellation ends the attempt and retains saved history; Go back does not cancel. | No accidental action from ordinary conversation Enter; unknown outcome is reconciled from saved records. |
 
 ### Update a registration
@@ -1913,25 +1785,25 @@ The following journeys connect the behavior defined in the sections above. Each 
 
 **Entry:** Registration intake for the already registered project.
 
-**Expected journey result:** A reviewed revision can replace the active version while preserving history.
+**Expected journey result:** A checked revision can replace the active version while preserving history.
 
 | Interaction | Trigger | System behavior | Expected result | Essential failure behavior |
 |---|---|---|---|---|
 | Begin re-registration | Explicit request | Apply [re-registration rules](#re-registration). | Request identified as re-registration; new starts blocked until it ends. | Existing work prevents entry; unrelated projects are unaffected. |
-| Compare candidate | Compare action | Apply [version comparison](#comparison-activation-and-cancellation). | Additions, changes, removals, and reasons shown against the active version. | Exact version checks prevent silent substitution. |
-| Review and resolve | Assessment, answer, confirmation, or cancellation | Reuse the registration and answer journeys above. | Confirmed new version or retained prior active version, with history preserved. | Failure/cancellation retains prior active registration and does not restart project work. |
+| Compare candidate | Compare action | Apply [version comparison](#comparison-activation-and-cancellation). | Differences from the active version, with reasons, shown before confirmation. | Exact version checks prevent silent substitution. |
+| Check and confirm | Check, fix in the workshop, confirmation or cancellation | Reuse the registration journey above. | Confirmed new version or retained prior active version, with history preserved. | Failure or cancellation retains the prior active registration and does not restart project work. |
 
 ### Recover an interrupted registration
 
-**Starting condition:** Registration has saved process, source, review, and decision records.
+**Starting condition:** Registration has saved process, source and publication records.
 
-**Entry:** Agent failure, publication failure, service restart, or an uncertain confirmation/cancellation outcome.
+**Entry:** Publication failure, service restart, or an uncertain confirmation or cancellation outcome.
 
-**Expected journey result:** Activity resumes from the last verified step or pauses visibly at a configured limit, without false completion or duplicate effects.
+**Expected journey result:** The activity resumes from the last verified step or pauses visibly at a configured limit, without false completion or duplicate effects.
 
 | Interaction | Trigger | System behavior | Expected result | Essential failure behavior |
 |---|---|---|---|---|
-| Resume verified work | Technical interruption | Apply [technical recovery](#technical-recovery). | Reports, answers, versions, and review budget survive; unverified results stay incomplete. | Technical retry limit pauses activity and raises attention. |
+| Resume verified work | Interruption | Reapply saved steps under [publication recovery](#publication-recovery). | The pinned revision, check results and versions survive; unverified results stay incomplete. | The recovery limit pauses the activity and raises attention. |
 | Verify publication | Candidate or confirmation publication | Apply [publication and SQL consistency](#publication-and-sql-consistency) and [delegation checks](#agent-delegation). | Required commit and permitted changes verified on GitHub. | A reported or local-only commit cannot establish publication. |
 | Reconcile an action | Connection returns after unknown action outcome | Query saved outcome under [activation rules](#comparison-activation-and-cancellation). | Recorded result displayed; explicit retry cannot duplicate effects. | No automatic replay or inferred success. |
 
@@ -1941,11 +1813,11 @@ The following architectural mechanisms remain unresolved:
 
 | Area | Unspecified detail |
 |---|---|
-| Service interface | CLI and package reference contracts are defined above; executable request and package validators remain implementation work. |
+| Service interface | CLI and registration reference contracts are defined above; executable request and record validators remain implementation work. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQLite is selected under [SQLite storage](#sqlite-storage); physical tables and validators remain implementation work. SQL backup and restore are out of scope; ordinary service-restart and interrupted-operation recovery remain included. |
 | Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
-| Registration formats | Package records, index, and locations are defined above. Executable JSON Schemas and detailed source validation mechanics remain implementation work. Markdown source templates are defined in the Planning Guide. |
+| Registration formats | The rules file and the registration record contract are defined above. The registration record's exact file layout and how the workshop reads a saved rejection report remain to be settled. The rules-file loader and the validators remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
 | Execution implementation | Execution behavior, configuration, records, review, integration, Quality Assurance, stopping, recovery and completion are defined under [Execution](#execution). The `execution@1` schema, API handlers, Git journals, adapters, isolated-environment supervisor, physical SQL tables and installed operational evidence remain implementation work. |
 | Terminal behavior | Practical evaluation of message scrolling and the initial terminal dimensions. |

@@ -10,22 +10,6 @@ Independently verify that proposed work faithfully carries forward every accepte
 
 This role reviews decisions and work definitions. It does not design, implement, merge, deploy, or approve work on the Owner's behalf.
 
-## Registration assignment
-
-During registration, review both the software architect's assessment and the candidate registration package against the same exact source commit and recorded Owner decisions. Check that the package preserves scope, supplied outcomes, dependencies, completion requirements, versions, and retained decisions, and that material blockers are justified.
-
-Use the [registration review loop](../../../../docs/product/v1/architecture.md#assessment-and-independent-review) and its configured review budget. Package review adds no extra loop. The work-item correction rule below applies to later work assignments, not registration. Registration uses the Planning Guide's proportionate requirements; it does not impose additional quality-field approval gates from later assignments.
-
-The reviewer returns findings read-only. The architect amends the assessment or candidate; only the Owner confirms activation. Return the [registration agent response contract](../../../../docs/product/v1/architecture.md#registration-agent-response-contract), identifying the exact assessment and candidate reviewed. A completed review outcome does not activate registration.
-
-## Registration review authority
-
-The reviewer may identify material omissions, contradictions, unsupported claims, and unjustified blockers, and request specific corrections. Each blocking finding cites the controlling source or missing information, locates the affected assessment or package content, explains the impact on the promised outcome, and states the correction needed without prescribing a preferred redesign.
-
-Routine corrections within the agreed scope go directly to the architect without Owner approval. A decision outside their authority, or material disagreement remaining at the review limit, goes to the Owner through the service. Passing review establishes fidelity readiness only; other registration eligibility checks and final Owner confirmation still apply.
-
-The reviewer does not redesign the project, replace the architect's justified technical choices with personal preferences, add requirements, or activate a package. A missing essential connection cannot be dismissed as optional when the promised capability depends on it. Conversely, an improvement that does not prevent the agreed outcome remains non-blocking.
-
 ## Architecture-loop assignment
 
 Review the [architecture-loop outputs](../../../../docs/product/v1/architecture.md#independent-review-and-amendments) independently against the exact confirmed registration, source evidence, and recorded decisions. Check outcome coverage, bounded packets, completion criteria, dependencies, parallel opportunities, existing-code findings, project structure, specialist guidance, and essential setup and integration.
