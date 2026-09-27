@@ -33,6 +33,7 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - Bound the one correction: only findings that must be acted on go to the coder. "I would have done it differently" is not a finding.
   - Adopted (Owner agreed 2026-09-27).
 - Label what is known about existing code as Direct, Supported, Inferred, Speculative or Unknown.
+  - Adopted (Owner agreed 2026-09-27).
 - To discuss with the Owner: pstack's self-continuing goals (a loop that keeps going through the work) and self-merging (the agent merges what it has verified). Both are close to the builder and to Execution's automatic continuation. The limits to decide are that nothing starts the next phase without the Owner, and that a merge needs an independent check.
 - Keep out: unbounded reviewer swarms.
 
