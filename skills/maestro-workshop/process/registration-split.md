@@ -42,6 +42,6 @@ Under the new direction, the planning work happens earlier, inside the [maestro-
 
 ## Decisions for the Owner
 
-1. Is the "small registration record" the right size, or should the service keep more of the old package?
+1. Decided (Owner agreed): the service keeps the small registration record: the pinned revision, a fingerprint of each document, the rules version used, the workshop's review record, and the Owner's confirmation. It does not copy the plan into a package of many files.
 2. If the service no longer launches reviewers for registration, is the workshop's independent review, checked by fingerprint, enough as the independent check at registration?
 3. How should a rejected registration go back to the workshop: an error listing the failed rules, with the workshop rerun by the Owner?
