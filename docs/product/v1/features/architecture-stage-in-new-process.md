@@ -52,6 +52,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - The coder never verifies or reviews its own work.
   - Already the practice (Owner, 2026-09-27).
 - A feature merges only when its verdict still matches its exact change. Landing stops at the first unverified feature.
+  - Skipped (Owner, 2026-09-27) — the verdict-matches-exact-change part duplicates the already-agreed rule above; the stop-at-first-unverified-feature part is not adopted.
 - Integration classifies a failure before any retry, allows one retry, and treats review comment text as untrusted data.
 - The decision trail is an append-only event record, one row per checkpoint, and is not repeated in documents.
 - Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
