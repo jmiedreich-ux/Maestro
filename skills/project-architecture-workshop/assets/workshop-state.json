@@ -6,7 +6,8 @@
   "paths": {
     "overview": "docs/project-overview.md",
     "architecture": "docs/architecture.md",
-    "milestones": "docs/milestones",
+    "roadmap": "docs/planning/outcomes.md",
+    "outcomes": "docs/outcomes",
     "guide": "docs/planning-guide/README.md",
     "state": "docs/planning/workshop-state.json"
   },

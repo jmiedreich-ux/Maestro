@@ -20,7 +20,7 @@ A review records the gaps it found, including gaps it could not assess. A review
 |---|---|
 | Decision fidelity | Are agreed requirements and decisions preserved without omissions, invented approval, altered meaning, or silently resolved open questions? |
 | Architectural completeness | Could an implementer build and operate the described capability without inventing a missing architectural decision? Ask where it is defined, not whether it reads well. |
-| Cross-document consistency | Do architecture, milestone declarations, guides, schemas, roles, and handoffs agree, including configuration keys/defaults, record formats, and file layouts? |
+| Cross-document consistency | Do architecture, the roadmap and outcome documents, guides, schemas, roles, and handoffs agree, including configuration keys/defaults, record formats, and file layouts? |
 
 Each pass returns its own coverage and findings. Do not combine completeness and consistency into one verdict. A fidelity reviewer cannot establish completeness merely by finding no changed decisions. All passes use the common journey trace; fidelity checks the controlling decision, completeness the defining behavior, and consistency the agreement of all applicable representations.
 

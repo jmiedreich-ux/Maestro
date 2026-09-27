@@ -10,7 +10,8 @@ This guide describes the source material project architects supply for registrat
 |---|---|---|
 | Project overview | Identity, purpose, overall scope, current state, and authoritative source locations. | [Project overview](../assets/templates/project-overview.md) |
 | Architecture | Components, connections, data, journeys, interaction results, failure behavior, and constraints. | [Architecture](../assets/templates/architecture.md) |
-| Milestone declarations | Usable outcomes, scope, order, dependencies, architecture references, acceptance criteria, and definitions of done. Multiple declarations are supported. | [Milestone declaration](../assets/templates/milestone-declaration.md) |
+| Roadmap of Product Outcomes | The ordered list of outcomes with a "You see" line, status, evidence level, order, dependencies and alternatives considered. | [Roadmap](../assets/templates/roadmap-of-product-outcomes.md) |
+| Outcome documents | One per outcome: scope, architecture references, dependencies, acceptance criteria with a Result column, and definition of done. | [Outcome](../assets/templates/outcome.md) |
 
 Sources are Markdown files in the project repository, using the templates' consistent headings and tables. File and folder names are project-specific. Template prompts are replaced with project facts; unresolved details are identified explicitly rather than presented as completed work. Additional detail can be added under the relevant headings.
 
@@ -20,7 +21,7 @@ The templates prepare planning sources suitable for registration assessment. The
 
 Registration requires the repository and the repository-relative path to the project overview. For example, a repository may use `docs/project-overview.md`. The workshop reads that entry document and follows its source references rather than scanning folders or guessing which documents are authoritative.
 
-The overview lists the architecture and every included declaration. Each milestone identifies the specific architecture sections that explain its behavior and journeys. Dependency references include the qualified milestone reference and plain subject.
+The overview lists the architecture and the roadmap. The roadmap links each outcome document, and each outcome identifies the specific architecture sections that explain its behavior and journeys. Dependency references use the outcome's plain subject.
 
 Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/architecture.md#service-startup`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
 
@@ -33,9 +34,9 @@ The overview contains:
 - Plain project name, repository, and responsible architect: a person, agent, or both.
 - Intended purpose and overall inclusions and exclusions.
 - Existing capability, incomplete or broken areas, and supporting evidence.
-- The locations of authoritative architecture and milestone declarations.
+- The locations of the authoritative architecture and roadmap.
 
-The overview is the entry point, not a duplicate architecture or milestone catalogue. Detailed dependency evidence can remain at its authoritative location and be referenced.
+The overview is the entry point, not a duplicate architecture or outcome catalogue. Detailed dependency evidence can remain at its authoritative location and be referenced.
 
 ## Architecture
 
@@ -61,47 +62,27 @@ Every expected journey has an explained result. Every associated interface inter
 
 A journey connects these interactions. Architecture contains behavior, not delivery assignments. The detail must support development breakdown without inventing behavior or assuming a missing service or connection.
 
-## Milestone declarations
+## Roadmap of Product Outcomes
 
-Each declaration identifies its subject and designation, then lists its milestones in delivery order. Each milestone contains:
+The roadmap is a short ordered list of the product's outcomes. Each entry has a plain subject, a "You see" line, a status and an evidence level, and links to its outcome document. It also records the order and dependencies with the reason for each position, the alternatives considered for scope and ordering decisions, and unresolved information. It covers the whole product, including outcomes already delivered.
 
-- The usable outcome and included/excluded scope.
-- Required dependencies, including outcomes in other declarations.
+Each outcome has its own document containing:
+
+- The usable outcome, its "You see" line, and included and excluded scope.
+- Required dependencies, including outside capabilities with their evidence level.
 - References to architecture sections and journeys.
-- Acceptance criteria with observable results, verification, pass boundaries, and accepted exceptions.
+- Acceptance criteria with observable results, verification, pass boundaries, accepted exceptions and a Result column.
 - A definition of done identifying necessary evidence and reviews.
 
-Project milestones define outcomes; they do not pre-empt the later development breakdown. Architecture references explain behavior without copying it into declarations. Together, architecture and declarations must cover the complete usage journey and the prerequisites needed to deliver it.
+An outcome is a usable end state, not a task list. The roadmap does not list features or milestones; the architect groups features into milestones later. Architecture references explain behavior without copying it into outcome documents. Together, the architecture and outcome documents must cover the complete usage journey and the prerequisites needed to deliver it.
 
-Version values belong in metadata. Convention explanations, renumbering history, and naming comparisons between declarations do not belong in milestone content. References to other declarations express actual dependencies or delivery responsibilities.
+An outcome is delivered when every acceptance row is marked Done, with the date, revision, evidence and a plain-worded reason, or is an accepted exception. Roadmap status is read from the outcome document. The Owner may delegate that marking to the Maestro service; record the delegation.
 
 ## Naming, ordering, and versions
 
-Registration associates project milestones with a named declaration. Each declaration has a stable designation unique within its project. A project can have several declarations, regardless of the order in which their contents were authored.
+An outcome is identified by its plain subject, unique within the roadmap. A retired subject is not reused. Order is the list order in the roadmap. Reordering changes the roadmap version, not the outcomes. Dependencies name the outcome subject or an outside capability.
 
-A project-milestone reference combines the declaration designation, the milestone type and number, and a plain subject. Numbers are assigned sequentially within that declaration, not across the project. The number identifies the milestone; it does not determine its delivery position.
-
-| Record | Format example |
-|---|---|
-| Declaration | APP — Application |
-| Project milestone | APP-PM1 — Application startup · version 2 |
-| Development milestone | DM1 — Project registration · version 3 |
-| Planning document | PD1 — API contract · version 2 |
-| Work packet | WP1 — Implement registration input checks · version 1 |
-| Review | RV1 — Registration findings fidelity review · round 1 |
-| Replan | RP1 — Revise registration delivery sequence |
-
-These examples describe record formats, not assignments for this project. Subjects accompany coded references wherever displayed or referenced.
-
-Each declaration stores an ordered list of its milestone references. Inserting a milestone assigns its next unused identifier and places that reference at the required position. Reordering changes the list, not milestone identities. Dependencies between qualified references determine prerequisites across declarations; declaration creation order imposes no delivery order.
-
-An identifier remains stable when an item moves in delivery order or its title or content changes. Retired identifiers are not reused. Non-milestone record types retain their sequential per-type, per-project numbering. Random assignment and unexplained assignment gaps are prohibited.
-
-Maintain one project-specific convention list in the existing authoritative location, or under `Project conventions` in the installed planning guide. List each declaration designation, plain subject, and declaration path, plus allowed record types and prefixes. For a new project with no reserved naming authority, initial descriptive designations are routine architecture-document organization authorized by the workshop request; record them as architect choices. Never alter existing identifiers to fit a new scheme. Later additions follow the established authority, with Owner-authorized expansion when required; do not stop for each sequential item under an existing designation.
-
-Versions are separate from identities and ordering: changed records receive their next version, and previous versions remain available. An ordering change updates the declaration version, not unchanged milestone versions. Reviews identify the exact item and declaration versions reviewed; review rounds remain separate from document versions.
-
-Relationships are explicit references rather than encoded hierarchies. Each work packet has its own identity and a link to its development milestone. Moving it does not require a new identifier. Replans record reasons and affected records.
+A changed outcome document or roadmap receives its next version, and previous versions remain available. Reviews identify the exact versions reviewed; review rounds remain separate from document versions.
 
 ## Current capability and dependencies
 
@@ -113,11 +94,11 @@ Relationships are explicit references rather than encoded hierarchies. Each work
 
 Existing dependency claims identify their evidence level and source. Missing setup, credentials, services, or integration work remain explicit. Source inspection alone does not prove operation, and registration preparation does not require a full code audit.
 
-A declaration identifies dependencies required by its outcome, including those outside its scope. An unverified dependency is not silently treated as ready.
+An outcome document identifies dependencies required by its outcome, including those outside its scope. An unverified dependency is not silently treated as ready.
 
 ## Partial registration
 
-The overview may describe the whole project while registration selects specific milestones or a defined portion. The selected boundary identifies:
+The overview may describe the whole project while registration selects specific outcomes or a defined portion. The selected boundary identifies:
 
 - Included outcomes and exclusions.
 - Relevant architecture sections and journeys.
@@ -149,7 +130,7 @@ Adequate information is not repeatedly rejected over preferences. The workshop d
 
 ## Relationship to development breakdown
 
-Architecture describes how the capability works. Project declarations define the usable delivery outcomes and evidence. Development milestones make manageable contributions linked to both.
+Architecture describes how the capability works. The roadmap and outcome documents define the usable delivery outcomes and evidence. Development milestones, which the architect creates later, make manageable contributions linked to both.
 
 If a breakdown requires an undefined behavior, assumed prerequisite, or unspecified completion boundary, the responsible source needs clarification before that affected breakdown proceeds. Completed task lists or disconnected components do not substitute for the promised usable outcome.
 
