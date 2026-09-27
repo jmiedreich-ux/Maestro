@@ -13,16 +13,36 @@
     }
   },
   "values": {
-    "confidence_tags": ["Direct", "Supported", "Inferred", "Speculative", "Unknown"],
-    "evidence_levels": ["Reported", "Supported by source inspection", "Verified in operation", "Not applicable for unbuilt work"],
-    "outcome_status": ["Not started", "In progress", "Delivered"]
+    "confidence_tags": [
+      "Direct",
+      "Supported",
+      "Inferred",
+      "Speculative",
+      "Unknown"
+    ],
+    "evidence_levels": [
+      "Reported",
+      "Supported by source inspection",
+      "Verified in operation",
+      "Not applicable for unbuilt work"
+    ],
+    "outcome_status": [
+      "Not started",
+      "In progress",
+      "Delivered"
+    ]
   },
   "location_rules": {
     "path_pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]*$",
-    "fragment": "optional heading after #; the heading must exist in the target document",
-    "forbidden_decoration": ["backticks", "quotes", "markdown link syntax"],
+    "fragment": "optional; written after a #; a heading in the target document that must exist there",
+    "forbidden_decoration": [
+      "backticks",
+      "quotes",
+      "markdown link syntax"
+    ],
     "resolved_from": "repository root",
-    "target_must_exist_at_pinned_revision": true
+    "target_must_exist_at_pinned_revision": true,
+    "path_pattern_applies_to": "the part of the location before any #"
   },
   "text_rules": {
     "no_template_prompts": "A required field or section must not still contain a bracketed template prompt such as [Plain name].",
@@ -41,27 +61,66 @@
         "Unresolved information"
       ],
       "field_tables": {
-        "Project identity": ["Project name", "Repository", "Responsible architect", "Document version"],
-        "Audience and problem": ["Who it is for", "Problem it solves", "Confidence"],
-        "Overall scope": ["Included", "Excluded"]
+        "Project identity": [
+          "Project name",
+          "Repository",
+          "Responsible architect",
+          "Document version"
+        ],
+        "Audience and problem": [
+          "Who it is for",
+          "Problem it solves",
+          "Confidence"
+        ],
+        "Overall scope": [
+          "Included",
+          "Excluded"
+        ]
       },
       "tables": {
-        "Overall scope": { "columns": ["Boundary", "Description", "Confidence"], "confidence_column": "Confidence" },
+        "Overall scope": {
+          "columns": [
+            "Boundary",
+            "Description",
+            "Confidence"
+          ],
+          "confidence_column": "Confidence"
+        },
         "Current state": {
-          "columns": ["Capability or area", "Current condition", "Evidence level", "Evidence or authoritative source", "Known missing prerequisites"],
+          "columns": [
+            "Capability or area",
+            "Current condition",
+            "Evidence level",
+            "Evidence or authoritative source",
+            "Known missing prerequisites"
+          ],
           "min_rows": 1,
-          "value_columns": { "Evidence level": "evidence_levels" }
+          "value_columns": {
+            "Evidence level": "evidence_levels"
+          }
         },
         "Authoritative sources": {
-          "columns": ["Source type", "Subject or designation", "Repository-relative location"],
+          "columns": [
+            "Source type",
+            "Subject or designation",
+            "Repository-relative location"
+          ],
           "location_column": "Repository-relative location",
           "allowed_source_types": {
-            "Architecture": { "exactly": 1 },
-            "Roadmap of Product Outcomes": { "exactly": 1 }
+            "Architecture": {
+              "exactly": 1
+            },
+            "Roadmap of Product Outcomes": {
+              "exactly": 1
+            }
           }
         }
       },
-      "confidence_required_in": ["Purpose", "Audience and problem", "Overall scope"]
+      "confidence_required_in": [
+        "Purpose",
+        "Audience and problem",
+        "Overall scope"
+      ]
     },
     "architecture": {
       "title": "# <project name> — Architecture",
@@ -73,11 +132,23 @@
         "Journeys and interactions",
         "Constraints and unresolved details"
       ],
-      "identity_fields": ["Document version"],
+      "identity_fields": [
+        "Document version"
+      ],
       "journeys": {
         "section": "Journeys and interactions",
-        "required_per_journey": ["Starting condition", "Entry", "Expected journey result"],
-        "interaction_fields": ["Starting condition", "Trigger", "System behavior", "Expected result", "Essential failure behavior"]
+        "required_per_journey": [
+          "Starting condition",
+          "Entry",
+          "Expected journey result"
+        ],
+        "interaction_fields": [
+          "Starting condition",
+          "Trigger",
+          "System behavior",
+          "Expected result",
+          "Essential failure behavior"
+        ]
       },
       "confidence_tags_required": false
     },
@@ -91,23 +162,46 @@
         "Unresolved information"
       ],
       "field_tables": {
-        "Roadmap identity": ["Project", "Roadmap version", "Status", "Architecture source"]
+        "Roadmap identity": [
+          "Project",
+          "Roadmap version",
+          "Status",
+          "Architecture source"
+        ]
       },
       "tables": {
         "Ordered outcomes": {
-          "columns": ["Outcome", "You see", "Status", "Evidence level"],
+          "columns": [
+            "Outcome",
+            "You see",
+            "Status",
+            "Evidence level"
+          ],
           "min_rows": 1,
-          "value_columns": { "Status": "outcome_status", "Evidence level": "evidence_levels" },
+          "value_columns": {
+            "Status": "outcome_status",
+            "Evidence level": "evidence_levels"
+          },
           "outcome_column": "Outcome",
           "outcome_cell_links_to": "an outcome document that exists in the outcomes folder"
         },
         "Order and dependencies": {
-          "columns": ["Outcome", "Depends on", "Why this comes here", "Confidence"],
+          "columns": [
+            "Outcome",
+            "Depends on",
+            "Why this comes here",
+            "Confidence"
+          ],
           "confidence_column": "Confidence",
           "outcomes_must_be_in": "Ordered outcomes"
         },
         "Alternatives considered": {
-          "columns": ["Decision", "Options considered", "Chosen and why", "Confidence"],
+          "columns": [
+            "Decision",
+            "Options considered",
+            "Chosen and why",
+            "Confidence"
+          ],
           "confidence_column": "Confidence"
         }
       },
@@ -125,22 +219,45 @@
         "Unresolved details"
       ],
       "field_tables": {
-        "Outcome": ["Outcome", "Version", "You see", "Confidence"]
+        "Outcome": [
+          "Outcome",
+          "Version",
+          "You see",
+          "Confidence"
+        ]
       },
-      "scope_lines": ["Included", "Excluded"],
+      "scope_lines": [
+        "Included",
+        "Excluded"
+      ],
       "scope_lines_carry_confidence": true,
       "tables": {
         "Architecture and journeys": {
-          "columns": ["Required behavior or journey", "Architecture section"],
+          "columns": [
+            "Required behavior or journey",
+            "Architecture section"
+          ],
           "location_column": "Architecture section"
         },
         "Dependencies": {
-          "columns": ["Required dependency", "Reference", "Current state or delivery responsibility"]
+          "columns": [
+            "Required dependency",
+            "Reference",
+            "Current state or delivery responsibility"
+          ]
         },
         "Acceptance criteria": {
-          "columns": ["Expected result and conditions", "Pass boundary", "Verification and evidence", "Accepted exception", "Result"],
+          "columns": [
+            "Expected result and conditions",
+            "Pass boundary",
+            "Verification and evidence",
+            "Accepted exception",
+            "Result"
+          ],
           "min_rows": 1,
-          "result_column_may_be_blank": true
+          "result_column_may_be_blank": true,
+          "done_result_format": "Done, then the date, the revision, the evidence and a plain-worded reason",
+          "accepted_exception_value": "must be written out; None and blank do not count as an accepted exception"
         }
       },
       "title_must_match_roadmap_subject": true,
@@ -151,7 +268,7 @@
     "The overview lists exactly one Architecture and exactly one Roadmap of Product Outcomes.",
     "Every location in the overview and every architecture reference in the roadmap and outcome documents points to a document that exists at the pinned revision.",
     "Every outcome in the roadmap's Ordered outcomes table links to an outcome document, and every outcome document in the outcomes folder is listed in the roadmap.",
-    "An outcome's status in the roadmap is Delivered only when every acceptance row in its document has a Result or an accepted exception.",
+    "An outcome's status in the roadmap is Delivered only when every acceptance row in its document either has a Done result with the date, revision, evidence and a plain-worded reason, or names an accepted exception written out in full (None and blank do not count).",
     "Outcome subjects are unique within the roadmap."
   ]
 }

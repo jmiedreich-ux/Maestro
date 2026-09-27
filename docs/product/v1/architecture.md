@@ -113,7 +113,7 @@ Continuation and recovery use the recorded version and hashes. A missing, unsupp
 
 ### Shared process definitions
 
-Registration and the architecture loop use the same relative configuration layout: `<process>.architect.run_timeout_seconds`, `<process>.fidelity_reviewer.run_timeout_seconds`, `<process>.recovery.automatic_recovery_attempts`, and `<process>.maximum_fidelity_reviews`, with `registration` or `architecture_loop` as the process name. Values and consumed allowances remain separate for each process and activity. Shared tool and workspace settings remain outside these sections. Legacy top-level registration timeout and recovery keys are invalid, not aliases. Defaults and accounting remain defined in the process-specific settings and review-limit sections.
+The architecture loop uses this relative configuration layout: `architecture_loop.architect.run_timeout_seconds`, `architecture_loop.fidelity_reviewer.run_timeout_seconds`, `architecture_loop.recovery.automatic_recovery_attempts`, and `architecture_loop.maximum_fidelity_reviews`. Registration launches no agents; its only setting here is `registration.recovery.automatic_recovery_attempts`, for publication operations. Values and consumed allowances remain separate for each process and activity. Shared tool and workspace settings remain outside these sections. Legacy top-level registration timeout and recovery keys are invalid, not aliases. Defaults and accounting remain defined in the process-specific settings and review-limit sections.
 
 The runtime uses one service-owned TOML file, `/etc/maestro/agents.toml`, for shared settings and process definitions. Registration and the architecture loop use separate sections in that file. The file describes how each process uses runtime capabilities; it is not limited to numeric settings.
 
@@ -144,7 +144,7 @@ For registration, the output is the [registration record](#registration-record),
 
 Architecture-loop outputs include the investigation, code-direction decisions, project structure, specialist definitions and starting context, development milestones, work packets, and their review and confirmation references. Specialist roles and any maintained memory remain close to the relevant source. A location rule such as source-local placement requires a resolved permitted path; a descriptive label alone is not a valid destination. Their record fields, paths, and publication rules are defined under [architecture output locations and records](#architecture-output-locations-and-records) and [publication, recovery, and cancellation](#publication-recovery-and-cancellation).
 
-A shared handler does not make all process rules interchangeable. Registration retains fresh agent conversations, except for capacity-only continuation within the same assignment, and its package activation rules; the architecture loop requires a persistent architect session and confirms a breakdown. Both stop at their defined completion boundary. Execution remains a separate manual start and its policies are not supplied by these definitions.
+A shared handler does not make all process rules interchangeable. Registration launches no agents and has its own record activation rules; the architecture loop requires a persistent architect session and confirms a breakdown. Both stop at their defined completion boundary. Execution remains a separate manual start and its policies are not supplied by these definitions.
 
 ### Whole-product architectural evaluation
 
@@ -179,7 +179,7 @@ The shared operation boundary is:
 | Cancel run | Request termination and report whether it actually stopped. A cancellation request alone is not proof of termination; saved work is not undone. |
 | Reconnect after interruption | Recover run status where the tool supports it; otherwise report uncertainty. Do not silently start a replacement. |
 
-For registration, the service supplies the software architect assignment, the adapter launches the selected tool, and the architect assesses the source and prepares the candidate package. The adapter returns progress and the final artifacts. The service validates and saves them, then arranges independent review. The adapter does not decide registration readiness.
+For the architecture loop, the service supplies the architect assignment, the adapter launches the selected tool, and the architect prepares its outputs. The adapter returns progress and the final artifacts. The service validates and saves them, then arranges independent review. The adapter does not decide readiness.
 
 The service retains control of content validation, durable state, review and retry budgets, question routing, and registration activation. Adapter transport and process handling do not replace deterministic wrapper checks.
 
@@ -195,7 +195,7 @@ Automatic model substitution is disabled in the effective tool configuration. A 
 
 #### Tool transport
 
-The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each registration run uses a fresh tool conversation except capacity-only continuation within the same assignment under [context management](#checkpoints-and-safe-continuation). A supported continuation may retain that exact conversation after compaction; this grants no general registration-session persistence. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation and event contract is defined under [persistent-session adapter contract](#persistent-session-adapter-contract).
+The Python adapter uses argument arrays and local pipes, not an interactive terminal or shell-built command string. Each run outside the architecture loop uses a fresh tool conversation except capacity-only continuation within the same assignment under [context management](#checkpoints-and-safe-continuation). A supported continuation may retain that exact conversation after compaction; this grants no general session persistence. Its saved session identifiers are diagnostic references, not permission to resume another project's conversation. The architecture loop instead requires its own [persistent architect session](#persistent-architect-session); its continuation and event contract is defined under [persistent-session adapter contract](#persistent-session-adapter-contract).
 
 | Tool | Transport and result handling |
 |---|---|
@@ -208,21 +208,21 @@ Each adapter targets an explicitly recorded, capability-checked tool release. Co
 
 #### Agent workspaces
 
-Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; a registration attempt uses `<project-id>/<activity-id>/` beneath it. The registration attempt ID is the registration activity ID, not a second identity. Existing references to `<registration-attempt-id>` mean this same value; the registration version and individual run IDs remain separate. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
+Workspaces are service-managed on the Linux AI box. The configurable root defaults to `/var/lib/maestro/workspaces/`; an activity uses `<project-id>/<activity-id>/` beneath it. The attempt ID is the activity ID, not a second identity. Existing references to `<registration-attempt-id>` mean this same activity ID; individual run IDs remain separate. Within the attempt, each launch uses `runs/<run-id>/` as its workspace, containing `source/` at the exact assigned repository revision, `input/` for immutable assigned artifacts, and `output/` for new artifacts. The adapter starts the agent with its assigned workspace as the working directory. Separate attempt and run directories prevent output collisions between projects and recovery attempts.
 
 The fidelity reviewer has a separate workspace containing the exact source, architect output under review. These files are read-only; the reviewer writes to its own output directory and cannot amend the architect's files. Both roles use a Linux mount namespace that makes source, assignment, and prior-artifact paths read-only. Only assigned output and scratch paths are writable. The agent runs without privileges to change mounts, escape its process group, or access another run's workspace. Folder names and instructions alone do not enforce these boundaries.
 
-The service places the exact assessment and candidate in the reviewer's input area and checks their hashes. It records each artifact's original identity and assigned relative path. The reviewer returns these assigned references. Permission to write output through the agent tool does not make the source or input mounts writable.
+The service places the exact architect output in the reviewer's input area and checks their hashes. It records each artifact's original identity and assigned relative path. The reviewer returns these assigned references. Permission to write output through the agent tool does not make the source or input mounts writable.
 
 Service-managed tool settings pre-authorize only assigned operations. An unexpected permission request is denied and reported as a missing-permission failure; it cannot hang waiting for a terminal answer. Required credentials are provisioned for the service account before use, with no secrets in assignment files or logs. **Temporary Owner-approved exception, 2026-09-18:** the subscription login files required by an approved Codex or Claude CLI route may be mounted read-only only into that route’s isolated runtime. The service records only the named profile and approval, never a secret value; the exception grants no GitHub or Owner authority and applies only until a credential-broker transport replaces it. Agents have no GitHub write credentials; registration record publication is a separate service-owned operation subject to wrapper checks. Repository instructions are assessment inputs and cannot expand the assigned role's permissions.
 
-Completed, cancelled, and interrupted workspaces remain until explicitly removed; automatic cleanup is outside the initial behavior. Removal is permitted only when no agent uses the workspace and no pending review or recovery depends on it. Removing a workspace does not remove SQL registration history or published GitHub documents. Those durable records remain authoritative; workspace files support inspection and recovery.
+Completed, cancelled, and interrupted workspaces remain until explicitly removed; automatic cleanup is outside the initial behavior. Removal is permitted only when no agent uses the workspace and no pending review or recovery depends on it. Removing a workspace does not remove SQL history or published GitHub documents. Those durable records remain authoritative; workspace files support inspection and recovery.
 
 #### Assignment delivery and clarification
 
 The service writes UTF-8 `assignment.json` at the run workspace root and records its SHA-256 before launch. It contains:
 
-- Project, registration activity, assignment identity, run identity, parent assignment when applicable, and assigned role.
+- Project, activity, assignment identity, run identity, parent assignment when applicable, and assigned role.
 - Role responsibilities and the specific task.
 - Exact source revision, document paths, selected scope, recorded decisions, relevant answers, and outstanding questions.
 - Prior findings and candidate references when continuing work.
@@ -231,13 +231,13 @@ The service writes UTF-8 `assignment.json` at the run workspace root and records
 
 The adapter launches the selected tool and model in the workspace with instructions to read this file. Each run receives a fixed assignment snapshot. Later answers remain recorded by the service and enter a follow-up assignment; they do not change a running assignment.
 
-Clarification can contain several questions, several answers, and additional follow-ups. The complete exchange stays linked to the same registration activity. An agent returning clarification ends that run. A follow-up assignment supplies the relevant saved context rather than relying on prior session memory. Incomplete answers or newly identified ambiguity can produce specific follow-up questions without resetting the fidelity review budget.
+Clarification can contain several questions, several answers, and additional follow-ups. The complete exchange stays linked to the same activity. An agent returning clarification ends that run. A follow-up assignment supplies the relevant saved context rather than relying on prior session memory. Incomplete answers or newly identified ambiguity can produce specific follow-up questions without resetting the fidelity review budget.
 
 The architect resumes when answers needed for its next step are available. Questions that do not prevent that step may remain open. Individual answer arrival does not itself launch another run.
 
 #### Assignment and run identity
 
-An assignment identifies one assessment or review and tracks its automatic retry budget. A run identifies one agent launch. The initial launch, automatic recovery, and manual retry each receive a different `run_id` under the same `assignment_id`. A clarification follow-up receives a new assignment linked to the previous one because its saved inputs have changed. It remains within the same registration activity and review budget.
+An assignment identifies one assessment or review and tracks its automatic retry budget. A run identifies one agent launch. The initial launch, automatic recovery, and manual retry each receive a different `run_id` under the same `assignment_id`. A clarification follow-up receives a new assignment linked to the previous one because its saved inputs have changed. It remains within the same activity and review budget.
 
 Before launch, one SQL transaction reserves the run and marks it as the assignment's current run. The supervisor unit is created once for that reservation. Before repeating a start request, the service checks whether the unit already exists. The record contains the run kind, assignment snapshot hash, source and decision versions, model selection, duration, configuration hash, launch time, supervisor identity, and available tool session/thread/turn identifiers. The reservation prevents simultaneous dispatchers from launching the same assignment.
 
@@ -267,11 +267,11 @@ The service checks that the returned response matches the assigned project, acti
 
 The service saves the validated response, findings, questions, and artifact references before advancing the activity. A successful tool exit alone is insufficient. Missing or invalid output enters [technical recovery](#technical-recovery).
 
-A valid architect assessment proceeds to independent fidelity review. Clarification waits for the necessary answers. Passing review still requires registration eligibility checks and explicit final confirmation before activation.
+A valid architect assessment proceeds to independent fidelity review. Clarification waits for the necessary answers. Passing review still requires eligibility checks and explicit final confirmation before activation.
 
 #### Cancellation
 
-The service records cancellation and asks the adapter to stop the active run. The CLI displays **Stopping** until termination is confirmed, then **Cancelled** for an explicit registration cancellation. A technical or timeout stop instead leaves the activity paused under recovery rules. Saved findings and files remain available; unfinished output cannot advance registration. Cancellation does not undo commits or previously accepted work.
+The service records cancellation and asks the adapter to stop the active run. The CLI displays **Stopping** until termination is confirmed, then **Cancelled** for an explicit cancellation. A technical or timeout stop instead leaves the activity paused under recovery rules. Saved findings and files remain available; unfinished output cannot advance the activity. Cancellation does not undo commits or previously accepted work.
 
 If termination cannot be confirmed, the CLI displays **Stop unconfirmed** and the service blocks replacement runs until the original status is resolved. A completion received while cancellation is pending is retained but cannot advance the activity. Sending a stop request is not proof of termination.
 
@@ -354,7 +354,7 @@ The service owns a versioned SQL checkpoint linked to the assignment and context
 
 At a service-controlled safe boundary, save that checkpoint before an intentional compaction or replacement. For autonomous tool turns, use supported interruption/checkpoint controls; when unavailable, preserve already verified records and apply the existing supervised stop procedure. Never rely on a nearly full model having enough space to generate a fresh summary. Reconcile pending writes and confirm child termination before launching replacement work. Unknown effects pause continuation.
 
-Use supported native compaction when it preserves the exact conversation identity and authoritative input bindings. Otherwise create a linked replacement session with the same role, tool, and exact model. Supply a new immutable continuation envelope under the same assignment identity, referencing the verified checkpoint and only relevant authoritative material. Its run/session bindings identify the continuing process; original budgets and outcome identity remain unchanged. Store the envelope and checkpoint input snapshot in a service-assigned read-only continuation directory without overwriting the original assignment. Existing assignment instructions identify the checkpoint input path; no agent-authored registration or architecture response fields are added. Preserve the logical session lineage while assigning a new context segment after compaction or replacement. A new process or run alone does not reset context occupancy. Reviewer context remains independent from architect context.
+Use supported native compaction when it preserves the exact conversation identity and authoritative input bindings. Otherwise create a linked replacement session with the same role, tool, and exact model. Supply a new immutable continuation envelope under the same assignment identity, referencing the verified checkpoint and only relevant authoritative material. Its run/session bindings identify the continuing process; original budgets and outcome identity remain unchanged. Store the envelope and checkpoint input snapshot in a service-assigned read-only continuation directory without overwriting the original assignment. Existing assignment instructions identify the checkpoint input path; no agent-authored response fields are added. Preserve the logical session lineage while assigning a new context segment after compaction or replacement. A new process or run alone does not reset context occupancy. Reviewer context remains independent from architect context.
 
 Record capacity handling as a service event with reason `context_capacity` and disposition `checkpointing`, `continuing`, or `paused`. These are supervisor metadata, not new agent success responses or process completion states. An intentionally capacity-stopped partial run need not return a final JSON response; that absence is not a missing-output failure. Its partial artifacts remain unaccepted drafts. Continuing work must still return the required complete, validated response before any process advancement; a capacity checkpoint never substitutes for it. Existing process views use running during checkpoint work and paused when continuation is unsafe, with a plain reason. Capacity classification requires adapter evidence or the service's fit/threshold check; agent prose alone cannot bypass failure accounting.
 
@@ -368,7 +368,7 @@ If one compaction or replacement does not restore adequate room, pause with the 
 
 Existing activity details show active and waiting time, input/output tokens, latest context used/limit/percentage with timestamp and quality, and capacity-continuation status. GET `/activities/{activity_id}` returns these observations in a `runtime` object with `runs`, `sessions`, and `assignment_totals` arrays keyed by their saved identities. Each entry includes measurement coverage and observation time; no runs yields empty arrays, not fabricated zero measurements. Existing activity-change events identify the changed activity and prompt a refreshed read. Service-owned runtime details carry these records alongside process data; they do not alter architecture or registration artifact schemas. SQL-backed activity updates carry changes through existing API/event delivery. Unknown and stale measurements are explicit. A capacity percentage is not a work-completion percentage.
 
-Runtime implementation owns persistence, adapter measurement normalization, thresholds, checkpoint validation, and safe continuation. CLI implementation owns displaying those recorded facts. Registration and the architecture loop use this common handling without separate accounting implementations. Persistent-session integration must demonstrate that context and totals survive successive runs and that verified findings, decisions, and pending answers survive continuation.
+Runtime implementation owns persistence, adapter measurement normalization, thresholds, checkpoint validation, and safe continuation. CLI implementation owns displaying those recorded facts. The architecture loop and Execution use this common handling without separate accounting implementations. Persistent-session integration must demonstrate that context and totals survive successive runs and that verified findings, decisions, and pending answers survive continuation.
 
 ## Connections and data
 
@@ -470,7 +470,7 @@ Durable information follows this sequence:
 
 Service-wide requests remain service-wide. Saved records remain available after CLI exit or connection loss. Startup retrieves saved state through the service; reconnection also retrieves missed updates.
 
-Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration-package publication; [publication and SQL consistency](#publication-and-sql-consistency) defines the separate durable operations.
+Read-only lookups do not require a new durable record before handling. SQL recording does not replace registration record publication; [publication and SQL consistency](#publication-and-sql-consistency) defines the separate durable operations.
 
 ### Identity and ordering
 
@@ -727,7 +727,7 @@ A failed check produces a plain report of which rule failed, in which document a
 
 ### The rules file
 
-The rules are in [registration-rules.json](../../../skills/maestro-workshop/process/registration-rules.json). The file arrives with a tested release. When the CLI starts it checks for a newer approved version, meaning one marked passed and never an arbitrary change on master, tells the Owner that one exists and says which version it used. Each registration keeps the rules version it started with, so the rules cannot change halfway through, and the service records the version used. A missing or invalid rules file blocks new registrations with a plain error; read-only views stay available.
+The rules are in [registration-rules.json](../../../skills/maestro-workshop/process/registration-rules.json). The service starts with the rules file from its release. When the CLI starts it downloads the newer approved version if one exists, meaning one marked passed and never an arbitrary change on master, validates it, makes it available to the service, and tells the Owner which version it found and which one it used. What happens when the download fails is not yet settled. Each registration keeps the rules version it started with, so the rules cannot change halfway through, and the service records the version used. A missing or invalid rules file blocks new registrations with a plain error; read-only views stay available.
 
 ### Registration record
 
@@ -980,7 +980,15 @@ The agent returns the assigned identities, session, source and decision version,
 | All other results | `failure` is null. Identity, source, input manifest, role, and allowed outputs match the assignment. |
 | Duplicate response | Canonically equal already-accepted content returns its saved receipt; conflicting or stale output cannot overwrite current records. |
 
-Use the common finding/question meanings already defined for registration, with the exact architecture schema fields. Empty optional lists remain arrays; an inapplicable scalar/object is null only where the schema allows it. Technical errors go through bounded correction/recovery, not a substantive fidelity rejection. Review counts change only for accepted completed reviews.
+Findings and questions use these meanings, with the exact architecture schema fields.
+
+Each finding contains `local_key`, `subject`, `severity` (`blocking` or `non_blocking`), `explanation`, `impact`, `requested_correction`, `source_refs`, and `affected_items`. Text fields are nonempty. Source references contain a repository-relative `path`, `commit`, and a heading or line locator. Missing-source findings instead include a nonempty `missing_information` explanation and may have an empty source-reference list. Affected-item references include the existing identifier, plain subject, and version. Empty affected-item lists are permitted for project-wide findings.
+
+Each question contains `local_key`, plain `subject`, `question`, `reason`, `recipient` (`project_architect` or `owner`), linked finding keys, and `options`. Options contain a local key, plain label, tradeoff, and recommendation reason or null. An empty options array requests written information; all questions allow written clarification. Questions follow existing authority boundaries and do not solicit approval for routine technical choices.
+
+Local keys are unique within the response and only link its entries. They are not outcome, finding, or review numbers. The service assigns persistent record identities and resolves local links when saving.
+
+Empty optional lists remain arrays; an inapplicable scalar/object is null only where the schema allows it. Technical errors go through bounded correction/recovery, not a substantive fidelity rejection. Review counts change only for accepted completed reviews.
 
 ### Architecture API operations
 
@@ -1106,9 +1114,9 @@ The architect maintains the role definition and creates starting context. Specia
 
 #### Architecture record contract
 
-JSON records use `schema_version: 1`. Common record metadata contains `project_id`, `activity_id`, `id`, `subject`, `version`, `registration_ref`, and `source_commit`. Other published record references use `publishedRef`: identity and subject, version, repository-relative path, SHA-256, and exact Git commit. Registration package references instead follow [candidate publication](#candidate-publication); they are not converted to generic file references. Within one output set, links use identity, subject, version, and relative path; their hashes resolve through the manifest inventory. This avoids circular hashes between a milestone and its packets. The publishing commit is supplied by the set's verified publication reference rather than embedded before it exists.
+JSON records use `schema_version: 1`. Common record metadata contains `project_id`, `activity_id`, `id`, `subject`, `version`, `registration_ref`, and `source_commit`. Other published record references use `publishedRef`: identity and subject, version, repository-relative path, SHA-256, and exact Git commit. Registration references instead follow [candidate publication](#candidate-publication); they are not converted to generic file references. Within one output set, links use identity, subject, version, and relative path; their hashes resolve through the manifest inventory. This avoids circular hashes between a milestone and its packets. The publishing commit is supplied by the set's verified publication reference rather than embedded before it exists.
 
-Individual registered outcome references are distinct from the package reference. On architecture entry, the service reads the SQL-confirmed candidate and its verified manifest inventory and converts its milestone/requirement references for `project_outcome_refs` and investigation `outcome_refs`: `record_id` becomes `id`, `record_version` becomes `version`, and `subject` is preserved. Prefix the package-relative path with `.maestro/registrations/versions/<registration-version>/candidates/<candidate-id>/`; take `sha256` from that file's verified inventory entry and `commit` from the exact confirmed package publication reference, not the product source commit or current branch head. The service verifies the file bytes and embedded identity, subject, type and version against the inventory, saves the mapping with architecture inputs in SQL, and supplies it to architect and reviewer assignments. Output validation requires an exact mapping to an included confirmed outcome; missing, mismatched, out-of-scope or stale references block the affected output. Registration's own package-local references and its package-level `registrationRef` remain unchanged. Re-registration requires a newly verified mapping for the new activity while retaining earlier mappings as history.
+Individual registered outcome references are distinct from the registration reference. On architecture entry, the service reads the SQL-confirmed registration record and the roadmap and outcome documents at its pinned revision, and converts each outcome document into the references for `project_outcome_refs` and investigation `outcome_refs`: `id` is the outcome's plain subject, `version` is the outcome document's version, the path is the document's repository-relative path, `sha256` is that document's fingerprint from the registration record, and `commit` is the pinned source commit of the confirmed registration, not the current branch head. The service verifies the file bytes and the embedded subject and version against the recorded fingerprint, saves the mapping with architecture inputs in SQL, and supplies it to architect and reviewer assignments. Output validation requires an exact mapping to an included confirmed outcome; missing, mismatched, out-of-scope or stale references block the affected output. The registration's own `registrationRef` remains unchanged. Re-registration requires a newly verified mapping for the new activity while retaining earlier mappings as history.
 
 | Record | Required fields beyond common metadata |
 |---|---|
@@ -1157,7 +1165,7 @@ Stable targets and choices are:
 
 | Target | Permitted choices and effect |
 |---|---|
-| `fidelity_review` | `grant_one` or `remain_paused` for registration or architecture-loop fidelity review. |
+| `fidelity_review` | `grant_one` or `remain_paused` for architecture-loop fidelity review. |
 | `output_correction` | `grant_one` or `remain_paused` for an architecture-loop correction assignment. |
 | `execution_packet_review` | `grant_one` or `remain_paused` for the exact packet review; the packet stays unapproved and any queue entry stays ineligible until it passes. |
 | `execution_integration_change_review` | `grant_one` or `remain_paused` for the exact Integration Manager change review; a blocked FIFO head remains at the head. |
@@ -1224,7 +1232,7 @@ The independent reviewer checks the investigation, persistent foundations, and b
 - Setup and essential connections are included so the combined result is usable.
 - Project structure, specialist guidance, and architectural quality decisions are consistent with the breakdown.
 
-The architecture loop has its own configurable maximum of **two fidelity reviews by default**, separate from registration. The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The service reads the positive integer `architecture_loop.maximum_fidelity_reviews` from the shared TOML file; omission uses the stated default, and an invalid value blocks initiation. The activity snapshot fixes that limit. A valid completed independent review consumes one round; clarification, architect amendments, technical failures, and duplicate delivery do not. The first passing review can proceed to confirmation without using the remaining round. Technical recovery and output correction use the separate allowances below. The provisional execution work-item correction limit does not govern this review.
+The architecture loop has its own configurable maximum of **two fidelity reviews by default**, The architect can amend the work in response to valid findings. Unresolved material disagreement at the review limit goes to the Owner; preferences alone do not prevent completion. The service reads the positive integer `architecture_loop.maximum_fidelity_reviews` from the shared TOML file; omission uses the stated default, and an invalid value blocks initiation. The activity snapshot fixes that limit. A valid completed independent review consumes one round; clarification, architect amendments, technical failures, and duplicate delivery do not. The first passing review can proceed to confirmation without using the remaining round. Technical recovery and output correction use the separate allowances below. The provisional execution work-item correction limit does not govern this review.
 
 Review is not a search for improvements. A blocking finding must identify a concrete omission, contradiction, or defect that prevents an agreed outcome or violates a requirement. Wording preferences, alternative designs, and optional improvements do not trigger rework, another review, or blocked confirmation.
 
@@ -1800,7 +1808,7 @@ The following architectural mechanisms remain unresolved:
 | Service interface | CLI and registration reference contracts are defined above; executable request and record validators remain implementation work. |
 | Setup and access | Concrete installation, configured agent routes, required access, and startup instructions are not yet verified on the AI box. |
 | Persistence | SQLite is selected under [SQLite storage](#sqlite-storage); physical tables and validators remain implementation work. SQL backup and restore are out of scope; ordinary service-restart and interrupted-operation recovery remain included. |
-| Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Registration role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
+| Agent integration | Tool/model selection and shared adapter behavior are defined above. Tool transports, artifact handling, process supervision, and retry requests are specified above. Installed tool capability checks, model identity evidence, filesystem isolation, and systemd behavior require operational verification. Architecture-loop and Execution role responsibilities and response fields are defined; executable validation schemas remain implementation work. |
 | Registration formats | The rules file and the registration record contract are defined above. The registration record's exact file layout and how the workshop reads a saved rejection report remain to be settled. The rules-file loader and the validators remain implementation work. Markdown source templates are defined in the Planning Guide. |
 | Architecture loop | Behavioral and machine-readable contracts are defined above. Installed compatibility and implementation evidence remain under [architecture-loop implementation boundary](#architecture-loop-implementation-boundary). |
 | Execution implementation | Execution behavior, configuration, records, review, integration, Quality Assurance, stopping, recovery and completion are defined under [Execution](#execution). The `execution@1` schema, API handlers, Git journals, adapters, isolated-environment supervisor, physical SQL tables and installed operational evidence remain implementation work. |

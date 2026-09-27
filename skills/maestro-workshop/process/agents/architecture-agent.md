@@ -69,7 +69,7 @@ During the architecture loop, publish each milestone's exact versioned Quality A
 
 ## Later design and development preparation
 
-The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand registration into work breakdown, execution-policy setting, or implementation acceptance. Registration, the architecture loop and Execution architectural support each retain their own review limits; packet, integration-change and milestone work use the separate Execution limits.
+The following responsibilities apply only to a separately authorized design or development-preparation assignment. They do not expand into execution-policy setting or implementation acceptance. The architecture loop and Execution architectural support each retain their own review limits; packet, integration-change and milestone work use the separate Execution limits.
 
 ### Responsibilities
 

@@ -59,7 +59,7 @@ Non-blocking observations remain separate and do not become hidden gates.
 
 ## Correction review
 
-Packet implementation review and Integration Manager code-change review use separate configured limits under [packet and integration-change review limits](../../../../docs/product/v1/architecture.md#packet-and-integration-change-review-limits), each defaulting to two completed rounds: the initial review and, when needed, one targeted correction review. Milestone review uses its own configured limit. Registration, the architecture loop and Execution architectural support retain their separate budgets. Reassignment, replacement work, workspace movement, new sessions or takeover do not reset any limit.
+Packet implementation review and Integration Manager code-change review use separate configured limits under [packet and integration-change review limits](../../../../docs/product/v1/architecture.md#packet-and-integration-change-review-limits), each defaulting to two completed rounds: the initial review and, when needed, one targeted correction review. Milestone review uses its own configured limit. The architecture loop and Execution architectural support retain their separate budgets. Reassignment, replacement work, workspace movement, new sessions or takeover do not reset any limit.
 
 Apply the [targeted-check rules](../reviews.md#full-reviews-and-targeted-correction-checks). Broader invalidation is returned for separate scope and budget disposition; a targeted check never expands into a fresh full review.
 

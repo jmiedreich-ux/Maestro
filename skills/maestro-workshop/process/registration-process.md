@@ -33,7 +33,7 @@ If someone edits a document after confirmation, the fingerprints show it. The ex
 
 ## The rules file
 
-The rules are in [registration-rules.json](registration-rules.json). The CLI checks for a newer approved version when it starts, tells the Owner one exists, and says which version it used. Only versions marked passed are used, never arbitrary changes on master. Each registration keeps the rules version it started with, so the rules cannot change halfway through.
+The rules are in [registration-rules.json](registration-rules.json). When the CLI starts it downloads the newer approved version if one exists, validates it, and makes it available to the service. Only versions marked passed are used, never arbitrary changes on master. The CLI tells the Owner which version it found and which one it used. Each registration keeps the rules version it started with, so the rules cannot change halfway through. What happens when the download fails is not yet settled.
 
 ## Newer versions
 

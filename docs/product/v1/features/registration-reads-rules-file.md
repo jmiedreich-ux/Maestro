@@ -8,7 +8,7 @@ Registration checks the documents with rules written into the code: the accepted
 
 ## What has to be true
 - The workshop holds one rules file, `skills/maestro-workshop/process/registration-rules.json`, in JSON so a program can read it, listing the required documents, their required sections and the link rules. The workshop's templates and guide agree with it (done).
-- The service takes the rules file from a tested release, using only versions marked passed. The CLI checks for a newer approved version when it starts, tells the Owner one exists, and says which version it used.
+- The service takes the rules file from a tested release, using only versions marked passed. The CLI downloads the newer approved version when it starts, validates it, makes it available to the service, and says which version it used.
 - Each registration keeps the rules version it started with, so the rules cannot change halfway through.
 - When a document fails a rule, registration stops with a plain report of which rule failed, in which document and where. The service saves the report with the exact version it checked, and the next workshop session reads it first.
 - The service records the rules version used with the registration, in a small registration record: the pinned revision, a fingerprint of each document, the rules version, the workshop's review record, and the Owner's confirmation.
