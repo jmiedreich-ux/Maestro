@@ -58,6 +58,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - The decision trail is an append-only event record, one row per checkpoint, and is not repeated in documents.
   - Skipped (Owner, 2026-09-27).
 - Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
+  - Adopted (Owner agreed 2026-09-27), with a limit: pruning clears the merged feature's leftover branch/worktree state, never the standing environment it ran in. The environment is stood up once so work can keep moving quickly, and is not torn down between features.
 - The boundary: everything inside one feature is safe to automate. After each feature's verdict and merge, the architect decides the next feature only inside a build the Owner started.
 
 ## Development Manager merged into the architect (Owner, 2026-09-27)
