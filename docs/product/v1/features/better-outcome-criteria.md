@@ -12,7 +12,7 @@ The outcome template has acceptance criteria with a Result column and a definiti
 - Any criterion that saves something needs a read-back from a second place. **Adopted 2026-09-27.**
 - For anything that changes state or loops, add two standard rows: run it twice, and stop it mid-run then restart. Both must end in the same state. **Adopted 2026-09-27.**
 - Rate the strength of evidence. "Someone said so" and "I read the code" never count as met. "I ran it in the real app" does. **Adopted 2026-09-27.**
-- Allow the results blocked, inconclusive and product gap. Never edit a criterion to match the product.
+- Allow the results blocked, inconclusive and product gap. Never edit a criterion to match the product. **Adopted 2026-09-27.**
 - The evidence column names a command that can be run again, and the artifact it saves survives cleanup.
 - A test would still pass if everything it imports returned nothing? Then it proves nothing. Expected results are literal values from outside the code under test.
 - Mocks only where a production boundary already isolates the outside system, and the reason is written down.
