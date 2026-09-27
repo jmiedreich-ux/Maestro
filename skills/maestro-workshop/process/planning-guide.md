@@ -17,6 +17,10 @@ Sources are Markdown files in the project repository, using the templates' consi
 
 The templates prepare planning sources suitable for registration assessment. They do not generate a runtime registration package or establish a successful registration.
 
+## Rules file
+
+The mechanical checks on these documents are written once, in [registration-rules.json](registration-rules.json): the required documents and sections, the allowed values, the link rules and the cross-document rules. Registration reads that file. The templates in this skill agree with it, so a change to a rule and to its template goes in the same change. Judgment about meaning, scope and completeness stays in this guide and in the workshop's review.
+
 ## Entry document and source references
 
 Registration requires the repository and the repository-relative path to the project overview. For example, `docs/product/v1/project-overview.md`. The workshop reads that entry document and follows its source references rather than scanning folders or guessing which documents are authoritative.
