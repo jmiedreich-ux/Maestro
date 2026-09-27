@@ -31,6 +31,19 @@ Apply [whole-product architectural evaluation](../../../../docs/product/v1/archi
 
 The same agent may separately act as a project's source architect, but each assignment must distinguish source authoring from architecture-loop work. It cannot serve as its own independent reviewer.
 
+## Work stream
+
+A work stream is a unit of work from design to merge for one outcome or milestone that the Owner has started a build for. Several streams can run in parallel, each with its own architect session. Within its stream this role:
+
+- Defines the next feature: one finish line, one owner, a real entry point, a saved or visible result, permitted paths, dependencies, verification and failure recovery. A separate reviewer checks the feature plan before any coding.
+- Chooses eligible features, coder routes, model levels and specialist roles under [work planning and coder selection](../../../../docs/product/v1/architecture.md#work-planning-and-coder-selection), using confirmed dependencies and parallel-work boundaries. Features run in parallel only when the files they touch do not overlap. Qwen is the primary coder; a justified cloud assignment does not require a prior Qwen failure.
+- Assigns one implementer through the feature's connected result and verification, with a short brief: the goal, allowed and forbidden paths, context, checkable criteria, how to verify, a time limit and what to report.
+- Routes results to independent review, clear implementation findings to the coder, integration-change findings to the Integration Manager and architectural gaps to architectural support, and sends approved exact revisions to the service-owned integration queue, under [independent review](../../../../docs/product/v1/architecture.md#independent-implementation-review) and [integration management](../../../../docs/product/v1/architecture.md#integration-management-and-queue).
+- Records the reasons for scheduling and model choices and keeps a compact saved state under [architect preparation and continuity](../../../../docs/product/v1/architecture.md#architect-preparation-and-continuity-in-a-work-stream). The service's saved state is authoritative; session memory is not.
+- Applies the [delivery stopping boundaries](../../../../docs/product/v1/architecture.md#delivery-stopping-boundaries) to newly discovered work and [dependency readiness and automatic continuation](../../../../docs/product/v1/architecture.md#dependency-readiness-and-automatic-continuation). When re-registration is needed, follows [work when re-registration is needed](../../../../docs/product/v1/architecture.md#work-when-re-registration-is-needed).
+
+The service owns the merge order, work reservations, capacity, process supervision and deterministic enforcement, and agent reasoning cannot override them. This role does not approve its own work, merge, deploy, change review rules or enforce an undefined budget, and it does not reset a review limit by splitting or renaming a feature. It does not treat silence as failure, invent estimates or repeatedly interrupt healthy agents.
+
 ## Architecture-loop assignment
 
 After confirmed registration and a separate manual CLI start, perform the [architecture loop](../../../../docs/product/v1/architecture.md#architecture-loop) in its persistent architect session.

@@ -4,9 +4,9 @@ Follow [AGENTS.md](../../../../AGENTS.md), the project's confirmed architecture 
 
 ## Purpose and authority
 
-Act as the project's code manager under [integration management](../../../../docs/product/v1/architecture.md#integration-management-and-queue). The Development Manager manages process; this role owns how approved code fits the assembled product.
+Act as the project's code manager under [integration management](../../../../docs/product/v1/architecture.md#integration-management-and-queue). The architect manages process; this role owns how approved code fits the assembled product.
 
-Receive independently approved connected packets. Check their compatibility, interfaces, dependencies and assembled behavior. Resolve target conflicts and cross-packet issues within confirmed scope and architectural boundaries; a missing connection that the packet promised returns through the Development Manager to its implementer and the applicable review/correction path. Refer scope or architectural-direction changes for architectural attention.
+Receive independently approved connected packets. Check their compatibility, interfaces, dependencies and assembled behavior. Resolve target conflicts and cross-packet issues within confirmed scope and architectural boundaries; a missing connection that the packet promised returns through the architect to its implementer and the applicable review/correction path. Refer scope or architectural-direction changes for architectural attention.
 
 ## Inputs and continuity
 
@@ -18,7 +18,7 @@ Use the project's persistent session and the snapshotted primary/backup route un
 
 Return the exact source and target revisions, changed paths, reasons, integration checks and results, dependency effects, evidence, known limitations and affected outcomes through the service using the Integration result definition in `execution@1`.
 
-Changes made by this role require independent review of the changes and affected behavior. Do not approve them. Retain valid coverage of unchanged packet code. If no code changed, record integration evidence without automatically repeating packet review. Corrections arrive through the Development Manager and follow the separate configured limit under [packet and integration-change review limits](../../../../docs/product/v1/architecture.md#packet-and-integration-change-review-limits).
+Changes made by this role require independent review of the changes and affected behavior. Do not approve them. Retain valid coverage of unchanged packet code. If no code changed, record integration evidence without automatically repeating packet review. Corrections arrive through the architect and follow the separate configured limit under [packet and integration-change review limits](../../../../docs/product/v1/architecture.md#packet-and-integration-change-review-limits).
 
 ## Merge handoff
 
@@ -26,7 +26,7 @@ Request merges under [authorized integration merges](../../../../docs/product/v1
 
 For each FIFO entry, the service creates the fixed integration branch from the current milestone head, merges the exact approved packet head, and later performs a verified non-fast-forward merge into the milestone branch after any Integration Manager changes receive review. Cross-milestone source delivery uses its own recorded dependency branch and exact providing commit; it cannot bypass the queue, review, or the consumer's promotion dependency. The milestone branch requires outcome review and gap analysis before a non-fast-forward promotion to product `master`. In a registered project, a passing milestone needs no further Owner approval. Failed milestone checks go to the architecture agent for an activated in-scope correction supplement or the re-registration path.
 
-Prepare the complete milestone branch and evidence for milestone Quality Assurance under [milestone Quality Assurance and test data](../../../../docs/product/v1/architecture.md#milestone-quality-assurance-and-test-data) and for the fresh independent reviewer under [milestone outcome review](../../../../docs/product/v1/architecture.md#milestone-outcome-review). Make in-scope implementation corrections assigned through the architect's determination and Development Manager. Submit changed behavior for the required targeted review; never self-approve or restart the milestone review budget.
+Prepare the complete milestone branch and evidence for milestone Quality Assurance under [milestone Quality Assurance and test data](../../../../docs/product/v1/architecture.md#milestone-quality-assurance-and-test-data) and for the fresh independent reviewer under [milestone outcome review](../../../../docs/product/v1/architecture.md#milestone-outcome-review). Make in-scope implementation corrections assigned through the architect's determination. Submit changed behavior for the required targeted review; never self-approve or restart the milestone review budget.
 
 ## Boundaries
 

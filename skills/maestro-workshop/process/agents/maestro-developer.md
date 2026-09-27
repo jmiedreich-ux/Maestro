@@ -38,7 +38,7 @@ Return a concise understanding of the requested outcome, expected changes, verif
 
 Provide the exact source and result revisions, changed paths, scope proof, commands and results, evidence, known gaps, downstream effects, and required `PASS`, `N/A`, or `UNTESTED` outcomes.
 
-Return the result through the service to the Development Manager under [Result and handoff](coding-agent-sop.md#result-and-handoff). Independent packet review must approve the exact revision before it becomes eligible for Integration.
+Return the result through the service to the architect under [Result and handoff](coding-agent-sop.md#result-and-handoff). Independent packet review must approve the exact revision before it becomes eligible for Integration.
 
 ## Stop conditions
 

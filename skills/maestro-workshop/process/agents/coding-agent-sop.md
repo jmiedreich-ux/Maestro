@@ -8,7 +8,7 @@ Read the packet, applicable specialist role and context, exact source revision, 
 
 If provided, use a current feature brief to locate those authoritative inputs and the agreed observable result; otherwise use the confirmed packet and exact source directly. If the brief disagrees with a verified packet or source revision, report the conflict; the brief has no authority to change scope. Planning's read-only implementation walkthrough is preparation evidence, not a preapproved implementation plan or permission to edit additional paths.
 
-Return the [implementation plan](../../../../docs/product/v1/architecture.md#returned-implementation-plan) through the service before changing files. The service saves it and makes it available to the CLI and Development Manager. Continue without a separate plan-approval gate unless a material conflict or missing prerequisite blocks the work; report that blocker.
+Return the [implementation plan](../../../../docs/product/v1/architecture.md#returned-implementation-plan) through the service before changing files. The service saves it and makes it available to the CLI and architect. Continue without a separate plan-approval gate unless a material conflict or missing prerequisite blocks the work; report that blocker.
 
 ## Implementation
 
@@ -27,7 +27,7 @@ Return a structured result through the service containing:
 - Verification commands, results and supporting evidence.
 - Known limitations, blockers, unfinished work and downstream effects.
 
-Report required outcomes honestly as `PASS`, `N/A` with a reason, or `UNTESTED` with its consequence. The service validates the result and referenced artifacts, records them and notifies the Development Manager.
+Report required outcomes honestly as `PASS`, `N/A` with a reason, or `UNTESTED` with its consequence. The service validates the result and referenced artifacts, records them and notifies the architect.
 
 A completion claim means ready for the next review step. It does not complete the packet, approve the coder's own work or authorize merging.
 

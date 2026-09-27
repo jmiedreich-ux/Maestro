@@ -1083,7 +1083,7 @@ The current architecture-loop record and schema contracts require full packet co
 
 A confirmed milestone has a fixed outcome and required evidence. Planning may refine later features as source changes, but it cannot silently add outcomes, relax required checks, or convert a roadmap idea into active work. An idea beyond confirmed scope is recorded for a later milestone; changing the current outcome follows re-registration once no work is happening. Existing confirmed packet versions, including work already in progress, remain binding until amended through their established authority.
 
-Before a feature starts, its packet names the observable result, essential provider-to-consumer connections, permitted paths, prerequisites, implementation ownership, and proportionate real-path verification. The Development Manager selects the eligible coder at dispatch. Missing authority or setup is a blocker for affected work, not permission to improvise it. The coder finishes the connected feature before the initial independent review. Review findings state the exact unmet requirement and minimum correction. The existing packet review limit allows one targeted correction review by default; if a blocking finding remains at the limit, the feature pauses for the existing architectural determination and Owner decision. Renaming or splitting it does not reset the count.
+Before a feature starts, its packet names the observable result, essential provider-to-consumer connections, permitted paths, prerequisites, implementation ownership, and proportionate real-path verification. The architect selects the eligible coder at dispatch. Missing authority or setup is a blocker for affected work, not permission to improvise it. The coder finishes the connected feature before the initial independent review. Review findings state the exact unmet requirement and minimum correction. The existing packet review limit allows one targeted correction review by default; if a blocking finding remains at the limit, the feature pauses for the existing architectural determination and Owner decision. Renaming or splitting it does not reset the count.
 
 Every discovered issue is classified against the confirmed outcome: an in-scope implementation defect returns through the applicable correction path; missing in-scope work at the milestone gate uses a bounded architect-defined supplement; a changed outcome uses re-registration; a preference or optional improvement is recorded as non-blocking future work; and an unavailable required check remains unverified and blocks completion only for the affected work. This classification does not waive required checks or create a new review round. Integration resolves conflicts between approved features within its authority; it does not take over omitted wiring promised by an unapproved feature.
 
@@ -1303,7 +1303,7 @@ The selected project's execution begins only through an explicit `/execution sta
 
 The service records the execution activity before dispatching work. Repeating the command opens the existing execution activity rather than creating another. Other projects can continue independently. Starting authorizes only work within the confirmed breakdown, not scope changes or replanning.
 
-The start process collects a configured route for the Maestro Development Manager. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning.
+The start process collects a configured route for the stream's architect. After acceptance, the service launches that agent first. Coder selections are separate decisions made during work planning.
 
 The service derives the product code baseline from the exact confirmed breakdown's `source_commit` and verifies that it equals the current confirmed registration's pinned source baseline. The Owner's registration source selection is the originating choice; `/execution start` cannot supply a replacement baseline. Before accepting start, the service verifies those records and the source object, reads product `master` and records its current head separately as `product_master_start_commit`. That observed merge target does not replace the approved code baseline. In the start transaction, SQL saves both commits, their confirmed input references and the observation time. Missing objects, inconsistent source bindings or a failed current-input check block start. Lazy milestone-branch creation consumes the saved product baseline; packet branches use the recorded current milestone head. Separately published specialist and QA inputs retain their exact references. Changed merge targets follow reconciliation and affected review; a change to the approved code baseline requires the existing re-registration and architecture-confirmation path.
 
@@ -1316,7 +1316,7 @@ The shared `/etc/maestro/agents.toml` file contains the following Execution sett
 | Setting | Contract |
 |---|---|
 | `execution.saved_outputs.schema` | Required literal `"execution@1"`. |
-| `execution.development_manager.routes.<route_id>.tool`, `.model`, `.backup_route_id` | Named permitted Development Manager route, exact full model identifier and configured backup. `/execution start` selects one route ID. |
+| `execution.development_manager.routes.<route_id>.tool`, `.model`, `.backup_route_id` | Named permitted architect route, exact full model identifier and configured backup. `/execution start` selects one route ID. |
 | `execution.development_manager.run_timeout_seconds` | Required positive duration for one planning action; idle persistent-session time does not consume it. |
 | `execution.integration_manager.primary.tool`, `.model`, `backup.tool`, `backup.model` | Required exact primary and backup routes for the persistent Integration Manager. |
 | `execution.integration_manager.run_timeout_seconds` | Required positive duration for one Integration Manager action; idle persistent-session time does not consume it. |
@@ -1355,7 +1355,7 @@ Execution operations use the common request envelope and idempotency rules. The 
 
 | Operation | Required input and effect |
 |---|---|
-| `execution.start` | Project identity, exact confirmed registration and breakdown references, expected project version, selected Development Manager route ID and idempotency key. Atomically validates eligibility, snapshots configuration and creates or returns the one active activity. |
+| `execution.start` | Project identity, exact confirmed registration and breakdown references, expected project version, selected architect route ID and idempotency key. Atomically validates eligibility, snapshots configuration and creates or returns the one active activity. |
 | `execution.status` | Project or activity identity; returns saved state, restrictions, active work, queues, blockers, review counts, milestone evidence and completion reference without changing state. |
 | `execution.pause` | Expected activity version and Owner identity; snapshots the in-progress set and prevents new packet reservations under [pause and graceful-stop settlement](#pause-and-graceful-stop-settlement). |
 | `execution.resume` | Expected paused activity version and Owner identity; permits new reservations only when no stronger saved restriction, re-registration transition or unresolved unsafe condition applies. |
@@ -1387,19 +1387,19 @@ Planning, coder, review, integration and Quality Assurance responses are validat
 
 External Git operations use a durable SQL journal. Before a branch creation, merge or record publication, the service saves the exact intended repository, credential profile reference, expected remote heads, input object hashes and idempotency key. After the operation it reads the remote refs and bytes before recording success. A lost acknowledgment reconciles the same intent; changed heads or conflicting bytes pause without force, overwrite or duplicate effects. SQL state advances only after verified external success.
 
-### Development Manager preparation and continuity
+### Architect preparation and continuity in a work stream
 
-The Development Manager coordinates execution within the current registration and confirmed breakdown. It cannot change scope, redesign architecture or initiate replanning.
+The architect coordinates execution within the current registration and confirmed breakdown. It cannot change scope, redesign architecture or initiate replanning.
 
 At first launch, it reads the registration, confirmed breakdown, packets, dependencies and recorded execution state. It returns a concise understanding of intended outcomes, existing progress and blockers before requesting work. A resumed project is not assumed to be new.
 
-Each project's execution activity has a persistent Development Manager session. Persistence retains useful understanding between planning actions; the agent is idle between actions and does not continuously poll or consume model tokens. The service resumes it with relevant events and current saved state, with only one planning action active in that session at a time.
+Each work stream has a persistent architect session. Persistence retains useful understanding between planning actions; the agent is idle between actions and does not continuously poll or consume model tokens. The service resumes it with relevant events and current saved state, with only one planning action active in that session at a time.
 
 The working context contains current milestones, eligible and blocked packets, active assignments, available capacity and relevant recent decisions. Detailed records remain accessible when needed. Handled events are not repeatedly included as new input. Checkpoints preserve decisions, reasons and unresolved issues rather than duplicate transcripts. Decisions are saved through the service; session memory is not authoritative. The shared [context-management rules](#agent-performance-and-context-management) govern compaction and replacement from verified records and a checkpoint when capacity fills or a session becomes unusable.
 
 ### Work planning and coder selection
 
-The Development Manager selects packets and requests assignments. The service checks current eligibility, dependencies, resource and parallel-work boundaries, rejects stale, blocked, conflicting or unauthorized requests, and reserves accepted work before launch. Agent judgment chooses work; the service enforces the rules.
+The architect selects packets and requests assignments. The service checks current eligibility, dependencies, resource and parallel-work boundaries, rejects stale, blocked, conflicting or unauthorized requests, and reserves accepted work before launch. Agent judgment chooses work; the service enforces the rules.
 
 Qwen is the primary coder and default route. The manager may choose a cloud coder directly when packet complexity, required capabilities, context needs or available capacity justify it; Qwen does not have to fail first. The manager chooses Codex or Claude Code and the appropriate configured model level/version, recording a brief reason.
 
@@ -1413,15 +1413,15 @@ Planning continually reassesses pending work as progress, dependencies and resou
 
 Each planning pass returns a structured result containing requested packet launches with coder route, exact model version and reason; pending priorities and blockers; questions or architectural issues; and a concise continuity checkpoint. The service validates requests against current saved state before reservation. If state changed during planning, it returns the affected rejection reasons for reconsideration rather than accepting stale work.
 
-Development Manager questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. Planning responses and delivered events use the [Execution response contract](#execution-api-state-and-record-contract); handled event identities are checkpointed so a resumed session does not treat old events as new.
+Architect questions use the [existing CLI question flow](#questions-and-answers), linked to project and execution activity. The service saves a question before displaying it and saves answers before supplying them to the manager's next planning pass. Only dependent work waits; unrelated eligible work can continue. Planning responses and delivered events use the [Execution response contract](#execution-api-state-and-record-contract); handled event identities are checkpointed so a resumed session does not treat old events as new.
 
 ### Coder preparation and submitted results
 
 Each coder follows the [common coding instructions](../../../skills/maestro-workshop/process/agents/coding-agent-sop.md), the exact packet and the applicable project specialist role. Specialist guidance adds source-area knowledge without duplicating or weakening common rules. The unrelated example roles currently in this repository's specialists folder are not assignment options for this work.
 
-Before implementation, the coder returns the [implementation plan](#returned-implementation-plan) through the service. It identifies intended changes, relevant existing code, necessary connections, basic verification and blockers. The service saves it and exposes it to the CLI and Development Manager. There is no separate plan-approval gate; material conflicts or missing prerequisites block affected work.
+Before implementation, the coder returns the [implementation plan](#returned-implementation-plan) through the service. It identifies intended changes, relevant existing code, necessary connections, basic verification and blockers. The service saves it and exposes it to the CLI and the architect. There is no separate plan-approval gate; material conflicts or missing prerequisites block affected work.
 
-The coder completes the feature's required connections in its approved scope before submitting it for independent review. It runs focused checks against actual provider and consumer code, including the agreed installed-path check when its prerequisites are available. An unavailable required check is reported as untested and cannot establish completion. The final structured result explains changes against the expected outcome, exact source/result revisions, changed files, checks and results, evidence, limitations, blockers and unfinished work. The service validates the response and referenced artifacts, records it and notifies the Development Manager. A coder's completion claim means ready for independent review, not packet acceptance or merge permission.
+The coder completes the feature's required connections in its approved scope before submitting it for independent review. It runs focused checks against actual provider and consumer code, including the agreed installed-path check when its prerequisites are available. An unavailable required check is reported as untested and cannot establish completion. The final structured result explains changes against the expected outcome, exact source/result revisions, changed files, checks and results, evidence, limitations, blockers and unfinished work. The service validates the response and referenced artifacts, records it and notifies the architect. A coder's completion claim means ready for independent review, not packet acceptance or merge permission.
 
 ### Execution workspaces and repository writes
 
@@ -1437,7 +1437,7 @@ A worktree remains until its local and remote outcomes are reconciled and no rev
 
 The [Independent Implementation Reviewer](../../../skills/maestro-workshop/process/agents/independent-review-agent.md) examines the exact submitted connected feature against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
 
-Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the Development Manager. Clear implementation defects return to the coder; missing or contradictory architectural decisions use [Execution architectural determinations](#execution-architectural-determinations). Reviewers do not edit code, dispatch corrections or authorize merges.
+Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the architect. Clear implementation defects return to the coder; missing or contradictory architectural decisions use [Execution architectural determinations](#execution-architectural-determinations). Reviewers do not edit code, dispatch corrections or authorize merges.
 
 An approved exact packet revision becomes eligible for Integration. Independent review remains before Integration; the Integration Manager does not replace this stage.
 
@@ -1453,23 +1453,23 @@ If blocking findings remain at the applicable limit, the affected work pauses un
 
 #### Execution architectural determinations
 
-A saved Execution-planning, packet or integration-change architectural question, or blocking findings at either review limit, causes the service to create an `execution_architectural_determination` assignment. The Development Manager supplies the affected work and question/finding through its normal structured result; exhaustion is also detected directly from the saved review count. Duplicate triggers for the same work, finding versions and limit decision reuse the saved assignment. Missing-specialist requests retain their separate support process, and failed milestone QA/outcome findings retain the milestone-gap process.
+A saved Execution-planning, packet or integration-change architectural question, or blocking findings at either review limit, causes the service to create an `execution_architectural_determination` assignment. The architect supplies the affected work and question/finding through its normal structured result; exhaustion is also detected directly from the saved review count. Duplicate triggers for the same work, finding versions and limit decision reuse the saved assignment. Missing-specialist requests retain their separate support process, and failed milestone QA/outcome findings retain the milestone-gap process.
 
 This read-only Project Architect assignment reuses the primary/backup routes and timeout of `execution.milestone_gap_architect` from the parent Execution snapshot, with the existing `execution.recovery` allowances; it does not resume the architecture loop. Inputs include the exact registration/breakdown, triggering planning result and affected packets or Integration Manager change, source/target revisions, role and architecture references, question/findings, prior review evidence, affected queue/dependency state, base limits, completed rounds, prior grants and remaining allowances. The service saves these bindings, assignment/run identity and configured route before launch. Replacement preserves the assignment, inputs and counts under the shared stopping/recovery rules.
 
 The named `execution_architectural_determination` response in `execution@1` carries the common response identities and exact input versions, affected-work references, finding/question references, rationale and one determination: `within_confirmed_design` with an interpretation of existing authority; `implementation_defect` with the minimum correction for the original author; or `reregistration_required` with the affected scope. It also carries the required Owner-facing recommendation, either `grant_one` or `remain_paused`, when the triggering review allowance is exhausted; otherwise that field is null. An interpretation cannot change a confirmed outcome, packet, responsibility or dependency. This assignment cannot publish a supplement, dispatch code, approve work or grant an allowance.
 
-The service validates scope, reference freshness and the result against the assignment, then atomically saves the determination and links it to the affected work and pending decision. Identical replay returns the saved receipt; stale or conflicting results cannot overwrite it. A valid interpretation answers the linked architectural question; a defect returns to the packet coder or Integration Manager through the Development Manager, subject to existing allowances. Re-registration follows [work when re-registration is needed](#work-when-re-registration-is-needed). At an exhausted review limit, work remains blocked until the recommendation is saved and the typed Owner choice is applied; the recommendation itself permits no extra review. Malformed output or unavailable routes use bounded technical recovery and otherwise leave a specific CLI blocker. Restart recovers the same assignment and decision linkage without resetting counts.
+The service validates scope, reference freshness and the result against the assignment, then atomically saves the determination and links it to the affected work and pending decision. Identical replay returns the saved receipt; stale or conflicting results cannot overwrite it. A valid interpretation answers the linked architectural question; a defect returns to the packet coder or Integration Manager through the architect, subject to existing allowances. Re-registration follows [work when re-registration is needed](#work-when-re-registration-is-needed). At an exhausted review limit, work remains blocked until the recommendation is saved and the typed Owner choice is applied; the recommendation itself permits no extra review. Malformed output or unavailable routes use bounded technical recovery and otherwise leave a specific CLI blocker. Restart recovers the same assignment and decision linkage without resetting counts.
 
 ### Integration management and queue
 
-The [Integration Manager](../../../skills/maestro-workshop/process/agents/integration-agent.md) is the project's code manager; the Development Manager is its process manager. The service owns queues and durable assignment state rather than agents retaining pending work only in conversation memory. The Development Manager uses recorded progress, dependencies and capacity to manage work flow.
+The [Integration Manager](../../../skills/maestro-workshop/process/agents/integration-agent.md) is the project's code manager; the architect is its process manager. The service owns queues and durable assignment state rather than agents retaining pending work only in conversation memory. The architect uses recorded progress, dependencies and capacity to manage work flow.
 
 Each project has a persistent Integration Manager session and a first-in, first-out queue of independently approved packets. Only one integration assignment is active for the project at a time, across all its development milestones. Queue order is the service's durable enqueue order. The active assignment retains its position through integration review and necessary corrections; the next starts only after it is resolved. A blocked assignment is not silently skipped. Other projects integrate independently, and coding and packet review may continue where dependencies and shared-code boundaries permit.
 
 Each assignment uses the latest accepted target state and the exact approved packet revisions. The Integration Manager checks compatibility, shared interfaces, dependencies, necessary connections and the assembled outcome. The packet implementer is responsible for its planned feature wiring before initial review. The Integration Manager handles target conflicts and cross-packet incompatibilities discovered when approved code is assembled; it may make necessary in-scope integration fixes, but it is not the planned implementer of a packet's omitted connections. It cannot change confirmed scope or established architectural direction; those issues go to architectural attention.
 
-Its own integration changes require independent review of the new changes and affected product behavior. Valid coverage of unchanged packet code is retained. Findings return through the service and Development Manager to the Integration Manager for correction. It cannot approve its own changes. When no code changes are made, record the integration evidence without automatically repeating packet review.
+Its own integration changes require independent review of the new changes and affected product behavior. Valid coverage of unchanged packet code is retained. Findings return through the service and the architect to the Integration Manager for correction. It cannot approve its own changes. When no code changes are made, record the integration evidence without automatically repeating packet review.
 
 The persistent session uses the configured Integration Manager primary/backup route and the shared context-management rules. Saved source revisions, review results, queue state and handled event identities remain authoritative; a replacement session starts from those records and the latest valid checkpoint.
 
@@ -1509,8 +1509,8 @@ Findings distinguish blocking defects from non-blocking observations. A blocking
 
 | Finding | Correction path |
 |---|---|
-| Implementation defect within the confirmed design | The Integration Manager corrects it, with process coordination by the Development Manager. |
-| Missing work needed for the agreed outcome, within confirmed scope and direction | The architect defines the necessary bounded correction packets; the Development Manager schedules them. |
+| Implementation defect within the confirmed design | The Integration Manager corrects it, with process coordination by the architect. |
+| Missing work needed for the agreed outcome, within confirmed scope and direction | The architect defines the necessary bounded correction packets and schedules them. |
 | Change requiring replanning | Use re-registration under [work when re-registration is needed](#work-when-re-registration-is-needed). |
 
 In-scope correction packets are recorded as supplements linked to the original breakdown, milestone and finding; they do not silently replace confirmed records or authorize changed outcomes, dependencies or architectural direction. Those changes still require re-registration.
@@ -1529,7 +1529,7 @@ The service assigns a supplement identity and positive version before the Projec
 
 Deterministic validation rejects missing links, duplicate packet identities, unsatisfied ownership, changed outcomes, dependency cycles, unbounded paths or work that requires re-registration. No separate Owner approval or extra packet-definition review is added for a valid in-scope supplement; its implemented packets still receive normal packet, integration, Quality Assurance and milestone review.
 
-SQL owns the working and active supplement state. Immutable UTF-8 JSON is published under `.maestro/execution/<execution-activity-id>/supplements/<supplement-id>/versions/<version>/supplement.json`. It carries `schema_version: 1`, exact project/activity/registration/breakdown/milestone/finding identities, packet definitions, dependency changes limited to those packets, architect assignment/run/model evidence and validation result. The service journal calculates and stores the SHA-256 of the final UTF-8 bytes outside `supplement.json`, then verifies the authorized repository and publication branch, expected head, remote bytes and hash before one SQL transaction activates the version and releases its eligible packets to the Development Manager.
+SQL owns the working and active supplement state. Immutable UTF-8 JSON is published under `.maestro/execution/<execution-activity-id>/supplements/<supplement-id>/versions/<version>/supplement.json`. It carries `schema_version: 1`, exact project/activity/registration/breakdown/milestone/finding identities, packet definitions, dependency changes limited to those packets, architect assignment/run/model evidence and validation result. The service journal calculates and stores the SHA-256 of the final UTF-8 bytes outside `supplement.json`, then verifies the authorized repository and publication branch, expected head, remote bytes and hash before one SQL transaction activates the version and releases its eligible packets to the architect.
 
 An identical replay returns the saved activation. Conflicting remote content, stale findings or changed inputs pause without overwrite. A supplement may be superseded before any of its packets starts by publishing and activating the next version. Once work starts, its active version is immutable; a material change uses the normal disposition and re-registration path. A supplement and its packets do not reset the milestone review count.
 
@@ -1604,7 +1604,7 @@ A replacement uses a new recorded dependency delivery and FIFO import. The servi
 
 Execution automatically continues with eligible work across confirmed milestones within its already authorized scope. A blocked milestone does not stop unrelated eligible work. Active pause or stop instructions still prevent new starts.
 
-A failed milestone review immediately prevents new work that depends on the failed outcome from starting. Already-running affected work continues its lifecycle unless the Owner stops it; unrelated eligible work continues. The service records changed readiness and notifies the Development Manager to recalculate pending assignments.
+A failed milestone review immediately prevents new work that depends on the failed outcome from starting. Already-running affected work continues its lifecycle unless the Owner stops it; unrelated eligible work continues. The service records changed readiness and notifies the architect to recalculate pending assignments.
 
 Once all authorized milestones have merged and their required checks have passed, the service automatically closes Execution and notifies the Owner through the CLI with a completion summary. No additional Owner approval is required. Closure verifies that no required correction, active run or unresolved merge remains; missing or uncertain evidence is not completion.
 
@@ -1637,7 +1637,7 @@ Service restart reloads the activity, restrictions, settlement set, sessions, qu
 
 ### Authorized integration merges
 
-The Integration Manager requests the packet-to-milestone merge after applicable integration checks and independent review pass. The service checks the exact approved result revision, current destination branch and standing project authorization before performing the merge. The same checks apply to milestone-to-master promotion after its outcome review and gap analysis pass. The Development Manager records the process outcome; it does not provide code approval.
+The Integration Manager requests the packet-to-milestone merge after applicable integration checks and independent review pass. The service checks the exact approved result revision, current destination branch and standing project authorization before performing the merge. The same checks apply to milestone-to-master promotion after its outcome review and gap analysis pass. The architect records the process outcome; it does not provide code approval.
 
 Routine authorized merges at both levels do not require another Owner approval. This includes a passing milestone branch merging into `master`. A target change that invalidates integration or milestone evidence returns the affected assignment for reconciliation; approval of an earlier baseline cannot silently cover different code. The service must verify the remote result before recording merge success. No agent self-approval, protection bypass or unverified merge is permitted.
 
@@ -1645,7 +1645,7 @@ These are Execution code-delivery branches. Registration and architecture-packag
 
 ### Specialist assignment and architectural support
 
-The Development Manager selects the applicable specialist role alongside the coder route and model. The service supplies and validates the exact packet, role, relevant starting context, source revision and permitted change boundaries before launch. Role descriptions and source-local context established by the architecture phase remain the basis of specialization; the manager cannot silently rewrite their authority.
+The architect selects the applicable specialist role alongside the coder route and model. The service supplies and validates the exact packet, role, relevant starting context, source revision and permitted change boundaries before launch. Role descriptions and source-local context established by the architecture phase remain the basis of specialization; the manager cannot silently rewrite their authority.
 
 If no role adequately covers a packet, the manager records the issue against that packet. The completed architecture loop's agent is not assumed still running. The service starts a bounded architectural-support assignment with the packet, existing roles and relevant confirmed architecture.
 
@@ -1677,7 +1677,7 @@ The shared `/etc/maestro/agents.toml` uses `execution.architectural_support` for
 
 Both role sections and their route fields are required; primary and backup must identify distinct tool/model pairs within each role. Unknown fields, invalid values or unavailable required runtime capabilities block affected support work with a clear error. Temporary primary-route unavailability is handled by fallback below, not mistaken for malformed configuration. Shared tool executable, permission and credential profiles remain under [adapter configuration](#adapter-configuration); agents do not receive service publication credentials.
 
-The service checks model support, permissions, structured responses and actual model identity before accepting a run's result. Backup use is an explicitly configured selection, never a silent substitution. The separate Development Manager model selected at execution start and coder-route registry are not changed by this support configuration.
+The service checks model support, permissions, structured responses and actual model identity before accepting a run's result. Backup use is an explicitly configured selection, never a silent substitution. The separate architect model selected at execution start and coder-route registry are not changed by this support configuration.
 
 | Situation | Route handling |
 |---|---|
@@ -1712,7 +1712,7 @@ References to existing records use their established exact-reference formats. Fi
 
 This binding supplements the confirmed breakdown for the named packets; it does not edit their records or the confirmed manifest. New assignments carry both the unchanged confirmed reference and the exact activated support reference. Before use, the service rechecks applicability, review coverage and hashes. Changed relevant inputs invalidate that binding for affected work. A source or responsibility change requiring a new breakdown uses re-registration instead.
 
-Only after required validation, review and publication verification does the service notify the Development Manager that the role is available. Partial drafts, an agent's completion claim or a successful review alone cannot dispatch a coder. No Owner approval is added for an in-scope role that satisfies this contract.
+Only after required validation, review and publication verification does the service notify the architect that the role is available. Partial drafts, an agent's completion claim or a successful review alone cannot dispatch a coder. No Owner approval is added for an in-scope role that satisfies this contract.
 
 ### Internal hooks
 

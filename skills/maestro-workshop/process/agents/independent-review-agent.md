@@ -22,7 +22,7 @@ Apply the [project-wide review boundary](../../../../docs/product/v1/architectur
 
 Each blocking finding identifies the unmet requirement, affected code, impact and minimum correction. Record preferences and optional improvements as non-blocking.
 
-Return findings through the service to the Development Manager. Clear implementation defects go back to the coder; integration-change defects go back to the Integration Manager. Missing or contradictory architectural decisions go to architectural support. Do not edit code, dispatch corrections, grant an exception or authorize merging.
+Return findings through the service to the architect. Clear implementation defects go back to the coder; integration-change defects go back to the Integration Manager. Missing or contradictory architectural decisions go to architectural support. Do not edit code, dispatch corrections, grant an exception or authorize merging.
 
 ## Review stages
 

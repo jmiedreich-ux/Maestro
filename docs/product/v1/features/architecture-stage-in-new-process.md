@@ -40,3 +40,11 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
 - The boundary: everything inside one feature is safe to automate. After each feature's verdict and merge, the architect decides the next feature only inside a build the Owner started.
 
+## Development Manager merged into the architect (Owner, 2026-09-27)
+The Development Manager role is combined into the architect for now. One architect per work stream owns the stream from design to merge, and several streams can run in parallel. The service owns the merge order, reservations and capacity. A cross-stream coordinator is added later only if parallel streams collide over the same files or capacity. The role contract, the architecture and the Execution outcomes use "architect" now.
+
+### Work still to do
+- Define the work stream in the architecture: one architect session per stream, and unify the architecture loop's persistent architect session with the former manager session.
+- Rename the configuration keys and the start request field that still say `development_manager` (`execution.development_manager.*`, the selected-route field on `execution.start`) and the module `services/maestro/maestro/development_manager.py`, with the code.
+- Decide how parallel streams share the local Qwen capacity and the integration queue.
+
