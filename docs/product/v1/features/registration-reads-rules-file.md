@@ -16,3 +16,12 @@ Registration checks the documents with rules written into the code: the accepted
 
 ## Verification
 A real registration through the CLI on a real repository. Change one rule in the file and show that registration's result changes with no code change. Show a failing document reported by rule, a registration that keeps its version while a newer one is released, and the recorded version.
+
+## Work still to do
+- Make registration read the rules file: the loader, the version pinned per registration, and the CLI check for a newer approved version.
+- Remove the registration agents from the code: launching the architect and reviewer, their response contract, review-round counting, and the registration-only retry and timeout settings in `services/maestro/maestro/service/registration.py`.
+- Replace the old package with the small registration record in `services/maestro/maestro/service/registration_package.py`. Settle the record's exact file layout and how the workshop reads a saved rejection report.
+- Replace the hardcoded source checks in `services/maestro/maestro/service/registration_source.py` with the rules file.
+- Update the schemas that still describe the old process: `docs/schemas/registration-process.schema.json`, `docs/schemas/registration-records.schema.json` and `services/maestro/schemas/registration-process/1/schema.json`.
+- Update the tests in `tests/maestro/service/test_registration.py` and the old paths in the CLI help text (`services/maestro/maestro/terminal/main.py`).
+- Re-prove the blank rows in [the registration outcomes](../outcomes/registration.md) with a real registration.
