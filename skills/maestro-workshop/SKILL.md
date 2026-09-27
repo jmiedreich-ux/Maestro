@@ -76,6 +76,8 @@ Use the named action **“Simplify active planning sources”** when the owner a
 
 Save after a coherent topic is settled, before moving to another major area, when asked to write up, before context compaction/session handoff where possible, and at a natural work boundary during long drafting. Do not wait for the owner to remind the agent.
 
+Keep one source of truth for every fact and no history in documents. Remove a document or section that repeats another, or that no longer serves the current process; Git holds the history, so do not archive or append to keep it. Delivered status lives only in each outcome's Result column and the `passed/*` tags.
+
 Update each fact at its authoritative home: overview for project scope and current state, architecture for behavior, the roadmap and outcome documents for delivery outcomes and evidence, workshop state for traceability and next actions. State links to decisions in the sources; it does not maintain a second architectural specification.
 
 Before saving, check reference paths/fragments, identity/version changes, outcome coverage, and contradictory nearby rules. Respect the authorized delivery level: local files, local commit, or remote publication. Preserve unrelated changes. Verify saved bytes and, when publishing remotely, the destination revision. Report those levels separately: a local save is not a push, and failed publication does not erase a verified local save. If local-only work is requested, finish there without seeking push approval. If publication truly lacks authorization, prepare the complete reviewable change and ask only for that decision. No universal branch, PR, or merge rule is imposed.
