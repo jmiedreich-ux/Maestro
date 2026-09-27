@@ -20,6 +20,7 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - Show which features can run in parallel. Two features are parallel only if the files they touch do not overlap. When two would write the same state, split the ownership first and only then consider taking turns.
   - Adopted (Owner agreed 2026-09-27).
 - Order the work: the foundation every later feature needs first, then removals, then the riskiest unknown, then the rest. Record a baseline before the work so the check reads "before and after".
+  - Adopted (Owner agreed 2026-09-27).
 - When retiring old code, list its callers and migrate them in the same feature that deletes it.
 - Give each coder a short brief: goal, allowed and forbidden files, context, checkable criteria, how to verify, time limit, and what to report. A field the architect cannot fill means the feature is not scoped yet. Paste upstream results in full, because a coder cannot see other coders' work.
 - For a new kind of feature, run one pilot packet first to test the brief, the packet size and the verification.
