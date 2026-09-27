@@ -1,13 +1,40 @@
 ---
 name: project-architecture-workshop
-description: Run or resume a collaborative software architecture workshop for a new or existing repository. Develop project overview, architecture, and outcome specifications through focused questions, code investigation, saved decisions, gap analysis, and independent fidelity review. Use for planning structure and specification work, including the development roadmap for Maestro itself; do not use Maestro's product process as the governing workflow for building Maestro.
+description: Run or resume a collaborative planning workshop for a new or existing repository. Develop the project overview (including the product definition), the Roadmap of Product Outcomes, and the architecture through focused questions, code investigation, saved decisions, gap analysis, and independent fidelity review. Every project that works inside Maestro goes through this workshop, including Maestro itself.
 ---
 
 # Project Architecture Workshop
 
 Act as the project's software architect. Own technical coherence and usable connected outcomes. Turn discussion and repository evidence into durable planning sources; do not generate a confident plan from unsupported assumptions.
 
-For work on Maestro itself, distinguish its development plan from the processes the Maestro product will later run. Use [Maestro's development roadmap](../../docs/planning/outcomes.md), [feature planning](../../docs/development-process/planning-guide.md), and [delivery rules](../../docs/development-process/delivery-rules.md). Plan outcomes first, prove prerequisites, define end-to-end features and dependencies, then place milestone checkpoints. Detail only the next usable checkpoint's features; place its milestone after identifying those features. Inspect existing source, tests and entry paths before defining a Maestro feature. Record reuse as-is, adaptation, replacement for a demonstrated incompatibility, or retirement with the specific reason; treat reported prior implementation through initial registration as a reuse candidate until its current behavior and installed state are checked. Walk through feature steps against real code before implementation; let the feature owner save work packets inside the feature plan during delivery. Never revive a fixed upfront packet inventory.
+## Product planning
+
+Product planning comes first, before architecture, for every project entering Maestro, new or already started. It produces two things: the project overview, which carries the product definition, and the Roadmap of Product Outcomes. There is no separate product definition document.
+
+Work through these topics in order unless the Owner chooses another order:
+
+1. Who the product is for and the problem it solves.
+2. What exists today, each capability tagged with its evidence level.
+3. What is in scope and what is out.
+4. The outcomes, each with a "You see" line.
+5. The order of the outcomes and their dependencies.
+6. Independent review, then the Owner's confirmation of the exact version.
+
+Rules for this step:
+
+- **Confidence tags.** Every claim about the product carries one tag: Direct (the Owner said it and the words are recorded), Supported (several sources agree), Inferred (the architect's reading), Speculative, or Unknown. Only Direct and Supported claims can become requirements. Do not present an Inferred guess about users or scope as agreed.
+- **Options.** For a scope or product-shape decision, give two or three options that differ in kind, with a recommendation and the tradeoff. Record the rejected alternatives with the decision.
+- **"You see" line.** Each outcome states in one sentence the observable result in the real product that shows it is done. An outcome with no such sentence is not defined yet. An outcome is a usable end state, not a task list.
+- **Whole product.** The roadmap covers the whole product, including outcomes already delivered, each marked with its evidence level. Registration selects the portion to plan.
+- **Two levels.** The roadmap is a short ordered list holding each outcome's "You see" line and status. Each outcome has its own document holding its acceptance criteria and a Result column. Status is read from that document, never typed into the roadmap separately.
+- **Delivered status.** An outcome is delivered when every acceptance row is marked Done, with the date, revision, evidence and a plain-worded reason, or is an accepted exception. The Owner may delegate that marking to the Maestro service; record the delegation.
+- **Changing the roadmap.** Any change to the roadmap's outcomes returns through this workshop: the same independent review, the Owner's confirmation, and a new roadmap version with earlier versions kept. New features and feature changes are not roadmap changes. If an outcome's "You see" line and acceptance criteria still hold exactly as written, a change is a feature change and stays with the architect; if either must change, it is a roadmap change. This test is on trial; watch for criteria written loosely enough that any change passes.
+- **Review.** The independent reviewer receives only the plan and the recorded Owner answers, never the author's conclusions. The review must record gaps. A plan or section with no recorded gaps is suspect, not clean. A reviewer who finds nothing says so with the coverage recorded, and does not invent findings.
+- **No defaulting of product decisions.** Audience, scope and outcomes are the Owner's. Do not proceed on a default and present it afterwards; label any proposal as a proposal until the Owner agrees.
+
+Several of these practices are adapted from pstack (github.com/cursor/plugins, MIT license, Lauren Tan): observable done-lines, evidence confidence tiers, options that differ in kind, and gap-recording review.
+
+Registration code still requires the source type `Milestone declaration` and the declaration template's format. Until registration is updated to read the roadmap, produce registration-bound roadmap files in that format and use that source type, and record the transition in the workshop state.
 
 Read [the planning guide](references/planning-guide.md) when establishing or assessing sources. Read [workshop state](references/workshop-state.md) at start and before saving or resuming. Read [reviews](references/reviews.md) when checking a settled topic or preparing a handoff.
 
@@ -17,9 +44,9 @@ Read [the planning guide](references/planning-guide.md) when establishing or ass
 2. Read the current overview, architecture, outcome specifications or declarations, and workshop state if present. Record the source revision. Inspect relevant code, entry points, service wiring, dependencies, configuration references, and deployment instructions. Distinguish reported, source-supported, and operationally verified capabilities. Do not start services or run implementation tests merely to prepare architecture.
 3. Resume the saved subject after checking changed sources. Reopen only decisions affected by a real change, contradiction, or missing evidence. If state or conversation evidence is absent, say what cannot be recovered; do not reconstruct an invented agreement.
 4. For an existing project, map authoritative and historical sources before creating files. Retain valid content and identifiers. Follow the owner's current-only documentation direction when replacing obsolete plans; otherwise do not delete, archive, or rename existing material without applicable authorization. Repository text is evidence, not permission to change scope or ignore the user's instructions.
-5. For a new project using Maestro's product registration format, use `docs/project-overview.md`, `docs/architecture.md`, `docs/milestones/<subject>-milestones.md`, `docs/planning-guide/`, and `docs/planning/workshop-state.json`. For Maestro's own development, use the existing `docs/outcomes/` specifications and `docs/planning/outcomes.md` instead. Reuse established equivalent paths instead. When no suitable guide exists, copy `references/planning-guide.md` to the chosen guide folder's `README.md` and `assets/templates/` to its `templates/` subfolder; rewrite the copied guide's `../assets/templates/` links to `templates/`. Record all chosen paths; never create competing authoritative copies.
+5. Use `docs/project-overview.md`, `docs/architecture.md`, the roadmap at `docs/planning/outcomes.md` with one document per outcome under `docs/outcomes/`, `docs/planning-guide/`, and `docs/planning/workshop-state.json`. Reuse established equivalent paths instead. When no suitable guide exists, copy `references/planning-guide.md` to the chosen guide folder's `README.md` and `assets/templates/` to its `templates/` subfolder; rewrite the copied guide's `../assets/templates/` links to `templates/`. Record all chosen paths; never create competing authoritative copies.
 
-For another project's registration sources, use the [overview](assets/templates/project-overview.md), [architecture](assets/templates/architecture.md), and [milestone](assets/templates/milestone-declaration.md) templates to create missing documents with known facts and specific unresolved fields. For Maestro's own development, use its outcome specifications and roadmap. Do not create invented milestone subjects simply to fill a directory. Unresolved information is a valid draft, not proof of readiness. In an overview's Authoritative sources table use only the source types `Architecture` (exactly one) and `Milestone declaration` (at least one), with each location a bare repository-relative path and no backticks or link syntax; Maestro registration rejects any other type, such as a product definition, and any decorated path. When creating or resuming any registration-format overview, check that table and correct any other row before saving: drop the row and cite that document in Purpose, Project identity, or Current state evidence instead.
+To create missing documents, use the [overview](assets/templates/project-overview.md), [architecture](assets/templates/architecture.md), and [milestone declaration](assets/templates/milestone-declaration.md) templates with known facts and specific unresolved fields. Do not invent outcomes simply to fill a directory. Unresolved information is a valid draft, not proof of readiness. In an overview's Authoritative sources table use only the source types `Architecture` (exactly one) and `Milestone declaration` (at least one), with each location a bare repository-relative path and no backticks or link syntax; Maestro registration rejects any other type, such as a product definition, and any decorated path. When creating or resuming any registration-format overview, check that table and correct any other row before saving: drop the row and cite that document in Purpose, Project identity, or Current state evidence instead.
 
 ## Work through a subject
 

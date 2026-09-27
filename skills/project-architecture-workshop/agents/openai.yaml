@@ -1,5 +1,5 @@
 interface:
   display_name: "Project Architecture Workshop"
   short_description: "Build clear architecture and usable project milestones"
-  default_prompt: "Use $project-architecture-workshop to assess this repository and build or improve its architecture and project milestones."
+  default_prompt: "Use $project-architecture-workshop to assess this repository and plan its product and Roadmap of Product Outcomes, then build or improve its architecture."
 

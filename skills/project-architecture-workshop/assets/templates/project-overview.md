@@ -15,6 +15,14 @@
 
 [What the project is intended to accomplish.]
 
+## Audience and problem
+
+| Field | Value |
+|---|---|
+| Who it is for | [The people or systems that use the product] |
+| Problem it solves | [What is wrong or missing for them today] |
+| Confidence | [Direct / Supported / Inferred / Speculative / Unknown; Direct means the Owner said it] |
+
 ## Overall scope
 
 | Boundary | Description |

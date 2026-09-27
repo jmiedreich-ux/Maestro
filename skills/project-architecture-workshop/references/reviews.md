@@ -10,6 +10,10 @@ Do not supply the author's conclusions, expected verdict, suspected defects, pri
 
 A reviewer who authored or corrected any reviewed document is ineligible, including for correction checks. A separate agent/session must be available and permitted. Otherwise label the pass self-checked and independent review pending, with no fabricated identity. One agent may perform multiple pass types only in separate sessions with separate outputs.
 
+## Recording gaps
+
+A review records the gaps it found, including gaps it could not assess. A reviewed plan or section with no recorded gaps is treated as suspect until the coverage record shows what was examined. A reviewer who finds nothing says so, lists the sources examined, and does not invent findings to fill the record. Contradictions between sources are listed as contradictions, not settled toward the tidier reading. Adapted from pstack (github.com/cursor/plugins, MIT license).
+
 ## Three pass assignments
 
 | Pass | Distinct question |
