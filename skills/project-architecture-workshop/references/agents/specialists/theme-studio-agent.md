@@ -1,6 +1,6 @@
 # Theme Studio Specialist Example
 
-This example follows the repository-wide rules in [AGENTS.md](../../../../AGENTS.md). A joined project must provide its own approved Theme Studio authority.
+This example follows the repository-wide rules in [AGENTS.md](../../../../../AGENTS.md). A joined project must provide its own approved Theme Studio authority.
 
 ## Purpose
 

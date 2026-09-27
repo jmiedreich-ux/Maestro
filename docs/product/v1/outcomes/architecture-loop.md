@@ -147,7 +147,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Later registration update | Update a registration without losing approved history | Supplies the real update for shared changed-registration/invalidation evidence. Implemented interfaces support integration; prior final acceptance of that shared evidence is not a prerequisite to development. |
 | Saved breakdown | Produce a bounded and parallel-ready work breakdown | Required preceding output. |
 | Common review/output/confirmation handling | Apply shared process definitions | Runtime mechanics; architecture-specific eligibility and confirmation records are delivered here. |
-| Independent reviewer | `docs/process/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
+| Independent reviewer | `skills/project-architecture-workshop/references/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
 
 ### Acceptance criteria
 

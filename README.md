@@ -5,7 +5,7 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 ## Development
 
 - [Ordered development outcomes](docs/product/v1/outcomes.md)
-- [Feature planning](docs/process/feature-planning.md) and [delivery rules](docs/process/delivery-rules.md)
+- [Feature planning](skills/project-architecture-workshop/references/feature-planning.md) and [delivery rules](skills/project-architecture-workshop/references/delivery-rules.md)
 
 ## Product sources
 
@@ -13,7 +13,7 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 - [Architecture](docs/product/v1/architecture.md)
 - [Product outcome details](docs/product/v1/outcomes/)
 - [Planning Guide and templates for projects registered with Maestro](skills/project-architecture-workshop/references/planning-guide.md)
-- [Agent role library](docs/process/agents/)
+- [Agent role library](skills/project-architecture-workshop/references/agents/)
 
 ## Reusable skill
 

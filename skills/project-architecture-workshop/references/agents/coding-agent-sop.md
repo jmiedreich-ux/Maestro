@@ -1,6 +1,6 @@
 # Common Coding Agent Instructions
 
-These shared rules apply to every coder. Follow [AGENTS.md](../../../AGENTS.md), the project's engineering policy and the exact work packet. A specialist role adds source-area knowledge and constraints; it references these rules without duplicating or weakening them.
+These shared rules apply to every coder. Follow [AGENTS.md](../../../../AGENTS.md), the project's engineering policy and the exact work packet. A specialist role adds source-area knowledge and constraints; it references these rules without duplicating or weakening them.
 
 ## Before changing files
 
@@ -8,14 +8,14 @@ Read the packet, applicable specialist role and context, exact source revision, 
 
 If provided, use a current feature brief to locate those authoritative inputs and the agreed observable result; otherwise use the confirmed packet and exact source directly. If the brief disagrees with a verified packet or source revision, report the conflict; the brief has no authority to change scope. Planning's read-only implementation walkthrough is preparation evidence, not a preapproved implementation plan or permission to edit additional paths.
 
-Return the [implementation plan](../../product/v1/architecture.md#returned-implementation-plan) through the service before changing files. The service saves it and makes it available to the CLI and Development Manager. Continue without a separate plan-approval gate unless a material conflict or missing prerequisite blocks the work; report that blocker.
+Return the [implementation plan](../../../../docs/product/v1/architecture.md#returned-implementation-plan) through the service before changing files. The service saves it and makes it available to the CLI and Development Manager. Continue without a separate plan-approval gate unless a material conflict or missing prerequisite blocks the work; report that blocker.
 
 ## Implementation
 
 - Change only the assigned scope; preserve architecture, conventions and required behavior.
 - Own the feature's required provider-to-consumer connections and real entry path within the assigned scope. Small internal coding steps need no separate review; submit the connected result for the existing independent review. If a needed file or shared interface is outside permitted scope, use the established architectural amendment before changing it.
 - Follow the assigned quality boundary without strengthening requirements or adding adjacent work.
-- Apply the Maestro-wide [verification expectations](../../../skills/project-architecture-workshop/references/planning-guide.md#verification-expectations): focus checks on the required output and spend most effort implementing the packet. Apply the [scoped review boundary](../../product/v1/architecture.md#project-wide-review-boundary) when addressing findings.
+- Apply the Maestro-wide [verification expectations](../planning-guide.md#verification-expectations): focus checks on the required output and spend most effort implementing the packet. Apply the [scoped review boundary](../../../../docs/product/v1/architecture.md#project-wide-review-boundary) when addressing findings.
 - Do not merge, deploy, expose credentials, bypass controls or assume an Owner decision.
 
 ## Result and handoff
@@ -33,4 +33,4 @@ A completion claim means ready for the next review step. It does not complete th
 
 ## Corrections
 
-Apply only authorized corrections within the packet's scope. Follow [independent implementation review](../../product/v1/architecture.md#independent-implementation-review) and the configured accounting under [packet and integration-change review limits](../../product/v1/architecture.md#packet-and-integration-change-review-limits). This file adds no separate allowance. Report conflicting instructions, insufficient scope or missing authority rather than inventing a rule.
+Apply only authorized corrections within the packet's scope. Follow [independent implementation review](../../../../docs/product/v1/architecture.md#independent-implementation-review) and the configured accounting under [packet and integration-change review limits](../../../../docs/product/v1/architecture.md#packet-and-integration-change-review-limits). This file adds no separate allowance. Report conflicting instructions, insufficient scope or missing authority rather than inventing a rule.

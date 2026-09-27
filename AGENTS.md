@@ -14,7 +14,7 @@ Across all Maestro work, apply the [verification expectations](skills/project-ar
 
 ## Git changes
 
-Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/process/delivery-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
+Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](skills/project-architecture-workshop/references/delivery-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
 
 The [product Execution branch model](docs/product/v1/architecture.md#milestone-branches-and-product-integration) specifies how Maestro will manage registered projects after that behavior is implemented. It does not direct the manual work of building Maestro.
 
@@ -26,7 +26,7 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Development outcomes
 
-Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](docs/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](skills/project-architecture-workshop/references/planning-guide.md) governs source material supplied to Maestro for other registered projects.
+Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](skills/project-architecture-workshop/references/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](skills/project-architecture-workshop/references/planning-guide.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 
@@ -34,7 +34,7 @@ Apply corrections directly to authoritative documents. Do not present detailed r
 
 ## Handoff discipline
 
-Follow [handoff rules](docs/process/handoff-rules.md). Keep the handoff short and replace stale status instead of appending reviews, transcripts or history.
+Follow [handoff rules](skills/project-architecture-workshop/references/handoff-rules.md). Keep the handoff short and replace stale status instead of appending reviews, transcripts or history.
 
 ## Cross-document alignment
 

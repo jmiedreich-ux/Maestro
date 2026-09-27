@@ -158,7 +158,7 @@ Anyone who can push a `passed/*` tag to the repository can cause an install, so 
 
 ## Development environment preflight
 
-One command applies the [environment contract](../../../docs/process/environment-contract.md) to a selected feature. It reports every category as pass, fail, excluded with a reason, or unverified, and lists all missing items together. It exits 0 only when every applicable check passes, and 1 otherwise.
+One command applies the [environment contract](../../../skills/project-architecture-workshop/references/environment-contract.md) to a selected feature. It reports every category as pass, fail, excluded with a reason, or unverified, and lists all missing items together. It exits 0 only when every applicable check passes, and 1 otherwise.
 
 ```text
 sudo -u maestro /opt/maestro/bin/python -m maestro.agents.preflight \

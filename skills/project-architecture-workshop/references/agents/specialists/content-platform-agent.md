@@ -1,6 +1,6 @@
 # Content Platform Specialist Example
 
-This example follows the repository-wide rules in [AGENTS.md](../../../../AGENTS.md). A joined project must provide its own approved product authority.
+This example follows the repository-wide rules in [AGENTS.md](../../../../../AGENTS.md). A joined project must provide its own approved product authority.
 
 ## Purpose
 

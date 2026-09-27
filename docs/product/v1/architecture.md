@@ -645,7 +645,7 @@ A minimum terminal width and height protects readable project, question, and inp
 
 Registration checks whether Maestro can understand and operate on supplied project information. It identifies the project, verifies repository access, locates source material, checks its format and meaning, and produces a versioned package for confirmation.
 
-The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The [Maestro Project Architect](../../process/agents/architecture-agent.md) performs software architecture assessment of the source and prepares the candidate registration package. A separate Fidelity Reviewer checks both the assessment and the package against that source and recorded decisions. The Owner role supplies decisions and final confirmation through the CLI.
+The project architect supplies outcomes, architecture, scope, completion requirements, and source corrections. That role may be human, an agent, or both. The [Maestro Project Architect](../../../skills/project-architecture-workshop/references/agents/architecture-agent.md) performs software architecture assessment of the source and prepares the candidate registration package. A separate Fidelity Reviewer checks both the assessment and the package against that source and recorded decisions. The Owner role supplies decisions and final confirmation through the CLI.
 
 Registration does not approve the project's architecture, start development, or perform development-milestone and work-packet breakdown. Change boundaries, repository rules, coding conventions, and execution authority belong to Execution. Project-specific overrides of those rules are not part of registration.
 
@@ -1536,7 +1536,7 @@ Development Manager questions use the [existing CLI question flow](#questions-an
 
 ### Coder preparation and submitted results
 
-Each coder follows the [common coding instructions](../../process/agents/coding-agent-sop.md), the exact packet and the applicable project specialist role. Specialist guidance adds source-area knowledge without duplicating or weakening common rules. The unrelated example roles currently in this repository's specialists folder are not assignment options for this work.
+Each coder follows the [common coding instructions](../../../skills/project-architecture-workshop/references/agents/coding-agent-sop.md), the exact packet and the applicable project specialist role. Specialist guidance adds source-area knowledge without duplicating or weakening common rules. The unrelated example roles currently in this repository's specialists folder are not assignment options for this work.
 
 Before implementation, the coder returns the [implementation plan](#returned-implementation-plan) through the service. It identifies intended changes, relevant existing code, necessary connections, basic verification and blockers. The service saves it and exposes it to the CLI and Development Manager. There is no separate plan-approval gate; material conflicts or missing prerequisites block affected work.
 
@@ -1554,7 +1554,7 @@ A worktree remains until its local and remote outcomes are reconciled and no rev
 
 ### Independent implementation review
 
-The [Independent Implementation Reviewer](../../process/agents/independent-review-agent.md) examines the exact submitted connected feature against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
+The [Independent Implementation Reviewer](../../../skills/project-architecture-workshop/references/agents/independent-review-agent.md) examines the exact submitted connected feature against the packet, relevant architecture, common coding rules, assigned project specialist role and verification evidence. It checks promised outcomes, essential connections, scope compliance and basic meaningful verification. The reviewer works read-only and cannot have authored the implementation.
 
 Material defects identify an unmet requirement, affected code, impact and minimum correction. Preferences and optional improvements are non-blocking. Results pass through the service to the Development Manager. Clear implementation defects return to the coder; missing or contradictory architectural decisions use [Execution architectural determinations](#execution-architectural-determinations). Reviewers do not edit code, dispatch corrections or authorize merges.
 
@@ -1582,7 +1582,7 @@ The service validates scope, reference freshness and the result against the assi
 
 ### Integration management and queue
 
-The [Integration Manager](../../process/agents/integration-agent.md) is the project's code manager; the Development Manager is its process manager. The service owns queues and durable assignment state rather than agents retaining pending work only in conversation memory. The Development Manager uses recorded progress, dependencies and capacity to manage work flow.
+The [Integration Manager](../../../skills/project-architecture-workshop/references/agents/integration-agent.md) is the project's code manager; the Development Manager is its process manager. The service owns queues and durable assignment state rather than agents retaining pending work only in conversation memory. The Development Manager uses recorded progress, dependencies and capacity to manage work flow.
 
 Each project has a persistent Integration Manager session and a first-in, first-out queue of independently approved packets. Only one integration assignment is active for the project at a time, across all its development milestones. Queue order is the service's durable enqueue order. The active assignment retains its position through integration review and necessary corrections; the next starts only after it is resolved. A blocked assignment is not silently skipped. Other projects integrate independently, and coding and packet review may continue where dependencies and shared-code boundaries permit.
 
@@ -1622,7 +1622,7 @@ Packet approvals alone do not establish milestone completion. The milestone chec
 
 ### Milestone outcome review
 
-The service starts a fresh session of the [Independent Implementation Reviewer](../../process/agents/independent-review-agent.md) to review the complete assembled milestone branch and perform its gap analysis. The assignment includes exact branch revisions, agreed milestone outcomes, relevant architecture, dependencies and completion evidence. The reviewer checks that the packets work together and that the usable outcome has no missing required parts. It must not have authored or integrated any code under review. The Integration Manager prepares the branch and supporting evidence but cannot approve its own work.
+The service starts a fresh session of the [Independent Implementation Reviewer](../../../skills/project-architecture-workshop/references/agents/independent-review-agent.md) to review the complete assembled milestone branch and perform its gap analysis. The assignment includes exact branch revisions, agreed milestone outcomes, relevant architecture, dependencies and completion evidence. The reviewer checks that the packets work together and that the usable outcome has no missing required parts. It must not have authored or integrated any code under review. The Integration Manager prepares the branch and supporting evidence but cannot approve its own work.
 
 Findings distinguish blocking defects from non-blocking observations. A blocking finding prevents the agreed outcome or its required evidence; preferences and optional improvements do not block merging or require another round. The service records the findings and routes failures to the Project Architect for determination:
 

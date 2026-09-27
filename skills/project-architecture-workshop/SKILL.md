@@ -36,6 +36,8 @@ Several of these practices are adapted from pstack (github.com/cursor/plugins, M
 
 Read [the planning guide](references/planning-guide.md) when establishing or assessing sources. Read [workshop state](references/workshop-state.md) at start and before saving or resuming. Read [reviews](references/reviews.md) when checking a settled topic or preparing a handoff.
 
+The process after planning also lives in `references/`: [feature planning](references/feature-planning.md), [delivery rules](references/delivery-rules.md), the [environment contract](references/environment-contract.md), [handoff rules](references/handoff-rules.md), and the [agent role contracts](references/agents/README.md). Read them when the work moves past planning; this workshop does not execute them.
+
 ## Start or resume
 
 1. Use a supplied repository or existing workspace. If neither is available, ask for the repository URL/path and access through the environment's normal connection mechanism. Never request a token in conversation. Confirm identity, read access, branch, applicable repository instructions, and existing write authorization. Do not ask again for access or permission already established.

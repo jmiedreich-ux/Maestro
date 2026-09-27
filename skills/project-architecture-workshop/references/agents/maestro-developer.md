@@ -1,8 +1,8 @@
 # Maestro Developer
 
-Apply the authority boundary in [Agent roles](README.md#roles) and the defined [Execution workflow](../../product/v1/architecture.md#execution).
+Apply the authority boundary in [Agent roles](README.md#roles) and the defined [Execution workflow](../../../../docs/product/v1/architecture.md#execution).
 
-Every action follows the repository-wide rules in [AGENTS.md](../../../AGENTS.md) and the [Common Coding Agent Instructions](coding-agent-sop.md).
+Every action follows the repository-wide rules in [AGENTS.md](../../../../AGENTS.md) and the [Common Coding Agent Instructions](coding-agent-sop.md).
 
 ## Purpose
 

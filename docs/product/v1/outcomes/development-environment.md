@@ -4,7 +4,7 @@ This outcome prepares the environment used to build Maestro itself. It does not 
 
 ## Prepare a verified development environment
 
-**Outcome:** A developer or assigned agent can start in a clean workspace, read the assigned source, write an output, run a baseline check and exit cleanly. One [environment contract](../../../process/environment-contract.md) and preflight report every category and every unmet applicable requirement for the selected feature before dispatch or assembled QA. The baseline environment can pass before the service is built; service checks become required when later features depend on it.
+**Outcome:** A developer or assigned agent can start in a clean workspace, read the assigned source, write an output, run a baseline check and exit cleanly. One [environment contract](../../../../skills/project-architecture-workshop/references/environment-contract.md) and preflight report every category and every unmet applicable requirement for the selected feature before dispatch or assembled QA. The baseline environment can pass before the service is built; service checks become required when later features depend on it.
 
 **Included:** Linux host and tools, service revision when the service is available, repository access, owner and service credentials, selected model routes, sandbox mounts and permissions, ports and running dependencies, realistic test targets and data, a reusable known-good workspace, and a documented reset of run-owned data.
 
@@ -26,4 +26,4 @@ This outcome prepares the environment used to build Maestro itself. It does not 
 | Upgrade and rollback work | Only a passed, master revision is installed; a failed check restores the backup. | Real upgrade, forced failure and timer-driven install. | None | Done 2026-09-23, revision `bee22c9`. Receipts under `/var/lib/maestro/upgrades/`. Owner accepted the outcome 2026-09-24. |
 | Autopilot runner is verified | The runner that drives outcomes runs unattended. | Observed running. | Not verified at acceptance; this run is the first unattended use. Progress updates through the Slack loop are proved. | Accepted exception, as stated. |
 
-See [the development delivery rules](../../../process/delivery-rules.md) and [the roadmap](../outcomes.md).
+See [the development delivery rules](../../../../skills/project-architecture-workshop/references/delivery-rules.md) and [the roadmap](../outcomes.md).

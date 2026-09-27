@@ -1,6 +1,6 @@
 # Display Runtime Specialist Example
 
-This example follows the repository-wide rules in [AGENTS.md](../../../../AGENTS.md). A joined project must provide its own approved display authority.
+This example follows the repository-wide rules in [AGENTS.md](../../../../../AGENTS.md). A joined project must provide its own approved display authority.
 
 ## Purpose
 
