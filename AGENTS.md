@@ -26,7 +26,7 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Development outcomes
 
-Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](skills/maestro-workshop/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](skills/maestro-workshop/process/planning-guide.md) governs source material supplied to Maestro for other registered projects.
+Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/product/v1/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](skills/maestro-workshop/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](skills/maestro-workshop/process/planning-guide.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 

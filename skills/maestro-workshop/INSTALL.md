@@ -11,7 +11,7 @@ These locations follow the [Codex skill documentation](https://learn.chatgpt.com
 
 Example request: "Use the workshop skill on this repository. Inspect the existing structure, create missing planning sources, and work through the important questions with me."
 
-The package is portable and has no Maestro runtime dependency. Its source format is derived from the Maestro Planning Guide, but no Maestro system design, branch policy, model selection, or roadmap content is a default for another project. The guide bundled here is a versioned copy for this skill; changes to the original guide are not automatically imported.
+The package is portable and has no Maestro runtime dependency. Its source format is derived from the Maestro Planning Guide, but no Maestro system design, branch policy, model selection, or roadmap content is a default for another project. The planning guide bundled here, `process/planning-guide.md`, is the authoritative guide; there is no separate original to synchronize.
 
 This instruction skill directs the coding agent's work. It is not a background service or a deterministic enforcement engine. Code changes, registration execution, and deployment remain separate tasks.
 

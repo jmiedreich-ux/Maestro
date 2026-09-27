@@ -1,6 +1,6 @@
 # <Role title>
 
-<!-- Save as role-<role-title>.md at the source-local path assigned by the architecture manifest. Follow the role-file format in docs/architecture.md, “Architecture schema and process-definition binding”. Replace placeholders and use links valid in the target project. -->
+<!-- Save as role-<role-title>.md at the source-local path assigned by the architecture manifest. Follow the role-file format in docs/product/v<major>/architecture.md, “Architecture schema and process-definition binding”. Replace placeholders and use links valid in the target project. -->
 
 ## Responsibility
 

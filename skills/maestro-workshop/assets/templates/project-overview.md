@@ -15,6 +15,8 @@
 
 [What the project is intended to accomplish.]
 
+Confidence: [Direct / Supported / Inferred / Speculative / Unknown]
+
 ## Audience and problem
 
 | Field | Value |
@@ -25,10 +27,10 @@
 
 ## Overall scope
 
-| Boundary | Description |
-|---|---|
-| Included | [Included capabilities] |
-| Excluded | [Explicit exclusions] |
+| Boundary | Description | Confidence |
+|---|---|---|
+| Included | [Included capabilities] | [Direct / Supported / Inferred / Speculative / Unknown] |
+| Excluded | [Explicit exclusions] | [Direct / Supported / Inferred / Speculative / Unknown] |
 
 ## Current state
 

@@ -13,17 +13,17 @@ This guide describes the source material project architects supply for registrat
 | Roadmap of Product Outcomes | The ordered list of outcomes with a "You see" line, status, evidence level, order, dependencies and alternatives considered. | [Roadmap](../assets/templates/roadmap-of-product-outcomes.md) |
 | Outcome documents | One per outcome: scope, architecture references, dependencies, acceptance criteria with a Result column, and definition of done. | [Outcome](../assets/templates/outcome.md) |
 
-Sources are Markdown files in the project repository, using the templates' consistent headings and tables. File and folder names are project-specific. Template prompts are replaced with project facts; unresolved details are identified explicitly rather than presented as completed work. Additional detail can be added under the relevant headings.
+Sources are Markdown files in the project repository, using the templates' consistent headings and tables. Files live under `docs/product/v<major>/` in the layout the workshop defines; outcome document names are project-specific. Template prompts are replaced with project facts; unresolved details are identified explicitly rather than presented as completed work. Additional detail can be added under the relevant headings.
 
 The templates prepare planning sources suitable for registration assessment. They do not generate a runtime registration package or establish a successful registration.
 
 ## Entry document and source references
 
-Registration requires the repository and the repository-relative path to the project overview. For example, a repository may use `docs/project-overview.md`. The workshop reads that entry document and follows its source references rather than scanning folders or guessing which documents are authoritative.
+Registration requires the repository and the repository-relative path to the project overview. For example, `docs/product/v1/project-overview.md`. The workshop reads that entry document and follows its source references rather than scanning folders or guessing which documents are authoritative.
 
 The overview lists the architecture and the roadmap. The roadmap links each outcome document, and each outcome identifies the specific architecture sections that explain its behavior and journeys. Dependency references use the outcome's plain subject.
 
-Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/architecture.md#service-startup`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
+Source-location fields contain repository-relative paths, optionally followed by a heading fragment, such as `docs/product/v1/architecture.md#service-startup`. These location values are interpreted from the repository root. Any additional clickable Markdown links must resolve to those same files from the document containing the link.
 
 One fact has one authoritative location. Other documents reference it rather than maintaining copies. Reviews use the same exact source revision plus document content hashes for unpublished drafts, or the same published commit when available. Freeze the reviewed snapshot so both passes assess identical bytes. Missing references or contradictory sources are flagged for clarification, not silently resolved.
 
