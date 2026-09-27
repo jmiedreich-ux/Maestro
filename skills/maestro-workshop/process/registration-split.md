@@ -1,12 +1,12 @@
 # Registration: what moves to the workshop and what stays in the service
 
-Working analysis for the Owner's decision. Nothing here is built or agreed as a requirement yet. It compares each part of registration in [the architecture](../architecture.md#registration) with the direction the Owner set: the workshop does the thinking, and the service only checks, records and asks for confirmation.
+Working analysis for the Owner's decision. Nothing here is built or agreed as a requirement yet. It compares each part of registration in [the architecture](../../../docs/product/v1/architecture.md#registration) with the direction the Owner set: the workshop does the thinking, and the service only checks, records and asks for confirmation.
 
 ## The idea in plain words
 
 Today, registration is one large process. It launches its own architect and reviewer agents, collects answers, builds a package of records, publishes it to GitHub and asks the Owner to confirm.
 
-Under the new direction, the planning work happens earlier, inside the [maestro-workshop skill](../../../../skills/maestro-workshop/SKILL.md), with the Owner in the room. By the time registration starts, the planning documents already exist and have been independently reviewed. Registration then does only what a program can do reliably: check the documents against a rules file, record exactly which version was checked, and ask the Owner to confirm.
+Under the new direction, the planning work happens earlier, inside the [maestro-workshop skill](../SKILL.md), with the Owner in the room. By the time registration starts, the planning documents already exist and have been independently reviewed. Registration then does only what a program can do reliably: check the documents against a rules file, record exactly which version was checked, and ask the Owner to confirm.
 
 ## Part by part
 
