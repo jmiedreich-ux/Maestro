@@ -4,17 +4,16 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 
 ## Development
 
-- [Ordered development outcomes](docs/planning/outcomes.md)
-- [Feature planning](docs/development-process/planning-guide.md) and [delivery rules](docs/development-process/delivery-rules.md)
-- [Current development registration](docs/planning/manual-registration.md)
+- [Ordered development outcomes](docs/product/v1/outcomes.md)
+- [Feature planning](docs/process/planning-guide.md) and [delivery rules](docs/process/delivery-rules.md)
 
 ## Product sources
 
-- [Project overview](docs/project-overview.md)
-- [Architecture](docs/architecture.md)
-- [Product outcome details](docs/outcomes/)
+- [Project overview](docs/product/v1/project-overview.md)
+- [Architecture](docs/product/v1/architecture.md)
+- [Product outcome details](docs/product/v1/outcomes/)
 - [Planning Guide and templates for projects registered with Maestro](docs/planning-guide/README.md)
-- [Agent role library](docs/agents/)
+- [Agent role library](docs/process/agents/)
 
 ## Reusable skill
 

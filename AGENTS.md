@@ -10,13 +10,13 @@ Write all repository documentation and agent responses in plain language. Keep t
 
 ## Proportionate testing and scoped reviews
 
-Across all Maestro work, apply the [verification expectations](docs/planning-guide/README.md#verification-expectations) and [project-wide review boundary](docs/architecture.md#project-wide-review-boundary). These rules cover every agent, process and review kind; process-specific authority and review limits still apply.
+Across all Maestro work, apply the [verification expectations](docs/planning-guide/README.md#verification-expectations) and [project-wide review boundary](docs/product/v1/architecture.md#project-wide-review-boundary). These rules cover every agent, process and review kind; process-specific authority and review limits still apply.
 
 ## Git changes
 
-Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/development-process/delivery-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
+Edit Maestro documentation directly on `master`, preserving current-only sources. Building Maestro code follows the [development delivery rules](docs/process/delivery-rules.md): a reviewed connected feature goes to its development milestone branch; assembled QA and outcome review precede promotion to `master`. Before the first development milestone is placed, the architect establishes its usable checkpoint and branch from the next planned features.
 
-The [product Execution branch model](docs/architecture.md#milestone-branches-and-product-integration) specifies how Maestro will manage registered projects after that behavior is implemented. It does not direct the manual work of building Maestro.
+The [product Execution branch model](docs/product/v1/architecture.md#milestone-branches-and-product-integration) specifies how Maestro will manage registered projects after that behavior is implemented. It does not direct the manual work of building Maestro.
 
 ## Architecture documentation
 
@@ -26,7 +26,7 @@ Keep Maestro delivery plans, milestone drafts, work assignments, and handoffs se
 
 ## Development outcomes
 
-Use [the Maestro development roadmap](docs/planning/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](docs/development-process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
+Use [the Maestro development roadmap](docs/product/v1/outcomes.md) for building Maestro. Inspect existing implementation before defining a feature; reuse or adapt it whenever it can meet the required result, and record a concrete reason before replacing it. Product outcome specifications in `docs/outcomes/` define required behavior and acceptance and record completion evidence: plan from the whole document and record results in it, per the [feature boundary](docs/process/delivery-rules.md#feature-boundary). The [Maestro Planning Guide](docs/planning-guide/README.md) governs source material supplied to Maestro for other registered projects.
 
 ## Documentation review results
 
@@ -34,7 +34,7 @@ Apply corrections directly to authoritative documents. Do not present detailed r
 
 ## Handoff discipline
 
-Follow [handoff rules](docs/development-process/handoff-rules.md). Keep the handoff short and replace stale status instead of appending reviews, transcripts or history.
+Follow [handoff rules](docs/process/handoff-rules.md). Keep the handoff short and replace stale status instead of appending reviews, transcripts or history.
 
 ## Cross-document alignment
 
@@ -44,4 +44,4 @@ Use the [documentation review method](skills/project-architecture-workshop/refer
 
 For Maestro, selected-scope coverage includes opening and using the workspace, answering a question, initial registration, registration update, interrupted-registration recovery, and each architecture-loop stage: entry/session continuation, code investigation, project structure and specialist guidance, breakdown/clarification, review/amendment, publication/confirmation, cancellation/recovery, and reconciliation after re-registration. Record exclusions explicitly.
 
-Apply full reviews at the method's major design checkpoints. Targeted correction checks do not substitute for full coverage. Do not introduce preferred features, stronger acceptance requirements, or general Execution policy through documentation review. Live verification of completed features belongs to implementation; the authorized, isolated feasibility checks in [staged planning](docs/architecture.md#staged-planning-and-implementation-walkthrough) establish only the prerequisite they exercise.
+Apply full reviews at the method's major design checkpoints. Targeted correction checks do not substitute for full coverage. Do not introduce preferred features, stronger acceptance requirements, or general Execution policy through documentation review. Live verification of completed features belongs to implementation; the authorized, isolated feasibility checks in [staged planning](docs/product/v1/architecture.md#staged-planning-and-implementation-walkthrough) establish only the prerequisite they exercise.

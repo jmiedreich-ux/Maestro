@@ -6,11 +6,11 @@ Registration and architecture activities, source/package validation, exact confi
 
 ### Behavior to preserve
 
-Follow [the controlling architecture](../../../../../docs/architecture.md#registration) and the registered Maestro development outcomes. Preserve service-owned records, exact versions, real evidence, essential failure handling and the separation of actor authority. Historical code comments cannot override current rules. No extra features or broader assurance gates are introduced.
+Follow [the controlling architecture](../../../../../docs/product/v1/architecture.md#registration) and the registered Maestro development outcomes. Preserve service-owned records, exact versions, real evidence, essential failure handling and the separation of actor authority. Historical code comments cannot override current rules. No extra features or broader assurance gates are introduced.
 
 ## Authority
 
-[Repository rules](../../../../../AGENTS.md), [development delivery rules](../../../../../docs/development-process/delivery-rules.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
+[Repository rules](../../../../../AGENTS.md), [development delivery rules](../../../../../docs/process/delivery-rules.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
 
 ### Execution and verification
 
@@ -22,7 +22,7 @@ Intended area: `services/maestro/maestro/planning/`. Current related source: pro
 
 ### Read first
 
-Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/planning/outcomes.md), [feature planning](../../../../../docs/development-process/planning-guide.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
+Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../docs/process/planning-guide.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
 
 ## Inputs and outputs
 

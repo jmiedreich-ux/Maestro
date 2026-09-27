@@ -2,7 +2,7 @@
 
 ## Scope
 
-This context supports Maestro development in `services/maestro/maestro/execution/`. Read the [registered development outcomes](../../../../../docs/planning/outcomes.md), [current registration](../../../../../docs/planning/manual-registration.md), [feature planning](../../../../../docs/development-process/planning-guide.md), and the applicable [product architecture](../../../../../docs/architecture.md).
+This context supports Maestro development in `services/maestro/maestro/execution/`. Read the [registered development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../docs/process/planning-guide.md), and the applicable [product architecture](../../../../../docs/product/v1/architecture.md).
 
 ## Starting condition
 

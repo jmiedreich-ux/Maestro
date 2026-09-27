@@ -1,0 +1,255 @@
+# Runtime Service outcomes
+
+## Capability and scope
+
+This outcome area delivers the continuously running Python service on the Linux AI box. It owns installation and service configuration, durable project/activity/request records, the local API and event delivery, and the mechanics of supervising assigned agents.
+
+The [CLI outcomes](cli.md) owns terminal installation, presentation, navigation, input, and connection behavior. The [registration outcomes](registration.md) owns registration intake, architectural assessment and fidelity decisions, package records and publication, confirmation, and re-registration. The [architecture-loop outcomes](architecture-loop.md) owns its persistent-session integration, investigation, structure, breakdown, and confirmation. These processes use the shared runtime mechanisms; they do not deliver duplicate service implementations.
+
+| Delivery owner | Included responsibility |
+|---|---|
+| Runtime service | Service account and startup, SQL storage and transactions, request receipts, API transport and dispatch, saved event delivery, project start reservations, agent tool adapters, run isolation, supervision, technical configuration, and recovery mechanics. |
+| CLI | Terminal controls, displayed states, commands, question forms, attention navigation, and sending requests to the service. |
+| Registration | Source and scope interpretation, required assessment/review content, registration eligibility and review budget, package schemas and GitHub publication, activation, registration-specific action validation, and use of runtime reservations/recovery. |
+
+Generic service storage persists process-defined records; each process owns their meaning and required fields. Apply shared process definitions adds common configurable handling. Registration retains its package publication policy and schemas while using shared validation, saving, and recovery mechanisms. The runtime implements shared validation/transaction mechanisms; registration supplies the process-specific rules. Execution implementation, a full development scheduler, command center, mobile UI, and development breakdown are excluded from this outcome area.
+
+### Development order and connected acceptance
+
+The ordered service outcomes below describe implementation dependencies. Service foundation and API implementation support CLI development. CLI implementation remains before registration development. The agent-running capability must be implemented before registration can use real architect and reviewer runs.
+
+Final connected acceptance of Preserve project activity and requests, Connect the CLI to recorded service activity, and Run and recover assigned agents is shared with the relevant registration journeys. Their interfaces can be implemented and checked before final acceptance. Registration does not depend on its own completed acceptance evidence as a prerequisite to development.
+
+Initial registration supplies real projects, questions, and agent work. Register and confirm a project through the CLI supplies the successful initial journey; Update a registration without losing approved history supplies idle-reservation evidence; Recover registration without losing decisions or exceeding limits supplies connected interruption and retry evidence. No temporary project generator, fake review, or manual database edit completes those outcomes.
+
+Verification follows `docs/planning-guide/README.md#verification-expectations`: basic real journeys and essential failures, with necessary simulated conditions identified. Multiple criteria may share evidence. Live verification is deferred to development.
+
+Existing-code condition remains as recorded in the [project overview](../project-overview.md). Relevant source is assessed during development preparation for reuse or amendment; no existing component is assumed ready. Each completion record identifies the implementation revision, reproducible setup, observations, and required reviews. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when this work is later executed; they are not additional runtime-service milestone scope. Unresolved behavior or authority must be settled before affected breakdown; implementation and operational checks are not prerequisites to this documentation.
+
+## Outcomes
+
+## Operate the persistent Maestro service
+
+**Outcome:** The service can be installed, started, inspected, and restarted on the Linux AI box without relying on an open CLI session.
+
+**Included:** Python service installation, service account, filesystem access, systemd unit, startup configuration, boot/crash behavior, and clear startup failures.
+
+**Excluded:** Terminal UI, project workflows, agent dispatch, and a new health dashboard or health API.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Continuous service and CLI independence | `docs/architecture.md#runtime-and-prerequisites` |
+| Service responsibilities | `docs/architecture.md#components-and-responsibilities` |
+| Agent configuration and launch availability | `docs/architecture.md#adapter-configuration` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Linux AI box and systemd | `docs/architecture.md#runtime-and-prerequisites` | Installed condition unverified; service setup and required access are delivered here. |
+| Service configuration | `docs/architecture.md#adapter-configuration` | Contract specified; installation supplies applicable settings and credential references without exposing secrets. |
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception | Result |
+|---|---|---|---|---|
+| Installation instructions are followed | Service software, account, configuration locations, required filesystem permissions, and the schema bundles specified by [installed validation schemas](../architecture.md#installed-validation-schemas) are installed without hidden setup steps. | Installed revision, documented steps, actual account and access checks without secret values. | None | Met 2026-09-23, revision `3b3e1ec`. Package, `maestro` account, `/etc/maestro`, `/var/lib/maestro`, `/opt/maestro/schemas` and the systemd unit were installed by the automatic upgrade; the receipt `/var/lib/maestro/upgrades/20260923T224342/receipt.json` (readable with sudo) names the revision and its four passing post-install checks. |
+| The machine boots or the service crashes | systemd starts or restarts the service as specified. Service operation does not depend on a terminal session. | Basic boot and controlled crash/restart observations with systemd status and startup logs. | Boot and crash restart are configured (enabled at boot, restart on failure after 5 seconds) but not yet observed. Observing them needs a controlled crash test and a reboot; addressed later. | Accepted exception, as stated. Observed today: `maestro.service` enabled at boot, `Restart=on-failure`, `RestartUSec=5s`, active since 2026-09-23 22:43:43 with no restarts, running independently of any terminal. Boot and crash restart remain unobserved. |
+| Startup or configuration fails | The failure is visible and identifies the missing prerequisite. Agent configuration errors disable launch as specified, not silently select other settings. | A necessary configuration/access failure with its actual error and recovery after correction. | The service does not yet validate agent routes at startup, so an invalid route is not reported as a launch-disabling error. Agent launch is outside this outcome; addressed with agent dispatch. | Met in part 2026-09-23. A forced failing post-install check restored the previous installation and the service stayed healthy; the environment preflight named a missing agent runtime and refused dispatch (see the environmental pass). A service that fails to start on a bad configuration was not separately provoked; accepted exception together with route validation at startup. |
+| The operator inspects service health | systemd status and service logs distinguish running, failed, and restarting behavior; a running process is not reported as proof of registration readiness. | Actual service status and startup diagnostics. Connected API readiness is accepted under Connect the CLI to recorded service activity. | Only the running state has been observed; the failed and restarting states follow the crash test above. | Met in part 2026-09-24. `systemctl` reports running, enabled and zero restarts; the failed and restarting states remain the accepted exception. |
+| Owner access is installed | Provision the protected local CLI credential and service digest; agent identities cannot read or use the Owner credential. Follow `docs/architecture.md#local-owner-identity-and-credentials`. | Actual installation and essential access-denial evidence without exposing secrets. | None | Met 2026-09-23, revision `3b3e1ec`. Authenticated read returned 200 and an unauthenticated read 401; as `jeremy` and as `maestro-agent` (checked 2026-09-24) `/etc/maestro` and the service data folder are unreadable. Secret values were never printed. Evidence: [environmental pass](../admin/environmental-pass.md). |
+
+### Definition of done
+
+Installation and systemd operation work on the AI box with reproducible setup and essential failure evidence. This establishes the persistent host service only; it does not claim working registration or connected agent execution. Completion evidence follows the common requirements above.
+
+### Unresolved details
+
+No additional service-lifecycle behavior is proposed. Exact installation packaging, unit settings, and permission setup are implementation work against the architecture. Delivery review and acceptance follow the defined Execution architecture when this outcome is implemented.
+
+## Preserve project activity and requests
+
+**Outcome:** Project records and accepted requests survive service restarts, retain their identities, and cannot be applied twice or to the wrong project.
+
+**Included:** SQLite storage under [SQLite storage](../architecture.md#sqlite-storage), project/activity identities, conversations, questions and results, transactional request acceptance, pending delivery, event records, and atomic project start reservations.
+
+**Excluded:** Registration-specific schema meaning, source assessment, GitHub package publication, and general Execution scheduling.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Authoritative records and save order | `docs/architecture.md#record-ownership`; `docs/architecture.md#save-and-delivery-sequence` |
+| Answers, identity, and recovery | `docs/architecture.md#answer-identity-and-uncertain-delivery` |
+| Project start reservation | `docs/architecture.md#re-registration` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Persistent service | Operate the persistent Maestro service | Required implementation predecessor. |
+| Connected read/write access | Connect the CLI to recorded service activity | Downstream interface for final acceptance, not an implementation prerequisite for storage. |
+| Real registration records and idle checks | Register and confirm a project through the CLI; Update a registration without losing approved history | Registration defines and produces process records and applies idle-only rules; connected evidence is shared. |
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception | Result |
+|---|---|---|---|---|
+| Two projects exchange questions and answers | SQL saves project/activity/question/request identities and content before acknowledgment. No answer or result crosses project boundaries. | Real initial-registration records correlated with API requests and CLI output for both projects. | None | Met 2026-09-24, revision fa77db8. On a disposable copy of the installed service, two projects each created an activity and a question, answered independently; an answer sent to the other project's question, or the other activity, was refused (409 wrong context). Evidence: `var/qa/preserve-live/evidence.json` (records no revision; the run used `master` code at `fa77db8`). Driven with direct HTTP calls, not CLI output; real registration records come with the registration outcomes. |
+| A receipt is lost or a request is repeated | Same request/content returns its saved result; conflicting content is rejected. An answer is accepted once and pending delivery survives restart. | Necessary lost-acknowledgment and restart observations using real service records. | None | Met 2026-09-24, revision fa77db8. A repeated answer returned the identical saved receipt; the same request id with different content was rejected (409); a second answer to the same question was refused as stale; the pending delivery stayed pending. Evidence: same file. |
+| The service restarts after saving | Accepted conversations, decisions, request results, and pending delivery remain retrievable. Read-only retrieval does not create duplicate records. | Before/after SQL and service responses connected to the CLI. | None | Met 2026-09-24, revision fa77db8. After `kill -9` and restart, row counts, answers, receipts and pending delivery were unchanged and reads added no records. Evidence: same file (before/after counts and rows). |
+| Re-registration competes with a project start | One transaction checks/reserves the project; simultaneous starts cannot slip through. Unknown run state is not idle. Other projects remain available. | Actual service-boundary contention and the Update a registration without losing approved history journey; no extra execution command is assumed. | Recorded in Result | Met 2026-09-24, revision fa77db8. `reservations.py` checks idle and reserves in one write transaction; any activity state other than cancelled, completed or failed counts as not idle. Ten real processes raced on one project through the reservation code against a real database file: one won, nine refused; another project stayed available (`var/qa/preserve-live/contention-evidence.json`; the evidence file records no revision, the code is `master` at `fa77db8`; 12-thread test in `tests/maestro/service/test_reservations.py`). Accepted exception: no agent-run records exist in the service yet, so activity state is the only run status checked and the reservation is not yet called by a start or re-registration operation. Both are added by Run and recover assigned agents and the registration outcomes, which call this reservation. |
+| Findings and Owner decisions are saved | Preserve stable finding mappings, exact versions, action receipts and allowance consumption through replay and restart. | Shared registration and architecture-loop records show unchanged identities and no duplicate grants. | Recorded in Result | Accepted exception 2026-09-24; no connected attempt was possible because nothing produces findings or allowances yet. Finding records, versions and action receipts are stored and replay-safe (activity tests), but real findings and allowances are produced only by the registration and architecture outcomes. Their unchanged-identity check runs in those outcomes. |
+| Runtime performance observations arrive or replay | SQL records exact role/tool/model and work identities, time, input/output usage, context readings and measurement quality. Normalize counter scopes without double-counting; incomplete totals stay partial. | Main real run plus replay/restart evidence under `docs/architecture.md#agent-performance-and-context-management`; unknown readings are not zero. | Recorded in Result | Accepted exception 2026-09-24. No agent run reports performance observations yet, so nothing can be recorded from a real run. Recording is built with Run and recover assigned agents, where real usage and context readings first exist. |
+
+### Definition of done
+
+Connected CLI and registration evidence demonstrates durable records, isolated projects, and nonduplicated request effects. A database existing or isolated table checks alone are insufficient. Storage and reservation mechanics are implemented here; registration decides when its process may reserve or release the project.
+
+### Unresolved details
+
+SQLite tables and storage implementation remain development work. Delivery evidence must show the configured local database, service-owned writes, committed records surviving service restart, and competing project-start requests producing only one reservation under [SQLite storage](../architecture.md#sqlite-storage). SQL backup and restore are out of scope. Ordinary service restart and recorded-operation recovery remain included. Delivery review and acceptance follow the defined Execution architecture.
+
+## Connect the CLI to recorded service activity
+
+**Outcome:** The CLI can retrieve real project activity, send supported requests, and receive saved updates through the local service API.
+
+**Included:** Loopback HTTP service, defined reads and request envelope, operation dispatch, error responses, SSE delivery, cursors, replay, and heartbeat behavior.
+
+**Excluded:** Terminal rendering and input controls; registration-specific operation decisions and package payload validation.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Local connection and API contract | `docs/architecture.md#system-connections`; `docs/architecture.md#cli-request-and-event-contract` |
+| Connection loss and recorded updates | `docs/architecture.md#cli-connection-configuration`; `docs/architecture.md#open-and-use-the-workspace` |
+| Answer journey | `docs/architecture.md#answer-a-project-question` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Saved records and request acceptance | Preserve project activity and requests | Required implementation predecessor. |
+| CLI workspace and answers | Connected multi-project CLI workspace; Reliable project questions and answers | CLI owns the client; interfaces are developed before shared final integration. |
+| Real registration operations | Register and confirm a project through the CLI | Registration supplies operation handlers and records for final connected acceptance. |
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception | Result |
+|---|---|---|---|---|
+| An installed CLI connects to an empty service | The configured loopback API returns a genuine empty workspace. Failure returns a clear error, not an empty result. | Installed CLI/service connection, empty state, and necessary failure observation. | None | Done 2026-09-24, revision `94041af`. The installed `maestro` terminal and its connection client, run against a disposable copy of the installed service, showed an empty workspace (cursor 0, no projects, "No projects registered", connected). With no service running it showed "cannot reach ... Connection refused", not an empty list. Evidence: `var/qa/cli-live/evidence.json` (`empty_workspace`, `service_down`) and `tui-evidence.json`. |
+| Real activity exists | Defined reads return correct identities, data, and cursors; requests dispatch to the proper process and return saved receipts or specified errors. | Actual registration activity and question/answer journey through CLI, API, and SQL. | Recorded in Result | Done in part 2026-09-24, revision `94041af`. Through the client, two projects were created, a question published and answered; workspace, projects and attention reads showed the right identities and cursor (3 after three events); requests returned saved receipts, a repeated request returned the same receipt, and an unknown receipt returned 404. Evidence: `evidence.json`. Accepted exception: real registration records do not exist until the registration outcomes; this proof uses the question and answer journey only. |
+| Updates occur during connection or reconnection | Events are sent only after SQL commit; snapshot plus replay loses no recorded updates, and repeated event IDs are ignored. | Basic disconnect/reconnect while real activity changes, with correlated event identities and visible CLI results. | None | Done 2026-09-24, revision `94041af`. The client read events 1-2, disconnected, two requests committed, and it reconnected with the last event id and received 3-5: none lost, none duplicated, ids equal the saved outbox sequence. A replay from an earlier id delivered events again; the client's repeated-id ignore rule is covered by unit tests only, not by this run. A bad cursor was refused (400). After `kill -9` and restart, replay from 0 matched the saved outbox exactly. The installed terminal, left open, showed a project created live, and after `kill -9` of the service and a restart it reconnected by itself and showed the project created while it was disconnected too. Evidence: `evidence.json` (`reconnect_ids`, `no_loss`, `replay_after_restart_matches_outbox`) and `tui-reconnect-evidence.json`. |
+| A connection becomes quiet or breaks | Heartbeats and loss detection follow the architecture. Client exit does not stop service work or replay submissions. | Defined heartbeat timing and actual CLI exit/reconnection; service continues independently. | Recorded in Result | Done 2026-09-24, revision `94041af`. On an idle stream heartbeats arrived at 15.0 s and 30.0 s. The client was dropped while the service kept running; resubmitting the same request replayed nothing and left the saved events unchanged. Killing the service showed a clear connection error in the client. Accepted exceptions: the 45-second silence detection was not separately timed, and service work continuing was shown only by the service staying alive, since no agent work exists yet. With the service connected, the terminal took about 11 s to exit after `/exit` (it exited cleanly, service work continued); left as a later terminal fix. |
+| The CLI presents a credential | Validate the credential, derive the configured Owner identity and return the specified authorization errors; agent results cannot act as Owner requests. | Actual authorized request and essential missing/invalid credential checks. | Recorded in Result | Done 2026-09-24, revision `94041af`. A valid Owner credential worked; a wrong one gave 401 "a valid Owner credential is required"; no credential gave 401 on both reads and events; a credential file with mode 0644 was refused by the client and a missing one gave a clear error. Evidence: `evidence.json`. Accepted exception: a real agent identity attempting an Owner request is tested with agent dispatch; here only non-Owner credentials were shown to be refused. |
+
+### Definition of done
+
+The actual CLI uses the implemented service API and saved events for the main initial-registration and answer journeys. Endpoint stubs, sample responses, or streamed text without saved records do not establish completion. The CLI owns its presentation checks; shared journey evidence can satisfy both declarations.
+
+### Unresolved details
+
+No new API behavior is introduced. Executable API validation and transport handling are implementation work; registration handlers remain an explicit dependency. Delivery review and acceptance follow the defined Execution architecture.
+
+## Run and recover assigned agents
+
+**Outcome:** The service runs the selected registration architect or reviewer in the correct workspace, returns validated outputs, and stops or recovers work without losing records or launching duplicates.
+
+**Included:** Codex and Claude Code adapters, exact model checks, immutable assignments, protected workspaces, separate run identities, supervisor units, output collection, progress, timeouts, technical retries, stopping, and supervisor recovery.
+
+**Excluded:** Agent judgment, registration review/activation decisions, package publication policy, software implementation agents, and Execution implementation or policy changes.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Launch, model checks, and workspaces | `docs/architecture.md#model-execution-adapters` |
+| Process supervision and restart | `docs/architecture.md#process-supervision-and-interruption-recovery` |
+| Response identity and validation | `docs/architecture.md#registration-agent-response-contract` |
+| Technical limits and retries | `docs/architecture.md#technical-recovery`; `docs/architecture.md#activity-retry-request` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Storage and connected interface | Preserve project activity and requests; Connect the CLI to recorded service activity | Required implementation foundation and interface for recorded progress/results. |
+| Installed tools and credentials | `docs/architecture.md#tool-and-model-selection`; `docs/architecture.md#adapter-configuration` | Current readiness unknown; installing and configuring both selected tool routes is included here. |
+| Real role assignments and recovery actions | Register and confirm a project through the CLI; Recover registration without losing decisions or exceeding limits | Registration supplies role contracts, process decisions, and connected journey evidence; adapter implementation precedes its use. |
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception | Result |
+|---|---|---|---|---|
+| Registration supplies an assignment | Selected tool/model evidence, exact source, fixed assignment, and isolated run/output identities match. Unsupported or unverifiable configuration prevents acceptance as specified. | Real architect and independent reviewer runs; exercise both tool routes without requiring every tool/model combination. | None | Met 2026-09-24, revision fc37e03. Codex `gpt-5.6-sol` (0.155.0) and Claude Code `claude-opus-4-6` (2.1.270) were resolved from the installed tools; other models were refused as `model_not_allowed`. Architect and reviewer each ran with a fixed assignment and own run identity (`var/qa/runs-live/routes-evidence.json`, `pair-evidence.json`). |
+| An agent reads inputs and returns work | Inputs remain read-only, permitted output is writable, and another run's workspace is inaccessible. The exact assessment/candidate and structured response reach registration validation. | Actual file access results and verified artifact identities/hashes; agent prose alone is insufficient. | None | Met 2026-09-24, revision fc37e03. A real run wrote `output/` only: writes to `source/` and `input/` failed as read-only, service data and credentials were not visible (`var/qa/runs-live/probe-evidence.json`). The architect's two files were saved with matching SHA-256, and the reviewer received them and returned a validated response (`pair-evidence.json`). Accepted exception: the other-run listing came from the run's own directory chain and was not compared against a second concurrent run. |
+| Agent progress or completion arrives | Progress is recorded before CLI display. A successful tool exit or progress message cannot substitute for validated completion; stale run output cannot update current work. | Correlated supervisor, SQL, and CLI records, including one necessary invalid or late-result case. | None | Met 2026-09-24, revision fc37e03. Progress events were saved to SQL by sequence (architect 549 events, 15 progress). A contradictory reviewer response was rejected as `conflicting_response` and its run stayed failed, then one automatic recovery completed (`invalid-evidence.json`). Accepted exception: no late output from an older run was injected; that is only covered by the unit tests in `tests/maestro/service/test_agent_runs.py`, and the CLI display of progress was not re-run here. |
+| Stopping or a deadline occurs | Apply the registration-only 30-minute defaults and specified stopping behavior; child termination is confirmed before replacement. Unknown state blocks replacement. | Basic real stop and controlled timeout evidence; a shorter configured duration may exercise timeout behavior. | None | Met 2026-09-24, revision fc37e03. Stop: a real Codex run's `sleep` and its system unit were gone after stop and the run showed cancelled (`stop-evidence.json`). Timeout: a 45-second limit ended the run as `timed_out`, the child was gone, automatic recovery was refused and a manual run then completed (`timeout-evidence.json`). This exposed a real defect (the system unit kept running after stop), fixed and released as `passed/stop-agent-runs-completely`. |
+| A run or the main service is interrupted | Reconcile the original supervisor/run, preserve the deadline and retry count, and replay saved events once. Recovery follows cause-based limits; manual retry does not reset them. | Connected Recover registration without losing decisions or exceeding limits evidence for crash, restart, recovery attention/action, and no duplicate run. | None | Met 2026-09-24, revision fc37e03. The service process was killed with `kill -9` during a real run; `recover()` marked it interrupted, saved events were not duplicated (0 duplicate sequences), and one automatic recovery run completed with `automatic_used` 1 (`crash-evidence.json`, `crash2-output.txt`). Accepted exception: the whole-machine reboot path and the registration-level Recover journey are not run here; registration outcomes exercise them. |
+| A permitted new run follows recovery | Same-run recovery keeps its deadline; a new eligible run receives its own saved duration. A recorded next-run exception is consumed once without resetting attempts. | Correlated run identities, deadlines, exception and counter records under `docs/architecture.md#run-deadlines-and-duration-exceptions`. | None | Met 2026-09-24, revision fc37e03. A recovery run kept the assignment's saved 1800 seconds; after the 45-second timeout, a one-time 240-second exception applied to the next manual run only, and manual use was counted separately (`timeout-evidence.json`, `crash-evidence.json`). |
+| Context fills during an agent assignment | Apply configured thresholds, save a verified checkpoint, compact or safely replace context, and continue the same work without charging failure/correction/review allowances. Preserve remaining active-time budget, totals and source bindings. Unsafe or ineffective continuation pauses visibly. | One supported real capacity-continuation journey and essential inability-to-resume evidence; share persistent-session evidence with Establish the project's architectural foundations. Record the adapter's actual observation and control boundaries under [context readings and thresholds](../architecture.md#context-readings-and-thresholds), including stale readings during a long turn. Threshold enforcement does not promise mid-turn visibility or prevention of every capacity error. Provider-specific support is verified during implementation, not assumed. | None | Accepted exception 2026-09-24. Reading context fullness, saving a checkpoint and continuing a run are not built and were not run. The outcome's result (run, validate, stop, recover) does not depend on it; the run records store model context size (272000 and 200000 in `routes-evidence.json`). Also carries the earlier performance-observation exception: the service records events and run times, not usage or context readings. Build both with the persistent architecture session. |
+
+### Definition of done
+
+Real registration agent assignments use the service adapters and return usable verified outputs. Connected recovery evidence demonstrates the agreed limits and actual child-process stopping. Tool installation or a standalone model response is insufficient. The service supplies mechanics; registration retains judgment, review budgets, and activation authority.
+
+### Unresolved details
+
+Installed capability and isolation checks are development verification. If a tool cannot meet the specified exact-model or stopping contract, report the concrete limitation rather than silently weaken it. Execution implementation and policy changes remain outside this outcome.
+
+## Apply shared process definitions
+
+**Outcome:** Registration and the architecture loop use one validated TOML file to direct common runtime behavior while preserving their different process rules.
+
+**Included:** Process-definition validation and snapshots; shared initiation, output, review, confirmation, and recovery dispatch; supported policy/schema/destination references; process-specific integration.
+
+**Excluded:** New execution policy, arbitrary scripted workflows, process-specific architectural judgment, and separate copies of registration or architecture-loop record schemas.
+
+### Architecture and journeys
+
+| Required behavior or journey | Architecture section |
+|---|---|
+| Configuration drives supported runtime capabilities | `docs/architecture.md#shared-process-definitions` |
+| Installed schema selection and recovery | `docs/architecture.md#installed-validation-schemas` |
+| Correct output validation, storage, and process boundaries | `docs/architecture.md#shared-output-handling-and-process-boundaries` |
+| Registration integration | `docs/architecture.md#registration-process-definition-binding` |
+| Architecture-loop integration | `docs/architecture.md#architecture-loop` |
+
+### Dependencies
+
+| Required dependency | Reference | Current state or delivery responsibility |
+|---|---|---|
+| Records, transport, and supervised agents | Preserve project activity and requests; Connect the CLI to recorded service activity; Run and recover assigned agents | Shared implementation foundation; new process dispatch is delivered here. |
+| Registration policies and package meaning | Register and confirm a project through the CLI; Recover registration without losing decisions or exceeding limits | Registration supplies its handlers, schemas, and connected evidence. |
+| Persistent-session and breakdown use | Establish the project's architectural foundations; Review and confirm the development breakdown | Architecture loop owns its session continuation and process-specific outputs; shared handlers are delivered here. |
+
+Implement the common interfaces before their process integrations. Final acceptance uses those integrations together; prior final acceptance of a dependent process is not an implementation prerequisite.
+
+### Acceptance criteria
+
+| Expected result and conditions | Pass boundary | Verification and evidence | Accepted exception | Result |
+|---|---|---|---|---|
+| A configured process starts | Its validated sections select the correct prerequisites, role/session rules, outputs, review, confirmation, and recovery handlers. Registration and architecture retain their different behavior. | Real registration and architecture-loop activities, effective definitions and correlated runtime records. | None | Met with an accepted exception 2026-09-24, revision ae62ddd. The installed service now ships both schema bundles and reads the two process sections; a disposable copy reported both valid with the installed bundle hashes (`var/qa/process-live/route-evidence.json`). Saved definitions gave a real Codex run a 45-second limit and a real Claude Code run 1800 seconds and 2 recoveries (`agent-evidence.json`). Accepted exception: there is no registration or architecture activity yet to start; their initiation, output, review and confirmation handlers only declare their policy and are built with those outcomes. |
+| Configuration is invalid or changes during work | Invalid definitions prevent the affected new process with a clear error. An active process retains its definition, budget, and authority snapshot; read-only views remain available. | One essential invalid-definition case and an edit between activity starts showing preserved versus new snapshots. | None | Met 2026-09-24, revision ae62ddd. A removed legacy key held only registration while architecture stayed valid and the service kept answering; an unsupported policy held only architecture (`route-evidence.json`). An edit between two activity starts kept 45 seconds on the first and gave the second 90; the saved hash differs (`agent-evidence.json`, `snapshot_` entries). |
+| An activity starts or resumes after installation changes | Resolve the exact installed schema bundle under `docs/architecture.md#installed-validation-schemas`; preserve the saved version and hashes during recovery. | Installed bundle location, activity snapshot, and one missing or changed bundle rejection without substitution or lost work. | None | Met 2026-09-24, revision ae62ddd. Bundles installed at `/opt/maestro/schemas` by the release upgrade; the snapshot saves reference and hash. On a copy, a missing bundle blocked new and saved work with `missing_bundle`, a changed one blocked resuming with `bundle_changed`, saved work stayed readable and nothing else changed (`bundle-evidence.json`). |
+| A process returns its required outputs | Shared handling validates structure, identities, permitted locations, versions, and process-specific meaning before reporting the set saved. | Actual registration package and architecture output records; necessary missing/invalid-output rejection. | None | Accepted exception 2026-09-24. Output validation and saving need the registration package and architecture outputs, which do not exist yet; the definition only declares them. Build with Register and confirm a project through the CLI and Establish the project's architectural foundations. |
+| Review, publication, or confirmation is repeated or interrupted | Use the selected process contract without duplicate effects, budget resets, unverified publication, or unintended execution. | Basic connected recovery evidence shared with the process declarations, not an exhaustive failure suite. | None | Accepted exception 2026-09-24. Needs registration review and confirmation and architecture confirmation to exist. The review limit and recovery counters are saved with each activity; a later edit does not change them (unit tests, `tests/maestro/service/test_process_policy.py`). |
+| Architecture inputs or operations repeat | Enforce exact paths, relevant input hashes, separate working/confirmed references, and correction/review/recovery counters. Reconcile identical operations without stale overwrite, duplicated confirmation, or reset allowances. | Shared evidence from Establish the project's architectural foundations, Produce a bounded and parallel-ready work breakdown, and Review and confirm the development breakdown. | None | Accepted exception 2026-09-24. Needs the architecture-loop outcomes; the shared counters and saved snapshot they will use are in place. |
+| An Owner responds at a process limit | Apply the shared typed decision once to the exact assignment, retain base limits and counts, and expose the saved disposition. A duration exception does not grant an attempt. | Connected registration and architecture actions, including replay, follow `docs/architecture.md#owner-decisions-at-a-process-limit`. | None | Accepted exception 2026-09-24. Needs registration and architecture actions; the run service already refuses recovery past its saved limit (`recovery_not_permitted` after the timeout, `agent-evidence.json`). |
+
+### Definition of done
+
+Both real processes use the common runtime handling and their own recorded definitions. Evidence checks the matching process-relative settings layout under [shared process definitions](../architecture.md#shared-process-definitions), rejection of legacy registration keys, and separate process budgets without reset. Merely parsing TOML, hardcoding a separate output path for each process, or completing registration alone does not satisfy this outcome. Evidence follows the outcome area's common requirements; live verification belongs to development.
+
+### Unresolved details
+
+| Missing detail | Effect on the outcome | Clarification needed |
+|---|---|---|
+| Architecture-loop integration | Exact continuation, response, output, and API contracts are specified in the architecture and schema bundle. | Implement the shared handlers and verify installed compatibility during development; no further process-design decision is identified. |
+| Executable definition schema and handler mapping | The runtime must validate and execute the documented behavior. | Use [registration process-definition binding](../architecture.md#registration-process-definition-binding) and the architecture-loop mapping with their supplied configuration schemas. Verify default application, required sections, unsupported values and activity snapshots; implement output validators against their separate record contracts. |
+
+## Partial-registration boundary
+
+No narrower portion is declared. A subset must identify its included outcomes, external dependencies, relevant journeys, and acceptance coverage before registration confirmation. Acceptance of the service foundation alone does not establish the complete runtime, CLI, or registration capability.
