@@ -5,7 +5,7 @@ Maestro coordinates project development through Planning, Execution, and Monitor
 ## Development
 
 - [Ordered development outcomes](docs/product/v1/outcomes.md)
-- [Feature planning](docs/process/planning-guide.md) and [delivery rules](docs/process/delivery-rules.md)
+- [Feature planning](docs/process/feature-planning.md) and [delivery rules](docs/process/delivery-rules.md)
 
 ## Product sources
 

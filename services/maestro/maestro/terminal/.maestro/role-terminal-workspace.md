@@ -22,7 +22,7 @@ Intended area: `services/maestro/maestro/terminal/`. Current related source: cli
 
 ### Read first
 
-Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../docs/process/planning-guide.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
+Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../docs/process/feature-planning.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
 
 ## Inputs and outputs
 
