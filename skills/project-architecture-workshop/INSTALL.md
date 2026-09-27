@@ -1,6 +1,6 @@
 # Use the workshop skill
 
-Copy the entire `project-architecture-workshop` folder, including references and assets, into the chosen skill directory. Do not copy only SKILL.md or replace an existing installation without checking it.
+Copy the entire `project-architecture-workshop` folder, including process and assets, into the chosen skill directory. Do not copy only SKILL.md or replace an existing installation without checking it.
 
 | Tool | Personal installation | Project installation | Invocation |
 |---|---|---|---|

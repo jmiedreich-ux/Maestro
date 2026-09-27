@@ -34,9 +34,9 @@ Rules for this step:
 
 Several of these practices are adapted from pstack (github.com/cursor/plugins, MIT license, Lauren Tan): observable done-lines, evidence confidence tiers, options that differ in kind, and gap-recording review.
 
-Read [the planning guide](references/planning-guide.md) when establishing or assessing sources. Read [workshop state](references/workshop-state.md) at start and before saving or resuming. Read [reviews](references/reviews.md) when checking a settled topic or preparing a handoff.
+Read [the planning guide](process/planning-guide.md) when establishing or assessing sources. Read [workshop state](process/workshop-state.md) at start and before saving or resuming. Read [reviews](process/reviews.md) when checking a settled topic or preparing a handoff.
 
-The process after planning also lives in `references/`: [feature planning](references/feature-planning.md), [delivery rules](references/delivery-rules.md), the [environment contract](references/environment-contract.md), [handoff rules](references/handoff-rules.md), and the [agent role contracts](references/agents/README.md). Read them when the work moves past planning; this workshop does not execute them.
+`process/` also holds the process after planning: [feature planning](process/feature-planning.md), [delivery rules](process/delivery-rules.md), the [environment contract](process/environment-contract.md), [handoff rules](process/handoff-rules.md), and the [agent role contracts](process/agents/README.md). Read them when the work moves past planning; this workshop does not execute them.
 
 ## Start or resume
 
@@ -79,7 +79,7 @@ Update each fact at its authoritative home: overview for project scope and curre
 
 Before saving, check reference paths/fragments, identity/version changes, outcome coverage, and contradictory nearby rules. Respect the authorized delivery level: local files, local commit, or remote publication. Preserve unrelated changes. Verify saved bytes and, when publishing remotely, the destination revision. Report those levels separately: a local save is not a push, and failed publication does not erase a verified local save. If local-only work is requested, finish there without seeking push approval. If publication truly lacks authorization, prepare the complete reviewable change and ask only for that decision. No universal branch, PR, or merge rule is imposed.
 
-Use [the documentation review method](references/reviews.md) for separate decision-fidelity, architectural-completeness, and cross-document-consistency assignments. It owns reviewer eligibility, input filtering, journey coverage, full-review checkpoints, targeted checks, disposition, and accurate conclusions. Use [the coverage record](references/workshop-state.md#review-coverage-record) when saving results. Do not treat a conclusion without recorded coverage as completed review. Keep existing scope, permissions, and review limits; do not review each conversational answer or rerun passed unchanged coverage.
+Use [the documentation review method](process/reviews.md) for separate decision-fidelity, architectural-completeness, and cross-document-consistency assignments. It owns reviewer eligibility, input filtering, journey coverage, full-review checkpoints, targeted checks, disposition, and accurate conclusions. Use [the coverage record](process/workshop-state.md#review-coverage-record) when saving results. Do not treat a conclusion without recorded coverage as completed review. Keep existing scope, permissions, and review limits; do not review each conversational answer or rerun passed unchanged coverage.
 
 ## Stop conditions and final output
 

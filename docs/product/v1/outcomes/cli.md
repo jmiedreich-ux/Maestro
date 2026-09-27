@@ -6,7 +6,7 @@ The outcome area delivers a usable local terminal workspace and reliable questio
 
 Command center, mobile presentation, unsolicited agent conversation, cross-project draft retention, execution commands, and a complete execution engine are outside this outcome area. Registration-specific intake and package actions are delivered through the [registration outcomes](registration.md). Architecture-loop entry, progress, review, and confirmation actions are delivered through the [architecture-loop outcomes](architecture-loop.md), using this terminal foundation. Its `/architecture start` and `/architecture` commands use selected-project context; detailed architecture actions and connected acceptance remain owned by those outcomes. Registration command behavior is preserved.
 
-Verification follows `skills/project-architecture-workshop/references/planning-guide.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
+Verification follows `skills/project-architecture-workshop/process/planning-guide.md#verification-expectations`: real data and connected operation, a basic main journey and essential failures, and no exhaustive outcome-by-outcome test suite. Evidence can cover several criteria in one journey. Fake data is used only when necessary with the reason recorded; it cannot prove real registration or agent integration.
 
 ### Development order and connected acceptance
 

@@ -12,7 +12,7 @@ Scheduling, source implementation, worker dispatch, automatic execution start, c
 
 Runtime and CLI interfaces are implemented before architecture-loop integration. A real confirmed registration supplies the input. Final shared-runtime acceptance can use this loop's connected evidence without requiring that same evidence before implementation starts.
 
-The [project overview](../project-overview.md) records existing-code evidence and its limits. No installed capability is assumed ready. Relevant source is inspected during development preparation. Each outcome needs the implementation revision, reproducible setup, actual observations, and required reviews. Apply `skills/project-architecture-workshop/references/planning-guide.md#verification-expectations`: main journeys and essential failures, real data where possible, and explained necessary simulation. Live verification is deferred to development.
+The [project overview](../project-overview.md) records existing-code evidence and its limits. No installed capability is assumed ready. Relevant source is inspected during development preparation. Each outcome needs the implementation revision, reproducible setup, actual observations, and required reviews. Apply `skills/project-architecture-workshop/process/planning-guide.md#verification-expectations`: main journeys and essential failures, real data where possible, and explained necessary simulation. Live verification is deferred to development.
 
 The ordered outcomes build the loop progressively. Foundation or breakdown completion alone does not mean the loop can be confirmed. Unresolved behavioral contracts must be resolved before affected development breakdown; writing executable validators and performing installed checks are implementation work. Implementation review, milestone Quality Assurance, promotion and completion authority follow the defined [Execution architecture](../architecture.md#execution) when generated work is later executed; they are not part of this architecture-loop outcome area.
 
@@ -147,7 +147,7 @@ The saved breakdown covers the confirmed scope and provides bounded, assessable 
 | Later registration update | Update a registration without losing approved history | Supplies the real update for shared changed-registration/invalidation evidence. Implemented interfaces support integration; prior final acceptance of that shared evidence is not a prerequisite to development. |
 | Saved breakdown | Produce a bounded and parallel-ready work breakdown | Required preceding output. |
 | Common review/output/confirmation handling | Apply shared process definitions | Runtime mechanics; architecture-specific eligibility and confirmation records are delivered here. |
-| Independent reviewer | `skills/project-architecture-workshop/references/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
+| Independent reviewer | `skills/project-architecture-workshop/process/agents/decision-fidelity-reviewer.md` | Defined responsibility; installed separate-session operation requires development evidence. |
 
 ### Acceptance criteria
 

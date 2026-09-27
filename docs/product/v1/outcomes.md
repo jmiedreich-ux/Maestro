@@ -1,6 +1,6 @@
 # Maestro development outcomes
 
-This is the ordered roadmap for building Maestro. The linked outcome specifications describe the product's required behavior; this roadmap and the [delivery rules](../../../skills/project-architecture-workshop/references/delivery-rules.md) govern how Maestro itself is developed. Product work packets and milestones created later by Maestro are separate runtime data.
+This is the ordered roadmap for building Maestro. The linked outcome specifications describe the product's required behavior; this roadmap and the [delivery rules](../../../skills/project-architecture-workshop/process/delivery-rules.md) govern how Maestro itself is developed. Product work packets and milestones created later by Maestro are separate runtime data.
 
 ## Ordered outcomes
 
@@ -30,7 +30,7 @@ The order states dependencies, not a fixed worker schedule. Shared foundations c
 
 ## Environmental pass
 
-Use the [single environment contract](../../../skills/project-architecture-workshop/references/environment-contract.md) and record the [environmental pass](admin/environmental-pass.md) before confirming a feature plan. For each assumption ask what must exist, how it will be proved, and what happens when it is absent. Cover the full contract, mark each category applicable or excluded with a reason, and identify the proving feature. Unknown operational condition stays unverified. Service installation is an outcome; installed service checks apply when a feature needs it.
+Use the [single environment contract](../../../skills/project-architecture-workshop/process/environment-contract.md) and record the [environmental pass](admin/environmental-pass.md) before confirming a feature plan. For each assumption ask what must exist, how it will be proved, and what happens when it is absent. Cover the full contract, mark each category applicable or excluded with a reason, and identify the proving feature. Unknown operational condition stays unverified. Service installation is an outcome; installed service checks apply when a feature needs it.
 
 ## Development planning boundary
 
