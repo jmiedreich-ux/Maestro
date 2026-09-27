@@ -36,7 +36,7 @@ Under the new direction, the planning work happens earlier, inside the [maestro-
 
 ## What this adds
 
-- One rules file inside the workshop, machine readable, listing the required documents, sections and link rules. The workshop and the service both follow it.
+- One rules file, `registration-rules.json` in this folder, machine readable (JSON), listing the required documents, sections and link rules. The workshop and the service both follow it.
 - A small, fixed registration record instead of a package of many files.
 - A check in the service that the workshop's review record matches the exact revision being registered.
 
