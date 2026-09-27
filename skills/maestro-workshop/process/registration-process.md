@@ -35,6 +35,10 @@ If someone edits a document after confirmation, the fingerprints show it. The ex
 
 The rules are in [registration-rules.json](registration-rules.json). The CLI checks for a newer approved version when it starts, tells the Owner one exists, and says which version it used. Only versions marked passed are used, never arbitrary changes on master. Each registration keeps the rules version it started with, so the rules cannot change halfway through.
 
+## Newer versions
+
+A project has one active registration. Registering a newer version folder, for example `v2` while `v1` is being built, replaces the active registration like any re-registration: only when no work is happening, and only after the Owner confirms. The earlier version's documents and records stay. The newer roadmap carries the delivered outcomes forward, so nothing delivered is lost.
+
 ## Portions
 
 A registration can cover a defined portion of the plan. The chosen boundary, its exclusions and any outside dependencies are recorded and shown for confirmation. An essential dependency cannot simply be left out: it must already work, or the missing work must be included. The service never widens a boundary by inference.

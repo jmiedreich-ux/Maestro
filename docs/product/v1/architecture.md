@@ -829,7 +829,7 @@ One SQL transaction holds the project's start lock, checks that the project is i
 
 The reservation remains until registration has ended and its runs and external operations are resolved. Ending registration releases it without automatically restarting stopped work. The previous approved registration remains active unless its replacement was successfully confirmed. This shared start-check contract defines the interface registration requires; it does not define Execution scheduling or stopping commands.
 
-Each rerun creates the next registration version while preserving prior versions. It checks the documents at a newly pinned revision under the same rules.
+Each rerun creates the next registration version while preserving prior versions. It checks the documents at a newly pinned revision under the same rules. The rerun may point to a newer version folder of the planning documents; that replaces the active registration on confirmation, and the newer roadmap carries the delivered outcomes forward.
 
 ### Comparison, activation, and cancellation
 
