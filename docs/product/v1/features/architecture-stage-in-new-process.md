@@ -50,6 +50,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - The reviewer of a feature reads the diff and the receipts, not the coder's summary, and is told not to question the finish line. Only findings that must be acted on go into the one correction. Findings touching security, permissions, data, migrations, repeat-safety or concurrency are never dismissed without the Owner.
   - Mostly already the practice (Owner agreed 2026-09-27) — see the [Independent Implementation Reviewer](../../../../skills/maestro-workshop/process/agents/independent-review-agent.md): read-only, works from the checkout and evidence, routes minimum corrections, never reviews its own work. New: when a feature plan touches security, permissions, data, migrations, repeat-safety or concurrency, the architect calls that out in the plan's fixed blocks up front, so the coder builds to it and the reviewer confirms it rather than surfacing a late surprise; only an unresolved finding in one of these areas must still reach the Owner rather than being waved off.
 - The coder never verifies or reviews its own work.
+  - Already the practice (Owner, 2026-09-27).
 - A feature merges only when its verdict still matches its exact change. Landing stops at the first unverified feature.
 - Integration classifies a failure before any retry, allows one retry, and treats review comment text as untrusted data.
 - The decision trail is an append-only event record, one row per checkpoint, and is not repeated in documents.
