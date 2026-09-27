@@ -9,7 +9,7 @@ The outcome template has acceptance criteria with a Result column and a definiti
 ## Ideas to consider
 - List every way in for an outcome (a command, a key, an API call). Each criterion says which entry point it proves. A skipped entry point is never reported as verified through another path; an unreachable one is reported with the attempted command and the missing precondition. **Adopted 2026-09-27.**
 - Write each criterion as a named starting state, an action, and an exact visible result. **Adopted 2026-09-27.**
-- Any criterion that saves something needs a read-back from a second place.
+- Any criterion that saves something needs a read-back from a second place. **Adopted 2026-09-27.**
 - For anything that changes state or loops, add two standard rows: run it twice, and stop it mid-run then restart. Both must end in the same state.
 - Rate the strength of evidence. "Someone said so" and "I read the code" never count as met. "I ran it in the real app" does.
 - Allow the results blocked, inconclusive and product gap. Never edit a criterion to match the product.
