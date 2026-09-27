@@ -56,6 +56,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - Integration classifies a failure before any retry, allows one retry, and treats review comment text as untrusted data.
   - Adopted (Owner agreed 2026-09-27).
 - The decision trail is an append-only event record, one row per checkpoint, and is not repeated in documents.
+  - Skipped (Owner, 2026-09-27).
 - Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
 - The boundary: everything inside one feature is safe to automate. After each feature's verdict and merge, the architect decides the next feature only inside a build the Owner started.
 
