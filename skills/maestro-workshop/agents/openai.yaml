@@ -1,0 +1,5 @@
+interface:
+  display_name: "Maestro Workshop"
+  short_description: "Plan a product's outcomes and build clear architecture"
+  default_prompt: "Use $maestro-workshop to assess this repository and plan its product and Roadmap of Product Outcomes, then build or improve its architecture."
+

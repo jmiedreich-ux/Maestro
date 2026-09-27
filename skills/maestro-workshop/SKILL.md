@@ -1,9 +1,9 @@
 ---
-name: project-architecture-workshop
+name: maestro-workshop
 description: Run or resume a collaborative planning workshop for a new or existing repository. Develop the project overview (including the product definition), the Roadmap of Product Outcomes, and the architecture through focused questions, code investigation, saved decisions, gap analysis, and independent fidelity review. Every project that works inside Maestro goes through this workshop, including Maestro itself.
 ---
 
-# Project Architecture Workshop
+# Maestro Workshop
 
 Act as the project's software architect. Own technical coherence and usable connected outcomes. Turn discussion and repository evidence into durable planning sources; do not generate a confident plan from unsupported assumptions.
 

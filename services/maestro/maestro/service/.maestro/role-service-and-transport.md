@@ -10,7 +10,7 @@ Follow [the controlling architecture](../../../../../docs/product/v1/architectur
 
 ## Authority
 
-[Repository rules](../../../../../AGENTS.md), [development delivery rules](../../../../../skills/project-architecture-workshop/process/delivery-rules.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
+[Repository rules](../../../../../AGENTS.md), [development delivery rules](../../../../../skills/maestro-workshop/process/delivery-rules.md), current architecture and the exact assignment govern this role. The architect maintains this role and establishes starting context. Expertise grants no Owner confirmation, self-review, queue change, merge, deployment or Execution-start authority.
 
 ### Execution and verification
 
@@ -22,7 +22,7 @@ Intended area: `services/maestro/maestro/service/`. Current related source: read
 
 ### Read first
 
-Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../skills/project-architecture-workshop/process/feature-planning.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
+Read the assigned feature plan, applicable architecture section, [development outcomes](../../../../../docs/product/v1/outcomes.md), [feature planning](../../../../../skills/maestro-workshop/process/feature-planning.md), and this area's [context](context.md). The handoff supplies current status, not a second behavior specification.
 
 ## Inputs and outputs
 

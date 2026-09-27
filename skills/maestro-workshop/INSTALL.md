@@ -1,11 +1,11 @@
 # Use the workshop skill
 
-Copy the entire `project-architecture-workshop` folder, including process and assets, into the chosen skill directory. Do not copy only SKILL.md or replace an existing installation without checking it.
+Copy the entire `maestro-workshop` folder, including process and assets, into the chosen skill directory. Do not copy only SKILL.md or replace an existing installation without checking it.
 
 | Tool | Personal installation | Project installation | Invocation |
 |---|---|---|---|
-| Codex | `~/.agents/skills/project-architecture-workshop/` | `<repo>/.agents/skills/project-architecture-workshop/` | `$project-architecture-workshop` |
-| Claude Code | `~/.claude/skills/project-architecture-workshop/` | `<repo>/.claude/skills/project-architecture-workshop/` | `/project-architecture-workshop` |
+| Codex | `~/.agents/skills/maestro-workshop/` | `<repo>/.agents/skills/maestro-workshop/` | `$maestro-workshop` |
+| Claude Code | `~/.claude/skills/maestro-workshop/` | `<repo>/.claude/skills/maestro-workshop/` | `/maestro-workshop` |
 
 These locations follow the [Codex skill documentation](https://learn.chatgpt.com/docs/build-skills) and [Claude Code skill documentation](https://code.claude.com/docs/en/skills), checked 2026-09-14. Start a new session and confirm the skill is listed. Tool access and independent-agent availability depend on the host; installation does not grant repository credentials or publishing permission.
 
