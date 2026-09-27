@@ -1,6 +1,6 @@
 # Durable workshop state
 
-Use the repository's existing equivalent state file, otherwise `docs/planning/workshop-state.json`. Start from [the state template](../assets/workshop-state.json). It is process bookkeeping, not a second architecture document.
+Use the repository's existing equivalent state file, otherwise `docs/product/v1/planning/workshop-state.json`. Start from [the state template](../assets/workshop-state.json). It is process bookkeeping, not a second architecture document.
 
 ## What to keep
 
