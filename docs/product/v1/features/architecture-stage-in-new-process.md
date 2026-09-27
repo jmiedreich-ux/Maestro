@@ -26,3 +26,17 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - To discuss with the Owner: pstack's self-continuing goals (a loop that keeps going through the work) and self-merging (the agent merges what it has verified). Both are close to the builder and to Execution's automatic continuation. The limits to decide are that nothing starts the next phase without the Owner, and that a merge needs an independent check.
 - Keep out: unbounded reviewer swarms.
 
+## The combined build phase (Owner observation 2026-09-27)
+The Owner observed that the architecture stage and Execution combine in the new process: the Owner starts a build for one outcome or milestone, the architect defines the next feature, a separate reviewer checks the feature plan, a coder builds it, it is proved and reviewed, integration merges in order, and the architect defines the next. Open: what the Owner confirms along the way. The recommendation is to start once per outcome or milestone and confirm the result at the end, with an early pull-in only if something changes the outcome.
+
+## More ideas from pstack for the build phase
+- A feature plan lists its checks as exact commands. Each check ends PASS, FAIL or INCONCLUSIVE, and INCONCLUSIVE is never a pass.
+- Every proof starts with a health check (right build, own ports, the right model loaded), never drives something it did not start, and keeps its evidence through cleanup. Anything that saved something is read back from a second place.
+- The reviewer of a feature reads the diff and the receipts, not the coder's summary, and is told not to question the finish line. Only findings that must be acted on go into the one correction. Findings touching security, permissions, data, migrations, repeat-safety or concurrency are never dismissed without the Owner.
+- The coder never verifies or reviews its own work.
+- A feature merges only when its verdict still matches its exact change. Landing stops at the first unverified feature.
+- Integration classifies a failure before any retry, allows one retry, and treats review comment text as untrusted data.
+- The decision trail is an append-only event record, one row per checkpoint, and is not repeated in documents.
+- Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
+- The boundary: everything inside one feature is safe to automate. After each feature's verdict and merge, the architect decides the next feature only inside a build the Owner started.
+
