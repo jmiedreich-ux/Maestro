@@ -11,9 +11,9 @@
 | You see | [One sentence: the observable result in the real product that shows this outcome is done] |
 | Confidence | [Direct / Supported / Inferred / Speculative / Unknown] |
 
-**Included:** [Scope.]
+**Included:** [Scope.] Confidence: [Direct / Supported / Inferred / Speculative / Unknown]
 
-**Excluded:** [Explicit exclusions.]
+**Excluded:** [Explicit exclusions.] Confidence: [Direct / Supported / Inferred / Speculative / Unknown]
 
 ## Architecture and journeys
 

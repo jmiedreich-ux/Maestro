@@ -19,15 +19,15 @@
 
 ## Order and dependencies
 
-| Outcome | Depends on | Why this comes here |
-|---|---|---|
-| [Plain subject] | [Outcome subjects, or an outside capability with its evidence level; None] | [The reason for this position] |
+| Outcome | Depends on | Why this comes here | Confidence |
+|---|---|---|---|
+| [Plain subject] | [Outcome subjects, or an outside capability with its evidence level; None] | [The reason for this position] | [Direct / Supported / Inferred / Speculative / Unknown] |
 
 ## Alternatives considered
 
-| Decision | Options considered | Chosen and why |
-|---|---|---|
-| [Scope or ordering decision] | [Two or three options that differ in kind] | [Choice, the tradeoff accepted, and why the others lost] |
+| Decision | Options considered | Chosen and why | Confidence |
+|---|---|---|---|
+| [Scope or ordering decision] | [Two or three options that differ in kind] | [Choice, the tradeoff accepted, and why the others lost] | [Direct / Supported / Inferred / Speculative / Unknown] |
 
 ## Unresolved information
 
