@@ -4,11 +4,11 @@
   "source_revision": null,
   "status": "discovering",
   "paths": {
-    "overview": "docs/product/v1/project-overview.md",
-    "architecture": "docs/product/v1/architecture.md",
-    "roadmap": "docs/product/v1/outcomes.md",
-    "outcomes": "docs/product/v1/outcomes",
-    "state": "docs/product/v1/workshop-state.json"
+    "overview": "docs/product/v<major>/project-overview.md",
+    "architecture": "docs/product/v<major>/architecture.md",
+    "roadmap": "docs/product/v<major>/outcomes.md",
+    "outcomes": "docs/product/v<major>/outcomes",
+    "state": "docs/product/v<major>/workshop-state.json"
   },
   "publication": {
     "route": null,
