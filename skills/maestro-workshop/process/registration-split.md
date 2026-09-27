@@ -43,5 +43,5 @@ Under the new direction, the planning work happens earlier, inside the [maestro-
 ## Decisions for the Owner
 
 1. Decided (Owner agreed): the service keeps the small registration record: the pinned revision, a fingerprint of each document, the rules version used, the workshop's review record, and the Owner's confirmation. It does not copy the plan into a package of many files.
-2. If the service no longer launches reviewers for registration, is the workshop's independent review, checked by fingerprint, enough as the independent check at registration?
+2. Decided (Owner agreed): the workshop's independent review is the independent check. Registration does not launch its own reviewer. The service checks that a review record exists, covers exactly the version being registered, that no document changed afterwards, and that its coverage is complete.
 3. How should a rejected registration go back to the workshop: an error listing the failed rules, with the workshop rerun by the Owner?
