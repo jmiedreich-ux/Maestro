@@ -60,6 +60,7 @@ The Owner observed that the architecture stage and Execution combine in the new 
 - Prune a feature's workspace after it merges. Uncommitted work pauses for the Owner.
   - Adopted (Owner agreed 2026-09-27), with a limit: pruning clears the merged feature's leftover branch/worktree state, never the standing environment it ran in. The environment is stood up once so work can keep moving quickly, and is not torn down between features.
 - The boundary: everything inside one feature is safe to automate. After each feature's verdict and merge, the architect decides the next feature only inside a build the Owner started.
+  - Skipped (Owner, 2026-09-27) — already covered by the combined build phase description above.
 
 ## Development Manager merged into the architect (Owner, 2026-09-27)
 The Development Manager role is combined into the architect for now. One architect per work stream owns the stream from design to merge, and several streams can run in parallel. The service owns the merge order, reservations and capacity. A cross-stream coordinator is added later only if parallel streams collide over the same files or capacity. The role contract, the architecture and the Execution outcomes use "architect" now.
