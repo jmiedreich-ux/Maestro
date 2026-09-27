@@ -25,6 +25,7 @@ The architecture loop section of [the architecture](../architecture.md#architect
 - When retiring old code, list its callers and migrate them in the same feature that deletes it.
   - Adopted (Owner agreed 2026-09-27).
 - For a new kind of feature, run one pilot packet first to test the brief, the packet size and the verification.
+  - Skipped (Owner, 2026-09-27).
 - A review verdict belongs to one exact version of the change. If the change moves, the verdict is void.
 - A milestone is complete only when its features form an unbroken run of verified work.
 - Bound the one correction: only findings that must be acted on go to the coder. "I would have done it differently" is not a finding.
