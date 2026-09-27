@@ -25,9 +25,11 @@ Classify a finding before acting:
 
 The milestone branch receives reviewed features. Assembled QA and outcome review decide its promotion to master. When a passed milestone changes the installed service, CLI, schemas or installer, tag the promoted master commit `passed/<plain name>`. The [automatic upgrade](../../../services/maestro/deploy/README.md#automatic-upgrade) installs only that exact revision, preserves configured settings, runs post-install health and smoke checks and restores its backup on failure. Record its receipt or blocker before starting a dependent milestone. A milestone that does not change these skips installation, and only the Owner-approved promotion step creates `passed/*` tags. A passed milestone closes; polish does not keep it open. Record timing and delay causes for a retrospective, then improve the relevant preflight, prerequisite check or rule when a real gap is found.
 
-## Autopilot
+## Builder
 
-The autopilot works through the [ordered outcomes](../../../docs/product/v1/outcomes.md) without waiting for the Owner. The Owner has delegated these decisions to it:
+The builder is responsible for developing Maestro until Maestro can use Maestro on itself. After that, Maestro's own process takes over and the builder retires.
+
+The builder works through the [ordered outcomes](../../../docs/product/v1/outcomes.md) without waiting for the Owner. The Owner has delegated these decisions to it:
 
 - **Accepting an outcome.** Accept it when its observable result works and every acceptance criterion is met with real evidence or carries an accepted exception. Do not keep working on anything that can wait; record it as an accepted exception and move on. Do not polish.
 - **Regression.** After accepting an outcome, rerun the real end-to-end path built so far. If an earlier result no longer works, fix it before continuing.
