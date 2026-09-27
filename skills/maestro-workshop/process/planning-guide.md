@@ -86,7 +86,7 @@ An outcome is delivered when every acceptance row is marked Done, with the date,
 
 An outcome is identified by its plain subject, unique within the roadmap. A retired subject is not reused. Order is the list order in the roadmap. Reordering changes the roadmap version, not the outcomes. Dependencies name the outcome subject or an outside capability.
 
-A changed outcome document or roadmap receives its next version, and previous versions remain available. Reviews identify the exact versions reviewed; review rounds remain separate from document versions.
+A changed outcome document or roadmap receives its next version number inside its file, and previous versions remain available in Git. The `v<major>` folder is separate: only the Owner starts a new one, in a workshop session. Reviews identify the exact versions reviewed; review rounds remain separate from document versions.
 
 ## Current capability and dependencies
 
